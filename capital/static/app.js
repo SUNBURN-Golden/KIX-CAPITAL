@@ -57,25 +57,27 @@ function validateReceipt(receipt,body){
 async function command(op,advance_id,args){
  if(busy||pending||storageBlocked||!state)return;
  if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
- await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
+ busy=true;fence();
+ try{await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
  if(!lock){notice('다른 탭의 명령이 진행 중입니다. 결과를 확인한 후 계속하세요.',true);return;}
  readPending();if(pending||storageBlocked){fence();return;}
- busy=true;const body={instance_id:state.instance_id,operation_id:crypto.randomUUID(),op,advance_id,args};
+ const body={instance_id:state.instance_id,operation_id:crypto.randomUUID(),op,advance_id,args};
  try{savePending(body);fence();const receipt=await request('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validateReceipt(receipt,body);savePending(null);selected=advance_id;showReceipt(receipt);}
  catch(error){if(error.knownRejection){try{savePending(null);}catch{}notice(`요청 거절: ${error.message}`,true);}else notice('요청 결과 UNKNOWN. 자동 재시도하지 않습니다. 원 요청 결과를 조회하세요.',true);}
- finally{busy=false;try{await refresh();}catch{notice('현재 상태를 조회하지 못했습니다. 서버 연결을 확인하세요.',true);}fence();}
- });
+ finally{try{await refresh();}catch{notice('현재 상태를 조회하지 못했습니다. 서버 연결을 확인하세요.',true);}}
+ });}finally{busy=false;fence();}
 }
 $('offer-form').onsubmit=event=>{event.preventDefault();const amount=Number($('amount').value);if(!Number.isSafeInteger(amount)||amount<1||amount>1e12){notice('금액은 1부터 10¹² 사이의 정수여야 합니다.',true);return;}command('offer','sim-'+crypto.randomUUID().slice(0,12),{fixture_id:$('fixture').value,amount});};
 $('repay').onclick=()=>{const c=state.cases.find(item=>item.advance_id===selected);const amount=Number($('repay-amount').value);if(!Number.isSafeInteger(amount)||amount<1){notice('상환 메모 금액은 양의 정수여야 합니다.',true);return;}command('repay',selected,{amount,sequence:c.next_repayment_sequence});};
 $('refresh').onclick=async()=>{try{await refresh();notice('현재 상태를 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('상태 조회에 실패했습니다.',true);}};
 async function pendingAction(action){
  if(busy||!navigator.locks)return;
- await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
+ busy=true;fence();
+ try{await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
   if(!lock){notice('다른 탭의 명령 또는 결과 조회가 진행 중입니다.',true);return;}
   readPending();if(!pending||storageBlocked){fence();return;}
-  busy=true;fence();try{await action(pending);}finally{busy=false;fence();}
- });
+  await action(pending);
+ });}finally{busy=false;fence();}
 }
 function clearMatching(original){
  readPending();

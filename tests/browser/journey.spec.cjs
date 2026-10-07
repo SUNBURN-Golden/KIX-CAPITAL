@@ -2,8 +2,12 @@ const {test,expect}=require('@playwright/test');
 async function offer(page,fixture='sim-committed',amount='60000'){
  await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
  await page.locator('#fixture').selectOption(fixture);await page.locator('#amount').fill(amount);
+ const created=page.waitForResponse(r=>r.url().endsWith('/api/commands')&&r.request().postDataJSON()?.op==='offer');
  await page.getByRole('button',{name:'모의 제안 생성'}).click();
- await expect(page.locator('#phase')).toContainText('OFFERED');
+ const receipt=await(await created).json();
+ expect(receipt.outcome).toBe('ACCEPTED');
+ await expect(page.locator('#case-title')).toHaveText(receipt.result.credit.advance_id);
+ await expect(page.locator('#phase')).toHaveText('제안됨 · OFFERED');
 }
 async function ready(page,fixture){await offer(page,fixture);await page.getByRole('button',{name:'모의 승인',exact:true}).click();await expect(page.locator('#phase')).toContainText('APPROVED');await page.getByRole('button',{name:'정산 근거 연결'}).click();await expect(page.locator('#facts dt').filter({hasText:'정산 게이트'}).locator('xpath=following-sibling::dd[1]')).toHaveText('BOUND');await expect(page.getByRole('button',{name:'모의 노출 기록'})).toBeEnabled();}
 
