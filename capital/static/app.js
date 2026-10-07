@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const storageKey = 'kix-capital-pending-v1';
-let state, selected, pending, busy = false, storageBlocked = false;
+let state, selected, pending, repaymentDraftKey, busy = true, storageBlocked = false;
 const number = value => new Intl.NumberFormat('ko-KR').format(value);
 const phaseNames = {OFFERED:'제안됨',APPROVED:'모의 승인',DRAWN:'노출 기록',CLOSED:'종결',DEFAULTED:'미이행 메모',REJECTED:'거절',CANCELLED:'취소'};
 const actionNames = {approve:'모의 승인',reject:'모의 거절',cancel:'제안 취소',bind_settlement:'정산 근거 연결',draw:'모의 노출 기록',close:'노출 종결',default:'미이행 메모',reconcile:'저널 재생 검증'};
@@ -8,11 +8,12 @@ const errors = {SETTLEMENT_NOT_COMMITTED:'정산 근거가 COMMITTED가 아니�
 function notice(text, error=false) { $('notice').textContent=text; $('notice').classList.toggle('error',error); }
 function readPending(){try{const value=localStorage.getItem(storageKey);pending=value?JSON.parse(value):null;if(pending && (typeof pending.operation_id!=='string'||typeof pending.instance_id!=='string')) throw Error();}catch{storageBlocked=true;pending=null;}}
 function savePending(value){try{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);pending=value;}catch{storageBlocked=true;throw Error('STORAGE_UNAVAILABLE');}}
-function fence(){const blocked=busy||!!pending||storageBlocked;document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount').forEach(b=>b.disabled=blocked);$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.':'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';}
+function fence(){const blocked=busy||!!pending||storageBlocked;document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.':'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';}
 async function request(path, options={}) {const response=await fetch(path,{...options,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string'});return body;}
-async function refresh(){const next=await request('/api/state');if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases))throw Error('INVALID_STATE');state=next;
+async function refresh(){const next=await request('/api/state');if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases))throw Error('INVALID_STATE');
  const evidence=await request('/api/evidence');
- if(evidence.instance_id!==state.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
+ if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
+ state=next;
  $('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));
  $('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';
  $('evidence-json').textContent=JSON.stringify(evidence,null,2);
@@ -36,7 +37,8 @@ function render(){
  if(c.phase==='APPROVED'){actions=['cancel'];if(!c.settlement_id){actions.unshift('bind_settlement');help='이 화면의 여정은 정산 근거를 먼저 연결합니다. API의 별도 UNBOUND 모형과 구분합니다.';}else{actions.unshift('draw');help='연결된 목 정산이 COMMITTED일 때만 노출 기록을 허용합니다. 다른 제안이 같은 액면을 예약했다면 거절될 수 있습니다.';}}
  if(c.phase==='DRAWN'){actions=c.outstanding_exposure===0?['close']:['default'];help=c.outstanding_exposure===0?'상환 메모가 노출 전액에 도달했습니다. 종결하면 예약 액면이 해제됩니다.':'상환 메모는 노출만 줄입니다. 미이행 종결은 남은 노출과 예약을 유지합니다.';}
  actions.push('reconcile');$('next-help').textContent=help;$('actions').replaceChildren(...actions.map(op=>{const b=textElement('button',actionNames[op]);b.onclick=()=>command(op,c.advance_id,{});return b;}));
- $('repay-form').hidden=c.phase!=='DRAWN'||c.outstanding_exposure===0;$('repay-amount').max=String(c.outstanding_exposure);$('repay-amount').value=String(c.outstanding_exposure);
+ $('repay-form').hidden=c.phase!=='DRAWN'||c.outstanding_exposure===0;$('repay-amount').max=String(c.outstanding_exposure);const draftKey=`${state.instance_id}:${c.advance_id}:${c.phase}:${c.next_repayment_sequence}:${c.outstanding_exposure}`;
+ if(repaymentDraftKey!==draftKey){$('repay-amount').value=String(c.outstanding_exposure);repaymentDraftKey=draftKey;}
  $('settlement-view').textContent=JSON.stringify(state.fixtures[c.claim_id],null,2);$('case-json').textContent=JSON.stringify(c,null,2);
  }
  fence();
@@ -69,7 +71,7 @@ async function command(op,advance_id,args){
 }
 $('offer-form').onsubmit=event=>{event.preventDefault();const amount=Number($('amount').value);if(!Number.isSafeInteger(amount)||amount<1||amount>1e12){notice('금액은 1부터 10¹² 사이의 정수여야 합니다.',true);return;}command('offer','sim-'+crypto.randomUUID().slice(0,12),{fixture_id:$('fixture').value,amount});};
 $('repay').onclick=()=>{const c=state.cases.find(item=>item.advance_id===selected);const amount=Number($('repay-amount').value);if(!Number.isSafeInteger(amount)||amount<1){notice('상환 메모 금액은 양의 정수여야 합니다.',true);return;}command('repay',selected,{amount,sequence:c.next_repayment_sequence});};
-$('refresh').onclick=async()=>{try{await refresh();notice('현재 상태를 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('상태 조회에 실패했습니다.',true);}};
+$('refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{await refresh();notice('현재 상태를 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('상태 조회에 실패했습니다.',true);}finally{busy=false;fence();}};
 async function pendingAction(action){
  if(busy||!navigator.locks)return;
  busy=true;fence();
@@ -157,4 +159,4 @@ $('preview-draw').onclick=async()=>{
  }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
  finally{$('preview-draw').disabled=false;}
 };
-readPending();refresh().then(async()=>{await loadReadOnlyTools();if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);fence();});
+readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});
