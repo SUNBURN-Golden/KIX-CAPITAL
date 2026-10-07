@@ -51,13 +51,12 @@ class FixtureViews:
             if phase == 'COMMITTED':
                 book.commit(fixture_id, idempotency_key='commit', movement_id='sim-movement',
                             gross=100_000, amount=97_000, fee=3_000, tax=0, held=0, adjustment=0)
-            row = book.view(fixture_id)
-            # Explicit adverse fixture; NOT a settlement command or new refund policy.
+            # Adverse fixture: one synthetic partial refund through the pinned FSM, so
+            # bearer UNDEFINED and the distribution block are derived, never hand-set.
             if refund:
-                row['claim']['refund_face'] = 10_000
-                row['claim']['refund_outstanding'] = 10_000
-                row['claim']['refund_bearer_policy'] = 'UNDEFINED'
-            self.rows[fixture_id] = row
+                book.bind_refund(fixture_id, idempotency_key='refund', refund_id='sim-fixture-refund',
+                                 amount=10_000, beneficiary_role='fixture-buyer', reason='SYNTHETIC_FIXTURE')
+            self.rows[fixture_id] = book.view(fixture_id)
 
     def view(self, key):
         if key not in self.rows:

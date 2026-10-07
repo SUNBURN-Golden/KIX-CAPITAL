@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from capital.service import CapitalService, ApiError, VENDOR
+from capital.protocol import SettlementMachine
 from capital.readiness import source_integrity
 from capital.scenarios import public_invariants
 
@@ -75,6 +76,38 @@ class ReadOnlyTests(unittest.TestCase):
         self.assertEqual(after['distributed_cash'],97000);self.assertEqual(before['distributed_cash'],0)
         self.assertEqual(after['recovery_due'],0)
         self.assertTrue(after['distribution_blocked']);self.assertTrue(before['distribution_blocked'])
+
+    def test_refund_fixture_is_pinned_partial_bind_refund_and_offer_refused(self):
+        row=self.service.fixtures.view('sim-refund');claim=row['claim']
+        committed=self.service.fixtures.view('sim-committed')
+        self.assertEqual((claim['refund_face'],claim['refund_accepted'],claim['refund_outstanding']),(10000,0,10000))
+        self.assertEqual(claim['refund_bearer_policy'],'UNDEFINED')
+        self.assertIs(claim['fixture_reclassified'],False)
+        # Bearer UNDEFINED must come from the pinned view, which also blocks distribution.
+        self.assertIs(claim['distribution_blocked'],True)
+        self.assertRegex(claim['refund_beneficiary'] or '',r'^fixture-[a-z-]+$')
+        self.assertEqual((claim['recovery_due'],claim['pg_adjustment_outstanding']),(0,0))
+        self.assertEqual((claim['confirmed_cash'],claim['distributed_cash'],claim['undistributed_cash']),(97000,0,97000))
+        self.assertTrue(all(line['cancelled_unpaid']==0 and line['recovery_due']==0 for line in claim['obligations']))
+        self.assertTrue(all(c['matched'] for c in public_invariants(claim)))
+        # Provenance: one accepted settlement command beyond commit, equal to an independent pinned replay.
+        self.assertEqual(row['accepted_entries'],committed['accepted_entries']+1)
+        reference=SettlementMachine()
+        reference.initiate('sim-refund',idempotency_key='init',trade_id=row['trade_id'],gross=row['gross'],
+                           debtor_role=row['debtor_role'],policy=row['policy'])
+        reference.authorize('sim-refund',idempotency_key='authorize');reference.capture('sim-refund',idempotency_key='capture')
+        reference.commit('sim-refund',idempotency_key='commit',movement_id=row['commit_movement_id'],gross=row['gross'],
+                         amount=claim['confirmed_cash'],fee=claim['non_cash_accounted'],tax=0,held=0,adjustment=0)
+        reference.bind_refund('sim-refund',idempotency_key='refund',refund_id='sim-reference-refund',amount=10_000,
+                              beneficiary_role=claim['refund_beneficiary'],reason='SYNTHETIC_REFERENCE')
+        self.assertEqual(claim,reference.view('sim-refund')['claim'])
+        clean=committed['claim']
+        self.assertEqual((clean['refund_face'],clean['refund_bearer_policy'],clean['refund_beneficiary'],clean['distribution_blocked']),(0,'NONE',None,False))
+        before=self.service.machine.canonical_state()
+        receipt=self.command('offer','sim-refund-case',fixture_id='sim-refund',amount=100)
+        self.assertEqual((receipt['outcome'],receipt['error']),('REJECTED','REFUND_OBLIGATION_OPEN'))
+        self.assertNotIn('sim-refund-case',self.service.case_fixtures)
+        self.assertEqual(before,self.service.machine.canonical_state())
 
     def test_predicate_checker_detects_corrupt_values(self):
         view=self.final('late-cash');view['confirmed_cash']+=1
