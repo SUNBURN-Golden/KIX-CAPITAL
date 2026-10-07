@@ -20,6 +20,8 @@ API wraps the pinned FSM without inventing financial terms. `reject`, `cancel`, 
 
 Every bound draw reads the immutable settlement view and does not call settlement mutations. F04 also explicitly permits an unbound draw; it reports UNBOUND and does not claim a COMMITTED observation. UI's guided flow binds first. A process-wide lock serializes commands, snapshot and export in this single-process demo. First transport receipt is returned after later transitions too; GET state is current. Domain errors are stored as REJECTED. Schema/boundary errors reject before applying. Reconcile is read/replay and does not clear UNKNOWN.
 
+Command, recovery and session acknowledgment share the same Web Lock; pending deletion compares the current operation and instance identity so late callbacks cannot erase a newer request. Accepted receipts also validate the inner F04 case, prohibited-effect flags and replay match.
+
 Browser writes persist the pending request **before** one POST and use a Web Lock to avoid same-origin overlapping tabs. Only an identity-bound receipt clears pending. Invalid response/network loss holds UNKNOWN across reload. Storage unavailable/corrupt or Web Locks unavailable disables new writes. Server restart produces a new instance; old requests cannot affect it. Explicit new-session acknowledgment discards the UI pending request but never replays it and does not claim the old outcome known. No automatic polling/retry.
 
 ## Upstream adapter replacement prerequisites (NOT_BOUND)

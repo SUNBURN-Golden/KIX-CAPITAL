@@ -42,3 +42,31 @@ test('desktop overview screenshot and status separation',async({page})=>{
 test('read-only evidence keeps missing financial facts distinct',async({page})=>{
  await page.goto('/');await expect(page.locator('#evidence-rows tr')).toHaveCount(3);await expect(page.locator('#evidence-scope')).toContainText('NOT_BOUND');const value=await(await page.request.get('/api/evidence')).json();expect(value.source_cut).toBeNull();expect(value.unavailable).toContain('actual_paid');expect(value.rows.find(r=>r.claim_id==='sim-refund').refund_outstanding).toBe(10000);
 });
+test('malformed accepted receipt stays UNKNOWN until verified original is read',async({page})=>{
+ await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
+ await page.route('**/api/commands',async route=>{const r=await route.fetch();const body=await r.json();delete body.result;await route.fulfill({response:r,json:body});});
+ await page.getByRole('button',{name:'모의 제안 생성'}).click();await expect(page.locator('#recovery')).toBeVisible();await expect(page.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();await page.getByRole('button',{name:'원 요청 결과 조회'}).click();await expect(page.locator('#recovery')).toBeHidden();
+});
+test('two tabs serialize a delayed recovery and preserve the next unknown request',async({page,context})=>{
+ await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
+ await page.route('**/api/commands',async route=>{await route.fetch();await route.abort('failed');});
+ await page.getByRole('button',{name:'모의 제안 생성'}).click();await expect(page.locator('#recovery')).toBeVisible();
+ const other=await context.newPage();await other.goto('/');await expect(other.locator('#recovery')).toBeVisible();
+ let release;const gate=new Promise(resolve=>release=resolve);let seen;const requested=new Promise(resolve=>seen=resolve);
+ await page.route('**/api/operations/**',async route=>{const response=await route.fetch();seen();await gate;await route.fulfill({response});});
+ await page.getByRole('button',{name:'원 요청 결과 조회'}).click();await requested;
+ await other.getByRole('button',{name:'원 요청 결과 조회'}).click();await expect(other.locator('#notice')).toContainText('다른 탭');await expect(other.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();
+ release();await expect(page.locator('#recovery')).toBeHidden();await expect(other.locator('#recovery')).toBeHidden();
+ await other.route('**/api/commands',route=>route.abort('failed'));
+ await other.getByRole('button',{name:'모의 제안 생성'}).click();await expect(other.locator('#recovery')).toBeVisible();await expect(page.locator('#recovery')).toBeVisible();
+ const record=await page.evaluate(()=>JSON.parse(localStorage.getItem('kix-capital-pending-v1')));expect(record.op).toBe('offer');await expect(page.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();
+});
+test('old process acknowledgment never resends previous command',async({page})=>{
+ await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
+ await page.evaluate(()=>localStorage.setItem('kix-capital-pending-v1',JSON.stringify({instance_id:'previous-process',operation_id:'old-operation',op:'draw',advance_id:'sim-old',args:{}})));
+ let posts=0;page.on('request',r=>{if(r.method()==='POST')posts++;});await page.reload();await expect(page.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();await page.getByRole('button',{name:'서버 재시작 확인'}).click();await expect(page.locator('#recovery')).toBeHidden();await expect(page.locator('#notice')).toContainText('이전 세션 결과는 UNKNOWN');expect(posts).toBe(0);
+});
+test('unavailable storage fails closed before POST',async({page})=>{
+ await page.addInitScript(()=>{Storage.prototype.setItem=()=>{throw new Error('blocked');};});
+ let posts=0;page.on('request',r=>{if(r.method()==='POST')posts++;});await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');await page.getByRole('button',{name:'모의 제안 생성'}).click();await expect(page.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();expect(posts).toBe(0);
+});

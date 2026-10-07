@@ -42,7 +42,18 @@ function render(){
  fence();
 }
 function showReceipt(receipt){if(receipt.outcome==='REJECTED')notice(`${errors[receipt.error]||'명령이 거절됐습니다.'} (${receipt.error})`,true);else if(receipt.result?.applied==='reconcile')notice('저널 재생이 현재 상태와 일치합니다. 은행 대사·내구 복구 검증은 아닙니다.');else notice('모의 기록을 반영했습니다. 실제 자금·티켓 소유권은 바뀌지 않습니다.');}
-function validateReceipt(receipt,body){if(receipt.operation_id!==body.operation_id||receipt.instance_id!==body.instance_id||receipt.provenance!=='MOCK_CREDIT_F04_ONLY'||receipt.funds_executed!==false||!['ACCEPTED','REJECTED'].includes(receipt.outcome))throw Error('INVALID_RECEIPT');}
+function validateReceipt(receipt,body){
+ const accepted=receipt?.outcome==='ACCEPTED';
+ const fields=['operation_id','instance_id','provenance','funds_executed','economic_finality_claimed','transport_duplicate','outcome',accepted?'result':'error'];
+ if(!receipt||Object.keys(receipt).sort().join()!==fields.sort().join()||receipt.operation_id!==body.operation_id||receipt.instance_id!==body.instance_id||receipt.provenance!=='MOCK_CREDIT_F04_ONLY'||receipt.funds_executed!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean'||!['ACCEPTED','REJECTED'].includes(receipt.outcome))throw Error('INVALID_RECEIPT');
+ if(!accepted){if(typeof receipt.error!=='string'||!receipt.error)throw Error('INVALID_RECEIPT');return;}
+ const r=receipt.result,c=r?.credit;
+ if(!r||r.provenance!=='MOCK_CREDIT_F04_ONLY'||r.applied!==body.op||r.lifecycle_authority!=='IN_MEMORY_FSM'||!c||c.advance_id!==body.advance_id||c.provenance!=='MOCK_CREDIT_F04_ONLY'||!Object.hasOwn(phaseNames,c.phase))throw Error('INVALID_RECEIPT');
+ for(const flag of ['funds_executed','economic_finality_claimed','bank_debit_observed','repayment_observed','interest_defined','underwriting_executed','kyc_executed'])if(r[flag]!==false||c[flag]!==false)throw Error('INVALID_RECEIPT');
+ if(c.ownership_mutated!==false||c.ticket_ownership_authoritative!==false||c.durable!==false)throw Error('INVALID_RECEIPT');
+ if(body.op==='reconcile'&&(r.matched!==true||typeof r.state_digest!=='string'||!Number.isSafeInteger(r.entry_count)))throw Error('INVALID_RECEIPT');
+}
+
 async function command(op,advance_id,args){
  if(busy||pending||storageBlocked||!state)return;
  if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
@@ -58,8 +69,27 @@ async function command(op,advance_id,args){
 $('offer-form').onsubmit=event=>{event.preventDefault();const amount=Number($('amount').value);if(!Number.isSafeInteger(amount)||amount<1||amount>1e12){notice('금액은 1부터 10¹² 사이의 정수여야 합니다.',true);return;}command('offer','sim-'+crypto.randomUUID().slice(0,12),{fixture_id:$('fixture').value,amount});};
 $('repay').onclick=()=>{const c=state.cases.find(item=>item.advance_id===selected);const amount=Number($('repay-amount').value);if(!Number.isSafeInteger(amount)||amount<1){notice('상환 메모 금액은 양의 정수여야 합니다.',true);return;}command('repay',selected,{amount,sequence:c.next_repayment_sequence});};
 $('refresh').onclick=async()=>{try{await refresh();notice('현재 상태를 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('상태 조회에 실패했습니다.',true);}};
-$('recover').onclick=async()=>{if(!pending||busy)return;busy=true;fence();const original=pending;try{const receipt=await request(`/api/operations/${encodeURIComponent(original.operation_id)}?instance_id=${encodeURIComponent(original.instance_id)}`);validateReceipt(receipt,original);savePending(null);showReceipt(receipt);await refresh();}catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}finally{busy=false;fence();}};
-$('new-session').onclick=()=>{if(pending&&state&&pending.instance_id!==state.instance_id){try{savePending(null);notice('이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}catch{}fence();}};
+async function pendingAction(action){
+ if(busy||!navigator.locks)return;
+ await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
+  if(!lock){notice('다른 탭의 명령 또는 결과 조회가 진행 중입니다.',true);return;}
+  readPending();if(!pending||storageBlocked){fence();return;}
+  busy=true;fence();try{await action(pending);}finally{busy=false;fence();}
+ });
+}
+function clearMatching(original){
+ readPending();
+ if(storageBlocked||!pending||pending.operation_id!==original.operation_id||pending.instance_id!==original.instance_id)throw Error('PENDING_CHANGED');
+ savePending(null);
+}
+$('recover').onclick=()=>pendingAction(async original=>{
+ try{const receipt=await request(`/api/operations/${encodeURIComponent(original.operation_id)}?instance_id=${encodeURIComponent(original.instance_id)}`);validateReceipt(receipt,original);clearMatching(original);showReceipt(receipt);await refresh();}
+ catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}
+});
+$('new-session').onclick=()=>pendingAction(async original=>{
+ try{await refresh();if(original.instance_id!==state.instance_id){clearMatching(original);notice('이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}}
+ catch{notice('현재 세션을 확인하지 못해 이전 대기 기록을 유지합니다.',true);}
+});
 window.addEventListener('storage',event=>{if(event.key===storageKey){readPending();fence();}});
 const capabilities=[
  ['제작자금 대여·선지급','F04 SIMULATION','제안·모의 승인·노출·상환 메모·미이행·종결. 이자·기간·심사와 실자금 집행은 미정입니다.'],

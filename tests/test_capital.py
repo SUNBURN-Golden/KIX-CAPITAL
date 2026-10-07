@@ -145,7 +145,7 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.request('GET','/api/state',headers={'Sec-Fetch-Site':'cross-site'})[0],403)
         self.assertEqual(self.request('POST','/api/commands','{}',{'Content-Type':'application/json'})[0],403)
     def test_invalid_json_and_schema(self):
-        for body in ['{','{"op":1,"op":2}','NaN','[]']:
+        for body in ['{','{"op":1,"op":2}','NaN','[]','['*1500+']'*1500]:
             self.assertEqual(self.post(body)[0],400)
         self.assertEqual(self.post('x'*8193)[0],413)
         self.assertEqual(self.post('{}',**{'Content-Type':'text/plain'})[0],415)

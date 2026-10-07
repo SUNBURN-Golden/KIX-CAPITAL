@@ -101,7 +101,7 @@ def make_server(port=8765):
                     raw = self.rfile.read(length)
                     body = json.loads(raw, object_pairs_hook=strict_object,
                                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
-                except (ValueError, UnicodeDecodeError, TimeoutError):
+                except (ValueError, UnicodeDecodeError, TimeoutError, RecursionError):
                     raise ApiError('INVALID_JSON')
                 self.reply(200, service.execute(body))
             except ApiError as exc:
