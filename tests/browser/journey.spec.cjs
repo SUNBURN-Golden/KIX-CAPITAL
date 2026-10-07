@@ -9,7 +9,7 @@ async function ready(page,fixture){await offer(page,fixture);await page.getByRol
 
 test('complete bound lifecycle, repayment and export',async({page})=>{
  await ready(page);await page.getByRole('button',{name:'모의 노출 기록'}).click();await expect(page.locator('#phase')).toContainText('DRAWN');
- await page.locator('#repay-amount').fill('20000');await page.getByRole('button',{name:'상환 메모 기록'}).click();await expect(page.locator('#facts')).toContainText('40,000');
+ await page.locator('#repay-amount').fill('20000');await page.getByRole('button',{name:'상환 메모 기록'}).click();await expect(page.locator('#facts dt').filter({hasText:'남은 모의 노출'}).locator('xpath=following-sibling::dd[1]')).toHaveText('40,000');
  await page.locator('#repay-amount').fill('40000');await page.getByRole('button',{name:'상환 메모 기록'}).click();await expect(page.getByRole('button',{name:'노출 종결'})).toBeVisible();await page.getByRole('button',{name:'노출 종결'}).click();await expect(page.locator('#phase')).toContainText('CLOSED');
  await page.getByRole('button',{name:'저널 재생 검증'}).click();await expect(page.locator('#notice')).toContainText('저널 재생');
  const data=await (await page.request.get('/api/export')).json();expect(data.replay_matched).toBe(true);expect(data.funds_executed).toBe(false);
