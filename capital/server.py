@@ -76,6 +76,15 @@ def make_server(port=8765):
                     return self.reply(200, {**service.snapshot(), 'local_token': token})
                 if route.path == '/api/evidence':
                     return self.reply(200, service.evidence())
+                if route.path == '/api/readiness':
+                    return self.reply(200, service.readiness())
+                if route.path == '/api/scenarios':
+                    return self.reply(200, service.scenarios())
+                if route.path.startswith('/api/scenarios/'):
+                    return self.reply(200, service.scenarios(route.path.rsplit('/', 1)[-1]))
+                if route.path.startswith('/api/preview/'):
+                    instance = parse_qs(route.query).get('instance_id', [''])[0]
+                    return self.reply(200, service.preview_draw(route.path.rsplit('/', 1)[-1], instance))
                 if route.path == '/api/export':
                     return self.reply(200, service.export())
                 if route.path.startswith('/api/operations/'):

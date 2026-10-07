@@ -32,10 +32,10 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 계약 입력 목록 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정; V2 §7 |
 | CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수 |
 | CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사 | F04 부분 SIMULATED; 외부 담보 완전성·추가 납입·집행 미구현 |
-| CAP-05 | 청구·수취인·분할 정산 | 고정 목의 복수 수취인 의무/미배정/확인 현금 조회 | READ_ONLY_FIXTURE; 운영 배분 순서/잔여·부담 정책은 미정 |
-| CAP-06 | 환불·공연취소·회수 | 환불 미정 fixture의 F04 제안 거절, 환불/회수 별도 조회 | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담 미정 |
+| CAP-05 | 청구·수취인·분할 정산 | F01–F03 고정 시나리오에서 두 배정 순서·부분 명세서·중복/상충·늦은 현금의 단계별 의무 비교 | READ_ONLY_FIXTURE; 운영 배분 순서/잔여·부담 정책은 미정 |
+| CAP-06 | 환불·공연취소·회수 | 배정 전/후 부분 환불, 단일 전액 vs 분할 환불, 취소 수락·회수·은행 미종결 비교 | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담 미정 |
 | CAP-07 | 최초 판매·반복 리셀·입장 연계 | trade/claim identity 조회, 권리/금융 분리 | NOT_BOUND: Commerce 실여정·Protocol producer tuple; 이 PR은 티켓 생성/이전 없음 |
-| CAP-08 | 초과 배정·현금/한도 구별 | 동일 claim 두 draw 경합, 부분 repay 후 예약 유지, close만 해제 | SIMULATED; 외부 담보/분산 자원 한도 아님 |
+| CAP-08 | 초과 배정·현금/한도 구별 | 동일 claim 두 draw 경합, 부분 repay 후 예약 유지, close만 해제; 활성 상태를 바꾸지 않는 인출 사전점검 | SIMULATED; 외부 담보/분산 자원 한도 아님 |
 | CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | 목 근거 표와 NOT_BOUND 표시, 출처/범위 식별 | READ_ONLY_FIXTURE; 최초판매/리셀 매출 합산 없음, 실지급/세무 보고 아님 |
 | CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload와 old-instance fence | SIMULATED; 프로세스 재시작 내구성 없음 |
 | CAP-11 | 내구 거래·inbox/outbox·장애복구 | 연동 계약과 미지원 상태 | NOT_BOUND: `k-stage5-durable-tx`·backend 채택·v5, 자체 저장엔진 만들지 않음 |
@@ -43,7 +43,7 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-13 | 복식 금융 투영 | 금융 원장으로 오인하지 않는 노출 조회 | NOT_BOUND: `fin-ledger-contract`, stage5/6; 계정/수익인식/세무 미정 |
 | CAP-14 | 원관측·대사 예외 | 원명령 receipt/거절·UNKNOWN 표시, 메모리 journal 재생 | 일부 SIMULATED; 제공자 인증·범위완전성·은행 대사는 NOT_BOUND |
 | CAP-15 | 인증 export·일관 source cut | 로컬 journal JSON + 소스 pin/fixture hash/재생 일치 | 로컬 진단만; stage7/finance export, signed manifest·cursor·watermark 미구현 |
-| CAP-16 | SDK·API 적합성 | strict 로컬 envelope, vendor byte hash 검사, 자체 namespace | NOT_BOUND: 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple |
+| CAP-16 | SDK·API 적합성 | strict 로컬 envelope, 화면에서 vendor byte hash 확인, 자체 namespace | NOT_BOUND: 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple |
 | CAP-17 | 공개/비공개·권리 규모 | 외부 의존성과 관람권 비권위 표시 | NOT_BOUND: RS-0~5, privacy/currentness, 1024/16384/65536 규모 검증 없음 |
 | CAP-18 | 선택적 토큰 담보·보상 | 향후 연동 설명, 외부 호출·발행 코드 없음 | NOT_AUTHORIZED: TL 계약·coin lock/user 결정; KRW 목을 토큰 한도로 확장 안 함 |
 | CAP-19 | AI 운영·권한·최소공개 | 합성 고정 role, 개인금융정보/자율 승인 도구 없음 | NOT_BOUND: AgentGrant/ActionPermit, 현재 근거·권한·비밀 분리 |
@@ -56,3 +56,9 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 ## 현재 필요한 결정과 진행 가능한 부분
 
 현재 로컬 시뮬레이션은 정책 결정 없이 검증 가능하다. 따라서 단계마다 승인을 요구하지 않고 구현·검증·Draft PR을 진행한다. 향후 금융계약 실행을 열 때만 정확한 미정 항목(수익/우선순위·이자/수수료/기간·환불 부담·계정/법무/면허·source backend 채택)을 사용자/지정 담당자에게 결정 요청한다. 소스 리뷰/CI 통과는 해당 결정을 대신하지 않는다.
+
+## 추가 제품화와 실제 차단점
+
+같은 PR에서 DB 없이 가능한 CAP-05/06의 참조 시나리오를 9개·35단계로 구현했다. 모든 배정·환불 수치는 고정한 upstream 목에서 계산한다. 클라이언트는 수치를 재계산하지 않는다. 다섯 읽기 전용 보존식·예상 거절·거절 시 상태 보존은 별도로 검사한다. CAP-08의 인출 사전점검은 현재 저널의 별도 복제본만 변경하므로 활성 제안·예약·receipt에 효과가 없다. CAP-16의 파일 무결성 표시는 source byte 일치에만 한정된다.
+
+나머지는 화면에서 제품 행동별로 구분한다. 수익참여·채권매입·외부담보 실행은 금융 조건 결정이 필요하다. 실제 주문/리셀/권리 연결은 exact producer/SDK/profile이, 내구 원장·복식·인증 export는 stage5/6/7과 Finance 후보 채택이 필요하다. 다중 자산·권리 규모·비공개·AI 권한은 해당 upstream 계약이 필요하다. 실서비스 실행은 현재 승인되지 않았다. 이 차단점을 가상 계산이나 자체 backend로 대체하지 않는다. 각 행은 계속 전체 Capital 범위에 남는다.

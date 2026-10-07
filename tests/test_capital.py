@@ -159,6 +159,14 @@ class HttpTests(unittest.TestCase):
         path=f"/api/operations/http-case?instance_id={body['instance_id']}"
         self.assertEqual(json.loads(self.request('GET',path)[1])['outcome'],'ACCEPTED')
         self.assertTrue(json.loads(self.request('GET','/api/export')[1])['replay_matched'])
+    def test_readonly_routes_and_unknown_scenario(self):
+        for path in ['/api/scenarios','/api/scenarios/full-after','/api/readiness']:
+            self.assertEqual(self.request('GET',path)[0],200)
+            self.assertEqual(self.request('GET',path,headers={'Origin':'https://evil.example'})[0],403)
+        self.assertEqual(self.request('GET','/api/scenarios/unknown')[0],404)
+        self.assertEqual(self.request('GET','/api/preview/sim-http?instance_id=old')[0],409)
+        self.assertEqual(self.request('POST','/api/scenarios','{}',{'Content-Type':'application/json','X-Capital-Token':self.state()['local_token']})[0],404)
+
     def test_old_session_never_applies(self):
         body=self.payload();body['instance_id']='old'
         self.assertEqual(self.post(json.dumps(body))[0],409)

@@ -5,16 +5,12 @@ import copy
 import hashlib
 import json
 import re
-import sys
 import threading
 import uuid
-from pathlib import Path
 
-VENDOR = Path(__file__).parent / 'vendor'
-for name in ('credit_advance_f04', 'settlement_f01_f03'):
-    sys.path.insert(0, str(VENDOR / name))
-from credit_fsm import CreditError, CreditMachine
-from settlement_fsm import SettlementMachine
+from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachine
+from capital.scenarios import replay_scenarios
+from capital.readiness import GROUPS, source_integrity
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
 MAX_OPERATIONS = 500  # bounded local demo, not a financial limit
@@ -78,6 +74,7 @@ class CapitalService:
         self.receipts = {}
         self.case_fixtures = {}
         self.source = json.loads((VENDOR / 'manifest.json').read_text())
+        self.scenario_results = replay_scenarios()
 
     def snapshot(self):
         with self.lock:
@@ -119,6 +116,53 @@ class CapitalService:
                                     'primary_sales', 'resale_sales', 'actual_paid',
                                     'unconfirmed_external_payout', 'tax_reporting'],
                     'rows': rows, 'funds_executed': False, 'durable': False}
+
+    def scenarios(self, scenario_id=None):
+        with self.lock:
+            common = {'instance_id': self.instance_id, 'source_commit': self.source['commit'],
+                      'mode': 'READ_ONLY_SCENARIOS', 'funds_executed': False,
+                      'workspace_state_digest': self.machine.state_digest()}
+            if scenario_id is not None:
+                if scenario_id not in self.scenario_results:
+                    raise ApiError('UNKNOWN_SCENARIO', 404)
+                return {**common, 'scenario': copy.deepcopy(self.scenario_results[scenario_id])}
+            return {**common, 'scenarios': [{'id': row['id'], 'title': row['title'],
+                      'description': row['description'], 'steps': len(row['steps']),
+                      'all_predicates_matched': row['all_predicates_matched']}
+                     for row in self.scenario_results.values()]}
+
+    def readiness(self):
+        with self.lock:
+            return {'instance_id': self.instance_id, 'mode': 'LOCAL_READINESS_ONLY',
+                    'source_commit': self.source['commit'], 'upstream_binding': 'NOT_BOUND',
+                    'source_integrity': source_integrity(VENDOR, self.source),
+                    'groups': copy.deepcopy(GROUPS), 'production_authorized': False,
+                    'upstream_nodes_completed': [], 'policy_adopted': False}
+
+    def preview_draw(self, advance_id, instance_id):
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if advance_id not in self.case_fixtures:
+                raise ApiError('UNKNOWN_ADVANCE', 404)
+            case = self.machine.view(advance_id)
+            result = {'instance_id': self.instance_id, 'advance_id': advance_id,
+                      'mode': 'READ_ONLY_PREVIEW', 'provenance': PROVENANCE,
+                      'observed_state_digest': self.machine.state_digest(),
+                      'funds_executed': False, 'workspace_mutated': False,
+                      'write_authorized': False, 'settlement_gate': case['settlement_gate']}
+            if case['phase'] != 'APPROVED':
+                return {**result, 'outcome': 'NOT_APPLICABLE', 'reason': 'APPROVED_PHASE_REQUIRED'}
+            # Replay only into a disposable process-local copy. No active receipt/key
+            # or reservation is added; the actual command must re-evaluate its gates.
+            scratch = CreditMachine.restore(self.machine.export_journal(), self.fixtures)
+            try:
+                preview = scratch.draw(advance_id, idempotency_key='diagnostic:draw', draw_id='diagnostic:draw')
+                return {**result, 'outcome': 'WOULD_ACCEPT',
+                        'predicted_exposure': preview['credit']['outstanding_exposure'],
+                        'settlement_gate': preview['credit']['settlement_gate']}
+            except CreditError as exc:
+                return {**result, 'outcome': 'WOULD_REJECT', 'reason': exc.code}
 
     def execute(self, body):
         with self.lock:

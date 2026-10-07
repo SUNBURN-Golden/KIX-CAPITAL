@@ -27,7 +27,7 @@ function render(){
  $('cases').replaceChildren();
  for(const item of state.cases){const row=document.createElement('tr');row.append(textElement('td',item.advance_id.slice(0,14)),textElement('td',phaseNames[item.phase]),textElement('td',number(item.outstanding_exposure)));const cell=document.createElement('td');const button=textElement('button',selected===item.advance_id?'선택됨':'열기');button.setAttribute('aria-label',`${item.advance_id} 열기`);button.onclick=()=>{selected=item.advance_id;render();};cell.append(button);row.append(cell);$('cases').append(row);}
  const c=state.cases.find(item=>item.advance_id===selected);$('empty').hidden=!!c;$('detail').hidden=!c;
- if(c){$('case-title').textContent=c.advance_id;$('phase').textContent=`${phaseNames[c.phase]} · ${c.phase}`;
+ if(c){$('preview-result').textContent='현재 근거로 확인하며 실제 제안과 예약은 바꾸지 않습니다.';$('case-title').textContent=c.advance_id;$('phase').textContent=`${phaseNames[c.phase]} · ${c.phase}`;
  const phaseIndex={OFFERED:0,APPROVED:1,DRAWN:c.outstanding_exposure===0?3:2,CLOSED:4}[c.phase];document.querySelectorAll('.lifecycle li').forEach((li,i)=>li.classList.toggle('current',i===phaseIndex));
  const facts=[['제안 금액',number(c.amount)],['원 청구 액면',number(c.open_face)],['공유 예약 액면',number(c.reserved_open)],['미예약 액면',number(c.residual_unreserved)],['확인 현금 (목 조회)',number(c.confirmed_cash_on_face)],['회수 의무 (목 조회)',number(c.recovery_due_on_face)],['남은 모의 노출',number(c.outstanding_exposure)],['상환 메모 합계',number(c.repaid_exposure)],['정산 게이트',c.settlement_gate]];
  $('facts').replaceChildren(...facts.flatMap(([label,value])=>[textElement('dt',label),textElement('dd',value)]));
@@ -91,13 +91,68 @@ $('new-session').onclick=()=>pendingAction(async original=>{
  catch{notice('현재 세션을 확인하지 못해 이전 대기 기록을 유지합니다.',true);}
 });
 window.addEventListener('storage',event=>{if(event.key===storageKey){readPending();fence();}});
-const capabilities=[
- ['제작자금 대여·선지급','F04 SIMULATION','제안·모의 승인·노출·상환 메모·미이행·종결. 이자·기간·심사와 실자금 집행은 미정입니다.'],
- ['정산·환불·리셀 근거','READ-ONLY FIXTURES','청구 액면·복수 수취인 의무·확인 현금·환불 부담을 원본 목 조회로 확인합니다. 실제 Commerce 주문은 연결 전입니다.'],
- ['수익참여·채권양수','CONTRACT REQUIRED','수익 산식·원가·수취인·우선순위·양도 범위가 정해져야 합니다. 관람권과 별도 금융권리입니다.'],
- ['담보·준비금·다중 자산','POLICY UNDETERMINED','외부 담보 완전성·부족 재원·추가 납입·자산 registry·환전 정책은 미정입니다. KRW 목을 다른 자산으로 확장하지 않습니다.'],
- ['원장·대사·인증 export','PRODUCER NOT BOUND','stage 5/6 원천·source cut·금융 투영 계약이 선행합니다. 현재 JSON은 합성 저널이며 회계·은행·인증 export가 아닙니다.'],
- ['권리 확장·AI·서비스 출시','NOT AUTHORIZED','RS/TL·공개/비공개 권리·최소공개·AI 위임은 Protocol 선행 계약을 따릅니다. 신용결정·토큰 발행·실연동·운영 배포는 잠겨 있습니다.']
-];
-for(const [title,status,description]of capabilities){const card=document.createElement('article');card.append(textElement('h3',title),textElement('span',status,'status'),textElement('p',description));$('capabilities').append(card);}
-readPending();refresh().then(()=>{if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);fence();});
+let readinessData, scenarioData, scenarioEpoch=0;
+function renderReadiness(){
+ if(!readinessData)return;
+ const selectedStatus=$('readiness-filter').value;
+ const names={AVAILABLE_LOCAL:'현재 로컬 사용 가능',DECISION_REQUIRED:'상품 정책 결정 필요',UPSTREAM_REQUIRED:'외부 구현 선행 필요',NOT_AUTHORIZED:'운영 승인 없음'};
+ const visible=readinessData.groups.filter(g=>selectedStatus==='all'||g.status===selectedStatus);
+ $('capabilities').replaceChildren(...visible.map(group=>{
+  const card=document.createElement('article');card.append(textElement('h3',group.title),textElement('span',names[group.status],'status'),textElement('p',group.behavior));
+  card.append(textElement('p',`현재 가능: ${group.available.join(' · ')}`));
+  if(group.blockers.length){const ul=document.createElement('ul');for(const item of group.blockers)ul.append(textElement('li',item));card.append(ul);}
+  card.append(textElement('p',`담당/선행: ${group.owner}`,'owner'),textElement('p',`${group.requirements.join(', ')} · ${group.claim}`));return card;
+ }));
+}
+$('readiness-filter').onchange=renderReadiness;
+async function loadReadOnlyTools(){
+ const [ready,catalogue]=await Promise.all([request('/api/readiness'),request('/api/scenarios')]);
+ if(!state||ready.instance_id!==state.instance_id||catalogue.instance_id!==state.instance_id||ready.production_authorized!==false||ready.upstream_binding!=='NOT_BOUND'||catalogue.funds_executed!==false)throw Error('INVALID_READ_ONLY_TOOLS');
+ readinessData=ready;renderReadiness();
+ $('readiness-integrity').textContent=ready.source_integrity.all_matched?'로컬 참조 파일의 고정 hash가 모두 일치합니다. 실제 SDK·금융 원천·서비스 적합성은 NOT_BOUND입니다.':'참조 파일 hash 불일치가 있습니다. 이 결과를 검증된 소스 또는 연동 적합성으로 사용하지 마세요.';
+ for(const item of catalogue.scenarios){const option=textElement('option',item.title);option.value=item.id;$('scenario-select').append(option);}
+}
+function renderScenarioStep(index){
+ const scenario=scenarioData.scenario, step=index===0?null:scenario.steps[index-1];
+ const view=step?step.view:scenario.initial;
+ $('scenario-step-title').textContent=step?`${index}. ${step.label}`:'0. 청구 인식 · 아직 현금 없음';
+ $('scenario-outcome').textContent=step?(step.outcome==='REJECTED'?'예상된 거절':step.duplicate?'중복 · 효과 한 번':'목 기록 수락'):'초기 상태';
+ $('scenario-diagnostic').textContent=step?(step.checks.every(c=>c.matched)?`기존 계약의 검사와 일치합니다.${step.error?' 원 코드: '+step.error:''} 실제 자금·작업 중 제안은 바뀌지 않습니다.`:'검사 불일치: 이 시나리오를 통과로 해석하지 마세요.'):'원 청구 액면과 목 현금·환불·회수 의무를 단계별로 비교하세요.';
+ $('scenario-obligations').replaceChildren(...view.obligations.map(row=>{const tr=document.createElement('tr');for(const v of [row.payee,...['face','distributed','cancelled_unpaid','outstanding','recovery_due'].map(k=>number(row[k]))])tr.append(textElement('td',v));return tr;}));
+ const facts=[['확인 현금 (목)',view.confirmed_cash],['배정된 현금 (목)',view.distributed_cash],['미배정 현금 (목)',view.undistributed_cash],['환불 의무 액면',view.refund_face],['목 취소 수락',view.refund_accepted],['환불 미이행',view.refund_outstanding],['PG 조정 미결',view.pg_adjustment_outstanding],['회수 의무',view.recovery_due],['환불 부담 정책',view.refund_bearer_policy],['은행 반환 종결',String(view.external_return_closed)],['권리 취소',String(view.right_cancelled)]];
+ $('scenario-facts').replaceChildren(...facts.flatMap(([label,value])=>[textElement('dt',label),textElement('dd',typeof value==='number'?number(value):value)]));
+ $('scenario-json').textContent=JSON.stringify(step||{view,scope:scenario.scope},null,2);
+ $('scenario-steps').querySelectorAll('button').forEach((b,i)=>{if(i===index)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
+}
+$('scenario-select').onchange=async()=>{
+ const id=$('scenario-select').value,epoch=++scenarioEpoch;$('scenario-detail').hidden=true;$('scenario-comparison').replaceChildren();
+ if(!id){$('scenario-description').textContent='';return;}
+ try{
+  const response=await request(`/api/scenarios/${encodeURIComponent(id)}`);
+  if(epoch!==scenarioEpoch)return;
+  if(response.instance_id!==state.instance_id||response.source_commit!==state.source_commit||response.scenario?.id!==id||response.scenario.workspace_mutated!==false||response.scenario.funds_executed!==false)throw Error('INVALID_SCENARIO');
+  scenarioData=response;const sc=response.scenario;$('scenario-description').textContent=sc.description;
+  $('scenario-steps').replaceChildren(...['청구 인식',...sc.steps.map(s=>s.label)].map((label,i)=>{const li=document.createElement('li'),b=textElement('button',`${i}. ${label}`);b.onclick=()=>renderScenarioStep(i);li.append(b);return li;}));
+  $('scenario-detail').hidden=false;renderScenarioStep(sc.steps.length);
+  if(id.startsWith('shortfall-')){
+   const otherId=id==='shortfall-platform'?'shortfall-organizer':'shortfall-platform';const other=await request(`/api/scenarios/${otherId}`);
+   if(epoch!==scenarioEpoch)return;
+   if(other.instance_id!==response.instance_id||other.source_commit!==response.source_commit||other.scenario?.id!==otherId)throw Error('INVALID_COMPARISON');
+   const table=document.createElement('table');table.className='comparison-table';table.append(textElement('caption','고정 시험 순서 비교 · 어느 쪽도 운영 기본 정책이 아닙니다. 잔여 의무 KRW 합성 단위'));
+   const head=document.createElement('thead'),tr=document.createElement('tr');for(const title of ['fixture','organizer 잔여','platform 잔여']){const th=textElement('th',title);th.scope='col';tr.append(th);}head.append(tr);table.append(head);
+   const body=document.createElement('tbody');for(const data of [sc,other.scenario]){const row=document.createElement('tr');row.append(textElement('td',data.title));for(const payee of ['organizer','platform'])row.append(textElement('td',number(data.final.obligations.find(o=>o.payee===payee).outstanding)));body.append(row);}table.append(body);$('scenario-comparison').append(table);
+  }
+ }catch{if(epoch===scenarioEpoch){$('scenario-detail').hidden=true;$('scenario-description').textContent='시나리오를 확인하지 못했습니다. 자동 재시도하거나 기존 기록을 변경하지 않습니다.';}}
+};
+$('preview-draw').onclick=async()=>{
+ const originalCase=selected,instance=state?.instance_id,digest=state?.state_digest;
+ if(!originalCase)return;$('preview-draw').disabled=true;
+ try{const r=await request(`/api/preview/${encodeURIComponent(originalCase)}?instance_id=${encodeURIComponent(instance)}`);
+  if(selected!==originalCase||state.instance_id!==instance)return;
+  if(r.instance_id!==instance||r.advance_id!==originalCase||r.workspace_mutated!==false||r.write_authorized!==false)throw Error('INVALID_PREVIEW');
+  if(r.observed_state_digest!==digest||state.state_digest!==digest){$('preview-result').textContent='조회 중 상태가 바뀌었습니다. 최신 상태를 확인한 뒤 다시 점검하세요. 새 실행을 허용하지 않습니다.';return;}
+  $('preview-result').textContent=r.outcome==='WOULD_ACCEPT'?`현재 모형에서는 수락 가능 · ${r.settlement_gate}. 실제 예약은 추가하지 않았으며 다음 명령은 조건을 다시 검사합니다.`:r.outcome==='NOT_APPLICABLE'?'모의 승인 단계에서 인출 조건을 점검할 수 있습니다.':`현재 모형에서 거절: ${r.reason}. 제안과 UNKNOWN 기록은 그대로입니다.`;
+ }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
+ finally{$('preview-draw').disabled=false;}
+};
+readPending();refresh().then(async()=>{await loadReadOnlyTools();if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);fence();});
