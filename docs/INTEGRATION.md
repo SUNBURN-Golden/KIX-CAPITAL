@@ -4,7 +4,7 @@
 
 ## Local facade v1
 
-- `GET /api/state`: process identity, synthetic fixtures, current F04 views, pinned source, local CSRF token, capacity, workspace status and undecided capabilities. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery.
+- `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, pinned source, local CSRF token, capacity, workspace status and undecided capabilities. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery.
 - `POST /api/commands`: strict `{instance_id, operation_id, op, advance_id, args}`. ID must start `sim-`; operation identity is immutable. `X-Capital-Token` from the same process and `Content-Type: application/json` required. The token is the role bound by `POST /api/session` (the process starts with the organizer token). Maximum request 8192 bytes; maximum retained operations 500 (demo resource bound, not financial policy).
 - `POST /api/session`: strict `{role}` where `role` is `organizer`, `auditor`, or `observer`. Requires a token already bound to some synthetic role, plus `Content-Type: application/json`. Returns the process-local loopback token for that role. The same role returns the same token. This does not change `operation_count` or `state_digest`. It is self-selection on loopback, not authentication.
 - `GET /api/operations/{operation_id}?instance_id=…`: original ACCEPTED/REJECTED receipt, UNKNOWN if absent. An absent receipt never authorizes a retry. Session mismatch is 409.
@@ -31,6 +31,10 @@ Command, recovery and session acknowledgment share the same Web Lock; pending de
 Browser writes persist the pending request **before** one POST and use a Web Lock to avoid same-origin overlapping tabs. Only an identity-bound receipt clears pending. Invalid response/network loss holds UNKNOWN across reload. Storage unavailable/corrupt or Web Locks unavailable disables new writes. Server restart produces a new instance; old requests cannot affect it. A stale tab that still holds the previous instance receives `SESSION_CHANGED` on receipt lookup and keeps UNKNOWN. Explicit new-session acknowledgment discards the UI pending request but never replays it and does not claim the old outcome known. When the restarted process loaded `LOCAL_FILE_WORKSPACE`, that acknowledgment says the workspace was restored rather than calling the book empty. No automatic polling/retry.
 
 The idempotency fingerprint is `operation_id`, `op`, `advance_id`, and `args`. It does not include `instance_id`, `role`, or `role_provenance`. Repeating that command on the new instance returns the stored receipt with `transport_duplicate=true`, the original inner `instance_id`, and the original role label. A different payload for the same `operation_id` is `IDEMPOTENCY_CONFLICT`. Authorization still requires the current `instance_id`.
+
+## Local unsigned zipapp
+
+`scripts/build_release.py` writes `dist/capital-<version>.pyz` for a checkout-free local run. `<version>` is only `capital/__init__.py`. The archive mode is `LOCAL_SIMULATION_ARTIFACT` with `signed: false` and `published: false`. It is not a PyPI publish, not an external signature, and not a deployment. SignaturePort, publishing, and deployment are later decisions and are not done here. Release notes live in `docs/RELEASES.md`.
 
 ## Opt-in local file workspace
 

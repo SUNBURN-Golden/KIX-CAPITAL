@@ -16,6 +16,20 @@ python3 -m capital.server --workspace ./var/capital-workspace
 # state/export의 durable 값은 LOCAL_FILE_WORKSPACE 입니다. stage5 내구 거래가 아닙니다.
 ```
 
+## 로컬 아티팩트
+
+`python3 scripts/build_release.py --out dist`가 체크아웃 없이 실행하는 stdlib zipapp `dist/capital-<version>.pyz`를 만듭니다. 버전은 `capital/__init__.py`의 `__version__` 하나만 사용합니다. `--version`이 `kix-capital <version>`을 출력하고, `GET /api/state`의 `version`도 그 값입니다.
+
+이 파일은 서명되지 않은 로컬 시뮬레이션 아티팩트입니다 (`LOCAL_SIMULATION_ARTIFACT`, `signed: false`, `published: false`). PyPI 게시, 외부 서명, 배포가 아닙니다. 같은 인터프리터에서 두 번 빌드하면 SHA256이 같습니다. 플랫폼 간 재현을 주장하지 않습니다.
+
+```sh
+python3 scripts/build_release.py --out dist
+python3 dist/capital-0.1.0.pyz --version
+python3 dist/capital-0.1.0.pyz
+python3 dist/capital-0.1.0.pyz --workspace ./var/capital-workspace
+python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
+```
+
 최신 Chromium/Chrome/Edge에서 열어 주세요. 주소는 `127.0.0.1`이며 외부 host/Origin 요청을 거절합니다. 기본 메모리 상태는 서버 재시작 시 사라집니다. `--workspace`는 개발용 단일 파일이며 DB·inbox/outbox·다른 호스트 fencing이 아닙니다. 손상되거나 잠긴 파일은 빈 장부로 시작하지 않고 쓰기를 거절합니다. 금액·역할·공연은 합성 fixture만 사용하며 실명·계좌·신용정보 입력란이 없습니다.
 
 ## 구현과 경계

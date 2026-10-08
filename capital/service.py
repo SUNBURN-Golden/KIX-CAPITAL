@@ -8,6 +8,7 @@ import re
 import threading
 import uuid
 
+from capital import __version__
 from capital.auth import (
     DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE, ROLES, UNLABELED,
     Principal, require, LocalRoleAuthorizer,
@@ -16,6 +17,7 @@ from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachi
 from capital.projection import ProjectionError, SimulationProjection
 from capital.scenarios import replay_scenarios
 from capital.readiness import GROUPS, source_integrity
+from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
@@ -83,7 +85,7 @@ class CapitalService:
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
-        self.source = json.loads((VENDOR / 'manifest.json').read_text())
+        self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
         self._load_workspace()
 
@@ -178,7 +180,7 @@ class CapitalService:
         with self.lock:
             cases = [self.machine.view(key) for key in sorted(self.case_fixtures)]
             principal = Principal(role or DEFAULT_ROLE)
-            return {'instance_id': self.instance_id, 'mode': 'LOCAL_SIMULATION',
+            return {'instance_id': self.instance_id, 'version': __version__, 'mode': 'LOCAL_SIMULATION',
                     'provenance': PROVENANCE, 'durable': self.storage.durable_label, 'funds_executed': False,
                     'source_commit': self.source['commit'], 'cases': cases,
                     'fixtures': copy.deepcopy(self.fixtures.rows),

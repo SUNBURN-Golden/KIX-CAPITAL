@@ -5,13 +5,14 @@ import argparse
 import json
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from capital import __version__
 from capital.auth import (
     COMMAND_SUBMIT, DEFAULT_ROLE, PROVENANCE, ROLES, SESSION_BIND, LocalRoleAuthorizer,
     path_matches, require, route_permission,
 )
+from capital.resources import read_static
 from capital.service import ApiError, CapitalService
 from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 
@@ -32,8 +33,6 @@ POST_DISPATCH = (
     ('/api/commands', COMMAND_SUBMIT),
     ('/api/session', SESSION_BIND),
 )
-
-STATIC = Path(__file__).parent / 'static'
 ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
@@ -227,7 +226,7 @@ def make_server(port=8765, authorizer=None, workspace=None):
                 route = urlsplit(self.path)
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
-                    return self.reply(200, (STATIC / name).read_bytes(), kind)
+                    return self.reply(200, read_static(name), kind)
                 principal = self.principal()
                 permission = route_permission(route.path)
                 if permission is None:
@@ -277,6 +276,7 @@ def main():
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--workspace', default=None,
                         help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
+    parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
     args = parser.parse_args()
     with make_server(args.port, workspace=args.workspace) as server:
         print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
