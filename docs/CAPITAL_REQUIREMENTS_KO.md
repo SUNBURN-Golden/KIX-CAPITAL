@@ -37,7 +37,7 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-07 | 최초 판매·반복 리셀·입장 연계 | trade/claim identity 조회, 권리/금융 분리 | NOT_BOUND: Commerce 실여정·Protocol producer tuple; 이 PR은 티켓 생성/이전 없음 |
 | CAP-08 | 초과 배정·현금/한도 구별 | 동일 claim 두 draw 경합, 부분 repay 후 예약 유지, close만 해제; 활성 상태를 바꾸지 않는 인출 사전점검 | SIMULATED; 외부 담보/분산 자원 한도 아님 |
 | CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | 목 근거 표와 NOT_BOUND 표시, 출처/범위 식별 | READ_ONLY_FIXTURE; 최초판매/리셀 매출 합산 없음, 실지급/세무 보고 아님 |
-| CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload와 old-instance fence | SIMULATED; 프로세스 재시작 내구성 없음 |
+| CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload·old-instance fence, 옵트인 로컬 파일 재시작 복원 | SIMULATED; 개발용 LOCAL_FILE_WORKSPACE. stage5 내구 거래·inbox/outbox·호스트 간 fencing은 CAP-11 |
 | CAP-11 | 내구 거래·inbox/outbox·장애복구 | 연동 계약과 미지원 상태 | NOT_BOUND: `k-stage5-durable-tx`·backend 채택·v5, 자체 저장엔진 만들지 않음 |
 | CAP-12 | 자산별 정확한 금액·FX | KRW 고정 프로파일, int 검증, 포트폴리오 BigInt 표시 | 일부 SIMULATED; u128·registry/정밀도·FX quote/execution은 별도 계약 |
 | CAP-13 | 복식 금융 투영 | 로컬 후보 복식 투영 · `SYNTHETIC_UNADOPTED` 표기 · 운영 원장 `NOT_BOUND` | SIMULATED(로컬 후보); fin-ledger-contract·stage5/6 선행 유지, 계정/수익인식/세무 미정 |

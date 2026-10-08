@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from capital.service import ApiError, CapitalService
+from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 
 STATIC = Path(__file__).parent / 'static'
 ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
@@ -34,8 +35,33 @@ def projection_mode(query):
     return values[0] if len(values) == 1 else 'REJECTED'
 
 
-def make_server(port=8765):
-    service = CapitalService()
+class CapitalHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def server_close(self):
+        try:
+            super().server_close()
+        finally:
+            storage = getattr(self, 'storage', None)
+            self.storage = None
+            if storage is not None:
+                storage.close()
+
+
+def make_server(port=8765, workspace=None):
+    storage = None
+    if workspace is not None:
+        try:
+            storage = FileWorkspace.open(workspace)
+        except WorkspaceError as exc:
+            storage = UnavailableWorkspace(workspace, exc.code)
+    try:
+        service = CapitalService(storage)
+    except Exception:
+        if storage is not None:
+            storage.close()
+        raise
     token = secrets.token_urlsafe(32)
 
     class Handler(BaseHTTPRequestHandler):
@@ -127,18 +153,28 @@ def make_server(port=8765):
             except ApiError as exc:
                 self.reply(exc.status, {'error': exc.code})
 
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
-    server.daemon_threads = True
+    try:
+        server = CapitalHTTPServer(('127.0.0.1', port), Handler)
+    except Exception:
+        if storage is not None:
+            storage.close()
+        raise
     server.service = service
+    server.storage = storage
     return server
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--workspace', default=None,
+                        help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
     args = parser.parse_args()
-    with make_server(args.port) as server:
+    with make_server(args.port, workspace=args.workspace) as server:
         print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
+        view = server.service.workspace_view()
+        if view['kind'] == 'LOCAL_FILE_WORKSPACE':
+            print(f"workspace {view['status']} LOCAL_FILE_WORKSPACE {view['path']}", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:
