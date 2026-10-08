@@ -26,6 +26,15 @@ def strict_object(pairs):
     return result
 
 
+def projection_mode(query):
+    values = parse_qs(query, keep_blank_values=True).get('mode')
+    if values is None:
+        return None
+    if values == ['simulation']:
+        return 'simulation'
+    return values[0] if len(values) == 1 else 'REJECTED'
+
+
 class CapitalHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
     daemon_threads = True
@@ -102,6 +111,8 @@ def make_server(port=8765, workspace=None):
                     return self.reply(200, {**service.snapshot(), 'local_token': token})
                 if route.path == '/api/evidence':
                     return self.reply(200, service.evidence())
+                if route.path == '/api/projection':
+                    return self.reply(200, service.projection(projection_mode(route.query)))
                 if route.path == '/api/readiness':
                     return self.reply(200, service.readiness())
                 if route.path == '/api/scenarios':

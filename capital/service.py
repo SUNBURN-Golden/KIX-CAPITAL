@@ -9,6 +9,7 @@ import threading
 import uuid
 
 from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachine
+from capital.projection import ProjectionError, SimulationProjection
 from capital.scenarios import replay_scenarios
 from capital.readiness import GROUPS, source_integrity
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
@@ -73,6 +74,7 @@ class CapitalService:
         self.storage.writer_instance = self.instance_id
         self.fixtures = FixtureViews()
         self.machine = CreditMachine(self.fixtures)
+        self.projection_port = SimulationProjection()
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
@@ -213,7 +215,36 @@ class CapitalService:
                     'source_commit': self.source['commit'], 'upstream_binding': 'NOT_BOUND',
                     'source_integrity': source_integrity(VENDOR, self.source),
                     'groups': copy.deepcopy(GROUPS), 'production_authorized': False,
-                    'upstream_nodes_completed': [], 'policy_adopted': False}
+                    'upstream_nodes_completed': [], 'policy_adopted': False,
+                    'requirement_notes': {
+                        'CAP-13': 'local candidate projection; fin-ledger-contract still upstream'}}
+
+    def projection(self, mode=None):
+        """Fold copies of the accepted journal and fixture views. Nothing is cached or written."""
+        with self.lock:
+            if mode not in (None, 'simulation'):
+                raise ApiError('NOT_BOUND', 400)
+            before_canon = self.machine.canonical_state()
+            before_receipts = copy.deepcopy(self.receipts)
+            before_rows = copy.deepcopy(self.fixtures.rows)
+            journal = self.machine.export_journal()
+            evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.rows)]
+            cut = self.machine.state_digest()
+            try:
+                projected = self.projection_port.project(journal, evidence)
+            except ProjectionError as exc:
+                raise ApiError(exc.code, 500) from exc
+            if (self.machine.canonical_state() != before_canon or self.receipts != before_receipts
+                    or self.fixtures.rows != before_rows or self.machine.state_digest() != cut
+                    or len(self.receipts) != len(before_receipts)):
+                raise ApiError('PROJECTION_INVARIANT', 500)
+            return {'instance_id': self.instance_id, 'mode': 'LOCAL_PROJECTION_CANDIDATE',
+                    'chart': SimulationProjection.CHART_VERSION,
+                    'accounting_policy': 'SYNTHETIC_UNADOPTED', 'tax': 'NOT_BOUND', 'legal': 'NOT_BOUND',
+                    'cut': cut, 'source_commit': self.source['commit'], 'funds_executed': False,
+                    'policy_adopted': False, 'workspace_mutated': False, 'operating_ledger': 'NOT_BOUND',
+                    'entries': projected['entries'], 'accounts': projected['accounts'],
+                    'read_model': projected['read_model'], 'conservation': projected['conservation']}
 
     def preview_draw(self, advance_id, instance_id):
         with self.lock:
