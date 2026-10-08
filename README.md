@@ -43,6 +43,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - 선택 제안의 읽기 전용 인출 사전점검과 20개 청사진 요구사항의 구현/결정/연동 선행 필터.
 - 수락된 저널과 불변 정산 fixture를 고정 합성 계정표로 읽는 로컬 복식 투영 후보. `accounting_policy`는 `SYNTHETIC_UNADOPTED`이고, 세무·법무·운영 원장은 `NOT_BOUND`이며 `fin-ledger-contract`를 채택하지 않습니다.
 - 읽기 전용 대사 예외와 다섯 구분 명세서. 둘 다 로컬 진단입니다. 은행·PG·제공자 관측, source cut, 제공자 인증 완전성은 `NOT_BOUND`입니다. 최초 판매와 리셀 매출은 합산하지 않고 `actual_paid`는 `NOT_BOUND`입니다.
+- v2 export manifest(`GET /api/export/manifest`)는 섹션별 SHA-256과 content digest를 담습니다. 기본 서명은 `NOT_BOUND`입니다. `--dev-hmac`은 작업공간 디렉터리에 mode 0600인 `DEV_ONLY` HMAC 키를 만들며, 그 키는 무결성만이고 인증이 아니며 응답이나 로그에 나오지 않습니다. `python3 -m capital.verify FILE --key-file K`가 오프라인에서 섹션 해시, digest, 서명을 다시 계산합니다. cursor·watermark·source cut·외부 키·보존 정책은 없고, stage7 인증 export가 아닙니다. v1 `GET /api/export`는 그대로입니다. 가져오기·재개 경로는 없습니다.
 - 원본 목 정산 조회·노출·현금·회수 의무는 서로 다른 의미입니다. 합계를 실제 은행 잔액으로 표시하지 않습니다.
 - 로컬 인가 경계: 합성 역할 organizer/auditor/observer는 `POST /api/session`으로 자기선택되고 역할별 루프백 토큰에 묶입니다. 이것은 인증이 아닙니다. 계정·비밀번호·실명 신원은 없습니다. observer는 export와 projection을 읽지 못하고 auditor는 읽을 수 있습니다. 실제 IdP·KYC·자격증명·AgentGrant/ActionPermit은 NOT_BOUND입니다.
 

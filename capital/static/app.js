@@ -339,6 +339,42 @@ $('export-journal').onclick=async()=>{
  }catch(error){notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'내보내기 결과를 확인하지 못했습니다.',true);}
  finally{busy=false;fence();}
 };
+function manifestValid(data,next){
+ if(!data||data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V2'||data.funds_executed!==false||data.label!=='SIMULATED'||data.diagnostic!=='READ_ONLY')return false;
+ if(data.stage7_authenticated_export!==false||data.authentication!=='NOT_BOUND'||data.external_key!=='NOT_BOUND'||data.retention_policy!=='NOT_BOUND')return false;
+ if(data.cursor!==null||data.watermark!==null||data.source_cut!==null||data.timestamps!==null||data.instance_id!==next.instance_id)return false;
+ if((data.status!=='COMPLETE'&&data.status!=='INCOMPLETE')||!Array.isArray(data.incomplete_reasons))return false;
+ if((data.status==='COMPLETE')!==(data.incomplete_reasons.length===0))return false;
+ const names=['journal','receipts','projection','reconciliation','statement','fixtures','source_pin'];
+ if(!data.sections||names.some(name=>!data.sections[name]||typeof data.sections[name].sha256!=='string'||data.sections[name].sha256.length!==64||!data.sections[name].body))return false;
+ if(typeof data.content_digest!=='string'||data.content_digest.length!==64)return false;
+ const signature=data.signature;
+ if(!signature||signature.port!=='SignaturePort'||signature.authentication!=='NOT_BOUND'||Object.prototype.hasOwnProperty.call(signature,'key'))return false;
+ if(signature.status==='NOT_BOUND'&&(signature.value!==null||signature.label!=='NOT_BOUND'))return false;
+ if(signature.status==='DEV_ONLY'&&(signature.label!=='DEV_ONLY'||signature.purpose!=='INTEGRITY_ONLY'||typeof signature.value!=='string'||signature.value.length!==64))return false;
+ if(signature.status!=='NOT_BOUND'&&signature.status!=='DEV_ONLY')return false;
+ const gaps=Array.isArray(data.not_bound)?data.not_bound:[];
+ return ['cursor','watermark','source_cut'].every(id=>gaps.some(row=>row.id===id&&row.status==='NOT_BOUND'&&row.value===null));
+}
+$('export-manifest').onclick=async()=>{
+ if(busy)return;
+ if(!can('export:read')){notice(`역할 경계: ${permissionReason('export:read')}`,true);return;}
+ busy=true;fence();
+ try{
+  const data=await request('/api/export/manifest');
+  if(!manifestValid(data,state))throw Error('INVALID_EXPORT');
+  const text=JSON.stringify(data,null,2);
+  const pre=$('export-result');
+  try{
+   const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+   const link=document.createElement('a');link.href=url;link.download='capital-export-manifest.json';document.body.append(link);link.click();link.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),2000);
+   pre.hidden=true;pre.textContent='';
+  }catch{pre.hidden=false;pre.textContent=text;}
+  notice('매니페스트를 저장했습니다. 섹션 해시와 서명은 python3 -m capital.verify 로 확인합니다. stage7 인증 export가 아니며, 공유 HMAC은 무결성만이고 인증이 아닙니다.');
+ }catch(error){notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'매니페스트를 확인하지 못했습니다. stage7 인증 export로 저장하지 않습니다.',true);}
+ finally{busy=false;fence();}
+};
 $('reconcile-readonly').onclick=async()=>{
  if(busy)return;
  if(!can('reconciliation:read')){notice(`역할 경계: ${permissionReason('reconciliation:read')}`,true);return;}

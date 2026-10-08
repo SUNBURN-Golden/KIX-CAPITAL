@@ -181,7 +181,8 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(fresh['blockers'], ['채택 backend와 stage5/6 경제 원천', 'Finance 후보 8개 채택과 계정/세무 정책',
                                               'stage7 source cut·watermark·인증 export·부분 자료 거절'])
         self.assertEqual(fresh['available'], ['프로세스 내 저널 재생', '고정 fixture와 source hash 조회',
-                                               '로컬 후보 복식 투영 (SYNTHETIC_UNADOPTED · 비채택)'])
+                                               '로컬 후보 복식 투영 (SYNTHETIC_UNADOPTED · 비채택)',
+                                               '내용 주소 export manifest (SignaturePort · DEV HMAC은 무결성만 · stage7 인증 아님)'])
         self.assertEqual({item for row in self.service.readiness()['groups'] for item in row['requirements']},
                          {f'CAP-{i:02}' for i in range(1, 21)})
         self.assertEqual(self.service.readiness()['upstream_nodes_completed'], [])

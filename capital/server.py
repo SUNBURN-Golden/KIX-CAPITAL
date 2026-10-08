@@ -13,6 +13,7 @@ from capital.auth import (
     path_matches, require, route_permission,
 )
 from capital.resources import read_static
+from capital.export import DevHmacSigner, ExportError, SignerConfigError, build_signer
 from capital.service import ApiError, CapitalService
 from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 
@@ -27,6 +28,7 @@ GET_DISPATCH = (
     ('/api/preview/', True, 'preview'),
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
+    ('/api/export/manifest', False, 'export_manifest'),
     ('/api/reconciliation', False, 'reconciliation'),
     ('/api/statement', False, 'statement'),
 )
@@ -71,7 +73,7 @@ class CapitalHTTPServer(ThreadingHTTPServer):
                 storage.close()
 
 
-def make_server(port=8765, authorizer=None, workspace=None):
+def make_server(port=8765, authorizer=None, workspace=None, signer=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     storage = None
     if workspace is not None:
@@ -80,7 +82,7 @@ def make_server(port=8765, authorizer=None, workspace=None):
         except WorkspaceError as exc:
             storage = UnavailableWorkspace(workspace, exc.code)
     try:
-        service = CapitalService(storage, authorizer=authorizer)
+        service = CapitalService(storage, authorizer=authorizer, signer=signer)
     except Exception:
         if storage is not None:
             storage.close()
@@ -176,6 +178,9 @@ def make_server(port=8765, authorizer=None, workspace=None):
 
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
+
+        def _get_export_manifest(self, route, principal):
+            return self.reply(200, service.export_manifest())
 
         def _get_reconciliation(self, route, principal):
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
@@ -282,10 +287,18 @@ def main():
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--workspace', default=None,
                         help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
+    parser.add_argument('--dev-hmac', action='store_true',
+                        help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
     args = parser.parse_args()
-    with make_server(args.port, workspace=args.workspace) as server:
+    try:
+        signer = build_signer(args.workspace, args.dev_hmac)
+    except (SignerConfigError, ExportError) as exc:
+        parser.error(exc.code)
+    with make_server(args.port, workspace=args.workspace, signer=signer) as server:
         print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
+        if isinstance(signer, DevHmacSigner):
+            print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)
         view = server.service.workspace_view()
         if view['kind'] == 'LOCAL_FILE_WORKSPACE':
             print(f"workspace {view['status']} LOCAL_FILE_WORKSPACE {view['path']}", flush=True)

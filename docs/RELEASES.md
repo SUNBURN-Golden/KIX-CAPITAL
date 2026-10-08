@@ -2,7 +2,7 @@
 
 Local unsigned simulation artifacts. A note here records what a same-tree build produced. It does not publish, sign, or deploy.
 
-`signed: false` and `published: false` are properties of the artifact. `mode` is `LOCAL_SIMULATION_ARTIFACT`. There is no PyPI release, no external signature, and no production deployment. Signing belongs to a later SignaturePort. Hosting and release channels are not chosen here.
+`signed: false` and `published: false` are properties of the artifact. `mode` is `LOCAL_SIMULATION_ARTIFACT`. There is no PyPI release, no external signature, and no production deployment. The in-process `SignaturePort` can leave an export manifest unsigned (`NOT_BOUND`) or attach an opt-in `DEV_ONLY` HMAC. That HMAC is integrity for one local workspace key, not authentication and not an external signature of this zipapp. Hosting and release channels are not chosen here.
 
 The version is only `__version__` in `capital/__init__.py`. `--version` and `GET /api/state` `version` repeat that string. The Protocol pin is the `commit` already stored in `capital/vendor/manifest.json`. Vendor bytes stay on that pin.
 
@@ -43,5 +43,5 @@ Copy this section for a later local note. Do not invent rates, fees, limits, or 
 ### Out of scope
 
 - PyPI publish
-- external signing (SignaturePort is a later node)
+- external signing (the local SignaturePort seam is not an external key; stage7 authentication is not this artifact)
 - production deployment
