@@ -34,12 +34,16 @@ MATRIX = {
     'observer': frozenset(OBSERVER_READ),
 }
 
+# Receipts saved before this label existed. Not a session role and not in ROLES.
+UNLABELED = 'UNLABELED'
+
 # Exact path or prefix. Unmapped paths are denied by the caller (HTTP 404).
 ROUTE_PERMISSIONS = (
     ('/api/state', 'state:read', False),
     ('/api/scenarios', 'reference:read', True),
     ('/api/readiness', 'reference:read', False),
     ('/api/evidence', 'projection:read', False),
+    ('/api/projection', 'projection:read', False),
     ('/api/preview/', 'projection:read', True),
     ('/api/operations/', 'receipt:read', True),
     ('/api/export', 'export:read', False),

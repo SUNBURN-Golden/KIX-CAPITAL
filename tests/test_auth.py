@@ -29,6 +29,7 @@ class MatrixTests(unittest.TestCase):
             '/api/scenarios/full-after': 'reference:read',
             '/api/readiness': 'reference:read',
             '/api/evidence': 'projection:read',
+            '/api/projection': 'projection:read',
             '/api/preview/sim-a': 'projection:read',
             '/api/operations/op-1': 'receipt:read',
             '/api/export': 'export:read',
@@ -37,6 +38,7 @@ class MatrixTests(unittest.TestCase):
         for path, permission in routes.items():
             self.assertEqual(route_permission(path), permission, path)
             self.assertIn(permission, ALL_PERMISSIONS)
+        self.assertIsNone(route_permission('/api/projection/extra'))
         self.assertIsNone(route_permission('/api/commands'))
         self.assertIsNone(route_permission('/api/unknown'))
         self.assertIsNone(route_permission('/'))
@@ -124,7 +126,13 @@ class ServiceAuthTests(unittest.TestCase):
         self.assertEqual(first['role'], 'organizer')
         self.assertEqual(first['role_provenance'], PROVENANCE)
         stored = self.service.receipts['op-1']
-        self.assertEqual(stored['fingerprint'], digest(self.body()))
+        body = self.body()
+        identity = {'operation_id': body['operation_id'], 'op': body['op'],
+                    'advance_id': body['advance_id'], 'args': body['args']}
+        self.assertEqual(stored['fingerprint'], digest(identity))
+        self.assertNotEqual(stored['fingerprint'], digest(body))
+        self.assertNotIn('role', identity)
+        self.assertNotIn('role_provenance', identity)
         count = len(self.service.receipts)
         digest_before = self.service.machine.state_digest()
         replay = self.body()
@@ -306,7 +314,7 @@ class HttpAuthTests(unittest.TestCase):
         operation = f"/api/operations/auth-offer?instance_id={instance}"
         for role in (None, 'organizer', 'auditor', 'observer'):
             headers = {'X-Capital-Role': role} if role else {}
-            for path in ('/api/state', '/api/evidence', preview, operation):
+            for path in ('/api/state', '/api/evidence', '/api/projection', preview, operation):
                 status, raw = self.request('GET', path, headers=headers)
                 self.assertEqual(status, 200, (role, path, raw[:200]))
         for role, expected in (('organizer', 200), ('auditor', 200), ('observer', 403)):

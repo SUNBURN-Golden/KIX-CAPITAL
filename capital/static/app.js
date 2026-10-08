@@ -30,12 +30,42 @@ function renderRoleBar(){
  const denied=Object.entries(auth.permissions).filter(([,item])=>!item.allowed);
  $('role-reason').textContent=denied.length?`${auth.role} 역할 경계: ${denied[0][1].reason}`:`${auth.role} 합성 역할로 로컬 명령을 진행할 수 있습니다. 실명 신원은 NOT_BOUND입니다.`;
 }
-function fence(){const blocked=busy||!!pending||storageBlocked;document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.':'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();}
+function fileWorkspaceActive(){return !!(state&&state.workspace&&state.workspace.kind==='LOCAL_FILE_WORKSPACE'&&state.workspace.status==='ACTIVE');}
+function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state.workspace.status!=='ACTIVE');}
+function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();}
 async function request(path, options={}) {const headers=new Headers(options.headers||{});headers.set('X-Capital-Role',currentRole());const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
-async function refresh(){const next=await request('/api/state');if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases))throw Error('INVALID_STATE');
+function projectionValid(projection,next){
+ if(!projection||projection.instance_id!==next.instance_id||projection.mode!=='LOCAL_PROJECTION_CANDIDATE'||projection.funds_executed!==false||projection.cut!==next.state_digest)return false;
+ if(projection.accounting_policy!=='SYNTHETIC_UNADOPTED'||projection.tax!=='NOT_BOUND'||projection.legal!=='NOT_BOUND'||projection.operating_ledger!=='NOT_BOUND'||projection.chart!=='SIMULATION_FIXED_V1'||projection.policy_adopted!==false||projection.workspace_mutated!==false)return false;
+ if(!Array.isArray(projection.accounts)||!Array.isArray(projection.entries)||!projection.read_model||!Array.isArray(projection.conservation))return false;
+ if(!projection.conservation.length||projection.conservation.some(row=>row.matched!==true))return false;
+ try{const debit=projection.accounts.reduce((sum,row)=>sum+BigInt(row.debit_total),0n);const credit=projection.accounts.reduce((sum,row)=>sum+BigInt(row.credit_total),0n);const fromLines=projection.entries.reduce((sum,entry)=>sum+entry.lines.reduce((inner,line)=>inner+BigInt(line.amount),0n),0n);return debit===credit&&fromLines===debit+credit;}catch{return false;}
+}
+async function loadProjection(next){
+ try{const projection=await request('/api/projection');if(!projectionValid(projection,next))return {error:'복식 투영 응답이 현재 상태 절단면 또는 비채택 표기와 맞지 않습니다. 숫자를 운영 원장으로 표시하지 않습니다.'};return {projection};}
+ catch{return {error:'복식 투영을 확인하지 못했습니다. 제안 상태는 유지하며 투영 숫자는 표시하지 않습니다.'};}
+}
+function renderProjection(result){
+ const error=$('projection-error'),body=$('projection-body');
+ if(!result?.projection){body.hidden=true;error.hidden=false;error.textContent=result?.error||'복식 투영을 표시하지 않습니다.';return;}
+ error.hidden=true;body.hidden=false;const projection=result.projection;
+ $('projection-cut').textContent=`cut=${projection.cut} · accounting_policy=${projection.accounting_policy} · tax=${projection.tax} · legal=${projection.legal} · operating_ledger=${projection.operating_ledger} · chart=${projection.chart}`;
+ let debit=0n,credit=0n;
+ $('projection-accounts').replaceChildren(...projection.accounts.map(account=>{debit+=BigInt(account.debit_total);credit+=BigInt(account.credit_total);const tr=document.createElement('tr');for(const value of [account.code,account.label,account.kind,number(account.debit_total),number(account.credit_total),number(account.balance)])tr.append(textElement('td',value));return tr;}));
+ $('projection-debit').textContent=number(debit);$('projection-credit').textContent=number(credit);
+ const claims=projection.read_model.claims||[],advances=projection.read_model.advances||[];
+ $('projection-claims').replaceChildren(...claims.map(row=>{const tr=document.createElement('tr');for(const value of [row.claim_id,row.phase,number(row.gross),number(row.confirmed_cash),number(row.refund_face),number(row.refund_outstanding)])tr.append(textElement('td',value));return tr;}));
+ $('projection-payees').replaceChildren(...claims.flatMap(row=>(row.obligations||[]).map(item=>{const tr=document.createElement('tr');for(const value of [row.claim_id,item.payee,number(item.face),number(item.distributed),number(item.outstanding),number(item.recovery_due)])tr.append(textElement('td',value));return tr;})));
+ $('projection-advances-empty').hidden=advances.length>0;$('projection-advances-wrap').hidden=advances.length===0;
+ $('projection-advances').replaceChildren(...advances.map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,row.beneficiary_role,number(row.amount),number(row.drawn),number(row.repaid),number(row.outstanding)])tr.append(textElement('td',value));return tr;}));
+ $('projection-checks').textContent=projection.conservation.map(row=>`${row.predicate} · ${row.matched?'일치':'불일치'}`).join('\n');
+}
+async function refresh(){const next=await request('/api/state');const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role))throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');
  const evidence=await request('/api/evidence');
  if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
+ const projection=await loadProjection(next);
  state=next;
+ renderProjection(projection);
  $('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));
  $('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';
  $('evidence-json').textContent=JSON.stringify(evidence,null,2);
@@ -46,7 +76,9 @@ function syncCaseUrl(id){const params=new URLSearchParams(location.search);param
 function resolveSelection(){const raw=new URLSearchParams(location.search).get('case');const urlCase=caseFromUrl();const known=!!urlCase&&state.cases.some(c=>c.advance_id===urlCase);if(known)selected=urlCase;else if(!selected||!state.cases.some(c=>c.advance_id===selected))selected=state.cases[0]?.advance_id;if(raw!==null&&!known)syncCaseUrl(null);}
 let reconcileCase;
 function textElement(tag,text,className){const el=document.createElement(tag);el.textContent=text;if(className)el.className=className;return el;}
+function paintStorage(){const ws=state.workspace,label=$('storage-label'),note=$('storage-note');if(!label||!note)return;if(ws.kind==='LOCAL_FILE_WORKSPACE'&&ws.status==='ACTIVE'){label.textContent='로컬 파일 작업공간';note.textContent='개발용 파일 · stage5 내구 거래 아님';}else if(ws.kind==='LOCAL_FILE_WORKSPACE'){label.textContent='파일 작업공간 사용 불가';note.textContent=`${ws.status} · 빈 상태로 덮어쓰지 않음 · 쓰기 차단`;}else{label.textContent='프로세스 메모리';note.textContent='서버 재시작 시 상태 초기화';}}
 function render(){
+ paintStorage();
  if(reconcileCase!==selected){$('reconcile-result').textContent='';reconcileCase=selected;}
  $('session').textContent=`SESSION ${state.instance_id.slice(0,8)} · ${state.operation_count}/${state.operation_capacity}`;
  $('source').textContent=`Protocol ${state.source_commit.slice(0,12)}`;
@@ -79,7 +111,9 @@ function showReceipt(receipt){if(receipt.outcome==='REJECTED')notice(`${errors[r
 function validateReceipt(receipt,body){
  const accepted=receipt?.outcome==='ACCEPTED';
  const fields=['operation_id','instance_id','provenance','funds_executed','economic_finality_claimed','transport_duplicate','role','role_provenance','outcome',accepted?'result':'error'];
- if(!receipt||Object.keys(receipt).sort().join()!==fields.sort().join()||receipt.operation_id!==body.operation_id||receipt.instance_id!==body.instance_id||receipt.provenance!=='MOCK_CREDIT_F04_ONLY'||receipt.funds_executed!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean'||!['ACCEPTED','REJECTED'].includes(receipt.outcome)||!syntheticRoles.includes(receipt.role)||receipt.role_provenance!=='SYNTHETIC_LOCAL_ROLE')throw Error('INVALID_RECEIPT');
+ const labeled=syntheticRoles.includes(receipt?.role)&&receipt?.role_provenance==='SYNTHETIC_LOCAL_ROLE';
+ const historical=receipt?.role==='UNLABELED'&&receipt?.role_provenance==='UNLABELED';
+ if(!receipt||Object.keys(receipt).sort().join()!==fields.sort().join()||receipt.operation_id!==body.operation_id||receipt.instance_id!==body.instance_id||receipt.provenance!=='MOCK_CREDIT_F04_ONLY'||receipt.funds_executed!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean'||!['ACCEPTED','REJECTED'].includes(receipt.outcome)||!(labeled||historical))throw Error('INVALID_RECEIPT');
  if(!accepted){if(typeof receipt.error!=='string'||!receipt.error)throw Error('INVALID_RECEIPT');return;}
  const r=receipt.result,c=r?.credit;
  if(!r||r.provenance!=='MOCK_CREDIT_F04_ONLY'||r.applied!==body.op||r.lifecycle_authority!=='IN_MEMORY_FSM'||!c||c.advance_id!==body.advance_id||c.provenance!=='MOCK_CREDIT_F04_ONLY'||!Object.hasOwn(phaseNames,c.phase))throw Error('INVALID_RECEIPT');
@@ -89,13 +123,13 @@ function validateReceipt(receipt,body){
 }
 
 async function command(op,advance_id,args){
- if(busy||pending||storageBlocked||!state)return;
+ if(busy||pending||writesBlocked()||!state)return;
  if(!can('command:'+op)){notice(`역할 경계: ${permissionReason('command:'+op)}`,true);return;}
  if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
  busy=true;fence();
  try{await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
  if(!lock){notice('다른 탭의 명령이 진행 중입니다. 결과를 확인한 후 계속하세요.',true);return;}
- readPending();if(pending||storageBlocked){fence();return;}
+ readPending();if(pending||writesBlocked()){fence();return;}
  const body={instance_id:state.instance_id,operation_id:crypto.randomUUID(),op,advance_id,args};
  try{savePending(body);fence();const receipt=await request('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validateReceipt(receipt,body);savePending(null);selected=advance_id;syncCaseUrl(advance_id);showReceipt(receipt);}
  catch(error){if(error.knownRejection){try{savePending(null);}catch{}notice(`요청 거절: ${errors[error.message]||error.message}`,true);}else notice('요청 결과 UNKNOWN. 자동 재시도하지 않습니다. 원 요청 결과를 조회하세요.',true);}
@@ -125,7 +159,7 @@ $('recover').onclick=()=>pendingAction(async original=>{
  catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}
 });
 $('new-session').onclick=()=>pendingAction(async original=>{
- try{await refresh();if(original.instance_id!==state.instance_id){clearMatching(original);notice('이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}}
+ try{await refresh();if(original.instance_id!==state.instance_id){clearMatching(original);notice(fileWorkspaceActive()?'이전 세션 결과는 UNKNOWN입니다. 복원된 작업공간을 사용합니다. 이전 요청을 재전송하지 않았습니다.':'이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}}
  catch{notice('현재 세션을 확인하지 못해 이전 대기 기록을 유지합니다.',true);}
 });
 window.addEventListener('storage',event=>{if(event.key===storageKey){readPending();fence();}});
@@ -139,7 +173,8 @@ function renderReadiness(){
   const card=document.createElement('article');card.append(textElement('h3',group.title),textElement('span',names[group.status],'status'),textElement('p',group.behavior));
   card.append(textElement('p',`현재 가능: ${group.available.join(' · ')}`));
   if(group.blockers.length){const ul=document.createElement('ul');for(const item of group.blockers)ul.append(textElement('li',item));card.append(ul);}
-  card.append(textElement('p',`담당/선행: ${group.owner}`,'owner'),textElement('p',`${group.requirements.join(', ')} · ${group.claim}`));return card;
+  card.append(textElement('p',`담당/선행: ${group.owner}`,'owner'),textElement('p',`${group.requirements.join(', ')} · ${group.claim}`));
+  const notes=readinessData.requirement_notes||{};for(const id of group.requirements)if(notes[id])card.append(textElement('p',`${id}: ${notes[id]}`,'owner'));return card;
  }));
 }
 $('readiness-filter').onchange=renderReadiness;
@@ -200,7 +235,8 @@ $('export-journal').onclick=async()=>{
  busy=true;fence();
  try{
   const data=await request('/api/export');
-  if(data.format!=='KIX_CAPITAL_SIMULATION_V1'||data.replay_matched!==true||data.funds_executed!==false||data.durable!==false)throw Error('INVALID_EXPORT');
+  const durableOk=data.durable===false||data.durable==='LOCAL_FILE_WORKSPACE';
+  if(data.format!=='KIX_CAPITAL_SIMULATION_V1'||data.replay_matched!==true||data.funds_executed!==false||!durableOk||data.durable!==state.durable)throw Error('INVALID_EXPORT');
   const text=JSON.stringify(data,null,2);
   const pre=$('export-result');
   try{
@@ -226,4 +262,4 @@ $('reconcile-readonly').onclick=async()=>{
  finally{busy=false;fence();}
 };
 try{const stored=sessionStorage.getItem(roleStorageKey);if(syntheticRoles.includes(stored))$('role').value=stored;}catch{}
-readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});
+readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(state.workspace&&state.workspace.status!=='ACTIVE')notice(`작업공간을 사용할 수 없습니다 (${state.workspace.status}). 쓰기를 차단했습니다. 빈 시뮬레이션으로 덮어쓰지 않습니다.`,true);else if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});

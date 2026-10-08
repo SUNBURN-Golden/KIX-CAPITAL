@@ -60,7 +60,7 @@ The Chromium browser suite has **not run** for this patch because dependency set
 
 ## Local authorization boundary
 
-Author-local verification of the synthetic role seam on this worktree. These runs are not CI, not an independent review, and not a product acceptance. No IdP, KYC, credential, bank, or vendor change was made. `git diff --stat -- capital/vendor .aiops .github` printed no files.
+Author-local verification of the synthetic role seam on the auth-boundary tree, before it was combined with the projection and file-workspace work already on main. These runs are not CI, not an independent review, and not a product acceptance. No IdP, KYC, credential, bank, or vendor change was made. `git diff --stat -- capital/vendor .aiops .github` printed no files.
 
 Commands actually run, in order:
 
@@ -75,3 +75,66 @@ Commands actually run, in order:
 - Final repeat on the same tree: `python3 -m unittest discover -s tests -v` **46 passed** in 1.736s; pinned mock credit **7 passed** in 0.002s; `python3 -m compileall -q capital` exit 0; `node --check capital/static/app.js` exit 0; vendor/`.aiops`/`.github` diff still empty.
 
 The passing export click received a download whose JSON had `replay_matched: true`. The CSP header was not changed. No server was left listening. No commit, push, pull request, or issue was created from this run.
+
+## Local candidate projection
+
+CAP-13/14 local candidate only. `GET /api/projection` folds the accepted F04 journal and the three immutable settlement views into `SIMULATION_FIXED_V1`. Labels stay `SYNTHETIC_UNADOPTED` / `NOT_BOUND`. `fin-ledger-contract` is not adopted. No revenue, tax, fee, or account policy was chosen. Vendor bytes were not edited.
+
+Commands actually run on the projection tree, before it was combined with the file-workspace work already on main:
+
+- `python3 -m unittest discover -s tests -v`: **41 passed** in 1.271s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- Vendor SHA256 check against `capital/vendor/manifest.json`: all **5 files OK**. Protocol pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` unchanged.
+- `npm ci` (no `node_modules` yet): added 3 packages. `npx playwright install chromium` then `npm run test:browser`: **28 passed** (27.7s), including the projection panel after draw and repay on an isolated loopback port and the existing 375px layout test. Playwright stopped both loopback servers when the run finished.
+
+No skip was added. This section claims no independent review, CI run, commit, push, or deploy.
+
+## Opt-in local file workspace
+
+`StoragePort` keeps the default process in memory. `python3 -m capital.server --workspace DIR` adds one stdlib JSON file with a payload checksum, temp-file rename, and an exclusive `fcntl` lock. Restart replays the pinned journal, checks `state_digest`, and serves the original receipts under a new `instance_id`. `durable=LOCAL_FILE_WORKSPACE` on state and export is a development-file label. It is not `k-stage5-durable-tx`. CAP-11 stays NOT_BOUND. Vendor bytes and the Protocol pin were not edited. Existing test modules were not edited or weakened.
+
+The first persistence run failed in `test_round_trip_restores_canonical_state_and_original_receipts`: repeating the stored draw on the new instance raised `IDEMPOTENCY_CONFLICT` because the fingerprint included `instance_id`. The fingerprint is now the command fields only. Session checks still require the current `instance_id`, and the stored receipt keeps the writer instance. The assertion was not removed.
+
+Final local commands on the persistence tree, before it was combined with the projection candidate:
+
+- `python3 -m unittest discover -s tests -v`: **42 passed** in 4.702s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `npm ci`: added 3 packages.
+- `npm run test:browser`: **27 passed** in 19.3s, including the kill-and-restart stale-tab acknowledgment. Chromium was available. The spawned workspace server was stopped in the test `finally`.
+- `git diff --name-only -- capital/vendor .aiops`: no output. `test_vendor_pin_byte_integrity` passed.
+
+No database, provider, credential, money movement, or deployment was used. This section does not claim a GitHub CI run, an independent review, or stage5 recovery. A later process does not see a command whose file replace failed; that receipt stays queryable only in the process that applied it, and further writes return 503.
+
+## Projection and file workspace combined
+
+Conflict resolution kept both the local projection candidate and the opt-in file workspace. `GET /api/projection` still folds the accepted journal into `SIMULATION_FIXED_V1` with `SYNTHETIC_UNADOPTED` / `NOT_BOUND`. `make_server` still opens `FileWorkspace` when `--workspace` is set and closes it on shutdown. The UI refresh validates workspace kind and status, then loads the projection panel. The two sections above record the separate pre-merge trees. Counts below are the combined tree.
+
+Commands actually run after the conflict resolution:
+
+- `python3 -m unittest discover -s tests -v`: **51 passed** in 5.230s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- Vendor SHA256 check against `capital/vendor/manifest.json`: all **5 files OK**. Protocol pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` unchanged. `git diff --name-only -- capital/vendor .aiops` produced no output.
+- `npm run test:browser`: **29 passed** in 27.9s. That includes the projection panel after draw and repay, the projection read-failure fence, and the restarted file-workspace stale-tab acknowledgment. Chromium was already available. Playwright stopped its loopback servers when the run finished.
+
+A separate in-process check projected an offered case on a file workspace, confirmed debits equaled credits and the journal digest was unchanged, restored that file into a new service, projected again, and received `NOT_BOUND` for `operating-ledger`. No skip was added. This section claims no independent review, CI run, commit, push, or deploy.
+
+## Authorization boundary with projection and file workspace
+
+Conflict resolution kept the synthetic role seam together with the local projection candidate and the opt-in file workspace. `GET /api/projection` is registered as `projection:read` and stays default-deny for any unmapped path. Export `durable` follows memory / `LOCAL_FILE_WORKSPACE`. Receipt `role` is outside the idempotency fingerprint, survives workspace restore, and a pre-label file loads as `UNLABELED` without being rewritten until a later command. Identity, IdP, KYC, and AgentGrant/ActionPermit stay NOT_BOUND. Vendor bytes were not edited. No assertion, timeout, or existing test was weakened. The fingerprint assertion now checks the command identity without `instance_id` or `role`, which is the persistence contract plus the role label.
+
+Commands actually run on this combined tree:
+
+- `python3 -m unittest discover -s tests -v`: **66 passed** in 5.996s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- Vendor SHA256 check against `capital/vendor/manifest.json`: all **5 files OK**. Protocol pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` unchanged. `git diff --name-only -- capital/vendor .aiops .github` produced no output.
+- `npm run test:browser`: **30 passed** in 31.2s. That includes the auditor session, the projection panel, the restarted file-workspace acknowledgment, and the keyboard / 375px layout test. Chromium was already available. Playwright stopped its loopback servers when the run finished.
+
+No skip was added. This section claims no independent review, CI run, commit, push, or deploy. The merge itself is left uncommitted for the supervisor.
