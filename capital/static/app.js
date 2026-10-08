@@ -8,9 +8,11 @@ const errors = {SETTLEMENT_NOT_COMMITTED:'정산 근거가 COMMITTED가 아니�
 function notice(text, error=false) { $('notice').textContent=text; $('notice').classList.toggle('error',error); }
 function readPending(){try{const value=localStorage.getItem(storageKey);pending=value?JSON.parse(value):null;if(pending && (typeof pending.operation_id!=='string'||typeof pending.instance_id!=='string')) throw Error();}catch{storageBlocked=true;pending=null;}}
 function savePending(value){try{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);pending=value;}catch{storageBlocked=true;throw Error('STORAGE_UNAVAILABLE');}}
-function fence(){const blocked=busy||!!pending||storageBlocked;document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.':'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';}
+function fileWorkspaceActive(){return !!(state&&state.workspace&&state.workspace.kind==='LOCAL_FILE_WORKSPACE'&&state.workspace.status==='ACTIVE');}
+function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state.workspace.status!=='ACTIVE');}
+function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';}
 async function request(path, options={}) {const response=await fetch(path,{...options,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string'});return body;}
-async function refresh(){const next=await request('/api/state');if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases))throw Error('INVALID_STATE');
+async function refresh(){const next=await request('/api/state');const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases))throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');
  const evidence=await request('/api/evidence');
  if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
  state=next;
@@ -24,7 +26,9 @@ function syncCaseUrl(id){const params=new URLSearchParams(location.search);param
 function resolveSelection(){const raw=new URLSearchParams(location.search).get('case');const urlCase=caseFromUrl();const known=!!urlCase&&state.cases.some(c=>c.advance_id===urlCase);if(known)selected=urlCase;else if(!selected||!state.cases.some(c=>c.advance_id===selected))selected=state.cases[0]?.advance_id;if(raw!==null&&!known)syncCaseUrl(null);}
 let reconcileCase;
 function textElement(tag,text,className){const el=document.createElement(tag);el.textContent=text;if(className)el.className=className;return el;}
+function paintStorage(){const ws=state.workspace,label=$('storage-label'),note=$('storage-note');if(!label||!note)return;if(ws.kind==='LOCAL_FILE_WORKSPACE'&&ws.status==='ACTIVE'){label.textContent='로컬 파일 작업공간';note.textContent='개발용 파일 · stage5 내구 거래 아님';}else if(ws.kind==='LOCAL_FILE_WORKSPACE'){label.textContent='파일 작업공간 사용 불가';note.textContent=`${ws.status} · 빈 상태로 덮어쓰지 않음 · 쓰기 차단`;}else{label.textContent='프로세스 메모리';note.textContent='서버 재시작 시 상태 초기화';}}
 function render(){
+ paintStorage();
  if(reconcileCase!==selected){$('reconcile-result').textContent='';reconcileCase=selected;}
  $('session').textContent=`SESSION ${state.instance_id.slice(0,8)} · ${state.operation_count}/${state.operation_capacity}`;
  $('source').textContent=`Protocol ${state.source_commit.slice(0,12)}`;
@@ -67,12 +71,12 @@ function validateReceipt(receipt,body){
 }
 
 async function command(op,advance_id,args){
- if(busy||pending||storageBlocked||!state)return;
+ if(busy||pending||writesBlocked()||!state)return;
  if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
  busy=true;fence();
  try{await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
  if(!lock){notice('다른 탭의 명령이 진행 중입니다. 결과를 확인한 후 계속하세요.',true);return;}
- readPending();if(pending||storageBlocked){fence();return;}
+ readPending();if(pending||writesBlocked()){fence();return;}
  const body={instance_id:state.instance_id,operation_id:crypto.randomUUID(),op,advance_id,args};
  try{savePending(body);fence();const receipt=await request('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validateReceipt(receipt,body);savePending(null);selected=advance_id;syncCaseUrl(advance_id);showReceipt(receipt);}
  catch(error){if(error.knownRejection){try{savePending(null);}catch{}notice(`요청 거절: ${error.message}`,true);}else notice('요청 결과 UNKNOWN. 자동 재시도하지 않습니다. 원 요청 결과를 조회하세요.',true);}
@@ -102,7 +106,7 @@ $('recover').onclick=()=>pendingAction(async original=>{
  catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}
 });
 $('new-session').onclick=()=>pendingAction(async original=>{
- try{await refresh();if(original.instance_id!==state.instance_id){clearMatching(original);notice('이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}}
+ try{await refresh();if(original.instance_id!==state.instance_id){clearMatching(original);notice(fileWorkspaceActive()?'이전 세션 결과는 UNKNOWN입니다. 복원된 작업공간을 사용합니다. 이전 요청을 재전송하지 않았습니다.':'이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}}
  catch{notice('현재 세션을 확인하지 못해 이전 대기 기록을 유지합니다.',true);}
 });
 window.addEventListener('storage',event=>{if(event.key===storageKey){readPending();fence();}});
@@ -170,4 +174,4 @@ $('preview-draw').onclick=async()=>{
  }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
  finally{$('preview-draw').disabled=false;}
 };
-readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});
+readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(state.workspace&&state.workspace.status!=='ACTIVE')notice(`작업공간을 사용할 수 없습니다 (${state.workspace.status}). 쓰기를 차단했습니다. 빈 시뮬레이션으로 덮어쓰지 않습니다.`,true);else if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});

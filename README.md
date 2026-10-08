@@ -9,9 +9,14 @@ Python 3.10 이상, runtime 패키지 설치나 DB 없이 실행합니다.
 ```sh
 python3 -m capital.server
 # http://127.0.0.1:8765
+# 기본값은 프로세스 메모리입니다. 재시작하면 제안과 receipt가 사라집니다.
+
+python3 -m capital.server --workspace ./var/capital-workspace
+# 옵트인 로컬 JSON 작업공간. 재시작 시 receipt·저널을 복원하고 instance_id는 새로 발급합니다.
+# state/export의 durable 값은 LOCAL_FILE_WORKSPACE 입니다. stage5 내구 거래가 아닙니다.
 ```
 
-최신 Chromium/Chrome/Edge에서 열어 주세요. 주소는 `127.0.0.1`이며 외부 host/Origin 요청을 거절합니다. 메모리 상태는 서버 재시작 시 사라집니다. 금액·역할·공연은 합성 fixture만 사용하며 실명·계좌·신용정보 입력란이 없습니다.
+최신 Chromium/Chrome/Edge에서 열어 주세요. 주소는 `127.0.0.1`이며 외부 host/Origin 요청을 거절합니다. 기본 메모리 상태는 서버 재시작 시 사라집니다. `--workspace`는 개발용 단일 파일이며 DB·inbox/outbox·다른 호스트 fencing이 아닙니다. 손상되거나 잠긴 파일은 빈 장부로 시작하지 않고 쓰기를 거절합니다. 금액·역할·공연은 합성 fixture만 사용하며 실명·계좌·신용정보 입력란이 없습니다.
 
 ## 구현과 경계
 
@@ -36,4 +41,4 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-CI는 동일 검사를 새 HEAD마다 실행합니다. UI 자동 검증과 독립 코드 리뷰는 실제 사용자 수용·아키텍처 승인·운영 승인과 구분합니다. Python HTTP 서버와 메모리 receipt는 개발용이며 내구 원장·멀티테넌트 인증·분산 잠금이 아닙니다.
+CI는 동일 검사를 새 HEAD마다 실행합니다. UI 자동 검증과 독립 코드 리뷰는 실제 사용자 수용·아키텍처 승인·운영 승인과 구분합니다. Python HTTP 서버, 기본 메모리 receipt, 옵트인 `LOCAL_FILE_WORKSPACE` 파일은 개발용입니다. 내구 원장·멀티테넌트 인증·분산 잠금·stage5 durable transaction이 아닙니다.

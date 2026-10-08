@@ -11,6 +11,7 @@ import uuid
 from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachine
 from capital.scenarios import replay_scenarios
 from capital.readiness import GROUPS, source_integrity
+from capital.store import InMemoryStorage, WorkspaceError, verify_document
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
 MAX_OPERATIONS = 500  # bounded local demo, not a financial limit
@@ -65,25 +66,101 @@ class FixtureViews:
 
 
 class CapitalService:
-    def __init__(self):
+    def __init__(self, storage=None):
         self.lock = threading.RLock()
+        self.storage = InMemoryStorage() if storage is None else storage
         self.instance_id = str(uuid.uuid4())
+        self.storage.writer_instance = self.instance_id
         self.fixtures = FixtureViews()
         self.machine = CreditMachine(self.fixtures)
         self.receipts = {}
         self.case_fixtures = {}
+        self.workspace_status = 'ACTIVE'
         self.source = json.loads((VENDOR / 'manifest.json').read_text())
         self.scenario_results = replay_scenarios()
+        self._load_workspace()
+
+    def workspace_view(self):
+        kind = 'LOCAL_FILE_WORKSPACE' if self.storage.durable_label == 'LOCAL_FILE_WORKSPACE' else 'MEMORY'
+        path = getattr(self.storage, 'path', None)
+        return {'kind': kind, 'status': self.workspace_status, 'path': None if path is None else str(path)}
+
+    def _load_workspace(self):
+        try:
+            document = self.storage.load()
+        except WorkspaceError as exc:
+            self.workspace_status = exc.code
+            return
+        if document is None:
+            return
+        try:
+            installed = self._validated_restore(document)
+        except WorkspaceError as exc:
+            self.workspace_status = exc.code
+            self.machine = CreditMachine(self.fixtures)
+            self.receipts = {}
+            self.case_fixtures = {}
+            return
+        self.machine, self.receipts, self.case_fixtures = installed
+
+    def _validated_restore(self, document):
+        verify_document(document)
+        payload = document['payload']
+        if type(payload) is not dict or set(payload) != {'receipts', 'journal', 'case_fixtures', 'state_digest'}:
+            raise WorkspaceError('WORKSPACE_UNREADABLE')
+        receipts, journal, mapping, state_digest = (
+            payload['receipts'], payload['journal'], payload['case_fixtures'], payload['state_digest'])
+        if type(receipts) is not dict or type(journal) is not list or type(mapping) is not dict or type(state_digest) is not str:
+            raise WorkspaceError('WORKSPACE_UNREADABLE')
+        self._require_receipts(receipts)
+        try:
+            restored = CreditMachine.restore(copy.deepcopy(journal), self.fixtures)
+        except CreditError as exc:
+            raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
+        if restored.state_digest() != state_digest:
+            raise WorkspaceError('WORKSPACE_UNREADABLE')
+        expected = {}
+        seen = []
+        for entry in journal:
+            advance_id = entry['advance_id']
+            if advance_id not in seen:
+                seen.append(advance_id)
+                expected[advance_id] = restored.view(advance_id)['claim_id']
+        if mapping != expected or any(fixture_id not in self.fixtures.rows for fixture_id in mapping.values()):
+            raise WorkspaceError('WORKSPACE_UNREADABLE')
+        for entry in journal:
+            stored = receipts.get(entry['idempotency_key'])
+            if stored is None or stored['receipt'].get('outcome') != 'ACCEPTED':
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+        return restored, copy.deepcopy(receipts), copy.deepcopy(mapping)
+
+    def _require_receipts(self, receipts):
+        for key, stored in receipts.items():
+            if type(key) is not str or type(stored) is not dict or set(stored) != {'fingerprint', 'receipt'}:
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+            fingerprint, receipt = stored['fingerprint'], stored['receipt']
+            if type(fingerprint) is not str or len(fingerprint) != 64 or any(char not in '0123456789abcdef' for char in fingerprint):
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+            if type(receipt) is not dict or receipt.get('operation_id') != key or receipt.get('outcome') not in {'ACCEPTED', 'REJECTED'}:
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+            if type(receipt.get('instance_id')) is not str:
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+
+    def _persist(self):
+        self.storage.save({
+            'receipts': self.receipts, 'journal': self.machine.export_journal(),
+            'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()})
 
     def snapshot(self):
         with self.lock:
             cases = [self.machine.view(key) for key in sorted(self.case_fixtures)]
             return {'instance_id': self.instance_id, 'mode': 'LOCAL_SIMULATION',
-                    'provenance': PROVENANCE, 'durable': False, 'funds_executed': False,
+                    'provenance': PROVENANCE, 'durable': self.storage.durable_label, 'funds_executed': False,
                     'source_commit': self.source['commit'], 'cases': cases,
                     'fixtures': copy.deepcopy(self.fixtures.rows),
                     'state_digest': self.machine.state_digest(),
                     'operation_count': len(self.receipts), 'operation_capacity': MAX_OPERATIONS,
+                    'workspace': self.workspace_view(),
                     'decisions': ['Interest, fees, term, underwriting and KYC: UNDETERMINED',
                                   'Bank/PG, production DB and deployment: NOT_AUTHORIZED',
                                   'Finance projection/backend/export design: PENDING_NOT_ADOPTED']}
@@ -165,6 +242,8 @@ class CapitalService:
 
     def execute(self, body):
         with self.lock:
+            if self.workspace_status != 'ACTIVE':
+                raise ApiError(self.workspace_status, 503)
             if type(body) is not dict or set(body) != {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}:
                 raise ApiError('INVALID_COMMAND')
             if body['instance_id'] != self.instance_id:
@@ -172,7 +251,10 @@ class CapitalService:
             operation_id = body['operation_id']
             if type(operation_id) is not str or not re.fullmatch(r'[a-zA-Z0-9-]{1,80}', operation_id):
                 raise ApiError('INVALID_OPERATION_ID')
-            fingerprint = digest(body)
+            # Instance id authorizes the session. It is not part of the stored command identity,
+            # so a restarted process can return the original receipt instead of applying it again.
+            fingerprint = digest({'operation_id': operation_id, 'op': body['op'],
+                                  'advance_id': body['advance_id'], 'args': body['args']})
             prior = self.receipts.get(operation_id)
             if prior:
                 if prior['fingerprint'] != fingerprint:
@@ -217,6 +299,11 @@ class CapitalService:
             except CreditError as exc:
                 receipt.update(outcome='REJECTED', error=exc.code)
             self.receipts[operation_id] = {'fingerprint': fingerprint, 'receipt': copy.deepcopy(receipt)}
+            try:
+                self._persist()
+            except WorkspaceError as exc:
+                self.workspace_status = exc.code
+                raise ApiError(exc.code, 503)
             return receipt
 
     def operation(self, operation_id, instance_id):
@@ -233,10 +320,16 @@ class CapitalService:
         with self.lock:
             journal = self.machine.export_journal()
             restored = CreditMachine.restore(journal, self.fixtures)
+            durable = self.storage.durable_label
+            if durable == 'LOCAL_FILE_WORKSPACE':
+                note = ('Accepted commands from an opt-in local file workspace. Rejected receipts are not in the Protocol journal. '
+                        'durable=LOCAL_FILE_WORKSPACE is a development workspace file, not stage5 durable transaction recovery, inbox/outbox, or cross-host fencing.')
+            else:
+                note = ('Accepted in-memory commands only. Rejected receipts are not in the Protocol journal. No bank reconciliation or durable recovery. '
+                        'An opt-in LOCAL_FILE_WORKSPACE file is not stage5 durable transaction recovery.')
             return {'format': 'KIX_CAPITAL_SIMULATION_V1', 'instance_id': self.instance_id,
                     'provenance': PROVENANCE, 'source': self.source,
                     'fixtures_digest': digest(self.fixtures.rows), 'journal': journal,
                     'state_digest': self.machine.state_digest(),
                     'replay_matched': restored.canonical_state() == self.machine.canonical_state(),
-                    'durable': False, 'funds_executed': False,
-                    'note': 'Accepted in-memory commands only. Rejected receipts are not in the Protocol journal. No bank reconciliation or durable recovery.'}
+                    'durable': durable, 'funds_executed': False, 'note': note}
