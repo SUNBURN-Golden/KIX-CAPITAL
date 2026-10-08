@@ -93,14 +93,31 @@ def strip_volatile(value):
 
 
 def content_material(manifest):
-    """Bytes covered by content_digest. Excludes the digest, the signature, instance_id, and timestamps."""
+    """Bytes covered by content_digest. Excludes the digest, the signature, instance_id, and timestamps.
+
+    Stored section hashes cover the body as saved, which may include instance_id.
+    This digest recomputes each section hash after those volatile keys are removed
+    so a new process id cannot change content_digest.
+    """
     if type(manifest) is not dict:
         raise ExportError('MANIFEST_SHAPE')
     covered = {
         key: value for key, value in manifest.items()
         if key not in {'content_digest', 'signature'}
     }
-    return strip_volatile(covered)
+    covered = strip_volatile(covered)
+    sections = covered.get('sections')
+    if type(sections) is not dict:
+        return covered
+    stabilized = {}
+    for name, section in sections.items():
+        if type(section) is not dict or 'body' not in section:
+            stabilized[name] = section
+            continue
+        rewritten = {key: value for key, value in section.items() if key != 'sha256'}
+        rewritten['sha256'] = sha256_hex(section['body'])
+        stabilized[name] = rewritten
+    return {**covered, 'sections': stabilized}
 
 
 def content_digest(manifest) -> str:

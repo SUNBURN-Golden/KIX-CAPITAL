@@ -157,6 +157,18 @@ class ManifestTests(unittest.TestCase):
         changed['sections']['journal']['body']['part_tag'] = 'journalparu'
         self.assertNotEqual(content_digest(changed), manifest['content_digest'])
 
+    def test_fresh_instances_share_content_digest(self):
+        left = CapitalService()
+        right = CapitalService()
+        self.assertNotEqual(left.instance_id, right.instance_id)
+        left_manifest = left.export_manifest()
+        right_manifest = right.export_manifest()
+        self.assertNotEqual(
+            left_manifest['sections']['projection']['sha256'],
+            right_manifest['sections']['projection']['sha256'])
+        self.assertEqual(left_manifest['content_digest'], right_manifest['content_digest'])
+        self.assertEqual(left_manifest['sections']['projection']['sha256'], sha256_hex(left_manifest['sections']['projection']['body']))
+
     def test_status_is_incomplete_unless_reconciliation_and_workspace_are_clean(self):
         self.assertEqual(manifest_status('MATCHED', 'ACTIVE'), ('COMPLETE', []))
         status, reasons = manifest_status('RECON_MISMATCH', 'ACTIVE')

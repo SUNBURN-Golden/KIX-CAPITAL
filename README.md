@@ -60,4 +60,16 @@ npx playwright install chromium
 npm run test:browser
 ```
 
+한 명령 수용 사다리는 위 검사에 패키지 스모크와 시드 데모를 더합니다. 사람 수용 결정은 포함하지 않습니다.
+
+```sh
+python3 scripts/acceptance.py
+```
+
+결과는 커밋하지 않는 `build/acceptance-evidence.json`입니다. 명령, 종료 코드, 테스트 수, HEAD SHA, 도구 버전, vendor 해시, golden digest가 들어 있습니다. 단계가 실패하거나 빠지면 0이 아닌 코드로 끝납니다. CI는 매 HEAD에서 이 명령을 실행하고 evidence 파일을 올립니다.
+
+`python3 scripts/seed_demo.py`는 고정 operation id로 종결·미이행·거절·취소·UNBOUND·정산 대기 케이스를 만듭니다. `tests/golden/demo.json`은 `state_digest`, 투영 합계, manifest `content_digest`만 고정합니다. instance id와 시각은 넣지 않습니다. 값이 달라지면 실패하고, 핀을 고치려면 `python3 scripts/seed_demo.py --update-golden`이 필요합니다. 금액은 합성 fixture 단위입니다.
+
+브라우저 검사는 포트폴리오, 케이스, 투영, 명세서, 대사, 준비도, organizer/auditor/observer 화면을 데스크톱과 375px로 `test-results/`에 저장합니다. 빈 화면이나 콘솔 오류면 실패합니다. 스크린샷은 CI 아티팩트이며 커밋하지 않습니다.
+
 CI는 동일 검사를 새 HEAD마다 실행합니다. UI 자동 검증과 독립 코드 리뷰는 실제 사용자 수용·아키텍처 승인·운영 승인과 구분합니다. Python HTTP 서버, 기본 메모리 receipt, 옵트인 `LOCAL_FILE_WORKSPACE` 파일은 개발용입니다. 내구 원장·멀티테넌트 인증·분산 잠금·stage5 durable transaction이 아닙니다.
