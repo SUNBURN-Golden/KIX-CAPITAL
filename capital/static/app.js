@@ -1,10 +1,10 @@
 const $ = id => document.getElementById(id);
 const storageKey = 'kix-capital-pending-v1';
-let state, selected, pending, repaymentDraftKey, busy = true, storageBlocked = false;
+let state, selected, pending, repaymentDraftKey, sessionToken = null, busy = true, storageBlocked = false;
 const number = value => new Intl.NumberFormat('ko-KR').format(value);
 const phaseNames = {OFFERED:'제안됨',APPROVED:'모의 승인',DRAWN:'노출 기록',CLOSED:'종결',DEFAULTED:'미이행 메모',REJECTED:'거절',CANCELLED:'취소'};
 const actionNames = {approve:'모의 승인',reject:'모의 거절',cancel:'제안 취소',bind_settlement:'정산 근거 연결',draw:'모의 노출 기록',close:'노출 종결',default:'미이행 메모',reconcile:'저널 재생 검증'};
-const errors = {SETTLEMENT_NOT_COMMITTED:'정산 근거가 COMMITTED가 아니므로 노출 기록을 보류했습니다.',ADVANCE_EXCEEDS_OPEN_FACE:'공유 청구의 미예약 액면을 초과했습니다.',REFUND_OBLIGATION_OPEN:'환불 부담이 미정인 청구는 제안할 수 없습니다.',REPAYMENT_EXCEEDS_OUTSTANDING:'남은 모의 노출보다 큰 금액입니다.',OUTSTANDING_REMAINS:'노출이 남아 있습니다. 상환 메모 후 종결할 수 있습니다.',REPAYMENT_ORDER:'다른 화면에서 상태가 변경되었습니다. 현재 순번을 확인하세요.',ROLE_FORBIDDEN:'이 합성 역할은 해당 작업을 할 수 없습니다.',ROLE_UNKNOWN:'알 수 없는 합성 역할입니다.'};
+const errors = {SETTLEMENT_NOT_COMMITTED:'정산 근거가 COMMITTED가 아니므로 노출 기록을 보류했습니다.',ADVANCE_EXCEEDS_OPEN_FACE:'공유 청구의 미예약 액면을 초과했습니다.',REFUND_OBLIGATION_OPEN:'환불 부담이 미정인 청구는 제안할 수 없습니다.',REPAYMENT_EXCEEDS_OUTSTANDING:'남은 모의 노출보다 큰 금액입니다.',OUTSTANDING_REMAINS:'노출이 남아 있습니다. 상환 메모 후 종결할 수 있습니다.',REPAYMENT_ORDER:'다른 화면에서 상태가 변경되었습니다. 현재 순번을 확인하세요.',ROLE_FORBIDDEN:'이 합성 역할은 해당 작업을 할 수 없습니다.',ROLE_UNKNOWN:'알 수 없는 합성 역할입니다.',ROLE_MISMATCH:'요청 역할이 루프백 토큰에 묶인 역할과 다릅니다.',SESSION_REQUIRED:'이 합성 역할은 세션 토큰에 묶여 있지 않습니다.'};
 const syntheticRoles = ['organizer','auditor','observer'];
 const roleStorageKey = 'kix-capital-role';
 function currentRole(){const value=$('role')?.value;return syntheticRoles.includes(value)?value:'organizer';}
@@ -33,7 +33,9 @@ function renderRoleBar(){
 function fileWorkspaceActive(){return !!(state&&state.workspace&&state.workspace.kind==='LOCAL_FILE_WORKSPACE'&&state.workspace.status==='ACTIVE');}
 function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state.workspace.status!=='ACTIVE');}
 function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();}
-async function request(path, options={}) {const headers=new Headers(options.headers||{});headers.set('X-Capital-Role',currentRole());const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
+async function request(path, options={}) {const headers=new Headers(options.headers||{});if(sessionToken&&!headers.has('X-Capital-Token'))headers.set('X-Capital-Token',sessionToken);const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
+function validateState(next){const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||next.auth.authentication!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role)||typeof next.local_token!=='string'||!next.local_token||!next.auth.permissions)throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');}
+async function bindSession(role){const opened=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})});if(opened.role!==role||opened.identity!=='NOT_BOUND'||opened.authentication!=='NOT_BOUND'||opened.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||typeof opened.local_token!=='string'||!opened.local_token)throw Error('INVALID_SESSION');sessionToken=opened.local_token;return opened;}
 function projectionValid(projection,next){
  if(!projection||projection.instance_id!==next.instance_id||projection.mode!=='LOCAL_PROJECTION_CANDIDATE'||projection.funds_executed!==false||projection.cut!==next.state_digest)return false;
  if(projection.accounting_policy!=='SYNTHETIC_UNADOPTED'||projection.tax!=='NOT_BOUND'||projection.legal!=='NOT_BOUND'||projection.operating_ledger!=='NOT_BOUND'||projection.chart!=='SIMULATION_FIXED_V1'||projection.policy_adopted!==false||projection.workspace_mutated!==false)return false;
@@ -60,16 +62,27 @@ function renderProjection(result){
  $('projection-advances').replaceChildren(...advances.map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,row.beneficiary_role,number(row.amount),number(row.drawn),number(row.repaid),number(row.outstanding)])tr.append(textElement('td',value));return tr;}));
  $('projection-checks').textContent=projection.conservation.map(row=>`${row.predicate} · ${row.matched?'일치':'불일치'}`).join('\n');
 }
-async function refresh(){const next=await request('/api/state');const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role))throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');
- const evidence=await request('/api/evidence');
- if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
- const projection=await loadProjection(next);
- state=next;
- renderProjection(projection);
- $('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));
- $('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';
- $('evidence-json').textContent=JSON.stringify(evidence,null,2);
- resolveSelection();render();}
+function paintEvidence(evidence){$('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));$('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';$('evidence-json').textContent=JSON.stringify(evidence,null,2);}
+async function refresh(){
+ let next=await request('/api/state');
+ validateState(next);
+ if(!sessionToken)sessionToken=next.local_token;
+ if(next.auth.role!==currentRole()){await bindSession(currentRole());next=await request('/api/state');validateState(next);if(next.auth.role!==currentRole())throw Error('INVALID_STATE');}
+ sessionToken=next.local_token;
+ const projectionDecision=next.auth.permissions['projection:read'];
+ let projection;
+ if(!projectionDecision?.allowed){
+  const reason=projectionDecision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`;
+  $('evidence-rows').replaceChildren();$('evidence-json').textContent='';$('evidence-scope').textContent=reason;
+  projection={error:reason};
+ }else{
+  const evidence=await request('/api/evidence');
+  if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
+  projection=await loadProjection(next);
+  paintEvidence(evidence);
+ }
+ state=next;renderProjection(projection);resolveSelection();render();
+}
 const casePattern=/^sim-[a-zA-Z0-9-]{1,60}$/;
 function caseFromUrl(){const raw=new URLSearchParams(location.search).get('case');return typeof raw==='string'&&casePattern.test(raw)?raw:null;}
 function syncCaseUrl(id){const params=new URLSearchParams(location.search);params.delete('case');const rest=params.toString();const query=[id?`case=${encodeURIComponent(id)}`:null,rest||null].filter(Boolean).join('&');const next=location.pathname+(query?`?${query}`:'')+location.hash;if(next!==location.pathname+location.search+location.hash)history.replaceState(null,'',next);}
@@ -219,16 +232,18 @@ $('scenario-select').onchange=async()=>{
 };
 $('preview-draw').onclick=async()=>{
  const originalCase=selected,instance=state?.instance_id,digest=state?.state_digest;
- if(!originalCase)return;$('preview-draw').disabled=true;
+ if(!originalCase)return;
+ if(!can('projection:read')){notice(`역할 경계: ${permissionReason('projection:read')}`,true);return;}
+ $('preview-draw').disabled=true;
  try{const r=await request(`/api/preview/${encodeURIComponent(originalCase)}?instance_id=${encodeURIComponent(instance)}`);
   if(selected!==originalCase||state.instance_id!==instance)return;
   if(r.instance_id!==instance||r.advance_id!==originalCase||r.workspace_mutated!==false||r.write_authorized!==false)throw Error('INVALID_PREVIEW');
   if(r.observed_state_digest!==digest||state.state_digest!==digest){$('preview-result').textContent='조회 중 상태가 바뀌었습니다. 최신 상태를 확인한 뒤 다시 점검하세요. 새 실행을 허용하지 않습니다.';return;}
   $('preview-result').textContent=r.outcome==='WOULD_ACCEPT'?`현재 모형에서는 수락 가능 · ${r.settlement_gate}. 실제 예약은 추가하지 않았으며 다음 명령은 조건을 다시 검사합니다.`:r.outcome==='NOT_APPLICABLE'?'모의 승인 단계에서 인출 조건을 점검할 수 있습니다.':`현재 모형에서 거절: ${r.reason}. 제안과 UNKNOWN 기록은 그대로입니다.`;
  }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
- finally{$('preview-draw').disabled=false;}
+ finally{$('preview-draw').disabled=busy||!can('projection:read');}
 };
-$('role').addEventListener('change',async()=>{rememberRole($('role').value);if(busy)return;busy=true;fence();try{await refresh();notice(`${currentRole()} 합성 역할로 상태를 다시 조회했습니다. 신원은 NOT_BOUND입니다.`);}catch{notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
+$('role').addEventListener('change',async()=>{const role=currentRole();rememberRole(role);if(busy)return;busy=true;fence();try{await refresh();notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
 $('export-journal').onclick=async()=>{
  if(busy)return;
  if(!can('export:read')){notice(`역할 경계: ${permissionReason('export:read')}`,true);return;}
