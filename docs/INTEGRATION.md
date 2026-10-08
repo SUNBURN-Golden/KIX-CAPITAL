@@ -59,6 +59,14 @@ Default storage is in-memory (`workspace.kind=MEMORY`, `durable=false`). `python
 
 `workspace.status=ACTIVE` is the only writable file state. Degraded mode is fail-closed. It is not a silent empty start.
 
+## Local contract `capital-local-facade/1`
+
+`capital/contract/facade-v1.json` describes this loopback facade: every route, the command request, response shapes, and error codes. The namespace is `capital-local-facade/1`. A stdlib checker validates a scripted journey and rejects an unknown field. Those names are not the promoted 40-command catalogue (`kix:fixture:lifecycle:0.3`).
+
+`capital/ports.py` gathers `StoragePort`, `ProjectionPort`, `AuthorizerPort`, `SignaturePort`, and `ProducerPort`. `CapitalService` takes `storage`, `authorizer`, `signer`, and keyword-only `projection` and `producer`. The default producer is `PinnedFsmProducer`, which forwards commands to the pinned credit FSM and reads the immutable settlement fixtures. `docs/SEAMS.md` lists each port, the local class, the upstream contract expected to replace it, the readiness row, and the status. No row is `ADOPTED`.
+
+`tests/test_producer_port.py` exports `run_producer_vectors(factory)`. The factory returns a fresh `ProducerPort`. Positive and negative command vectors run through it, so a later adapter must pass the same function. That pass is not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND` for the exact Protocol/Commerce producer, SDK, and profile tuple. The local schema does not replace that tuple.
+
 ## Upstream adapter replacement prerequisites (NOT_BOUND)
 
 Before consuming promoted commands or finance queries, require exact producer repository/commit/tree, domain/schema, OpenAPI source+generated hashes, generated SDK/toolchain/output hashes, immutable manifest and SEMANTIC_CONFORMANCE profile kind/revision/digest and positive/negative vectors. BOOTSTRAP or a prior profile pass is insufficient. Map command bytes/receipt meanings explicitly; never reuse similar catalogue names.

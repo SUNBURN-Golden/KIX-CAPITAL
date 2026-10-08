@@ -138,3 +138,19 @@ Commands actually run on this combined tree:
 - `npm run test:browser`: **30 passed** in 31.2s. That includes the auditor session, the projection panel, the restarted file-workspace acknowledgment, and the keyboard / 375px layout test. Chromium was already available. Playwright stopped its loopback servers when the run finished.
 
 No skip was added. This section claims no independent review, CI run, commit, push, or deploy. The merge itself is left uncommitted for the supervisor.
+
+## Local facade contract and port seams
+
+`capital/ports.py` holds the five `typing.Protocol` seams. `PinnedFsmProducer` is the default `ProducerPort` and is what `CapitalService` calls for commands, preview, and journal restore. Default callers still see the same `machine` and `fixtures` objects. `docs/SEAMS.md` is the registry; no row is `ADOPTED`. `capital/contract/facade-v1.json` is namespace `capital-local-facade/1`. The schema checker walks a real loopback journey and rejects an unknown field. Producer vectors are not SEMANTIC_CONFORMANCE. CAP-16 exact tuple stays NOT_BOUND. The readiness row quotes `capital-local-facade/1` and `capital/contract/facade-v1.json`.
+
+Commands actually run on this tree, after the schema and tests were in place:
+
+- `python3 -m unittest discover -s tests -v`: **112 passed** in 10.158s (exit 0). An earlier run on the same product code, before a test-helper rename, was **112 passed** in 10.129s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.003s (exit 0).
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- Vendor SHA256 against `capital/vendor/manifest.json`: all **5 files OK**. Protocol pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` unchanged.
+- `npm ci`: added 3 packages, 0 vulnerabilities.
+- `npm run test:browser`: **32 passed** in 41.5s. Playwright started and stopped the loopback servers. A later port check showed no listener on 8765–8767.
+
+No existing test was weakened or skipped. This section claims no independent review, CI run, commit, push, or deploy.

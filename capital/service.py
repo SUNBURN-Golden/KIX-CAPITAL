@@ -14,8 +14,9 @@ from capital.auth import (
     Principal, require, LocalRoleAuthorizer,
 )
 from capital.export import UnsignedSigner, build_manifest, manifest_status
-from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachine
+from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
+from capital.protocol import VENDOR
 from capital.recon import build_reconciliation
 from capital.scenarios import replay_scenarios
 from capital.statement import build_statement
@@ -43,55 +44,32 @@ class ApiError(Exception):
         super().__init__(code)
 
 
-class FixtureViews:
-    """No commands exposed to the credit adapter; snapshots cannot be advanced."""
-    def __init__(self):
-        self.rows = {}
-        for fixture_id, phase, refund in (
-            ('sim-committed', 'COMMITTED', False),
-            ('sim-pending', 'CAPTURED', False),
-            ('sim-refund', 'COMMITTED', True),
-        ):
-            book = SettlementMachine()
-            book.initiate(fixture_id, idempotency_key='init', trade_id='sim-trade-' + fixture_id,
-                          gross=100_000, debtor_role='fixture-merchant',
-                          policy={'kind': 'PRIMARY_FEE_BPS', 'fee_bps': 500,
-                                  'residual_payee': 'organizer', 'fee_payee': 'platform'})
-            book.authorize(fixture_id, idempotency_key='authorize')
-            book.capture(fixture_id, idempotency_key='capture')
-            if phase == 'COMMITTED':
-                book.commit(fixture_id, idempotency_key='commit', movement_id='sim-movement',
-                            gross=100_000, amount=97_000, fee=3_000, tax=0, held=0, adjustment=0)
-            # Adverse fixture: one synthetic partial refund through the pinned FSM, so
-            # bearer UNDEFINED and the distribution block are derived, never hand-set.
-            if refund:
-                book.bind_refund(fixture_id, idempotency_key='refund', refund_id='sim-fixture-refund',
-                                 amount=10_000, beneficiary_role='fixture-buyer', reason='SYNTHETIC_FIXTURE')
-            self.rows[fixture_id] = book.view(fixture_id)
-
-    def view(self, key):
-        if key not in self.rows:
-            raise CreditError('UNKNOWN_SETTLEMENT')
-        return copy.deepcopy(self.rows[key])
-
-
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
         self.storage = InMemoryStorage() if storage is None else storage
         self.instance_id = str(uuid.uuid4())
         self.storage.writer_instance = self.instance_id
-        self.fixtures = FixtureViews()
-        self.machine = CreditMachine(self.fixtures)
-        self.projection_port = SimulationProjection()
+        # Default producer is the pinned FSM adapter. Injection replaces that
+        # object; the command path below does not call CreditMachine directly.
+        self.producer = producer if producer is not None else PinnedFsmProducer()
+        self.projection_port = projection if projection is not None else SimulationProjection()
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
         self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
         self._load_workspace()
+
+    @property
+    def machine(self):
+        return self.producer.machine
+
+    @property
+    def fixtures(self):
+        return self.producer.fixtures
 
     def workspace_view(self):
         kind = 'LOCAL_FILE_WORKSPACE' if self.storage.durable_label == 'LOCAL_FILE_WORKSPACE' else 'MEMORY'
@@ -110,11 +88,11 @@ class CapitalService:
             installed = self._validated_restore(document)
         except WorkspaceError as exc:
             self.workspace_status = exc.code
-            self.machine = CreditMachine(self.fixtures)
+            self.producer.reset()
             self.receipts = {}
             self.case_fixtures = {}
             return
-        self.machine, self.receipts, self.case_fixtures = installed
+        self.producer, self.receipts, self.case_fixtures = installed
 
     def _validated_restore(self, document):
         verify_document(document)
@@ -127,7 +105,7 @@ class CapitalService:
             raise WorkspaceError('WORKSPACE_UNREADABLE')
         self._require_receipts(receipts)
         try:
-            restored = CreditMachine.restore(copy.deepcopy(journal), self.fixtures)
+            restored = self.producer.restored(copy.deepcopy(journal))
         except CreditError as exc:
             raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
         if restored.state_digest() != state_digest:
@@ -249,7 +227,8 @@ class CapitalService:
                         'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
                         'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
                         'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness',
-                        'CAP-15': 'local hashed manifest and SignaturePort only; not stage7 authenticated export; no external key, cross-service cursor, watermark, or retention policy'}}
+                        'CAP-15': 'local hashed manifest and SignaturePort only; not stage7 authenticated export; no external key, cross-service cursor, watermark, or retention policy',
+                        'CAP-16': 'local facade contract capital-local-facade/1 at capital/contract/facade-v1.json; producer vectors are not SEMANTIC_CONFORMANCE; exact producer/SDK tuple stays NOT_BOUND'}}
 
     def projection(self, mode=None):
         """Fold copies of the accepted journal and fixture views. Nothing is cached or written."""
@@ -294,9 +273,8 @@ class CapitalService:
                 return {**result, 'outcome': 'NOT_APPLICABLE', 'reason': 'APPROVED_PHASE_REQUIRED'}
             # Replay only into a disposable process-local copy. No active receipt/key
             # or reservation is added; the actual command must re-evaluate its gates.
-            scratch = CreditMachine.restore(self.machine.export_journal(), self.fixtures)
             try:
-                preview = scratch.draw(advance_id, idempotency_key='diagnostic:draw', draw_id='diagnostic:draw')
+                preview = self.producer.preview_draw(advance_id)
                 return {**result, 'outcome': 'WOULD_ACCEPT',
                         'predicted_exposure': preview['credit']['outstanding_exposure'],
                         'settlement_gate': preview['credit']['settlement_gate']}
@@ -347,24 +325,13 @@ class CapitalService:
                        'economic_finality_claimed': False, 'transport_duplicate': False,
                        'role': principal.role, 'role_provenance': ROLE_PROVENANCE}
             try:
-                method = getattr(self.machine, op)
-                kwargs = {'idempotency_key': operation_id}
-                if op == 'offer':
-                    if type(args['fixture_id']) is not str or args['fixture_id'] not in self.fixtures.rows:
-                        raise CreditError('UNKNOWN_SETTLEMENT')
-                    kwargs.update(face=self.fixtures.view(args['fixture_id'])['claim'],
-                                  amount=args['amount'], beneficiary_role='fixture-organizer')
-                elif op == 'bind_settlement':
+                bound = None
+                if op == 'bind_settlement':
                     if case not in self.case_fixtures:
                         raise CreditError('UNKNOWN_ADVANCE')
-                    kwargs['settlement_id'] = self.case_fixtures[case]
-                elif op == 'draw':
-                    kwargs['draw_id'] = 'draw-' + operation_id
-                elif op == 'repay':
-                    kwargs.update(amount=args['amount'], sequence=args['sequence'], repay_id='repay-' + operation_id)
-                elif op in {'reject', 'cancel', 'default'}:
-                    kwargs['reason'] = 'synthetic-operator-scenario'
-                result = method(case, **kwargs)
+                    bound = self.case_fixtures[case]
+                result = self.producer.apply(
+                    op, case, idempotency_key=operation_id, args=args, bound_settlement_id=bound)
                 if op == 'offer':
                     self.case_fixtures[case] = args['fixture_id']
                 receipt.update(outcome='ACCEPTED', result=result)
@@ -390,9 +357,9 @@ class CapitalService:
 
     def _replay_journal(self):
         """Caller holds the service lock. Restores a scratch machine and does not write."""
-        journal = self.machine.export_journal()
-        restored = CreditMachine.restore(journal, self.fixtures)
-        return journal, restored.canonical_state() == self.machine.canonical_state()
+        journal = self.producer.export_journal()
+        restored = self.producer.restored(journal)
+        return journal, restored.canonical_state() == self.producer.canonical_state()
 
     def _frozen(self):
         return (
