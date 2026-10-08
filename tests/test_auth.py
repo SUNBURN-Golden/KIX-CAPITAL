@@ -35,6 +35,7 @@ class MatrixTests(unittest.TestCase):
             '/api/operations/op-1': 'receipt:read',
             '/api/export': 'export:read',
             '/api/reconciliation': 'reconciliation:read',
+            '/api/statement': 'statement:read',
         }
         for path, permission in routes.items():
             self.assertEqual(route_permission(path), permission, path)
@@ -62,7 +63,7 @@ class MatrixTests(unittest.TestCase):
             decision = authorizer.authorize(auditor, permission)
             financial_write = permission == COMMAND_SUBMIT or permission.startswith('command:')
             self.assertEqual(decision.allowed, not financial_write, permission)
-        for permission in ('export:read', 'reconciliation:read', 'projection:read', COMMAND_SUBMIT, 'command:draw'):
+        for permission in ('export:read', 'reconciliation:read', 'statement:read', 'projection:read', COMMAND_SUBMIT, 'command:draw'):
             self.assertFalse(authorizer.authorize(observer, permission).allowed, permission)
         for permission in ('state:read', 'reference:read', 'receipt:read', SESSION_BIND):
             self.assertTrue(authorizer.authorize(observer, permission).allowed, permission)
@@ -124,6 +125,7 @@ class MatrixTests(unittest.TestCase):
         self.assertEqual(described['roles'], list(ROLES))
         self.assertFalse(described['permissions']['command:offer']['allowed'])
         self.assertTrue(described['permissions']['reconciliation:read']['allowed'])
+        self.assertTrue(described['permissions']['statement:read']['allowed'])
 
 
 class ServiceAuthTests(unittest.TestCase):
@@ -149,6 +151,8 @@ class ServiceAuthTests(unittest.TestCase):
         self.assertTrue(auditor['auth']['permissions']['export:read']['allowed'])
         self.assertFalse(observer['auth']['permissions']['export:read']['allowed'])
         self.assertFalse(observer['auth']['permissions']['reconciliation:read']['allowed'])
+        self.assertFalse(observer['auth']['permissions']['statement:read']['allowed'])
+        self.assertTrue(auditor['auth']['permissions']['statement:read']['allowed'])
         self.assertTrue(auditor['auth']['permissions']['projection:read']['allowed'])
         self.assertFalse(observer['auth']['permissions']['projection:read']['allowed'])
         self.assertEqual(observer['auth']['authentication'], 'NOT_BOUND')
@@ -430,7 +434,7 @@ class HttpAuthTests(unittest.TestCase):
         for path in ('/api/state', operation):
             status, raw = self.request('GET', path, headers=observer)
             self.assertEqual(status, 200, (path, raw[:200]))
-        for path in ('/api/evidence', '/api/projection', preview, '/api/export', '/api/reconciliation'):
+        for path in ('/api/evidence', '/api/projection', preview, '/api/export', '/api/reconciliation', '/api/statement'):
             status, raw = self.request('GET', path, headers=observer)
             payload = json.loads(raw)
             self.assertEqual(status, 403, (path, payload))
@@ -438,9 +442,13 @@ class HttpAuthTests(unittest.TestCase):
             self.assertEqual(payload['role'], 'observer')
             if path in ('/api/evidence', '/api/projection', preview):
                 self.assertEqual(payload['permission'], 'projection:read')
+            if path == '/api/statement':
+                self.assertEqual(payload['permission'], 'statement:read')
+            if path == '/api/reconciliation':
+                self.assertEqual(payload['permission'], 'reconciliation:read')
         for role, expected in (('organizer', 200), ('auditor', 200), ('observer', 403)):
             headers = {'X-Capital-Token': self.token_for(role)}
-            for path in ('/api/export', '/api/reconciliation'):
+            for path in ('/api/export', '/api/reconciliation', '/api/statement'):
                 status, raw = self.request('GET', path, headers=headers)
                 payload = json.loads(raw)
                 self.assertEqual(status, expected, (role, path, payload))
@@ -449,6 +457,12 @@ class HttpAuthTests(unittest.TestCase):
                     self.assertTrue(payload['replay_matched'])
                     self.assertEqual(payload['bank_reconciliation'], 'NOT_BOUND')
                     self.assertFalse(payload['funds_executed'])
+                if expected == 200 and path == '/api/statement':
+                    self.assertEqual(payload['mode'], 'READ_ONLY_STATEMENT')
+                    self.assertIs(payload['sales_combined'], False)
+                    self.assertEqual(payload['primary_and_resale'], 'NOT_SUMMED')
+                    self.assertEqual([row['id'] for row in payload['not_bound']], ['primary_sales', 'resale_sales', 'actual_paid'])
+                    self.assertTrue(all(row['status'] == 'NOT_BOUND' for row in payload['not_bound']))
                 if expected == 403:
                     self.assertEqual(payload['error'], 'ROLE_FORBIDDEN')
                     self.assertEqual(payload['role'], 'observer')
