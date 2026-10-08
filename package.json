@@ -1,0 +1,7 @@
+{
+  "name": "kix-capital-simulation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {"test:browser": "playwright test"},
+  "devDependencies": {"@playwright/test": "1.58.2"}
+}

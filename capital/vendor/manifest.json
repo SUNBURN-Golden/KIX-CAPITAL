@@ -1,0 +1,12 @@
+{
+  "repository": "SUNBURN-Golden/kix-protocol",
+  "commit": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "source_prefix": "reference/",
+  "files": {
+    "credit_advance_f04/credit_fsm.py": "f4f6b3698dd848538d2efa10b276cb33659eb4877fcbea0feb7429b28456491b",
+    "credit_advance_f04/mock_credit.py": "5e75fcc76fb0857f671b2fa33ca0fc851e9d676d4b5db8f357393367bc725d95",
+    "credit_advance_f04/test_mock_credit.py": "75cd55f773e3e71553392f674d1595af66cf82560565cc5603bf829a9a29e99d",
+    "settlement_f01_f03/mock_settlement.py": "9e9c25571fdbe7b90b7539df2cc71afaee83d81905293dc56dbeb9faaf864170",
+    "settlement_f01_f03/settlement_fsm.py": "c6d7ae79fe0c3289def2d3c195212247d1ab2c2e913feb80612fcd9ff64c77c8"
+  }
+}
