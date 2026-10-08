@@ -43,6 +43,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - 선택 제안의 읽기 전용 인출 사전점검과 20개 청사진 요구사항의 구현/결정/연동 선행 필터.
 - 수락된 저널과 불변 정산 fixture를 고정 합성 계정표로 읽는 로컬 복식 투영 후보. `accounting_policy`는 `SYNTHETIC_UNADOPTED`이고, 세무·법무·운영 원장은 `NOT_BOUND`이며 `fin-ledger-contract`를 채택하지 않습니다.
 - 원본 목 정산 조회·노출·현금·회수 의무는 서로 다른 의미입니다. 합계를 실제 은행 잔액으로 표시하지 않습니다.
+- 로컬 인가 경계: 합성 역할 organizer/auditor/observer는 `POST /api/session`으로 자기선택되고 역할별 루프백 토큰에 묶입니다. 이것은 인증이 아닙니다. 계정·비밀번호·실명 신원은 없습니다. observer는 export와 projection을 읽지 못하고 auditor는 읽을 수 있습니다. 실제 IdP·KYC·자격증명·AgentGrant/ActionPermit은 NOT_BOUND입니다.
 
 [청사진 요구사항·선행 매핑](docs/CAPITAL_REQUIREMENTS_KO.md), [API·연동 경계](docs/INTEGRATION.md), [검증 범위](docs/VALIDATION.md)를 참고하세요. 채택된 금융 원장·수익참여·채권양수·담보/준비금·다중 자산·실제 Commerce/Protocol 연동은 정의와 선행조건을 유지하며 미구현 상태를 표시합니다. 로컬 복식 투영은 비채택 후보입니다.
 

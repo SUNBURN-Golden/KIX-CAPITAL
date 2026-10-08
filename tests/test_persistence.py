@@ -118,6 +118,43 @@ class FileWorkspaceTests(unittest.TestCase):
         self.assertEqual(restored.machine.state_digest(), before_digest)
         with self.assertRaisesRegex(ApiError, 'SESSION_CHANGED'):
             command(restored, 'close', 'sim-a', 'close-old', instance_override=original.instance_id)
+        self.assertEqual(loaded['role'], 'organizer')
+        self.assertEqual(loaded['role_provenance'], 'SYNTHETIC_LOCAL_ROLE')
+        self.assertEqual(replay['role'], 'organizer')
+
+    def test_pre_label_file_loads_unlabeled_and_a_later_command_persists_it(self):
+        original = self.service()
+        accepted = command(original, 'offer', 'sim-a', 'offer-a', fixture_id='sim-committed', amount=1000)
+        digest_before = original.machine.state_digest()
+        for port in self.open_ports:
+            port.close()
+        self.open_ports.clear()
+        path = self.dir / 'workspace.json'
+        document = json.loads(path.read_text())
+        receipt = document['payload']['receipts']['offer-a']['receipt']
+        self.assertEqual(receipt['role'], 'organizer')
+        del receipt['role']
+        del receipt['role_provenance']
+        document['payload_sha256'] = hashlib.sha256(canonical_bytes(document['payload'])).hexdigest()
+        path.write_bytes(canonical_bytes(document))
+        before = path.read_bytes()
+        restored = self.service()
+        self.assertEqual(path.read_bytes(), before)
+        loaded = restored.operation('offer-a', restored.instance_id)
+        self.assertEqual(loaded['role'], 'UNLABELED')
+        self.assertEqual(loaded['role_provenance'], 'UNLABELED')
+        self.assertEqual({key: loaded[key] for key in loaded if key not in {'role', 'role_provenance'}},
+                         {key: accepted[key] for key in accepted if key not in {'role', 'role_provenance'}})
+        replay = command(restored, 'offer', 'sim-a', 'offer-a', fixture_id='sim-committed', amount=1000)
+        self.assertTrue(replay['transport_duplicate'])
+        self.assertEqual(replay['role'], 'UNLABELED')
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(restored.machine.state_digest(), digest_before)
+        command(restored, 'approve', 'sim-a', 'approve-a')
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved['payload']['receipts']['offer-a']['receipt']['role'], 'UNLABELED')
+        self.assertEqual(saved['payload']['receipts']['approve-a']['receipt']['role'], 'organizer')
+        self.assertEqual(saved['payload']['receipts']['approve-a']['receipt']['role_provenance'], 'SYNTHETIC_LOCAL_ROLE')
 
     def test_corrupt_files_are_unreadable_and_not_replaced(self):
         original = self.service()

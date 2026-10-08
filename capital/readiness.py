@@ -32,7 +32,7 @@ GROUPS = [
     {'id': 'assets-and-rights', 'title': '다중 자산·권리 규모·비공개·AI', 'status': 'UPSTREAM_REQUIRED',
      'requirements': ['CAP-12', 'CAP-17', 'CAP-18', 'CAP-19'],
      'behavior': '자산별 금액·대규모 권리·최소 공개·위임 권한을 동일 producer 계약으로 연결합니다.',
-     'available': ['KRW 목 정수 검증', '금융권리와 관람권 분리', '개인금융정보 없는 합성 역할'],
+     'available': ['KRW 목 정수 검증', '금융권리와 관람권 분리', '개인금융정보 없는 합성 역할', '서버 강제 로컬 합성 역할'],
      'blockers': ['asset registry/u128/FX 계약과 적합성', 'RS 규모·privacy·currentness, TL 및 coin 잠금 결정', 'AgentGrant/ActionPermit 및 최소 공개 계약'],
      'owner': 'Protocol RS/TL/AI 및 사용자 결정', 'claim': '토큰 발행·개인신용판정·대규모 처리량 주장 없음'},
     {'id': 'release', 'title': '실서비스 수용·출시', 'status': 'NOT_AUTHORIZED',
