@@ -48,7 +48,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - 로컬 인가 경계: 합성 역할 organizer/auditor/observer는 `POST /api/session`으로 자기선택되고 역할별 루프백 토큰에 묶입니다. 이것은 인증이 아닙니다. 계정·비밀번호·실명 신원은 없습니다. observer는 export와 projection을 읽지 못하고 auditor는 읽을 수 있습니다. 실제 IdP·KYC·자격증명·AgentGrant/ActionPermit은 NOT_BOUND입니다.
 - 로컬 facade 계약은 `capital-local-facade/1` (`capital/contract/facade-v1.json`)입니다. `ProducerPort`의 기본 구현은 고정 FSM wrapper입니다. 양성·음성 vectors는 SEMANTIC_CONFORMANCE가 아니고, CAP-16 exact tuple은 NOT_BOUND입니다. 포트 목록은 [docs/SEAMS.md](docs/SEAMS.md)에 있습니다.
 
-[청사진 요구사항·선행 매핑](docs/CAPITAL_REQUIREMENTS_KO.md), [API·연동 경계](docs/INTEGRATION.md), [검증 범위](docs/VALIDATION.md)를 참고하세요. 채택된 금융 원장·수익참여·채권양수·담보/준비금·다중 자산·실제 Commerce/Protocol 연동은 정의와 선행조건을 유지하며 미구현 상태를 표시합니다. 로컬 복식 투영은 비채택 후보입니다.
+[청사진 요구사항·선행 매핑](docs/CAPITAL_REQUIREMENTS_KO.md), [API·연동 경계](docs/INTEGRATION.md), [검증 범위](docs/VALIDATION.md)를 참고하세요. 운영 절차는 [운영 핸드북](docs/OPERATOR_HANDBOOK_KO.md), [CAP 커버리지](docs/CAP_COVERAGE.md), [수용 점검표](docs/ACCEPTANCE_KO.md)에 있습니다. 채택된 금융 원장·수익참여·채권양수·담보/준비금·다중 자산·실제 Commerce/Protocol 연동은 정의와 선행조건을 유지하며 미구현 상태를 표시합니다. 로컬 복식 투영은 비채택 후보입니다.
 
 ## 검증
 

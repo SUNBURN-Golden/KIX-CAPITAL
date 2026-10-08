@@ -178,3 +178,20 @@ Recorded run, after that parser fix, at HEAD `6e161eb6b4e0def7eb996b634121210de8
 ```
 
 Exit code 0. Evidence `ok` is true. The same tree, before this ladder, also ran `python3 -m compileall -q capital` (exit 0), `node --check capital/static/app.js` (exit 0), pinned MockCredit **7 passed** in 0.002s, and `npm run test:browser` **33 passed** in 54.1s. `npm ci` had added 3 packages. A port check after the ladder showed no listener on 8765–8768. Playwright stopped its loopback servers. No skip was added. This section claims no independent review, GitHub CI run, commit, push, or deploy.
+
+## Operator handbook
+
+Documentation and checks only. No file under `capital/`, `capital/vendor/`, `.aiops/`, or `.github/` was edited. No test was weakened or skipped. `python3 scripts/not_bound_checklist.py --write` was run once to fill the generated region in `docs/ACCEPTANCE_KO.md`. The commands below are the verification of that tree. This section claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy.
+
+- `python3 -m unittest tests.test_coverage tests.test_decisions tests.test_handbook -v`: **16 passed** in 1.083s (exit 0). This was before stderr from an intentional invalid-note case was redirected inside the test.
+- `python3 -m unittest discover -s tests -v`: **139 passed** in 12.934s (exit 0). That includes `test_vendor_pin_byte_integrity`.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s (exit 0).
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/decision_ledger.py`: exit 0. The index listed `financial-terms-decision` as `PROVISIONAL_PRODUCT_DECISION` with nine `ADOPTED` entries, and `docs/decisions/revenue-participation.md` and `docs/decisions/claim-purchase.md` as `PENDING`.
+- `python3 scripts/not_bound_checklist.py --check`: exit 0.
+- `git diff --name-only -- capital .aiops .github`: no output (exit 0).
+- `npm ci`: added 3 packages, 0 vulnerabilities. `node_modules` was absent. Chromium was already available at `/usr/bin/google-chrome` and in the Playwright cache. No browser download was required.
+- `npm run test:browser`: **33 passed** in 53.0s (exit 0). A following `ss` check showed no listener. Playwright stopped its loopback servers.
+
+After this section was appended, the unit discover was repeated: **139 passed** in 12.870s (exit 0). `python3 scripts/decision_ledger.py` and `python3 scripts/not_bound_checklist.py --check` both exited 0 again. `git diff --name-only -- capital .aiops .github` still printed nothing.

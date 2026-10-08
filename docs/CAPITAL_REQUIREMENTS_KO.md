@@ -36,18 +36,18 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-06 | 환불·공연취소·회수 | 배정 전/후 부분 환불, 단일 전액 vs 분할 환불, 취소 수락·회수·은행 미종결 비교 | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담 미정 |
 | CAP-07 | 최초 판매·반복 리셀·입장 연계 | trade/claim identity 조회, 권리/금융 분리 | NOT_BOUND: Commerce 실여정·Protocol producer tuple; 이 PR은 티켓 생성/이전 없음 |
 | CAP-08 | 초과 배정·현금/한도 구별 | 동일 claim 두 draw 경합, 부분 repay 후 예약 유지, close만 해제; 활성 상태를 바꾸지 않는 인출 사전점검 | SIMULATED; 외부 담보/분산 자원 한도 아님 |
-| CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | 로컬 다섯 구분 명세서: 승인·노출/상환/잔액·예약은 FSM 조회(SIMULATED), 정산 확인/배정·환불은 고정 fixture. `primary_sales`·`resale_sales`·`actual_paid`는 NOT_BOUND이고 최초판매와 리셀은 합산하지 않음. cut·fixtures digest·capacity bound 표기 | 로컬 진단만; 실지급·세무 보고·은행 대사 아님 |
-| CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload·old-instance fence, 옵트인 로컬 파일 재시작 복원 | SIMULATED; 개발용 LOCAL_FILE_WORKSPACE. stage5 내구 거래·inbox/outbox·호스트 간 fencing은 CAP-11 |
+| CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | 로컬 다섯 구분 명세서: 승인·노출/상환/잔액·예약은 FSM 조회(SIMULATED), 정산 확인/배정·환불은 고정 fixture. `primary_sales`·`resale_sales`·`actual_paid`는 NOT_BOUND이고 최초판매와 리셀은 합산하지 않음. cut·fixtures digest·capacity bound 표기 | SIMULATED(로컬 후보); 로컬 진단만; 실지급·세무 보고·은행 대사 아님 |
+| CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload·old-instance fence, 옵트인 로컬 파일 재시작 복원 | SIMULATED(로컬 후보); 개발용 LOCAL_FILE_WORKSPACE. stage5 내구 거래·inbox/outbox·호스트 간 fencing은 CAP-11 |
 | CAP-11 | 내구 거래·inbox/outbox·장애복구 | 연동 계약과 미지원 상태 | NOT_BOUND: `k-stage5-durable-tx`·backend 채택·v5, 자체 저장엔진 만들지 않음 |
 | CAP-12 | 자산별 정확한 금액·FX | KRW 고정 프로파일, int 검증, 포트폴리오 BigInt 표시 | 일부 SIMULATED; u128·registry/정밀도·FX quote/execution은 별도 계약 |
 | CAP-13 | 복식 금융 투영 | 로컬 후보 복식 투영 · `SYNTHETIC_UNADOPTED` 표기 · 운영 원장 `NOT_BOUND` | SIMULATED(로컬 후보); fin-ledger-contract·stage5/6 선행 유지, 계정/수익인식/세무 미정 |
-| CAP-14 | 원관측·대사 예외 | 로컬 대사 예외: receipt↔저널 키, 거절 receipt의 저널 부재, 재생 digest, 제안↔fixture, 투영↔조회, fixtures digest. 없는 receipt는 UNKNOWN_UNRESOLVED이며 재시도·해소하지 않음 | 로컬 진단만; 은행·PG·제공자 관측, source cut, 제공자 인증 완전성은 NOT_BOUND |
-| CAP-15 | 인증 export·일관 source cut | v1 journal JSON은 그대로 두고, v2 manifest가 journal·receipts·projection·reconciliation·statement·fixtures·source pin을 각각 canonical JSON sha256으로 묶는다. content_digest는 instance_id와 시각을 제외한다. cursor·watermark·source_cut은 null이며 NOT_BOUND. SignaturePort의 기본 서명은 NOT_BOUND이고, 옵트인 Dev HMAC은 DEV_ONLY·무결성만이다. 오프라인 verifier가 섹션 해시·digest·서명을 다시 계산한다 | 로컬 진단만. stage7 인증 export가 아니다. 외부 키·교차 서비스 cursor·watermark·보존 정책은 없다. SignaturePort가 이후 인증을 붙이는 채택 경계다 |
-| CAP-16 | SDK·API 적합성 | 로컬 계약 `capital-local-facade/1` (`capital/contract/facade-v1.json`)와 ProducerPort 양성·음성 vectors. strict 로컬 envelope와 vendor byte hash. 이 vectors는 SEMANTIC_CONFORMANCE가 아니다 | NOT_BOUND: 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple. 로컬 facade 계약이 그 tuple을 대체하지 않는다 |
+| CAP-14 | 원관측·대사 예외 | 로컬 대사 예외: receipt↔저널 키, 거절 receipt의 저널 부재, 재생 digest, 제안↔fixture, 투영↔조회, fixtures digest. 없는 receipt는 UNKNOWN_UNRESOLVED이며 재시도·해소하지 않음 | SIMULATED(로컬 후보); 로컬 진단만; 은행·PG·제공자 관측, source cut, 제공자 인증 완전성은 NOT_BOUND |
+| CAP-15 | 인증 export·일관 source cut | v1 journal JSON은 그대로 두고, v2 manifest가 journal·receipts·projection·reconciliation·statement·fixtures·source pin을 각각 canonical JSON sha256으로 묶는다. content_digest는 instance_id와 시각을 제외한다. cursor·watermark·source_cut은 null이며 NOT_BOUND. SignaturePort의 기본 서명은 NOT_BOUND이고, 옵트인 Dev HMAC은 DEV_ONLY·무결성만이다. 오프라인 verifier가 섹션 해시·digest·서명을 다시 계산한다 | SIMULATED(로컬 후보); 로컬 진단만. stage7 인증 export가 아니다. 외부 키·교차 서비스 cursor·watermark·보존 정책은 없다. SignaturePort가 이후 인증을 붙이는 채택 경계다 |
+| CAP-16 | SDK·API 적합성 | 로컬 계약 `capital-local-facade/1` (`capital/contract/facade-v1.json`)와 ProducerPort 양성·음성 vectors. strict 로컬 envelope와 vendor byte hash. 이 vectors는 SEMANTIC_CONFORMANCE가 아니다 | NOT_BOUND(로컬 후보); 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple. 로컬 facade 계약이 그 tuple을 대체하지 않는다 |
 | CAP-17 | 공개/비공개·권리 규모 | 외부 의존성과 관람권 비권위 표시 | NOT_BOUND: RS-0~5, privacy/currentness, 1024/16384/65536 규모 검증 없음 |
 | CAP-18 | 선택적 토큰 담보·보상 | 향후 연동 설명, 외부 호출·발행 코드 없음 | NOT_AUTHORIZED: TL 계약·coin lock/user 결정; KRW 목을 토큰 한도로 확장 안 함 |
 | CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer)을 서버가 강제하고 receipt에 표시. 계정·비밀번호·개인정보 없음 | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리 |
-| CAP-20 | 접근성·통합 수용 | 실제 browser 정상/거절/UNKNOWN/reload, mobile, keyboard, screenshot | 자동검증만; 사용자 수용 PENDING, full T01→T06/서비스 qualification 미실행 |
+| CAP-20 | 접근성·통합 수용 | 실제 browser 정상/거절/UNKNOWN/reload, mobile, keyboard, screenshot | SIMULATED(자동검증만); 사용자 수용 PENDING, full T01→T06/서비스 qualification 미실행 |
 
 ## Finance 후보 8개를 유지하는 후속 위치
 
