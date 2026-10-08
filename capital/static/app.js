@@ -63,6 +63,80 @@ function renderProjection(result){
  $('projection-checks').textContent=projection.conservation.map(row=>`${row.predicate} · ${row.matched?'일치':'불일치'}`).join('\n');
 }
 function paintEvidence(evidence){$('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));$('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';$('evidence-json').textContent=JSON.stringify(evidence,null,2);}
+function reconValid(data,next){
+ if(!data||data.mode!=='READ_ONLY_RECONCILIATION'||data.funds_executed!==false||data.durable!==false||data.bank_reconciliation!=='NOT_BOUND'||data.workspace_mutated!==false)return false;
+ if(data.label!=='SIMULATED'||data.diagnostic!=='LOCAL_ONLY'||data.provider_authenticated_completeness!=='NOT_BOUND'||data.source_cut!=='NOT_BOUND')return false;
+ if(data.instance_id!==next.instance_id||!Number.isSafeInteger(data.entry_count)||(data.status!=='MATCHED'&&data.status!=='RECON_MISMATCH'&&data.status!=='WORKSPACE_UNREADABLE'))return false;
+ if(data.status==='MATCHED'&&(data.state_digest!==next.state_digest||data.cut!==next.state_digest||data.replay_matched!==true))return false;
+ if(!Array.isArray(data.checks)||(data.status!=='WORKSPACE_UNREADABLE'&&data.checks.length!==6))return false;
+ if(!data.checks.every(row=>typeof row.id==='string'&&(row.status==='MATCHED'||row.status==='RECON_MISMATCH')))return false;
+ if(!Array.isArray(data.not_bound)||data.not_bound.length<3||data.not_bound.some(row=>row.status!=='NOT_BOUND'))return false;
+ const gaps=data.not_bound.map(row=>row.id);
+ if(!gaps.includes('bank_pg_provider_observations')||!gaps.includes('source_cut')||!gaps.includes('completeness'))return false;
+ if(!data.scope||data.scope.fixtures_digest!==data.fixtures_digest||data.scope.operation_capacity!==next.operation_capacity||data.scope.capacity_bound!==next.operation_capacity)return false;
+ if(data.scope.source_cut!=='NOT_BOUND'||data.scope.completeness!=='NOT_BOUND'||data.scope.cut!==data.cut)return false;
+ if(!data.unknown_policy||data.unknown_policy.absent_receipt!=='UNKNOWN_UNRESOLVED'||data.unknown_policy.retry_authorized!==false||data.unknown_policy.resolved_by_reconciliation!==false)return false;
+ if(!Array.isArray(data.unknown_unresolved)||data.unknown_unresolved.some(row=>row.outcome!=='UNKNOWN_UNRESOLVED'||row.retry_authorized!==false||row.resolved!==false))return false;
+ return true;
+}
+function statementValid(data,next){
+ if(!data||data.mode!=='READ_ONLY_STATEMENT'||data.funds_executed!==false||data.durable!==false||data.workspace_mutated!==false||data.sales_combined!==false)return false;
+ if(data.label!=='SIMULATED'||data.primary_and_resale!=='NOT_SUMMED'||data.tax_reporting!=='NOT_BOUND'||data.bank_reconciliation!=='NOT_BOUND')return false;
+ if(data.instance_id!==next.instance_id||data.state_digest!==next.state_digest||data.cut!==next.state_digest)return false;
+ if(!Array.isArray(data.categories)||data.categories.map(row=>row.id).join(',')!=='approved,exposure,reserved,settlement,refund')return false;
+ if(!Array.isArray(data.not_bound)||data.not_bound.length!==3||data.not_bound.some(row=>row.status!=='NOT_BOUND'))return false;
+ const gaps=data.not_bound.map(row=>row.id);
+ if(gaps.join(',')!=='primary_sales,resale_sales,actual_paid')return false;
+ if(data.categories.some(row=>row.primary_sales!==undefined||row.resale_sales!==undefined||row.actual_paid!==undefined))return false;
+ if(!data.scope||data.scope.fixtures_digest!==data.fixtures_digest||data.scope.operation_capacity!==next.operation_capacity||data.scope.capacity_bound!==next.operation_capacity)return false;
+ if(data.scope.source_cut!=='NOT_BOUND'||data.scope.completeness!=='NOT_BOUND'||data.scope.cut!==data.cut)return false;
+ const approved=data.categories[0],exposure=data.categories[1],reserved=data.categories[2],settlement=data.categories[3],refund=data.categories[4];
+ if(approved.source!=='SIMULATED'||exposure.source!=='SIMULATED'||reserved.source!=='SIMULATED')return false;
+ if(settlement.source!=='READ_ONLY_FIXTURE'||refund.source!=='READ_ONLY_FIXTURE')return false;
+ try{return BigInt(approved.total)>=0n&&BigInt(exposure.drawn)>=0n&&BigInt(exposure.repaid)>=0n&&BigInt(exposure.outstanding)>=0n&&BigInt(settlement.confirmed)>=0n&&BigInt(settlement.distributed)>=0n&&BigInt(refund.refund_face)>=0n&&BigInt(refund.refund_outstanding)>=0n;}catch{return false;}
+}
+function renderReconciliation(result){
+ const error=$('recon-error'),body=$('recon-body');
+ if(!result?.report){body.hidden=true;error.hidden=false;error.textContent=result?.error||'대사 예외를 표시하지 않습니다.';return;}
+ error.hidden=true;body.hidden=false;const data=result.report;
+ $('recon-scope').textContent=`cut=${data.cut} · fixtures_digest=${data.fixtures_digest} · capacity_bound=${data.scope.capacity_bound} · source_cut=NOT_BOUND · completeness=NOT_BOUND · ${data.label}`;
+ const matched=data.status==='MATCHED';
+ $('recon-summary').textContent=matched?`검사 ${data.checks.length}건 MATCHED · 항목 ${data.entry_count} · 은행 대사 아님`:`상태 ${data.status} · 은행 대사 아님`;
+ $('recon-checks').replaceChildren(...data.checks.map(row=>{const tr=document.createElement('tr');const id=textElement('td',row.id);const status=textElement('td',row.status,row.status==='MATCHED'?'':'mismatch');tr.append(id,status);return tr;}));
+ $('recon-gaps').replaceChildren(...data.not_bound.map(row=>{const li=document.createElement('li');li.textContent=`${row.id} · ${row.status} · ${row.meaning||''}`;return li;}));
+ const unknown=data.unknown_unresolved||[];
+ $('recon-unknown').textContent=unknown.length?unknown.map(row=>`${row.operation_id} · ${row.outcome} · retry_authorized=false · resolved=false`).join('\n'):'없는 receipt는 UNKNOWN_UNRESOLVED이며 해소하거나 재시도하지 않습니다.';
+ if($('reconciliation-result'))$('reconciliation-result').textContent=matched?`재생 일치 · 항목 ${data.entry_count} · 은행 대사 아님`:`재생 불일치 · 항목 ${data.entry_count} · 은행 대사 아님`;
+}
+function renderStatement(result){
+ const error=$('statement-error'),body=$('statement-body');
+ if(!result?.statement){body.hidden=true;error.hidden=false;error.textContent=result?.error||'명세서를 표시하지 않습니다.';return;}
+ error.hidden=true;body.hidden=false;const data=result.statement;
+ $('statement-scope').textContent=`cut=${data.cut} · fixtures_digest=${data.fixtures_digest} · capacity_bound=${data.scope.capacity_bound} · source_cut=NOT_BOUND · completeness=NOT_BOUND · ${data.label} · primary_and_resale=${data.primary_and_resale}`;
+ const byId=Object.fromEntries(data.categories.map(row=>[row.id,row]));
+ const approved=byId.approved,exposure=byId.exposure,reserved=byId.reserved,settlement=byId.settlement,refund=byId.refund;
+ $('statement-approved').replaceChildren(...(approved.rows.length?approved.rows:[]).map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,row.phase,number(row.amount)])tr.append(textElement('td',value));return tr;}));
+ $('statement-approved-total').textContent=approved.rows.length?`승인액 합계 ${number(approved.total)} · SIMULATED · 매출 합산 아님`:'승인된 제안이 없습니다.';
+ $('statement-exposure').replaceChildren(...exposure.rows.map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,number(row.drawn),number(row.repaid),number(row.outstanding)])tr.append(textElement('td',value));return tr;}));
+ $('statement-exposure-total').textContent=`기록된 노출 ${number(exposure.drawn)} · 상환 메모 ${number(exposure.repaid)} · 남은 노출 ${number(exposure.outstanding)} · SIMULATED`;
+ $('statement-reserved').replaceChildren(...reserved.rows.map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,row.claim_id,number(row.reserved_open)])tr.append(textElement('td',value));return tr;}));
+ $('statement-reserved-total').textContent=reserved.consistent?`예약 액면 ${number(reserved.total)} · 같은 청구는 한 번 · SIMULATED`:'예약 액면이 청구마다 달라 합계를 만들지 않습니다.';
+ $('statement-settlement').replaceChildren(...settlement.rows.map(row=>{const tr=document.createElement('tr');for(const value of [row.claim_id,row.phase,number(row.confirmed_cash),number(row.distributed_cash)])tr.append(textElement('td',value));return tr;}));
+ $('statement-settlement-total').textContent=`확인 현금 ${number(settlement.confirmed)} · 목 배정 ${number(settlement.distributed)} · READ_ONLY_FIXTURE · 매출에 더하지 않음`;
+ $('statement-refund').replaceChildren(...refund.rows.map(row=>{const tr=document.createElement('tr');for(const value of [row.claim_id,number(row.refund_face),number(row.refund_accepted),number(row.refund_outstanding)])tr.append(textElement('td',value));return tr;}));
+ $('statement-refund-total').textContent=`환불 액면 ${number(refund.refund_face)} · 미이행 ${number(refund.refund_outstanding)} · READ_ONLY_FIXTURE`;
+ $('statement-sales').replaceChildren(...data.not_bound.map(row=>{const li=document.createElement('li');li.textContent=`${row.id} · ${row.status} · ${row.meaning||''}`;return li;}),textElement('li','최초 판매와 리셀은 합산하지 않습니다. actual_paid는 NOT_BOUND입니다.'));
+}
+async function loadDiagnostics(next){
+ const reconDecision=next.auth.permissions['reconciliation:read'];
+ const statementDecision=next.auth.permissions['statement:read'];
+ let recon,statement;
+ if(!reconDecision?.allowed)recon={error:reconDecision?.reason||`${next.auth.role} 역할은 reconciliation:read 권한이 없습니다.`};
+ else{try{const body=await request('/api/reconciliation');recon=reconValid(body,next)?{report:body}:{error:'대사 예외 응답이 현재 절단면 또는 NOT_BOUND 표기와 맞지 않습니다. 숫자를 은행 대사로 표시하지 않습니다.'};}catch{recon={error:'대사 예외를 확인하지 못했습니다. 제안 상태는 유지하며 검사 결과를 표시하지 않습니다.'};}}
+ if(!statementDecision?.allowed)statement={error:statementDecision?.reason||`${next.auth.role} 역할은 statement:read 권한이 없습니다.`};
+ else{try{const body=await request('/api/statement');statement=statementValid(body,next)?{statement:body}:{error:'명세서 응답이 현재 절단면 또는 NOT_BOUND 표기와 맞지 않습니다. 최초 판매와 리셀을 합산하지 않습니다.'};}catch{statement={error:'명세서를 확인하지 못했습니다. 제안 상태는 유지하며 금액을 표시하지 않습니다.'};}}
+ return {recon,statement};
+}
 async function refresh(){
  let next=await request('/api/state');
  validateState(next);
@@ -81,7 +155,8 @@ async function refresh(){
   projection=await loadProjection(next);
   paintEvidence(evidence);
  }
- state=next;renderProjection(projection);resolveSelection();render();
+ const diagnostics=await loadDiagnostics(next);
+ state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);resolveSelection();render();
 }
 const casePattern=/^sim-[a-zA-Z0-9-]{1,60}$/;
 function caseFromUrl(){const raw=new URLSearchParams(location.search).get('case');return typeof raw==='string'&&casePattern.test(raw)?raw:null;}
@@ -270,9 +345,9 @@ $('reconcile-readonly').onclick=async()=>{
  busy=true;fence();
  try{
   const data=await request('/api/reconciliation');
-  if(data.mode!=='READ_ONLY_RECONCILIATION'||data.funds_executed!==false||data.durable!==false||data.bank_reconciliation!=='NOT_BOUND'||!Number.isSafeInteger(data.entry_count))throw Error('INVALID_RECONCILIATION');
-  $('reconciliation-result').textContent=data.replay_matched?`재생 일치 · 항목 ${data.entry_count} · 은행 대사 아님`:`재생 불일치 · 항목 ${data.entry_count} · 은행 대사 아님`;
-  notice('읽기 전용 재생입니다. 은행 대사가 아니며 영수증을 만들지 않습니다.');
+  if(!reconValid(data,state))throw Error('INVALID_RECONCILIATION');
+  renderReconciliation({report:data});
+  notice('읽기 전용 대사 예외입니다. 은행 대사가 아니며 영수증을 만들지 않습니다.');
  }catch(error){$('reconciliation-result').textContent='';notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'재생 조회를 확인하지 못했습니다.',true);}
  finally{busy=false;fence();}
 };

@@ -15,7 +15,9 @@ from capital.auth import (
 )
 from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachine
 from capital.projection import ProjectionError, SimulationProjection
+from capital.recon import build_reconciliation
 from capital.scenarios import replay_scenarios
+from capital.statement import build_statement
 from capital.readiness import GROUPS, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
@@ -242,7 +244,9 @@ class CapitalService:
                     'groups': copy.deepcopy(GROUPS), 'production_authorized': False,
                     'upstream_nodes_completed': [], 'policy_adopted': False,
                     'requirement_notes': {
-                        'CAP-13': 'local candidate projection; fin-ledger-contract still upstream'}}
+                        'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
+                        'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
+                        'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness'}}
 
     def projection(self, mode=None):
         """Fold copies of the accepted journal and fixture views. Nothing is cached or written."""
@@ -387,14 +391,67 @@ class CapitalService:
         restored = CreditMachine.restore(journal, self.fixtures)
         return journal, restored.canonical_state() == self.machine.canonical_state()
 
-    def reconciliation(self):
-        """Read-only replay. No receipt, so operation_count stays unchanged."""
+    def _frozen(self):
+        return (
+            json.dumps(self.receipts, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode(),
+            self.machine.state_digest(),
+            len(self.receipts),
+            self.machine.canonical_state(),
+            digest(self.fixtures.rows),
+        )
+
+    def _same_frozen(self, frozen):
+        return self._frozen() == frozen
+
+    def _subject_payload(self):
+        """Checksum-valid workspace payload when one exists; otherwise the live book."""
+        try:
+            document = self.storage.load()
+        except WorkspaceError as exc:
+            return None, exc.code
+        if document is None:
+            return {
+                'receipts': copy.deepcopy(self.receipts),
+                'journal': self.machine.export_journal(),
+                'case_fixtures': copy.deepcopy(dict(self.case_fixtures)),
+                'state_digest': self.machine.state_digest(),
+            }, None
+        return copy.deepcopy(document['payload']), None
+
+    def reconciliation(self, probe_operation_id=None):
+        """Read-only exception report. No receipt is written and nothing is retried."""
         with self.lock:
-            journal, matched = self._replay_journal()
-            return {'mode': 'READ_ONLY_RECONCILIATION', 'instance_id': self.instance_id,
-                    'replay_matched': matched, 'entry_count': len(journal),
-                    'state_digest': self.machine.state_digest(),
-                    'bank_reconciliation': 'NOT_BOUND', 'funds_executed': False, 'durable': False}
+            frozen = self._frozen()
+            try:
+                payload, unreadable = self._subject_payload()
+                rows = copy.deepcopy(self.fixtures.rows)
+                return build_reconciliation(
+                    payload=payload, unreadable=unreadable, fixture_rows=rows,
+                    fixtures_digest=digest(rows), settlement_source=self.fixtures,
+                    projection_port=self.projection_port, probe_operation_id=probe_operation_id,
+                    instance_id=self.instance_id, operation_capacity=MAX_OPERATIONS,
+                    workspace_status=self.workspace_status,
+                )
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def statement(self):
+        """Read-only five-category statement. Primary and resale sales are not summed."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                cases = [self.machine.view(key) for key in sorted(self.case_fixtures)]
+                fixtures = [self.fixtures.view(key) for key in sorted(self.fixtures.rows)]
+                rows = copy.deepcopy(self.fixtures.rows)
+                return build_statement(
+                    cases=cases, fixture_views=fixtures, fixtures_digest=digest(rows),
+                    state_digest=self.machine.state_digest(), instance_id=self.instance_id,
+                    operation_capacity=MAX_OPERATIONS, workspace_status=self.workspace_status,
+                )
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
 
     def export(self):
         with self.lock:

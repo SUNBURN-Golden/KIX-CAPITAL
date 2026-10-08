@@ -28,6 +28,7 @@ GET_DISPATCH = (
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
     ('/api/reconciliation', False, 'reconciliation'),
+    ('/api/statement', False, 'statement'),
 )
 POST_DISPATCH = (
     ('/api/commands', COMMAND_SUBMIT),
@@ -177,7 +178,12 @@ def make_server(port=8765, authorizer=None, workspace=None):
             return self.reply(200, service.export())
 
         def _get_reconciliation(self, route, principal):
-            return self.reply(200, service.reconciliation())
+            values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
+            probe = values[0] if values and len(values) == 1 else None
+            return self.reply(200, service.reconciliation(probe))
+
+        def _get_statement(self, route, principal):
+            return self.reply(200, service.statement())
 
         def _get_operation(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]

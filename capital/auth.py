@@ -27,10 +27,10 @@ OP_PERMISSIONS = {op: f'command:{op}' for op in OP_ORDER}
 
 READ_PERMISSIONS = (
     'state:read', 'reference:read', 'projection:read', 'receipt:read',
-    'export:read', 'reconciliation:read',
+    'export:read', 'reconciliation:read', 'statement:read',
 )
-# Observer may read state, reference, and receipts. Export, reconciliation, and
-# the local projection candidate (evidence, projection, preview) stay with auditor.
+# Observer may read state, reference, and receipts. Export, reconciliation,
+# the five-category statement, and the local projection candidate stay with auditor.
 OBSERVER_READ = ('state:read', 'reference:read', 'receipt:read')
 ALL_PERMISSIONS = (COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND)
 
@@ -56,6 +56,7 @@ ROUTE_PERMISSIONS = (
     ('/api/operations/', 'receipt:read', True),
     ('/api/export', 'export:read', False),
     ('/api/reconciliation', 'reconciliation:read', False),
+    ('/api/statement', 'statement:read', False),
 )
 
 
