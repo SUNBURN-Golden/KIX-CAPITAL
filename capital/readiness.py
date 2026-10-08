@@ -44,6 +44,8 @@ GROUPS = [
 
 
 def source_integrity(vendor, manifest):
+    # vendor is a pathlib.Path in a checkout and a zipfile.Path inside the zipapp.
+    # Only `/`, is_file, and read_bytes are used, which both types provide.
     rows = []
     for path, expected in manifest['files'].items():
         file = vendor / path

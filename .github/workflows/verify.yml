@@ -36,3 +36,16 @@ jobs:
         with:
           name: browser-evidence
           path: test-results/
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/build_release.py --out dist
+      - run: python3 scripts/build_release.py --out dist2
+      - run: cmp dist/capital-*.pyz dist2/capital-*.pyz
+      - run: python3 scripts/smoke_release.py dist/capital-*.pyz
