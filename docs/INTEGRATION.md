@@ -4,7 +4,11 @@
 
 ## Local facade v1
 
-- `GET /api/state`: process identity, synthetic fixtures, current F04 views, pinned source, local CSRF token, capacity, workspace status and undecided capabilities. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery.
+- `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, pinned source, local CSRF token, capacity, workspace status and undecided capabilities. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery.
+
+## Local unsigned zipapp
+
+`scripts/build_release.py` writes `dist/capital-<version>.pyz` for a checkout-free local run. `<version>` is only `capital/__init__.py`. The archive mode is `LOCAL_SIMULATION_ARTIFACT` with `signed: false` and `published: false`. It is not a PyPI publish, not an external signature, and not a deployment. SignaturePort, publishing, and deployment are later decisions and are not done here. Release notes live in `docs/RELEASES.md`.
 - `POST /api/commands`: strict `{instance_id, operation_id, op, advance_id, args}`. ID must start `sim-`; operation identity is immutable. `X-Capital-Token` from the same process and `Content-Type: application/json` required. Maximum request 8192 bytes; maximum retained operations 500 (demo resource bound, not financial policy).
 - `GET /api/operations/{operation_id}?instance_id=…`: original ACCEPTED/REJECTED receipt, UNKNOWN if absent. An absent receipt never authorizes a retry. Session mismatch is 409.
 - `GET /api/evidence`: read-only immutable settlement fixture values, per-view digest, source pin, missing live financial measures; no source cut or completeness invented.
