@@ -13,6 +13,7 @@ from capital.auth import (
     DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE, ROLES, UNLABELED,
     Principal, require, LocalRoleAuthorizer,
 )
+from capital.export import UnsignedSigner, build_manifest, manifest_status
 from capital.protocol import VENDOR, CreditError, CreditMachine, SettlementMachine
 from capital.projection import ProjectionError, SimulationProjection
 from capital.recon import build_reconciliation
@@ -75,9 +76,10 @@ class FixtureViews:
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None):
+    def __init__(self, storage=None, authorizer=None, signer=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
+        self.signer = signer if signer is not None else UnsignedSigner()
         self.storage = InMemoryStorage() if storage is None else storage
         self.instance_id = str(uuid.uuid4())
         self.storage.writer_instance = self.instance_id
@@ -246,7 +248,8 @@ class CapitalService:
                     'requirement_notes': {
                         'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
                         'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
-                        'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness'}}
+                        'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness',
+                        'CAP-15': 'local hashed manifest and SignaturePort only; not stage7 authenticated export; no external key, cross-service cursor, watermark, or retention policy'}}
 
     def projection(self, mode=None):
         """Fold copies of the accepted journal and fixture views. Nothing is cached or written."""
@@ -469,3 +472,41 @@ class CapitalService:
                     'state_digest': self.machine.state_digest(),
                     'replay_matched': matched,
                     'durable': durable, 'funds_executed': False, 'note': note}
+
+    def export_manifest(self):
+        """Read-only v2 manifest of hashed sections. No import, resume, or key material."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                journal, _matched = self._replay_journal()
+                projection = self.projection(None)
+                reconciliation = self.reconciliation()
+                statement = self.statement()
+                rows = copy.deepcopy(self.fixtures.rows)
+                sections = {
+                    'journal': {'label': 'SIMULATED', 'entries': copy.deepcopy(journal)},
+                    'receipts': {'label': 'SIMULATED', 'receipts': copy.deepcopy(self.receipts)},
+                    'projection': copy.deepcopy(projection),
+                    'reconciliation': copy.deepcopy(reconciliation),
+                    'statement': copy.deepcopy(statement),
+                    'fixtures': {
+                        'label': 'READ_ONLY_FIXTURE',
+                        'fixtures_digest': digest(rows),
+                        'rows': rows,
+                    },
+                    'source_pin': {
+                        'label': 'READ_ONLY_FIXTURE',
+                        'commit': self.source['commit'],
+                        'repository': self.source['repository'],
+                        'files': copy.deepcopy(self.source['files']),
+                        'integrity': source_integrity(VENDOR, self.source),
+                    },
+                }
+                status, reasons = manifest_status(reconciliation['status'], self.workspace_status)
+                return build_manifest(
+                    sections=sections, instance_id=self.instance_id, signer=self.signer,
+                    status=status, incomplete_reasons=reasons,
+                )
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
