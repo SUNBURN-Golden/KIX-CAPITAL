@@ -1,25 +1,61 @@
 const {test,expect}=require('@playwright/test');
-async function offer(page,fixture='sim-committed',amount='60000'){
- await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
+function gate(page){return page.locator('#facts dt').filter({hasText:'정산 게이트'}).locator('xpath=following-sibling::dd[1]');}
+function outstanding(page){return page.locator('#facts dt').filter({hasText:/^남은 모의 노출$/}).locator('xpath=following-sibling::dd[1]');}
+async function acceptedClick(page,name,op,phase,advanceId,{exact=false}={}){
+ const pending=page.waitForResponse(r=>r.url().endsWith('/api/commands')&&r.request().postDataJSON()?.op===op);
+ await page.getByRole('button',{name,exact}).click();
+ const receipt=await(await pending).json();
+ expect(receipt.outcome).toBe('ACCEPTED');
+ expect(receipt.result.credit.advance_id).toBe(advanceId);
+ await expect(page.locator('#phase')).toHaveText(phase);
+ return receipt;
+}
+async function offer(page,fixture='sim-committed',amount='60000',{navigate=true}={}){
+ if(navigate){await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');}
  await page.locator('#fixture').selectOption(fixture);await page.locator('#amount').fill(amount);
  const created=page.waitForResponse(r=>r.url().endsWith('/api/commands')&&r.request().postDataJSON()?.op==='offer');
  await page.getByRole('button',{name:'모의 제안 생성'}).click();
  const receipt=await(await created).json();
  expect(receipt.outcome).toBe('ACCEPTED');
- await expect(page.locator('#case-title')).toHaveText(receipt.result.credit.advance_id);
+ const advanceId=receipt.result.credit.advance_id;
+ expect(advanceId).toEqual(expect.any(String));
+ await expect(page.locator('#case-title')).toHaveText(advanceId);
  await expect(page.locator('#phase')).toHaveText('제안됨 · OFFERED');
+ return receipt;
 }
-async function ready(page,fixture){await offer(page,fixture);await page.getByRole('button',{name:'모의 승인',exact:true}).click();await expect(page.locator('#phase')).toContainText('APPROVED');await page.getByRole('button',{name:'정산 근거 연결'}).click();await expect(page.locator('#facts dt').filter({hasText:'정산 게이트'}).locator('xpath=following-sibling::dd[1]')).toHaveText('BOUND');await expect(page.getByRole('button',{name:'모의 노출 기록'})).toBeEnabled();}
+async function ready(page,fixture){
+ const offered=await offer(page,fixture);
+ const id=offered.result.credit.advance_id;
+ await acceptedClick(page,'모의 승인','approve','모의 승인 · APPROVED',id,{exact:true});
+ await acceptedClick(page,'정산 근거 연결','bind_settlement','모의 승인 · APPROVED',id);
+ await expect(gate(page)).toHaveText('BOUND');
+ await expect(page.getByRole('button',{name:'모의 노출 기록',exact:true})).toBeEnabled();
+ return id;
+}
 
 test('complete bound lifecycle, repayment and export',async({page})=>{
- await ready(page);await page.getByRole('button',{name:'모의 노출 기록'}).click();await expect(page.locator('#phase')).toContainText('DRAWN');
- await page.locator('#repay-amount').fill('20000');await page.getByRole('button',{name:'상환 메모 기록'}).click();await expect(page.locator('#facts dt').filter({hasText:'남은 모의 노출'}).locator('xpath=following-sibling::dd[1]')).toHaveText('40,000');
- await page.locator('#repay-amount').fill('40000');await page.getByRole('button',{name:'상환 메모 기록'}).click();await expect(page.getByRole('button',{name:'노출 종결'})).toBeVisible();await page.getByRole('button',{name:'노출 종결'}).click();await expect(page.locator('#phase')).toContainText('CLOSED');
+ await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
+ await expect(page.locator('#evidence-rows tr')).toHaveCount(3);
+ await expect(page.locator('#evidence-scope')).toContainText('NOT_BOUND');
+ await expect(page.locator('#readiness-integrity')).toContainText('고정 hash가 모두 일치합니다');
+ const offered=await offer(page,'sim-committed','60000',{navigate:false});
+ const id=offered.result.credit.advance_id;
+ await acceptedClick(page,'모의 승인','approve','모의 승인 · APPROVED',id,{exact:true});
+ await acceptedClick(page,'정산 근거 연결','bind_settlement','모의 승인 · APPROVED',id);
+ await expect(gate(page)).toHaveText('BOUND');
+ await acceptedClick(page,'모의 노출 기록','draw','노출 기록 · DRAWN',id,{exact:true});
+ await page.locator('#repay-amount').fill('20000');
+ await acceptedClick(page,'상환 메모 기록','repay','노출 기록 · DRAWN',id);
+ await expect(outstanding(page)).toHaveText('40,000');
+ await page.locator('#repay-amount').fill('40000');
+ await acceptedClick(page,'상환 메모 기록','repay','노출 기록 · DRAWN',id);
+ await expect(page.getByRole('button',{name:'노출 종결'})).toBeVisible();
+ await acceptedClick(page,'노출 종결','close','종결 · CLOSED',id);
  await page.getByRole('button',{name:'저널 재생 검증'}).click();await expect(page.locator('#notice')).toContainText('저널 재생');
  const data=await (await page.request.get('/api/export')).json();expect(data.replay_matched).toBe(true);expect(data.funds_executed).toBe(false);
 });
 test('pending settlement and refund are visible refusals',async({page})=>{
- await ready(page,'sim-pending');await page.getByRole('button',{name:'모의 노출 기록'}).click();await expect(page.locator('#notice')).toContainText('SETTLEMENT_NOT_COMMITTED');await expect(page.locator('#phase')).toContainText('APPROVED');
+ await ready(page,'sim-pending');await page.getByRole('button',{name:'모의 노출 기록',exact:true}).click();await expect(page.locator('#notice')).toContainText('SETTLEMENT_NOT_COMMITTED');await expect(page.locator('#phase')).toHaveText('모의 승인 · APPROVED');
  await page.locator('#fixture').selectOption('sim-refund');await page.getByRole('button',{name:'모의 제안 생성'}).click();await expect(page.locator('#notice')).toContainText('REFUND_OBLIGATION_OPEN');
 });
 test('accepted response loss fences reload and resolves via receipt GET only',async({page})=>{
