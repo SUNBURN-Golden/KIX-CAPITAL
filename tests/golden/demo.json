@@ -1,0 +1,54 @@
+{
+  "cases": [
+    {
+      "advance_id": "sim-closed",
+      "label": "SIMULATED",
+      "phase": "CLOSED",
+      "settlement_gate": "MOCK_COMMIT_OBSERVED"
+    },
+    {
+      "advance_id": "sim-defaulted",
+      "label": "SIMULATED",
+      "phase": "DEFAULTED",
+      "settlement_gate": "MOCK_COMMIT_OBSERVED"
+    },
+    {
+      "advance_id": "sim-rejected",
+      "label": "SIMULATED",
+      "phase": "REJECTED",
+      "settlement_gate": "UNBOUND"
+    },
+    {
+      "advance_id": "sim-cancelled",
+      "label": "SIMULATED",
+      "phase": "CANCELLED",
+      "settlement_gate": "UNBOUND"
+    },
+    {
+      "advance_id": "sim-unbound",
+      "label": "SIMULATED",
+      "phase": "DRAWN",
+      "settlement_gate": "UNBOUND"
+    },
+    {
+      "advance_id": "sim-pending-settlement",
+      "label": "SIMULATED",
+      "phase": "APPROVED",
+      "settlement_gate": "BOUND"
+    }
+  ],
+  "content_digest": "c06f05d3417973287f5c698e4328df710125a3a367e79fe09952e8f464377502",
+  "funds_executed": false,
+  "label": "SIMULATED",
+  "note": "SIMULATED pin of state_digest, projection totals, and manifest content_digest. Process identity and clock fields are excluded.",
+  "projection_totals": {
+    "accounting_policy": "SYNTHETIC_UNADOPTED",
+    "advance_drawn": 65000,
+    "advance_outstanding": 45000,
+    "advance_repaid": 20000,
+    "credit": 385000,
+    "debit": 385000,
+    "label": "SIMULATED"
+  },
+  "state_digest": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45"
+}

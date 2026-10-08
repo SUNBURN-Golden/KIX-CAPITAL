@@ -154,3 +154,27 @@ Commands actually run on this tree, after the schema and tests were in place:
 - `npm run test:browser`: **32 passed** in 41.5s. Playwright started and stopped the loopback servers. A later port check showed no listener on 8765–8767.
 
 No existing test was weakened or skipped. This section claims no independent review, CI run, commit, push, or deploy.
+
+## Acceptance ladder
+
+`scripts/acceptance.py` runs six stages on one command: unit, pinned vendor, `node --check`, browser, packaged-artifact smoke, and the seeded demo. It writes untracked `build/acceptance-evidence.json` and exits non-zero when a stage fails or is missing. Human product acceptance is not part of this ladder. `scripts/seed_demo.py` builds a SIMULATED book with fixed operation ids: closed, defaulted, rejected, cancelled, UNBOUND draw, and a pending-settlement case whose draw stays `SETTLEMENT_NOT_COMMITTED`. Amounts are fixture units on the pinned open face, not a product limit. `tests/golden/demo.json` pins `state_digest`, projection totals, and manifest `content_digest`. It has no instance id and no clock field. Drift fails unless `--update-golden` is passed.
+
+`content_digest` is documented to ignore instance id and timestamps. Stored section hashes still cover the saved body, so they still move with instance id and still match `sha256` of that body. The digest now recomputes each section hash after those volatile keys are removed. Two fresh processes, and a file-workspace restore, share one content digest. The verifier still checks the stored section hash before the digest.
+
+Browser coverage saves desktop and 375px PNGs of the portfolio, case, projection, statement, reconciliation, readiness, and organizer, auditor, and observer views under `test-results/acceptance/`. Blank captures and console errors fail the test. Those files are not committed. `python3 -m compileall -q capital` is a local check beside the ladder. It is not one of the six stages.
+
+An earlier ladder invocation on this tree exited 0 but reported unit `passed=1` because seed-demo log lines inside unittest overwrote the `Ran N tests` summary. That count was wrong and is not the record below. The parser now treats the unittest summary as authoritative. No stage in the recorded run was skipped or left unrun. `node --check` has no test count because it is a syntax check.
+
+Recorded run, after that parser fix, at HEAD `6e161eb6b4e0def7eb996b634121210de80f2b6a` (dirty worktree; the evidence file stores that SHA). Tools: Python 3.13.5, Node v20.19.2, npm 9.2.0, Playwright 1.58.2. Vendor commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, all 5 file hashes matched. Golden `state_digest` `a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`, `content_digest` `c06f05d3417973287f5c698e4328df710125a3a367e79fe09952e8f464377502`, projection debit and credit both 385000. `git diff --name-only -- capital/vendor .aiops` produced no output.
+
+```text
+[acceptance] unit exit=0 status=passed passed=123 failed=0
+[acceptance] pinned-vendor exit=0 status=passed passed=7 failed=0
+[acceptance] node-check exit=0 status=passed passed=None failed=None
+[acceptance] browser exit=0 status=passed passed=33 failed=0
+[acceptance] packaged-smoke exit=0 status=passed passed=8 failed=0
+[acceptance] seeded-demo exit=0 status=passed passed=1 failed=0
+[acceptance] evidence build/acceptance-evidence.json ok=true
+```
+
+Exit code 0. Evidence `ok` is true. The same tree, before this ladder, also ran `python3 -m compileall -q capital` (exit 0), `node --check capital/static/app.js` (exit 0), pinned MockCredit **7 passed** in 0.002s, and `npm run test:browser` **33 passed** in 54.1s. `npm ci` had added 3 packages. A port check after the ladder showed no listener on 8765–8768. Playwright stopped its loopback servers. No skip was added. This section claims no independent review, GitHub CI run, commit, push, or deploy.
