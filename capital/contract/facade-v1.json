@@ -1,0 +1,4225 @@
+{
+  "namespace": "capital-local-facade/1",
+  "unknownFields": "REJECT",
+  "semantic_conformance": false,
+  "cap16_exact_tuple": "NOT_BOUND",
+  "label": "SIMULATED",
+  "description": "Local Capital facade schema. Not the promoted KIX Protocol catalogue (domain kix:fixture:lifecycle:0.3, 40 commands). Not a generated SDK. Not SEMANTIC_CONFORMANCE. CAP-16 exact producer/SDK tuple stays NOT_BOUND. ProducerPort vectors in tests/test_producer_port.py are a local gateway check only.",
+  "errorGroups": {
+    "boundary": [
+      "LOOPBACK_HOST_REQUIRED",
+      "ORIGIN_REJECTED",
+      "CROSS_SITE_REJECTED",
+      "NOT_FOUND"
+    ],
+    "auth": [
+      "ROLE_UNKNOWN",
+      "LOCAL_TOKEN_REQUIRED",
+      "ROLE_MISMATCH",
+      "SESSION_REQUIRED",
+      "ROLE_FORBIDDEN"
+    ],
+    "mutate": [
+      "JSON_REQUIRED",
+      "INVALID_LENGTH",
+      "BODY_TOO_LARGE",
+      "INVALID_JSON"
+    ],
+    "command": [
+      "INVALID_COMMAND",
+      "SESSION_CHANGED",
+      "INVALID_OPERATION_ID",
+      "IDEMPOTENCY_CONFLICT",
+      "SIMULATION_CAPACITY",
+      "UNSUPPORTED_OPERATION",
+      "SYNTHETIC_ID_REQUIRED",
+      "INVALID_ARGUMENTS",
+      "WORKSPACE_UNREADABLE",
+      "WORKSPACE_LOCKED",
+      "WORKSPACE_WRITE_FAILED"
+    ],
+    "session": [
+      "INVALID_SESSION",
+      "NOT_BOUND"
+    ],
+    "projection": [
+      "NOT_BOUND",
+      "PROJECTION_INVARIANT",
+      "READ_ONLY_INVARIANT"
+    ],
+    "scenario": [
+      "UNKNOWN_SCENARIO"
+    ],
+    "preview": [
+      "SESSION_CHANGED",
+      "UNKNOWN_ADVANCE"
+    ],
+    "operation": [
+      "SESSION_CHANGED"
+    ],
+    "readonly": [
+      "READ_ONLY_INVARIANT"
+    ]
+  },
+  "errors": [
+    {
+      "code": "LOOPBACK_HOST_REQUIRED",
+      "status": 403
+    },
+    {
+      "code": "ORIGIN_REJECTED",
+      "status": 403
+    },
+    {
+      "code": "CROSS_SITE_REJECTED",
+      "status": 403
+    },
+    {
+      "code": "LOCAL_TOKEN_REQUIRED",
+      "status": 403
+    },
+    {
+      "code": "JSON_REQUIRED",
+      "status": 415
+    },
+    {
+      "code": "NOT_FOUND",
+      "status": 404
+    },
+    {
+      "code": "INVALID_LENGTH",
+      "status": 400
+    },
+    {
+      "code": "BODY_TOO_LARGE",
+      "status": 413
+    },
+    {
+      "code": "INVALID_JSON",
+      "status": 400
+    },
+    {
+      "code": "INVALID_SESSION",
+      "status": 400
+    },
+    {
+      "code": "ROLE_UNKNOWN",
+      "status": 403
+    },
+    {
+      "code": "NOT_BOUND",
+      "status": 400
+    },
+    {
+      "code": "ROLE_FORBIDDEN",
+      "status": 403
+    },
+    {
+      "code": "ROLE_MISMATCH",
+      "status": 403
+    },
+    {
+      "code": "SESSION_REQUIRED",
+      "status": 403
+    },
+    {
+      "code": "UNKNOWN_SCENARIO",
+      "status": 404
+    },
+    {
+      "code": "PROJECTION_INVARIANT",
+      "status": 500
+    },
+    {
+      "code": "SESSION_CHANGED",
+      "status": 409
+    },
+    {
+      "code": "UNKNOWN_ADVANCE",
+      "status": 404
+    },
+    {
+      "code": "INVALID_COMMAND",
+      "status": 400
+    },
+    {
+      "code": "WORKSPACE_UNREADABLE",
+      "status": 503
+    },
+    {
+      "code": "WORKSPACE_LOCKED",
+      "status": 503
+    },
+    {
+      "code": "WORKSPACE_WRITE_FAILED",
+      "status": 503
+    },
+    {
+      "code": "INVALID_OPERATION_ID",
+      "status": 400
+    },
+    {
+      "code": "IDEMPOTENCY_CONFLICT",
+      "status": 409
+    },
+    {
+      "code": "SIMULATION_CAPACITY",
+      "status": 409
+    },
+    {
+      "code": "UNSUPPORTED_OPERATION",
+      "status": 400
+    },
+    {
+      "code": "SYNTHETIC_ID_REQUIRED",
+      "status": 400
+    },
+    {
+      "code": "INVALID_ARGUMENTS",
+      "status": 400
+    },
+    {
+      "code": "READ_ONLY_INVARIANT",
+      "status": 500
+    }
+  ],
+  "commands": {
+    "offer": {
+      "args": [
+        "fixture_id",
+        "amount"
+      ]
+    },
+    "approve": {
+      "args": []
+    },
+    "reject": {
+      "args": []
+    },
+    "cancel": {
+      "args": []
+    },
+    "bind_settlement": {
+      "args": []
+    },
+    "draw": {
+      "args": []
+    },
+    "repay": {
+      "args": [
+        "amount",
+        "sequence"
+      ]
+    },
+    "close": {
+      "args": []
+    },
+    "default": {
+      "args": []
+    },
+    "reconcile": {
+      "args": []
+    }
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "operationId": "local_state",
+      "dispatch": "/api/state",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/state"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "state:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios",
+      "operationId": "local_scenarios",
+      "dispatch": "/api/scenarios",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/scenario_list"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios/{id}",
+      "operationId": "local_scenario",
+      "dispatch": "/api/scenarios",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/scenario_detail"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "UNKNOWN_SCENARIO"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/readiness",
+      "operationId": "local_readiness",
+      "dispatch": "/api/readiness",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/readiness"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/evidence",
+      "operationId": "local_evidence",
+      "dispatch": "/api/evidence",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/evidence"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projection",
+      "operationId": "local_projection",
+      "dispatch": "/api/projection",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/projection"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "NOT_BOUND",
+        "PROJECTION_INVARIANT",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "mode"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/{advance_id}",
+      "operationId": "local_preview",
+      "dispatch": "/api/preview/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/preview"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "UNKNOWN_ADVANCE"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/operations/{operation_id}",
+      "operationId": "local_operation",
+      "dispatch": "/api/operations/",
+      "kind": "api",
+      "response": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/accepted_receipt"
+          },
+          {
+            "$ref": "#/definitions/rejected_receipt"
+          },
+          {
+            "$ref": "#/definitions/unknown_operation"
+          }
+        ]
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED"
+      ],
+      "permission": "receipt:read",
+      "query": [
+        "instance_id"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/export",
+      "operationId": "local_export",
+      "dispatch": "/api/export",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/export_v1"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "export:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/manifest",
+      "operationId": "local_export_manifest",
+      "dispatch": "/api/export/manifest",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/manifest"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "export:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reconciliation",
+      "operationId": "local_reconciliation",
+      "dispatch": "/api/reconciliation",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/reconciliation"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "reconciliation:read",
+      "query": [
+        "operation_id"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/statement",
+      "operationId": "local_statement",
+      "dispatch": "/api/statement",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/statement"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "statement:read"
+    },
+    {
+      "method": "POST",
+      "path": "/api/commands",
+      "operationId": "local_command",
+      "dispatch": "/api/commands",
+      "kind": "api",
+      "response": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/accepted_receipt"
+          },
+          {
+            "$ref": "#/definitions/rejected_receipt"
+          }
+        ]
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "JSON_REQUIRED",
+        "INVALID_LENGTH",
+        "BODY_TOO_LARGE",
+        "INVALID_JSON",
+        "INVALID_COMMAND",
+        "SESSION_CHANGED",
+        "INVALID_OPERATION_ID",
+        "IDEMPOTENCY_CONFLICT",
+        "SIMULATION_CAPACITY",
+        "UNSUPPORTED_OPERATION",
+        "SYNTHETIC_ID_REQUIRED",
+        "INVALID_ARGUMENTS",
+        "WORKSPACE_UNREADABLE",
+        "WORKSPACE_LOCKED",
+        "WORKSPACE_WRITE_FAILED"
+      ],
+      "permission": "command:submit",
+      "request": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "instance_id",
+              "operation_id",
+              "op",
+              "advance_id",
+              "args"
+            ],
+            "properties": {
+              "instance_id": {
+                "type": "string"
+              },
+              "operation_id": {
+                "type": "string"
+              },
+              "advance_id": {
+                "type": "string"
+              },
+              "op": {
+                "const": "offer"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "fixture_id",
+                  "amount"
+                ],
+                "properties": {
+                  "fixture_id": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "instance_id",
+              "operation_id",
+              "op",
+              "advance_id",
+              "args"
+            ],
+            "properties": {
+              "instance_id": {
+                "type": "string"
+              },
+              "operation_id": {
+                "type": "string"
+              },
+              "advance_id": {
+                "type": "string"
+              },
+              "op": {
+                "enum": [
+                  "approve",
+                  "reject",
+                  "cancel",
+                  "bind_settlement",
+                  "draw",
+                  "close",
+                  "default",
+                  "reconcile"
+                ]
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {}
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "instance_id",
+              "operation_id",
+              "op",
+              "advance_id",
+              "args"
+            ],
+            "properties": {
+              "instance_id": {
+                "type": "string"
+              },
+              "operation_id": {
+                "type": "string"
+              },
+              "advance_id": {
+                "type": "string"
+              },
+              "op": {
+                "const": "repay"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "amount",
+                  "sequence"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "integer"
+                  },
+                  "sequence": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/session",
+      "operationId": "local_session",
+      "dispatch": "/api/session",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/session"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "JSON_REQUIRED",
+        "INVALID_LENGTH",
+        "BODY_TOO_LARGE",
+        "INVALID_JSON",
+        "INVALID_SESSION",
+        "NOT_BOUND"
+      ],
+      "permission": "session:bind",
+      "request": {
+        "$ref": "#/definitions/session_request"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "operationId": "local_index",
+      "kind": "static",
+      "contentType": "text/html; charset=utf-8",
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/app.js",
+      "operationId": "local_app_js",
+      "kind": "static",
+      "contentType": "text/javascript; charset=utf-8",
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/style.css",
+      "operationId": "local_style",
+      "kind": "static",
+      "contentType": "text/css; charset=utf-8",
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND"
+      ]
+    }
+  ],
+  "definitions": {
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "fee_bps",
+        "residual_payee",
+        "fee_payee"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "fee_bps": {
+          "type": "integer"
+        },
+        "residual_payee": {
+          "type": "string"
+        },
+        "fee_payee": {
+          "type": "string"
+        }
+      }
+    },
+    "obligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payee",
+        "face",
+        "distributed",
+        "cancelled_unpaid",
+        "recovery_due",
+        "outstanding"
+      ],
+      "properties": {
+        "payee": {
+          "type": "string"
+        },
+        "face": {
+          "type": "integer"
+        },
+        "distributed": {
+          "type": "integer"
+        },
+        "cancelled_unpaid": {
+          "type": "integer"
+        },
+        "recovery_due": {
+          "type": "integer"
+        },
+        "outstanding": {
+          "type": "integer"
+        }
+      }
+    },
+    "projection_obligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payee",
+        "face",
+        "distributed",
+        "outstanding",
+        "recovery_due"
+      ],
+      "properties": {
+        "payee": {
+          "type": "string"
+        },
+        "face": {
+          "type": "integer"
+        },
+        "distributed": {
+          "type": "integer"
+        },
+        "outstanding": {
+          "type": "integer"
+        },
+        "recovery_due": {
+          "type": "integer"
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "claim_id",
+        "trade_id",
+        "currency",
+        "gross",
+        "debtor_role",
+        "legal_debtor_bound",
+        "admission_granted",
+        "right_cancelled",
+        "bank_debit_observed",
+        "external_return_closed",
+        "funds_executed",
+        "policy",
+        "obligations",
+        "receivable_open",
+        "confirmed_cash",
+        "non_cash_accounted",
+        "distributed_cash",
+        "undistributed_cash",
+        "distribution_order",
+        "refund_face",
+        "refund_accepted",
+        "refund_outstanding",
+        "refund_beneficiary",
+        "fixture_reclassified",
+        "refund_bearer_policy",
+        "distribution_blocked",
+        "pg_adjustment_outstanding",
+        "recovery_due"
+      ],
+      "properties": {
+        "provenance": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "trade_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "gross": {
+          "type": "integer"
+        },
+        "debtor_role": {
+          "type": "string"
+        },
+        "legal_debtor_bound": {
+          "type": "boolean"
+        },
+        "admission_granted": {
+          "type": "boolean"
+        },
+        "right_cancelled": {
+          "type": "boolean"
+        },
+        "bank_debit_observed": {
+          "type": "boolean"
+        },
+        "external_return_closed": {
+          "type": "boolean"
+        },
+        "funds_executed": {
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/definitions/policy"
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/obligation"
+          }
+        },
+        "receivable_open": {
+          "type": "integer"
+        },
+        "confirmed_cash": {
+          "type": "integer"
+        },
+        "non_cash_accounted": {
+          "type": "integer"
+        },
+        "distributed_cash": {
+          "type": "integer"
+        },
+        "undistributed_cash": {
+          "type": "integer"
+        },
+        "distribution_order": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "refund_face": {
+          "type": "integer"
+        },
+        "refund_accepted": {
+          "type": "integer"
+        },
+        "refund_outstanding": {
+          "type": "integer"
+        },
+        "refund_beneficiary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fixture_reclassified": {
+          "type": "boolean"
+        },
+        "refund_bearer_policy": {
+          "type": "string"
+        },
+        "distribution_blocked": {
+          "type": "boolean"
+        },
+        "pg_adjustment_outstanding": {
+          "type": "integer"
+        },
+        "recovery_due": {
+          "type": "integer"
+        }
+      }
+    },
+    "settlement_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "lifecycle_authority",
+        "settlement_id",
+        "phase",
+        "terminal",
+        "trade_id",
+        "currency",
+        "gross",
+        "debtor_role",
+        "policy",
+        "mock_authorized",
+        "provider_authorization_executed",
+        "commit_movement_id",
+        "failure_reason",
+        "cancel_reason",
+        "external_payment",
+        "legal_debtor_bound",
+        "admission_granted",
+        "right_cancelled",
+        "bank_debit_observed",
+        "external_return_closed",
+        "funds_executed",
+        "durable",
+        "accepted_entries",
+        "claim"
+      ],
+      "properties": {
+        "provenance": {
+          "type": "string"
+        },
+        "lifecycle_authority": {
+          "type": "string"
+        },
+        "settlement_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "terminal": {
+          "type": "boolean"
+        },
+        "trade_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "gross": {
+          "type": "integer"
+        },
+        "debtor_role": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/definitions/policy"
+        },
+        "mock_authorized": {
+          "type": "boolean"
+        },
+        "provider_authorization_executed": {
+          "type": "boolean"
+        },
+        "commit_movement_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failure_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cancel_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "external_payment": {
+          "type": "string"
+        },
+        "legal_debtor_bound": {
+          "type": "boolean"
+        },
+        "admission_granted": {
+          "type": "boolean"
+        },
+        "right_cancelled": {
+          "type": "boolean"
+        },
+        "bank_debit_observed": {
+          "type": "boolean"
+        },
+        "external_return_closed": {
+          "type": "boolean"
+        },
+        "funds_executed": {
+          "type": "boolean"
+        },
+        "durable": {
+          "type": "boolean"
+        },
+        "accepted_entries": {
+          "type": "integer"
+        },
+        "claim": {
+          "$ref": "#/definitions/claim"
+        }
+      }
+    },
+    "repayment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repay_id",
+        "sequence",
+        "amount"
+      ],
+      "properties": {
+        "repay_id": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "amount": {
+          "type": "integer"
+        }
+      }
+    },
+    "credit_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "lifecycle_authority",
+        "exposure_ledger",
+        "advance_id",
+        "phase",
+        "terminal",
+        "claim_id",
+        "trade_id",
+        "currency",
+        "amount",
+        "beneficiary_role",
+        "open_face",
+        "reserved_open",
+        "residual_unreserved",
+        "confirmed_cash_on_face",
+        "recovery_due_on_face",
+        "snapshot_frozen",
+        "note_status",
+        "draw_id",
+        "drawn_exposure",
+        "repaid_exposure",
+        "outstanding_exposure",
+        "repayments",
+        "next_repayment_sequence",
+        "settlement_id",
+        "settlement_gate",
+        "mock_settlement_commit_observed",
+        "reject_reason",
+        "cancel_reason",
+        "default_reason",
+        "external_credit",
+        "economic_finality_claimed",
+        "underwriting_executed",
+        "kyc_executed",
+        "ownership_mutated",
+        "ticket_ownership_authoritative",
+        "accepted_entries",
+        "funds_executed",
+        "license_granted",
+        "regulated_product",
+        "collateral_perfected",
+        "priority_bound",
+        "disposal_controlled",
+        "revenue_assigned",
+        "admission_granted",
+        "legal_debtor_bound",
+        "bank_debit_observed",
+        "external_pledge_complete",
+        "durable",
+        "repayment_observed",
+        "interest_defined"
+      ],
+      "properties": {
+        "provenance": {
+          "type": "string"
+        },
+        "lifecycle_authority": {
+          "type": "string"
+        },
+        "exposure_ledger": {
+          "type": "string"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "terminal": {
+          "type": "boolean"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "trade_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "beneficiary_role": {
+          "type": "string"
+        },
+        "open_face": {
+          "type": "integer"
+        },
+        "reserved_open": {
+          "type": "integer"
+        },
+        "residual_unreserved": {
+          "type": "integer"
+        },
+        "confirmed_cash_on_face": {
+          "type": "integer"
+        },
+        "recovery_due_on_face": {
+          "type": "integer"
+        },
+        "snapshot_frozen": {
+          "type": "boolean"
+        },
+        "note_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "draw_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "drawn_exposure": {
+          "type": "integer"
+        },
+        "repaid_exposure": {
+          "type": "integer"
+        },
+        "outstanding_exposure": {
+          "type": "integer"
+        },
+        "repayments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/repayment"
+          }
+        },
+        "next_repayment_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "settlement_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "settlement_gate": {
+          "type": "string"
+        },
+        "mock_settlement_commit_observed": {
+          "type": "boolean"
+        },
+        "reject_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cancel_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "default_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "external_credit": {
+          "type": "string"
+        },
+        "economic_finality_claimed": {
+          "type": "boolean"
+        },
+        "underwriting_executed": {
+          "type": "boolean"
+        },
+        "kyc_executed": {
+          "type": "boolean"
+        },
+        "ownership_mutated": {
+          "type": "boolean"
+        },
+        "ticket_ownership_authoritative": {
+          "type": "boolean"
+        },
+        "accepted_entries": {
+          "type": "integer"
+        },
+        "funds_executed": {
+          "type": "boolean"
+        },
+        "license_granted": {
+          "type": "boolean"
+        },
+        "regulated_product": {
+          "type": "boolean"
+        },
+        "collateral_perfected": {
+          "type": "boolean"
+        },
+        "priority_bound": {
+          "type": "boolean"
+        },
+        "disposal_controlled": {
+          "type": "boolean"
+        },
+        "revenue_assigned": {
+          "type": "boolean"
+        },
+        "admission_granted": {
+          "type": "boolean"
+        },
+        "legal_debtor_bound": {
+          "type": "boolean"
+        },
+        "bank_debit_observed": {
+          "type": "boolean"
+        },
+        "external_pledge_complete": {
+          "type": "boolean"
+        },
+        "durable": {
+          "type": "boolean"
+        },
+        "repayment_observed": {
+          "type": "boolean"
+        },
+        "interest_defined": {
+          "type": "boolean"
+        }
+      }
+    },
+    "command_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duplicate",
+        "applied",
+        "effect",
+        "provenance",
+        "lifecycle_authority",
+        "external_credit",
+        "economic_finality_claimed",
+        "funds_executed",
+        "bank_debit_observed",
+        "repayment_observed",
+        "interest_defined",
+        "underwriting_executed",
+        "kyc_executed",
+        "credit"
+      ],
+      "properties": {
+        "duplicate": {
+          "type": "boolean"
+        },
+        "applied": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effect": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {
+                "draw_id": {
+                  "type": "string"
+                },
+                "outstanding_exposure": {
+                  "type": "integer"
+                },
+                "note_status": {
+                  "type": "string"
+                },
+                "repay_id": {
+                  "type": "string"
+                },
+                "sequence": {
+                  "type": "integer"
+                },
+                "amount": {
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "lifecycle_authority": {
+          "type": "string"
+        },
+        "external_credit": {
+          "type": "string"
+        },
+        "economic_finality_claimed": {
+          "type": "boolean"
+        },
+        "funds_executed": {
+          "type": "boolean"
+        },
+        "bank_debit_observed": {
+          "type": "boolean"
+        },
+        "repayment_observed": {
+          "type": "boolean"
+        },
+        "interest_defined": {
+          "type": "boolean"
+        },
+        "underwriting_executed": {
+          "type": "boolean"
+        },
+        "kyc_executed": {
+          "type": "boolean"
+        },
+        "credit": {
+          "$ref": "#/definitions/credit_view"
+        },
+        "matched": {
+          "type": "boolean"
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "entry_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "accepted_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "instance_id",
+        "provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate",
+        "role",
+        "role_provenance",
+        "outcome",
+        "result"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "role": {
+          "type": "string"
+        },
+        "role_provenance": {
+          "type": "string"
+        },
+        "outcome": {
+          "const": "ACCEPTED"
+        },
+        "result": {
+          "$ref": "#/definitions/command_result"
+        }
+      }
+    },
+    "rejected_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "instance_id",
+        "provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate",
+        "role",
+        "role_provenance",
+        "outcome",
+        "error"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "role": {
+          "type": "string"
+        },
+        "role_provenance": {
+          "type": "string"
+        },
+        "outcome": {
+          "const": "REJECTED"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "permission_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed",
+        "reason"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "port",
+        "mode",
+        "identity",
+        "authentication",
+        "role",
+        "roles",
+        "permissions"
+      ],
+      "properties": {
+        "port": {
+          "const": "AuthorizerPort"
+        },
+        "mode": {
+          "const": "LOCAL_SYNTHETIC_ROLES"
+        },
+        "identity": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "role": {
+          "type": "string"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "organizer",
+              "auditor",
+              "observer"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "command:submit",
+            "command:offer",
+            "command:approve",
+            "command:reject",
+            "command:cancel",
+            "command:bind_settlement",
+            "command:draw",
+            "command:repay",
+            "command:close",
+            "command:default",
+            "command:reconcile",
+            "state:read",
+            "reference:read",
+            "projection:read",
+            "receipt:read",
+            "export:read",
+            "reconciliation:read",
+            "statement:read",
+            "session:bind"
+          ],
+          "properties": {
+            "command:submit": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:offer": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:approve": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:reject": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:cancel": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:bind_settlement": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:draw": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:repay": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:close": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:default": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "command:reconcile": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "state:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "reference:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "projection:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "receipt:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "export:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "reconciliation:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "statement:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "session:bind": {
+              "$ref": "#/definitions/permission_decision"
+            }
+          }
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "status",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "fixture_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sim-committed",
+        "sim-pending",
+        "sim-refund"
+      ],
+      "properties": {
+        "sim-committed": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "sim-pending": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "sim-refund": {
+          "$ref": "#/definitions/settlement_view"
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "version",
+        "mode",
+        "provenance",
+        "durable",
+        "funds_executed",
+        "source_commit",
+        "cases",
+        "fixtures",
+        "state_digest",
+        "operation_count",
+        "operation_capacity",
+        "auth",
+        "workspace",
+        "decisions",
+        "local_token"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "LOCAL_SIMULATION"
+        },
+        "provenance": {
+          "const": "MOCK_CREDIT_F04_ONLY"
+        },
+        "durable": {
+          "type": [
+            "boolean",
+            "string"
+          ]
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/credit_view"
+          }
+        },
+        "fixtures": {
+          "$ref": "#/definitions/fixture_map"
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "operation_count": {
+          "type": "integer"
+        },
+        "operation_capacity": {
+          "type": "integer"
+        },
+        "auth": {
+          "$ref": "#/definitions/auth"
+        },
+        "workspace": {
+          "$ref": "#/definitions/workspace"
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "local_token": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "trade_id",
+        "phase",
+        "currency",
+        "gross_face",
+        "confirmed_cash",
+        "distributed_cash",
+        "undistributed_cash",
+        "refund_face",
+        "refund_outstanding",
+        "refund_bearer_policy",
+        "recovery_due",
+        "obligations",
+        "source_view_digest"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "trade_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "gross_face": {
+          "type": "integer"
+        },
+        "confirmed_cash": {
+          "type": "integer"
+        },
+        "distributed_cash": {
+          "type": "integer"
+        },
+        "undistributed_cash": {
+          "type": "integer"
+        },
+        "refund_face": {
+          "type": "integer"
+        },
+        "refund_outstanding": {
+          "type": "integer"
+        },
+        "refund_bearer_policy": {
+          "type": "string"
+        },
+        "recovery_due": {
+          "type": "integer"
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/obligation"
+          }
+        },
+        "source_view_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "provenance",
+        "instance_id",
+        "source_commit",
+        "source_scope",
+        "source_cut",
+        "live_completeness",
+        "unavailable",
+        "rows",
+        "funds_executed",
+        "durable"
+      ],
+      "properties": {
+        "mode": {
+          "const": "READ_ONLY_FIXTURE"
+        },
+        "provenance": {
+          "const": "MOCK_SETTLEMENT_ONLY"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "source_scope": {
+          "type": "string"
+        },
+        "source_cut": {
+          "type": "null"
+        },
+        "live_completeness": {
+          "const": "NOT_BOUND"
+        },
+        "unavailable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/evidence_row"
+          }
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account",
+        "side",
+        "amount"
+      ],
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "side": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        }
+      }
+    },
+    "projection_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "source",
+        "txn_id",
+        "lines"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "txn_id": {
+          "type": "string"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/line"
+          }
+        },
+        "advance_id": {
+          "type": "string"
+        }
+      }
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "kind",
+        "debit_total",
+        "credit_total",
+        "balance"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "debit_total": {
+          "type": "integer"
+        },
+        "credit_total": {
+          "type": "integer"
+        },
+        "balance": {
+          "type": "integer"
+        }
+      }
+    },
+    "public_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "phase",
+        "gross",
+        "confirmed_cash",
+        "refund_face",
+        "refund_outstanding",
+        "obligations"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "gross": {
+          "type": "integer"
+        },
+        "confirmed_cash": {
+          "type": "integer"
+        },
+        "refund_face": {
+          "type": "integer"
+        },
+        "refund_outstanding": {
+          "type": "integer"
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/projection_obligation"
+          }
+        }
+      }
+    },
+    "public_advance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "beneficiary_role",
+        "amount",
+        "drawn",
+        "repaid",
+        "outstanding"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "beneficiary_role": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "drawn": {
+          "type": "integer"
+        },
+        "repaid": {
+          "type": "integer"
+        },
+        "outstanding": {
+          "type": "integer"
+        }
+      }
+    },
+    "conservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "predicate",
+        "matched"
+      ],
+      "properties": {
+        "predicate": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "mode",
+        "chart",
+        "accounting_policy",
+        "tax",
+        "legal",
+        "cut",
+        "source_commit",
+        "funds_executed",
+        "policy_adopted",
+        "workspace_mutated",
+        "operating_ledger",
+        "entries",
+        "accounts",
+        "read_model",
+        "conservation"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "LOCAL_PROJECTION_CANDIDATE"
+        },
+        "chart": {
+          "type": "string"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "tax": {
+          "const": "NOT_BOUND"
+        },
+        "legal": {
+          "const": "NOT_BOUND"
+        },
+        "cut": {
+          "type": "string"
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "operating_ledger": {
+          "const": "NOT_BOUND"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/projection_entry"
+          }
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/account"
+          }
+        },
+        "read_model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "claims",
+            "advances"
+          ],
+          "properties": {
+            "claims": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/public_claim"
+              }
+            },
+            "advances": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/public_advance"
+              }
+            }
+          }
+        },
+        "conservation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/conservation"
+          }
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "advance_id",
+        "mode",
+        "provenance",
+        "observed_state_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "settlement_gate",
+        "outcome"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "READ_ONLY_PREVIEW"
+        },
+        "provenance": {
+          "const": "MOCK_CREDIT_F04_ONLY"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "settlement_gate": {
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "WOULD_ACCEPT",
+            "WOULD_REJECT",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "predicted_exposure": {
+          "type": "integer"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cut",
+        "state_digest",
+        "fixtures_digest",
+        "operation_capacity",
+        "capacity_bound",
+        "source_cut",
+        "completeness"
+      ],
+      "properties": {
+        "cut": {
+          "type": "string"
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "fixtures_digest": {
+          "type": "string"
+        },
+        "operation_capacity": {
+          "type": "integer"
+        },
+        "capacity_bound": {
+          "type": "integer"
+        },
+        "source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "completeness": {
+          "const": "NOT_BOUND"
+        }
+      }
+    },
+    "gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "meaning"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "meaning": {
+          "type": "string"
+        }
+      }
+    },
+    "manifest_gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "value",
+        "status",
+        "meaning"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "value": {
+          "type": "null"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "meaning": {
+          "type": "string"
+        }
+      }
+    },
+    "recon_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "MATCHED",
+            "RECON_MISMATCH"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "unknown_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "outcome",
+        "retry_authorized",
+        "resolved"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "outcome": {
+          "const": "UNKNOWN_UNRESOLVED"
+        },
+        "retry_authorized": {
+          "const": false
+        },
+        "resolved": {
+          "const": false
+        }
+      }
+    },
+    "unknown_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "absent_receipt",
+        "retry_authorized",
+        "resolved_by_reconciliation"
+      ],
+      "properties": {
+        "absent_receipt": {
+          "const": "UNKNOWN_UNRESOLVED"
+        },
+        "retry_authorized": {
+          "const": false
+        },
+        "resolved_by_reconciliation": {
+          "const": false
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "label",
+        "diagnostic",
+        "instance_id",
+        "status",
+        "replay_matched",
+        "entry_count",
+        "state_digest",
+        "cut",
+        "fixtures_digest",
+        "operation_capacity",
+        "scope",
+        "checks",
+        "not_bound",
+        "unknown_unresolved",
+        "unknown_policy",
+        "bank_reconciliation",
+        "provider_authenticated_completeness",
+        "source_cut",
+        "funds_executed",
+        "durable",
+        "workspace_mutated",
+        "workspace_status"
+      ],
+      "properties": {
+        "mode": {
+          "const": "READ_ONLY_RECONCILIATION"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "diagnostic": {
+          "const": "LOCAL_ONLY"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "replay_matched": {
+          "type": "boolean"
+        },
+        "entry_count": {
+          "type": "integer"
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "cut": {
+          "type": "string"
+        },
+        "fixtures_digest": {
+          "type": "string"
+        },
+        "operation_capacity": {
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/definitions/scope"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/recon_check"
+          }
+        },
+        "not_bound": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/gap"
+          }
+        },
+        "unknown_unresolved": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/unknown_item"
+          }
+        },
+        "unknown_policy": {
+          "$ref": "#/definitions/unknown_policy"
+        },
+        "bank_reconciliation": {
+          "const": "NOT_BOUND"
+        },
+        "provider_authenticated_completeness": {
+          "const": "NOT_BOUND"
+        },
+        "source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "workspace_status": {
+          "type": "string"
+        }
+      }
+    },
+    "approved_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "phase",
+        "amount"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        }
+      }
+    },
+    "exposure_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "phase",
+        "drawn",
+        "repaid",
+        "outstanding",
+        "confirmed_cash_on_face"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "drawn": {
+          "type": "integer"
+        },
+        "repaid": {
+          "type": "integer"
+        },
+        "outstanding": {
+          "type": "integer"
+        },
+        "confirmed_cash_on_face": {
+          "type": "integer"
+        }
+      }
+    },
+    "reserved_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "claim_id",
+        "reserved_open"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "reserved_open": {
+          "type": "integer"
+        }
+      }
+    },
+    "settlement_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "phase",
+        "confirmed_cash",
+        "distributed_cash"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "confirmed_cash": {
+          "type": "integer"
+        },
+        "distributed_cash": {
+          "type": "integer"
+        }
+      }
+    },
+    "refund_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "refund_face",
+        "refund_accepted",
+        "refund_outstanding"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "refund_face": {
+          "type": "integer"
+        },
+        "refund_accepted": {
+          "type": "integer"
+        },
+        "refund_outstanding": {
+          "type": "integer"
+        }
+      }
+    },
+    "statement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "label",
+        "diagnostic",
+        "instance_id",
+        "state_digest",
+        "cut",
+        "fixtures_digest",
+        "operation_capacity",
+        "scope",
+        "categories",
+        "not_bound",
+        "sales_combined",
+        "primary_and_resale",
+        "funds_executed",
+        "durable",
+        "workspace_mutated",
+        "tax_reporting",
+        "bank_reconciliation",
+        "workspace_status"
+      ],
+      "properties": {
+        "mode": {
+          "const": "READ_ONLY_STATEMENT"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "diagnostic": {
+          "const": "LOCAL_ONLY"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "cut": {
+          "type": "string"
+        },
+        "fixtures_digest": {
+          "type": "string"
+        },
+        "operation_capacity": {
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/definitions/scope"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "source",
+                  "total",
+                  "rows"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "approved"
+                  },
+                  "source": {
+                    "const": "SIMULATED"
+                  },
+                  "total": {
+                    "type": "integer"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/approved_row"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "source",
+                  "drawn",
+                  "repaid",
+                  "outstanding",
+                  "rows",
+                  "case_confirmed_cash_on_face_not_in_fixture_total"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "exposure"
+                  },
+                  "source": {
+                    "const": "SIMULATED"
+                  },
+                  "drawn": {
+                    "type": "integer"
+                  },
+                  "repaid": {
+                    "type": "integer"
+                  },
+                  "outstanding": {
+                    "type": "integer"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/exposure_row"
+                    }
+                  },
+                  "case_confirmed_cash_on_face_not_in_fixture_total": {
+                    "const": true
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "source",
+                  "total",
+                  "consistent",
+                  "rows"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "reserved"
+                  },
+                  "source": {
+                    "const": "SIMULATED"
+                  },
+                  "total": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "consistent": {
+                    "type": "boolean"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/reserved_row"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "source",
+                  "confirmed",
+                  "distributed",
+                  "rows"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "settlement"
+                  },
+                  "source": {
+                    "const": "READ_ONLY_FIXTURE"
+                  },
+                  "confirmed": {
+                    "type": "integer"
+                  },
+                  "distributed": {
+                    "type": "integer"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/settlement_row"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "source",
+                  "refund_face",
+                  "refund_accepted",
+                  "refund_outstanding",
+                  "rows"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "refund"
+                  },
+                  "source": {
+                    "const": "READ_ONLY_FIXTURE"
+                  },
+                  "refund_face": {
+                    "type": "integer"
+                  },
+                  "refund_accepted": {
+                    "type": "integer"
+                  },
+                  "refund_outstanding": {
+                    "type": "integer"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/refund_row"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "not_bound": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/gap"
+          }
+        },
+        "sales_combined": {
+          "const": false
+        },
+        "primary_and_resale": {
+          "const": "NOT_SUMMED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "tax_reporting": {
+          "const": "NOT_BOUND"
+        },
+        "bank_reconciliation": {
+          "const": "NOT_BOUND"
+        },
+        "workspace_status": {
+          "type": "string"
+        }
+      }
+    },
+    "source_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "expected_sha256",
+        "actual_sha256",
+        "matched"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "expected_sha256": {
+          "type": "string"
+        },
+        "actual_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_matched",
+        "files",
+        "meaning"
+      ],
+      "properties": {
+        "all_matched": {
+          "type": "boolean"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/source_file"
+          }
+        },
+        "meaning": {
+          "type": "string"
+        }
+      }
+    },
+    "readiness_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "status",
+        "requirements",
+        "behavior",
+        "available",
+        "blockers",
+        "owner",
+        "claim"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "behavior": {
+          "type": "string"
+        },
+        "available": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "owner": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string"
+        }
+      }
+    },
+    "requirement_notes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "CAP-09",
+        "CAP-13",
+        "CAP-14",
+        "CAP-15",
+        "CAP-16"
+      ],
+      "properties": {
+        "CAP-09": {
+          "type": "string"
+        },
+        "CAP-13": {
+          "type": "string"
+        },
+        "CAP-14": {
+          "type": "string"
+        },
+        "CAP-15": {
+          "type": "string"
+        },
+        "CAP-16": {
+          "type": "string"
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "mode",
+        "source_commit",
+        "upstream_binding",
+        "source_integrity",
+        "groups",
+        "production_authorized",
+        "upstream_nodes_completed",
+        "policy_adopted",
+        "requirement_notes"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "LOCAL_READINESS_ONLY"
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "upstream_binding": {
+          "const": "NOT_BOUND"
+        },
+        "source_integrity": {
+          "$ref": "#/definitions/integrity"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/readiness_group"
+          }
+        },
+        "production_authorized": {
+          "const": false
+        },
+        "upstream_nodes_completed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "requirement_notes": {
+          "$ref": "#/definitions/requirement_notes"
+        }
+      }
+    },
+    "scenario_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "all_predicates_matched"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "integer"
+        },
+        "all_predicates_matched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "scenario_list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "source_commit",
+        "mode",
+        "funds_executed",
+        "workspace_state_digest",
+        "scenarios"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "READ_ONLY_SCENARIOS"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_state_digest": {
+          "type": "string"
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/scenario_summary"
+          }
+        }
+      }
+    },
+    "predicate_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "predicate",
+        "matched"
+      ],
+      "properties": {
+        "predicate": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "scenario_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinal",
+        "op",
+        "label",
+        "args",
+        "expected_error",
+        "outcome",
+        "error",
+        "duplicate",
+        "view",
+        "checks"
+      ],
+      "properties": {
+        "ordinal": {
+          "type": "integer"
+        },
+        "op": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "expected_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "ACCEPTED",
+            "REJECTED"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "duplicate": {
+          "type": "boolean"
+        },
+        "view": {
+          "$ref": "#/definitions/claim"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/predicate_check"
+          }
+        }
+      }
+    },
+    "scenario_body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "initial",
+        "steps",
+        "final",
+        "all_predicates_matched",
+        "provenance",
+        "scope",
+        "policy_adopted",
+        "funds_executed",
+        "workspace_mutated",
+        "external_return_closed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "initial": {
+          "$ref": "#/definitions/claim"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/scenario_step"
+          }
+        },
+        "final": {
+          "$ref": "#/definitions/claim"
+        },
+        "all_predicates_matched": {
+          "type": "boolean"
+        },
+        "provenance": {
+          "const": "MOCK_SETTLEMENT_ONLY"
+        },
+        "scope": {
+          "const": "DISPOSABLE_READ_ONLY_SCENARIO"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        }
+      }
+    },
+    "scenario_detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "source_commit",
+        "mode",
+        "funds_executed",
+        "workspace_state_digest",
+        "scenario"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "READ_ONLY_SCENARIOS"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_state_digest": {
+          "type": "string"
+        },
+        "scenario": {
+          "$ref": "#/definitions/scenario_body"
+        }
+      }
+    },
+    "journal_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "idempotency_key",
+        "advance_id",
+        "body"
+      ],
+      "properties": {
+        "op": {
+          "enum": [
+            "offer",
+            "approve",
+            "reject",
+            "cancel",
+            "bind_settlement",
+            "draw",
+            "repay",
+            "close",
+            "default"
+          ]
+        },
+        "idempotency_key": {
+          "type": "string"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "face",
+                "amount",
+                "beneficiary_role"
+              ],
+              "properties": {
+                "face": {
+                  "$ref": "#/definitions/claim"
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "beneficiary_role": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "settlement_id"
+              ],
+              "properties": {
+                "settlement_id": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "draw_id"
+              ],
+              "properties": {
+                "draw_id": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "repay_id",
+                "sequence",
+                "amount"
+              ],
+              "properties": {
+                "repay_id": {
+                  "type": "string"
+                },
+                "sequence": {
+                  "type": "integer"
+                },
+                "amount": {
+                  "type": "integer"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {}
+            }
+          ]
+        }
+      }
+    },
+    "source_document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "repository",
+        "source_prefix",
+        "files"
+      ],
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "source_prefix": {
+          "type": "string"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "export_v1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "instance_id",
+        "provenance",
+        "source",
+        "fixtures_digest",
+        "journal",
+        "state_digest",
+        "replay_matched",
+        "durable",
+        "funds_executed",
+        "note"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_SIMULATION_V1"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "provenance": {
+          "const": "MOCK_CREDIT_F04_ONLY"
+        },
+        "source": {
+          "$ref": "#/definitions/source_document"
+        },
+        "fixtures_digest": {
+          "type": "string"
+        },
+        "journal": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/journal_entry"
+          }
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "replay_matched": {
+          "type": "boolean"
+        },
+        "durable": {
+          "type": [
+            "boolean",
+            "string"
+          ]
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "stored_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fingerprint",
+        "receipt"
+      ],
+      "properties": {
+        "fingerprint": {
+          "type": "string"
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/accepted_receipt"
+            },
+            {
+              "$ref": "#/definitions/rejected_receipt"
+            }
+          ]
+        }
+      }
+    },
+    "journal_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_tag",
+        "label",
+        "entries"
+      ],
+      "properties": {
+        "part_tag": {
+          "const": "journalpart"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/journal_entry"
+          }
+        }
+      }
+    },
+    "receipts_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_tag",
+        "label",
+        "receipts"
+      ],
+      "properties": {
+        "part_tag": {
+          "const": "receiptspart"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "receipts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/stored_receipt"
+          }
+        }
+      }
+    },
+    "fixtures_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_tag",
+        "label",
+        "fixtures_digest",
+        "rows"
+      ],
+      "properties": {
+        "part_tag": {
+          "const": "fixturespart"
+        },
+        "label": {
+          "const": "READ_ONLY_FIXTURE"
+        },
+        "fixtures_digest": {
+          "type": "string"
+        },
+        "rows": {
+          "$ref": "#/definitions/fixture_map"
+        }
+      }
+    },
+    "source_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_tag",
+        "label",
+        "commit",
+        "repository",
+        "files",
+        "integrity"
+      ],
+      "properties": {
+        "part_tag": {
+          "const": "sourcepinpart"
+        },
+        "label": {
+          "const": "READ_ONLY_FIXTURE"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "integrity": {
+          "$ref": "#/definitions/integrity"
+        }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "journal",
+        "receipts",
+        "projection",
+        "reconciliation",
+        "statement",
+        "fixtures",
+        "source_pin"
+      ],
+      "properties": {
+        "journal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/journal_section"
+            }
+          }
+        },
+        "receipts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/receipts_section"
+            }
+          }
+        },
+        "projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/projection",
+              "partTag": "projectionpart"
+            }
+          }
+        },
+        "reconciliation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/reconciliation",
+              "partTag": "reconciliationpart"
+            }
+          }
+        },
+        "statement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/statement",
+              "partTag": "statementpart"
+            }
+          }
+        },
+        "fixtures": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/fixtures_section"
+            }
+          }
+        },
+        "source_pin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/source_section"
+            }
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "port",
+        "alg",
+        "status",
+        "label",
+        "purpose",
+        "authentication",
+        "value"
+      ],
+      "properties": {
+        "port": {
+          "const": "SignaturePort"
+        },
+        "alg": {
+          "enum": [
+            "UNSIGNED",
+            "DEV_HMAC_SHA256"
+          ]
+        },
+        "status": {
+          "enum": [
+            "NOT_BOUND",
+            "DEV_ONLY"
+          ]
+        },
+        "label": {
+          "enum": [
+            "NOT_BOUND",
+            "DEV_ONLY"
+          ]
+        },
+        "purpose": {
+          "enum": [
+            "NOT_BOUND",
+            "INTEGRITY_ONLY"
+          ]
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "label",
+        "diagnostic",
+        "status",
+        "incomplete_reasons",
+        "instance_id",
+        "cursor",
+        "watermark",
+        "source_cut",
+        "timestamps",
+        "not_bound",
+        "external_key",
+        "retention_policy",
+        "authentication",
+        "stage7_authenticated_export",
+        "signature_port",
+        "funds_executed",
+        "import_endpoint",
+        "resume_endpoint",
+        "sections",
+        "note",
+        "content_digest",
+        "signature"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_EXPORT_MANIFEST_V2"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "diagnostic": {
+          "const": "READ_ONLY"
+        },
+        "status": {
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE"
+          ]
+        },
+        "incomplete_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "null"
+        },
+        "watermark": {
+          "type": "null"
+        },
+        "source_cut": {
+          "type": "null"
+        },
+        "timestamps": {
+          "type": "null"
+        },
+        "not_bound": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/manifest_gap"
+          }
+        },
+        "external_key": {
+          "const": "NOT_BOUND"
+        },
+        "retention_policy": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "stage7_authenticated_export": {
+          "const": false
+        },
+        "signature_port": {
+          "const": "SignaturePort"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "import_endpoint": {
+          "const": "NOT_PROVIDED"
+        },
+        "resume_endpoint": {
+          "const": "NOT_PROVIDED"
+        },
+        "sections": {
+          "$ref": "#/definitions/sections"
+        },
+        "note": {
+          "type": "string"
+        },
+        "content_digest": {
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/definitions/signature"
+        }
+      }
+    },
+    "unknown_operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "operation_id",
+        "instance_id",
+        "retry_authorized"
+      ],
+      "properties": {
+        "outcome": {
+          "const": "UNKNOWN"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "retry_authorized": {
+          "const": false
+        }
+      }
+    },
+    "session_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "organizer",
+            "auditor",
+            "observer"
+          ]
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "local_token",
+        "role_provenance",
+        "mode",
+        "identity",
+        "authentication",
+        "idp",
+        "kyc",
+        "agent_grant",
+        "action_permit"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "organizer",
+            "auditor",
+            "observer"
+          ]
+        },
+        "local_token": {
+          "type": "string"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "mode": {
+          "const": "LOCAL_SYNTHETIC_ROLES"
+        },
+        "identity": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "idp": {
+          "const": "NOT_BOUND"
+        },
+        "kyc": {
+          "const": "NOT_BOUND"
+        },
+        "agent_grant": {
+          "const": "NOT_BOUND"
+        },
+        "action_permit": {
+          "const": "NOT_BOUND"
+        }
+      }
+    },
+    "error_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "enum": [
+            "LOOPBACK_HOST_REQUIRED",
+            "ORIGIN_REJECTED",
+            "CROSS_SITE_REJECTED",
+            "LOCAL_TOKEN_REQUIRED",
+            "JSON_REQUIRED",
+            "NOT_FOUND",
+            "INVALID_LENGTH",
+            "BODY_TOO_LARGE",
+            "INVALID_JSON",
+            "INVALID_SESSION",
+            "ROLE_UNKNOWN",
+            "NOT_BOUND",
+            "ROLE_FORBIDDEN",
+            "ROLE_MISMATCH",
+            "SESSION_REQUIRED",
+            "UNKNOWN_SCENARIO",
+            "PROJECTION_INVARIANT",
+            "SESSION_CHANGED",
+            "UNKNOWN_ADVANCE",
+            "INVALID_COMMAND",
+            "WORKSPACE_UNREADABLE",
+            "WORKSPACE_LOCKED",
+            "WORKSPACE_WRITE_FAILED",
+            "INVALID_OPERATION_ID",
+            "IDEMPOTENCY_CONFLICT",
+            "SIMULATION_CAPACITY",
+            "UNSUPPORTED_OPERATION",
+            "SYNTHETIC_ID_REQUIRED",
+            "INVALID_ARGUMENTS",
+            "READ_ONLY_INVARIANT"
+          ]
+        },
+        "role": {
+          "type": "string"
+        },
+        "permission": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "claimed": {
+          "type": "string"
+        }
+      }
+    },
+    "command_request": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instance_id",
+            "operation_id",
+            "op",
+            "advance_id",
+            "args"
+          ],
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "operation_id": {
+              "type": "string"
+            },
+            "advance_id": {
+              "type": "string"
+            },
+            "op": {
+              "const": "offer"
+            },
+            "args": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "fixture_id",
+                "amount"
+              ],
+              "properties": {
+                "fixture_id": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instance_id",
+            "operation_id",
+            "op",
+            "advance_id",
+            "args"
+          ],
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "operation_id": {
+              "type": "string"
+            },
+            "advance_id": {
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "approve",
+                "reject",
+                "cancel",
+                "bind_settlement",
+                "draw",
+                "close",
+                "default",
+                "reconcile"
+              ]
+            },
+            "args": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instance_id",
+            "operation_id",
+            "op",
+            "advance_id",
+            "args"
+          ],
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "operation_id": {
+              "type": "string"
+            },
+            "advance_id": {
+              "type": "string"
+            },
+            "op": {
+              "const": "repay"
+            },
+            "args": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "amount",
+                "sequence"
+              ],
+              "properties": {
+                "amount": {
+                  "type": "integer"
+                },
+                "sequence": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
