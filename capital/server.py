@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from capital.auth import COMMAND_SUBMIT, LocalRoleAuthorizer, require, route_permission
 from capital.service import ApiError, CapitalService
 
 STATIC = Path(__file__).parent / 'static'
@@ -25,8 +26,9 @@ def strict_object(pairs):
     return result
 
 
-def make_server(port=8765):
-    service = CapitalService()
+def make_server(port=8765, authorizer=None):
+    authorizer = authorizer or LocalRoleAuthorizer()
+    service = CapitalService(authorizer=authorizer)
     token = secrets.token_urlsafe(32)
 
     class Handler(BaseHTTPRequestHandler):
@@ -50,6 +52,9 @@ def make_server(port=8765):
             except (BrokenPipeError, ConnectionResetError):
                 pass  # receipt remains queryable; never retry a command
 
+        def fail(self, exc):
+            self.reply(exc.status, {'error': exc.code, **(exc.detail or {})})
+
         def boundary(self, mutate=False):
             host = f'127.0.0.1:{self.server.server_port}'
             if self.headers.get_all('Host') != [host]:
@@ -65,6 +70,33 @@ def make_server(port=8765):
                 if self.headers.get('Content-Type') != 'application/json':
                     raise ApiError('JSON_REQUIRED', 415)
 
+        def principal(self):
+            return authorizer.authenticate(self.headers)
+
+        def dispatch_get(self, route, principal):
+            path = route.path
+            if path == '/api/state':
+                return self.reply(200, {**service.snapshot(role=principal.role), 'local_token': token})
+            if path == '/api/evidence':
+                return self.reply(200, service.evidence())
+            if path == '/api/readiness':
+                return self.reply(200, service.readiness())
+            if path == '/api/scenarios':
+                return self.reply(200, service.scenarios())
+            if path.startswith('/api/scenarios/'):
+                return self.reply(200, service.scenarios(path.rsplit('/', 1)[-1]))
+            if path.startswith('/api/preview/'):
+                instance = parse_qs(route.query).get('instance_id', [''])[0]
+                return self.reply(200, service.preview_draw(path.rsplit('/', 1)[-1], instance))
+            if path == '/api/export':
+                return self.reply(200, service.export())
+            if path == '/api/reconciliation':
+                return self.reply(200, service.reconciliation())
+            if path.startswith('/api/operations/'):
+                instance = parse_qs(route.query).get('instance_id', [''])[0]
+                return self.reply(200, service.operation(path.rsplit('/', 1)[-1], instance))
+            raise ApiError('NOT_FOUND', 404)
+
         def do_GET(self):
             try:
                 self.boundary()
@@ -72,33 +104,22 @@ def make_server(port=8765):
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
                     return self.reply(200, (STATIC / name).read_bytes(), kind)
-                if route.path == '/api/state':
-                    return self.reply(200, {**service.snapshot(), 'local_token': token})
-                if route.path == '/api/evidence':
-                    return self.reply(200, service.evidence())
-                if route.path == '/api/readiness':
-                    return self.reply(200, service.readiness())
-                if route.path == '/api/scenarios':
-                    return self.reply(200, service.scenarios())
-                if route.path.startswith('/api/scenarios/'):
-                    return self.reply(200, service.scenarios(route.path.rsplit('/', 1)[-1]))
-                if route.path.startswith('/api/preview/'):
-                    instance = parse_qs(route.query).get('instance_id', [''])[0]
-                    return self.reply(200, service.preview_draw(route.path.rsplit('/', 1)[-1], instance))
-                if route.path == '/api/export':
-                    return self.reply(200, service.export())
-                if route.path.startswith('/api/operations/'):
-                    instance = parse_qs(route.query).get('instance_id', [''])[0]
-                    return self.reply(200, service.operation(route.path.rsplit('/', 1)[-1], instance))
-                raise ApiError('NOT_FOUND', 404)
+                principal = self.principal()
+                permission = route_permission(route.path)
+                if permission is None:
+                    raise ApiError('NOT_FOUND', 404)
+                require(authorizer, principal, permission)
+                self.dispatch_get(route, principal)
             except ApiError as exc:
-                self.reply(exc.status, {'error': exc.code})
+                self.fail(exc)
 
         def do_POST(self):
             try:
                 self.boundary(mutate=True)
-                if self.path != '/api/commands':
+                principal = self.principal()
+                if urlsplit(self.path).path != '/api/commands':
                     raise ApiError('NOT_FOUND', 404)
+                require(authorizer, principal, COMMAND_SUBMIT)
                 lengths = self.headers.get_all('Content-Length', [])
                 if len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding'):
                     raise ApiError('INVALID_LENGTH')
@@ -112,13 +133,14 @@ def make_server(port=8765):
                                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
                 except (ValueError, UnicodeDecodeError, TimeoutError, RecursionError):
                     raise ApiError('INVALID_JSON')
-                self.reply(200, service.execute(body))
+                self.reply(200, service.execute(body, role=principal.role))
             except ApiError as exc:
-                self.reply(exc.status, {'error': exc.code})
+                self.fail(exc)
 
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
     server.daemon_threads = True
     server.service = service
+    server.authorizer = authorizer
     return server
 
 

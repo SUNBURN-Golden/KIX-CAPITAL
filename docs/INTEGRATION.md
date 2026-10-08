@@ -12,6 +12,7 @@
 - `GET /api/preview/{advance_id}?instance_id=…`: restore the current accepted journal into a disposable F04 machine and test draw there. Response binds instance, advance and observed state digest; `write_authorized=false`. No active reservation, receipt or journal mutation. It is a point-in-time diagnostic; an actual later command rechecks all gates.
 - `GET /api/readiness`: source-byte integrity and behavior-level mapping of all 20 requirements, local capabilities, missing decisions, upstream prerequisites and release authorization. No upstream node is marked complete. Source equality does not qualify an SDK or service.
 - `GET /api/export`: accepted in-memory journal, source pin, fixture digest, state digest and replay match. No import or resume endpoint. Not authenticated financial export, bank reconciliation, accounting evidence or durable recovery.
+- `GET /api/reconciliation`: read-only scratch replay of the accepted journal for the calling role. Writes no receipt. `bank_reconciliation` stays `NOT_BOUND`. This is not the POST `reconcile` command, which stores a receipt and is refused to auditor and observer.
 
 | op | args |
 |---|---|
@@ -34,3 +35,14 @@ Before consuming promoted commands or finance queries, require exact producer re
 A future read must carry source mode/profile, operation/order/claim/advance identity, asset/registry and policy revision, source cut, watermark, gap/staleness and completeness. Keep read identity and command outcome separate. Mixed cuts, partial exports, missing pages, stale views and cross-session callbacks remain incomplete. Protocol's stage5/6/7 and Finance design dependencies must actually be adopted and verified before real projection or authenticated export implementation.
 
 Rights/repeated resale/gift/refund/admission remain Protocol/Commerce authority. Financial claim ownership is not ticket ownership. No credit operation grants admission, moves rights or provides a lien. Large-scale RS sharding and optional TL collateral/reward contracts are external future dependencies, not a performance/chain claim by this process.
+
+## Local authorization boundary v1
+
+This is a **local authorization boundary**, not authentication and not an entitlement policy.
+
+- Synthetic roles are `organizer`, `auditor`, and `observer`, defined in `capital/auth.py` behind `AuthorizerPort`. `LocalRoleAuthorizer` is the only implementation. A real identity provider would replace that port later.
+- The role travels as `X-Capital-Role` next to the unchanged loopback `X-Capital-Token`. There are no accounts, passwords, personal data, sessions, token issuance, or credential stores. A missing role header means `organizer`, so existing same-origin callers keep working. An unknown or duplicated role header fails closed with `403 ROLE_UNKNOWN`.
+- Every `/api/commands` operation maps to `command:{op}`. Sensitive and ordinary GETs map to `state:read`, `reference:read`, `projection:read`, `receipt:read`, `export:read`, or `reconciliation:read`. `command:submit` is the coarse gate checked before a command body is read. An unmapped permission is denied. An unmapped GET path is `404`.
+- `organizer` holds the placeholder matrix. `auditor` may read state, reference, projection, receipts, export, and reconciliation, and cannot write. `observer` may read state, reference, projection, and receipts only. The server enforces this. A denied command returns `403 ROLE_FORBIDDEN` and does not change `operation_count`, the journal, or an existing receipt. Receipts that do get written carry `role` and `role_provenance=SYNTHETIC_LOCAL_ROLE`. A duplicate returns the original role. The command fingerprint stays the body digest; the body schema still has no role field.
+- `/api/state` still gives the loopback token to any same-origin page, and its `auth` block reports `identity: NOT_BOUND`. The machine `state_digest` does not include that block. This seam is access control for synthetic roles. It does not establish who a person is.
+- Real IdP, KYC, and credential flows stay **NOT_BOUND**. Which real person may approve, draw, or default a real advance is not decided here. The matrix is a synthetic placeholder. Vendor files under `capital/vendor/` are not part of this boundary and stay byte-identical.
