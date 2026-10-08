@@ -44,8 +44,14 @@ test('auditor session blocks every write and still reads export and reconciliati
     await expect(page.locator('#case-title')).toHaveText(advanceId);
     await page.getByRole('button', {name: '모의 승인', exact: true}).click();
     await expect(page.locator('#phase')).toContainText('APPROVED');
+    const bound = page.waitForResponse(response => response.url().endsWith('/api/commands') && response.request().postDataJSON()?.op === 'bind_settlement');
     await page.getByRole('button', {name: '정산 근거 연결'}).click();
+    const bindReceipt = await (await bound).json();
+    expect(bindReceipt.outcome).toBe('ACCEPTED');
+    expect(bindReceipt.result.applied).toBe('bind_settlement');
+    expect(bindReceipt.result.credit.advance_id).toBe(advanceId);
     await expect(page.locator('#phase')).toContainText('APPROVED');
+    await expect(page.getByRole('button', {name: '모의 노출 기록', exact: true})).toBeEnabled();
     const prepared = await (await page.request.get('/api/state')).json();
     const operationCount = prepared.operation_count;
     const stateDigest = prepared.state_digest;
