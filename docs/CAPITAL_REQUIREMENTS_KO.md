@@ -40,7 +40,7 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload와 old-instance fence | SIMULATED; 프로세스 재시작 내구성 없음 |
 | CAP-11 | 내구 거래·inbox/outbox·장애복구 | 연동 계약과 미지원 상태 | NOT_BOUND: `k-stage5-durable-tx`·backend 채택·v5, 자체 저장엔진 만들지 않음 |
 | CAP-12 | 자산별 정확한 금액·FX | KRW 고정 프로파일, int 검증, 포트폴리오 BigInt 표시 | 일부 SIMULATED; u128·registry/정밀도·FX quote/execution은 별도 계약 |
-| CAP-13 | 복식 금융 투영 | 금융 원장으로 오인하지 않는 노출 조회 | NOT_BOUND: `fin-ledger-contract`, stage5/6; 계정/수익인식/세무 미정 |
+| CAP-13 | 복식 금융 투영 | 로컬 후보 복식 투영 · `SYNTHETIC_UNADOPTED` 표기 · 운영 원장 `NOT_BOUND` | SIMULATED(로컬 후보); fin-ledger-contract·stage5/6 선행 유지, 계정/수익인식/세무 미정 |
 | CAP-14 | 원관측·대사 예외 | 원명령 receipt/거절·UNKNOWN 표시, 메모리 journal 재생 | 일부 SIMULATED; 제공자 인증·범위완전성·은행 대사는 NOT_BOUND |
 | CAP-15 | 인증 export·일관 source cut | 로컬 journal JSON + 소스 pin/fixture hash/재생 일치 | 로컬 진단만; stage7/finance export, signed manifest·cursor·watermark 미구현 |
 | CAP-16 | SDK·API 적합성 | strict 로컬 envelope, 화면에서 vendor byte hash 확인, 자체 namespace | NOT_BOUND: 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple |
@@ -61,4 +61,4 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 
 같은 PR에서 DB 없이 가능한 CAP-05/06의 참조 시나리오를 9개·35단계로 구현했다. 모든 배정·환불 수치는 고정한 upstream 목에서 계산한다. 클라이언트는 수치를 재계산하지 않는다. 다섯 읽기 전용 보존식·예상 거절·거절 시 상태 보존은 별도로 검사한다. CAP-08의 인출 사전점검은 현재 저널의 별도 복제본만 변경하므로 활성 제안·예약·receipt에 효과가 없다. CAP-16의 파일 무결성 표시는 source byte 일치에만 한정된다.
 
-나머지는 화면에서 제품 행동별로 구분한다. 수익참여·채권매입·외부담보 실행은 금융 조건 결정이 필요하다. 실제 주문/리셀/권리 연결은 exact producer/SDK/profile이, 내구 원장·복식·인증 export는 stage5/6/7과 Finance 후보 채택이 필요하다. 다중 자산·권리 규모·비공개·AI 권한은 해당 upstream 계약이 필요하다. 실서비스 실행은 현재 승인되지 않았다. 이 차단점을 가상 계산이나 자체 backend로 대체하지 않는다. 각 행은 계속 전체 Capital 범위에 남는다.
+나머지는 화면에서 제품 행동별로 구분한다. CAP-13의 로컬 후보는 `SYNTHETIC_UNADOPTED` 표식의 읽기 전용 투영이며 계정·수익인식·세무를 정하지 않고 `fin-ledger-contract`를 채택하지 않는다. 수익참여·채권매입·외부담보 실행은 금융 조건 결정이 필요하다. 실제 주문/리셀/권리 연결은 exact producer/SDK/profile이, 내구 원장·채택 복식·인증 export는 stage5/6/7과 Finance 후보 채택이 필요하다. 다중 자산·권리 규모·비공개·AI 권한은 해당 upstream 계약이 필요하다. 실서비스 실행은 현재 승인되지 않았다. 이 차단점을 가상 계산이나 자체 backend로 대체하지 않는다. 각 행은 계속 전체 Capital 범위에 남는다.
