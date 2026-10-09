@@ -363,6 +363,61 @@
     },
     {
       "method": "GET",
+      "path": "/api/terms",
+      "operationId": "local_terms",
+      "dispatch": "/api/terms",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/terms_status"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/terms/{advance_id}",
+      "operationId": "local_terms_case",
+      "dispatch": "/api/terms",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/terms_case"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "UNKNOWN_ADVANCE",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id",
+        "draw_day",
+        "as_of_day",
+        "expected_settlement_cash_day"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/preview/{advance_id}",
       "operationId": "local_preview",
       "dispatch": "/api/preview/",
@@ -760,6 +815,309 @@
     }
   ],
   "definitions": {
+    "terms_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "terms_version"],
+      "properties": {
+        "status": {"enum": ["BOUND", "PARTIAL", "NOT_BOUND"]},
+        "reason": {"type": ["string", "null"]},
+        "terms_version": {"type": ["string", "null"]}
+      }
+    },
+    "terms_common": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "mode", "terms_version", "provisional", "funds_executed",
+        "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest",
+        "status", "reason"
+      ],
+      "properties": {
+        "label": {"const": "simulated overlay — not vendor FSM arithmetic, not an offer"},
+        "mode": {"const": "SIMULATED_OVERLAY"},
+        "terms_version": {"type": ["string", "null"]},
+        "provisional": {"const": true},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"},
+        "status": {"enum": ["BOUND", "PARTIAL", "NOT_BOUND"]},
+        "reason": {"type": ["string", "null"]}
+      }
+    },
+    "terms_unbound_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"const": "NOT_BOUND"},
+        "reason": {"const": "terms not bound"}
+      }
+    },
+    "terms_na_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"const": "NOT_APPLICABLE"},
+        "reason": {"const": "tier not applicable"}
+      }
+    },
+    "terms_schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "term_days", "maturity_day", "grace_days", "default_eligible_day", "writeoff_day", "source"],
+      "properties": {
+        "status": {"const": "BOUND"},
+        "term_days": {"type": "integer"},
+        "maturity_day": {"type": "integer"},
+        "grace_days": {"type": "integer"},
+        "default_eligible_day": {"type": "integer"},
+        "writeoff_day": {"type": "integer"},
+        "source": {"enum": ["standard", "settlement_linked"]}
+      }
+    },
+    "terms_accrual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "exact", "interest_krw", "assumption", "all_in_bps_annual", "cap_ok", "contractual_days", "default_days", "fee_bps_charged"],
+      "properties": {
+        "status": {"const": "BOUND"},
+        "exact": {"type": "string"},
+        "interest_krw": {"type": "integer"},
+        "assumption": {"const": "principal is constant; the pinned journal has no repayment days"},
+        "all_in_bps_annual": {"type": "integer"},
+        "cap_ok": {"type": "boolean"},
+        "contractual_days": {"type": "integer"},
+        "default_days": {"type": "integer"},
+        "fee_bps_charged": {"type": "integer"}
+      }
+    },
+    "terms_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collateral_perfected", "external_pledge_complete", "priority_bound"],
+      "properties": {
+        "collateral_perfected": {"type": "boolean"},
+        "external_pledge_complete": {"type": "boolean"},
+        "priority_bound": {"type": "boolean"}
+      }
+    },
+    "terms_collateral": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "rung", "synthetic", "real_funds_minimum", "chain_evidence_role", "flags"],
+      "properties": {
+        "status": {"const": "BOUND"},
+        "rung": {"type": "string"},
+        "synthetic": {"const": true},
+        "real_funds_minimum": {"type": "string"},
+        "chain_evidence_role": {"type": "string"},
+        "flags": {"$ref": "#/definitions/terms_flags"}
+      }
+    },
+    "terms_borrowing_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "eligible_face", "advance_rate_bps", "base_krw", "margin_call"],
+      "properties": {
+        "status": {"const": "BOUND"},
+        "eligible_face": {"type": "integer"},
+        "advance_rate_bps": {"type": "integer"},
+        "base_krw": {"type": "integer"},
+        "margin_call": {"type": "boolean"}
+      }
+    },
+    "terms_reserve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "bucket", "provision_bps", "provision_krw", "funding_source", "applied"],
+      "properties": {
+        "status": {"const": "BOUND"},
+        "bucket": {"type": "string"},
+        "provision_bps": {"type": "integer"},
+        "provision_krw": {"type": "integer"},
+        "funding_source": {"type": "string"},
+        "applied": {"const": false}
+      }
+    },
+    "terms_underwriting_echo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied", "depth", "personal_credit_data", "ai_role", "check_ids"],
+      "properties": {
+        "applied": {"const": false},
+        "depth": {"type": "string"},
+        "personal_credit_data": {"type": "string"},
+        "ai_role": {"type": "string"},
+        "check_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "terms_execution_echo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied", "primary", "secondary", "tertiary", "never", "execution_authority"],
+      "properties": {
+        "applied": {"const": false},
+        "primary": {"type": "string"},
+        "secondary": {"type": "string"},
+        "tertiary": {"type": "string"},
+        "never": {"type": "array", "items": {"type": "string"}},
+        "execution_authority": {"type": "string"}
+      }
+    },
+    "terms_loss_echo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied", "recovery_waterfall", "loss_bearer_v1"],
+      "properties": {
+        "applied": {"const": false},
+        "recovery_waterfall": {"type": "array", "items": {"type": "string"}},
+        "loss_bearer_v1": {"type": "string"}
+      }
+    },
+    "terms_echo_or_unbound": {
+      "anyOf": [
+        {"$ref": "#/definitions/terms_unbound_section"},
+        {"$ref": "#/definitions/terms_underwriting_echo"},
+        {"$ref": "#/definitions/terms_execution_echo"},
+        {"$ref": "#/definitions/terms_loss_echo"}
+      ]
+    },
+    "terms_not_applied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["underwriting_depth", "collateral_execution", "loss_waterfall"],
+      "properties": {
+        "underwriting_depth": {"$ref": "#/definitions/terms_echo_or_unbound"},
+        "collateral_execution": {"$ref": "#/definitions/terms_echo_or_unbound"},
+        "loss_waterfall": {"$ref": "#/definitions/terms_echo_or_unbound"}
+      }
+    },
+    "terms_section": {
+      "anyOf": [
+        {"$ref": "#/definitions/terms_unbound_section"},
+        {"$ref": "#/definitions/terms_na_section"},
+        {"$ref": "#/definitions/terms_schedule"},
+        {"$ref": "#/definitions/terms_accrual"},
+        {"$ref": "#/definitions/terms_collateral"},
+        {"$ref": "#/definitions/terms_borrowing_base"},
+        {"$ref": "#/definitions/terms_reserve"}
+      ]
+    },
+    "terms_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "mode", "terms_version", "provisional", "funds_executed",
+        "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest",
+        "status", "reason", "items", "sections"
+      ],
+      "properties": {
+        "label": {"const": "simulated overlay — not vendor FSM arithmetic, not an offer"},
+        "mode": {"const": "SIMULATED_OVERLAY"},
+        "terms_version": {"type": ["string", "null"]},
+        "provisional": {"const": true},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"},
+        "status": {"enum": ["BOUND", "PARTIAL", "NOT_BOUND"]},
+        "reason": {"type": ["string", "null"]},
+        "items": {
+          "type": "object",
+          "additionalProperties": {"enum": ["ADOPTED", "UNDETERMINED", "NOT_BOUND"]}
+        },
+        "sections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schedule", "accrual", "collateral", "borrowing_base", "reserve_provision"],
+          "properties": {
+            "schedule": {"enum": ["BOUND", "NOT_BOUND"]},
+            "accrual": {"enum": ["BOUND", "NOT_BOUND"]},
+            "collateral": {"enum": ["BOUND", "NOT_BOUND"]},
+            "borrowing_base": {"enum": ["BOUND", "NOT_BOUND"]},
+            "reserve_provision": {"enum": ["BOUND", "NOT_BOUND"]}
+          }
+        }
+      }
+    },
+    "terms_case_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "mode", "terms_version", "provisional", "funds_executed",
+        "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest",
+        "status", "reason", "advance_id", "tier", "principal", "schedule", "accrual",
+        "collateral", "borrowing_base", "reserve_provision", "not_applied"
+      ],
+      "properties": {
+        "label": {"const": "simulated overlay — not vendor FSM arithmetic, not an offer"},
+        "mode": {"const": "SIMULATED_OVERLAY"},
+        "terms_version": {"type": ["string", "null"]},
+        "provisional": {"const": true},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"},
+        "status": {"enum": ["BOUND", "PARTIAL"]},
+        "reason": {"type": ["string", "null"]},
+        "advance_id": {"type": "string"},
+        "tier": {"enum": ["T1", "T2", "NOT_APPLICABLE"]},
+        "principal": {"type": "integer"},
+        "schedule": {"$ref": "#/definitions/terms_section"},
+        "accrual": {"$ref": "#/definitions/terms_section"},
+        "collateral": {"$ref": "#/definitions/terms_section"},
+        "borrowing_base": {"$ref": "#/definitions/terms_section"},
+        "reserve_provision": {"$ref": "#/definitions/terms_section"},
+        "not_applied": {
+          "anyOf": [
+            {"$ref": "#/definitions/terms_not_applied"},
+            {"$ref": "#/definitions/terms_unbound_section"}
+          ]
+        }
+      }
+    },
+    "terms_case_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "mode", "terms_version", "provisional", "funds_executed",
+        "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest",
+        "status", "reason", "advance_id", "schedule", "accrual", "collateral",
+        "borrowing_base", "reserve_provision", "not_applied"
+      ],
+      "properties": {
+        "label": {"const": "simulated overlay — not vendor FSM arithmetic, not an offer"},
+        "mode": {"const": "SIMULATED_OVERLAY"},
+        "terms_version": {"type": ["string", "null"]},
+        "provisional": {"const": true},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"},
+        "status": {"const": "NOT_BOUND"},
+        "reason": {"const": "terms not bound"},
+        "advance_id": {"type": "string"},
+        "schedule": {"$ref": "#/definitions/terms_unbound_section"},
+        "accrual": {"$ref": "#/definitions/terms_unbound_section"},
+        "collateral": {"$ref": "#/definitions/terms_unbound_section"},
+        "borrowing_base": {"$ref": "#/definitions/terms_unbound_section"},
+        "reserve_provision": {"$ref": "#/definitions/terms_unbound_section"},
+        "not_applied": {"$ref": "#/definitions/terms_unbound_section"}
+      }
+    },
+    "terms_case": {
+      "anyOf": [
+        {"$ref": "#/definitions/terms_case_evaluated"},
+        {"$ref": "#/definitions/terms_case_unbound"}
+      ]
+    },
     "policy": {
       "type": "object",
       "additionalProperties": false,
@@ -1761,6 +2119,7 @@
         "operation_capacity",
         "auth",
         "workspace",
+        "terms",
         "decisions",
         "local_token"
       ],
@@ -1812,6 +2171,9 @@
         },
         "workspace": {
           "$ref": "#/definitions/workspace"
+        },
+        "terms": {
+          "$ref": "#/definitions/terms_snapshot"
         },
         "decisions": {
           "type": "array",
@@ -3015,6 +3377,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "CAP-01",
+        "CAP-04",
         "CAP-09",
         "CAP-13",
         "CAP-14",
@@ -3022,6 +3386,12 @@
         "CAP-16"
       ],
       "properties": {
+        "CAP-01": {
+          "type": "string"
+        },
+        "CAP-04": {
+          "type": "string"
+        },
         "CAP-09": {
           "type": "string"
         },

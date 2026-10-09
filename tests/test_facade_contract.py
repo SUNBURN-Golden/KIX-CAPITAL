@@ -187,6 +187,8 @@ class FacadeContractTests(unittest.TestCase):
         reads = [
             ('GET', '/api/evidence', '/api/evidence', None),
             ('GET', '/api/projection', '/api/projection', None),
+            ('GET', '/api/terms', '/api/terms', None),
+            ('GET', f'/api/terms/sim-journey?instance_id={instance}&draw_day=0&as_of_day=0', '/api/terms/{{advance_id}}', None),
             ('GET', '/api/readiness?unused=1', '/api/readiness', None),
             ('GET', '/api/scenarios', '/api/scenarios', None),
             ('GET', '/api/scenarios/full-after', '/api/scenarios/{id}', None),
