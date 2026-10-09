@@ -4,8 +4,10 @@
 Expected note paths come from docs/decisions/*.md citations in the CAP
 coverage owner cells. A missing file is PENDING and does not fail.
 An existing note is invalid when it does not contain exactly one well-formed
-block. This script does not import the Capital product and does not invent
-decision values.
+block. ADOPTED requires value, provided_by and date. UNDETERMINED rejects
+those three fields. DEFERRED and NOT_ADOPTED require a null value, provided_by,
+date and target. This script does not import the Capital product and does not
+invent decision values.
 """
 from __future__ import annotations
 
@@ -24,7 +26,7 @@ _FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
 _NOTE_PATH = re.compile(r'docs/decisions/[A-Za-z0-9][A-Za-z0-9_.-]*\.md')
 _CAP = re.compile(r'CAP-(?:0[1-9]|1[0-9]|20)\Z')
 _ISO_DATE = re.compile(r'\d{4}-\d{2}-\d{2}\Z')
-_ENTRY_STATUS = frozenset(('ADOPTED', 'UNDETERMINED'))
+_ENTRY_STATUS = frozenset(('ADOPTED', 'UNDETERMINED', 'DEFERRED', 'NOT_ADOPTED'))
 
 
 class DecisionParseError(ValueError):
@@ -139,6 +141,19 @@ def _validate_entry(name, entry, errors):
         for forbidden in ('value', 'provided_by', 'date'):
             if forbidden in entry:
                 errors.append(f'{name}: UNDETERMINED must not include {forbidden}')
+    elif status in ('DEFERRED', 'NOT_ADOPTED'):
+        # Upstream binding notes record a direction in target and leave value null.
+        # A non-null value belongs only on ADOPTED.
+        if 'value' not in entry or entry.get('value') is not None:
+            errors.append(f'{name}: {status} value must be null')
+        provided_by = entry.get('provided_by')
+        if type(provided_by) is not str or not provided_by.strip():
+            errors.append(f'{name}: {status} requires provided_by')
+        if not _iso_date(entry.get('date')):
+            errors.append(f'{name}: {status} requires date')
+        target = entry.get('target')
+        if type(target) is not dict or not target:
+            errors.append(f'{name}: {status} requires target')
     return recorded
 
 

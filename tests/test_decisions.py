@@ -88,17 +88,41 @@ class DecisionTests(unittest.TestCase):
         rows = ledger.build_index(ROOT / 'docs' / 'decisions', expected)
         by_note = {row['note']: row for row in rows}
         self.assertEqual(by_note['docs/decisions/CAPITAL_FINANCIAL_TERMS.md']['entries'], summary['entries'])
-        self.assertEqual(by_note['docs/decisions/revenue-participation.md']['status'], 'PENDING')
-        self.assertEqual(by_note['docs/decisions/claim-purchase.md']['status'], 'PENDING')
-        self.assertEqual(by_note['docs/decisions/revenue-participation.md']['entries'], {})
+        settlement = ROOT / 'docs' / 'decisions' / 'CAPITAL_SETTLEMENT_POLICY.md'
+        settlement_errors, settlement_summary = ledger.validate_note(settlement)
+        self.assertEqual(settlement_errors, [])
+        self.assertEqual(settlement_summary['decision_id'], 'settlement-policy-decision')
+        self.assertEqual(by_note['docs/decisions/CAPITAL_SETTLEMENT_POLICY.md']['entries'], settlement_summary['entries'])
+        self.assertEqual(settlement_summary['entries']['revenue_participation'], 'ADOPTED')
+        self.assertEqual(settlement_summary['entries']['claim_purchase'], 'ADOPTED')
+        accounts_errors, accounts_summary = ledger.validate_note(
+            ROOT / 'docs' / 'decisions' / 'CAPITAL_ACCOUNTS_TAX_LEGAL.md')
+        self.assertEqual(accounts_errors, [])
+        self.assertEqual(accounts_summary['decision_id'], 'accounts-tax-legal-decision')
+        self.assertEqual(
+            by_note['docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md']['entries'],
+            accounts_summary['entries'])
+        upstream_errors, upstream_summary = ledger.validate_note(
+            ROOT / 'docs' / 'decisions' / 'CAPITAL_UPSTREAM_BINDING.md')
+        self.assertEqual(upstream_errors, [])
+        self.assertEqual(upstream_summary['decision_id'], 'upstream-binding-decision')
+        self.assertEqual(upstream_summary['entries']['producer_sdk_tuple'], 'DEFERRED')
+        self.assertEqual(upstream_summary['entries']['identity_provider_kyc'], 'NOT_ADOPTED')
+        self.assertEqual(upstream_summary['entries']['ai_agent_grant_action_permit'], 'ADOPTED')
+        self.assertEqual(
+            by_note['docs/decisions/CAPITAL_UPSTREAM_BINDING.md']['entries'],
+            upstream_summary['entries'])
+        self.assertNotIn('docs/decisions/revenue-participation.md', by_note)
+        self.assertNotIn('docs/decisions/claim-purchase.md', by_note)
         buffer = io.StringIO()
-        with contextlib.redirect_stdout(buffer):
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(io.StringIO()):
             code = ledger.main([])
         self.assertEqual(code, 0)
         printed = buffer.getvalue()
         self.assertIn('interest_rate=ADOPTED', printed)
-        self.assertIn('PENDING', printed)
-        self.assertIn('revenue-participation.md', printed)
+        self.assertIn('producer_sdk_tuple=DEFERRED', printed)
+        self.assertIn('identity_provider_kyc=NOT_ADOPTED', printed)
+        self.assertIn('CAPITAL_SETTLEMENT_POLICY.md', printed)
 
     def test_adopted_and_undetermined_rules(self):
         cases = [
@@ -162,6 +186,42 @@ class DecisionTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 code = ledger.main(['--coverage', str(coverage), '--decisions', str(decisions)])
             self.assertEqual(code, 1)
+
+    def test_deferred_and_not_adopted_keep_a_null_value(self):
+        adopted_shape = _entry()
+        deferred = dict(adopted_shape)
+        deferred['status'] = 'DEFERRED'
+        deferred['value'] = None
+        deferred['target'] = {'binding': 'later'}
+        not_adopted = dict(deferred)
+        not_adopted['status'] = 'NOT_ADOPTED'
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            ok = directory / 'ok.md'
+            ok.write_text(_note({'wait': deferred, 'skip': not_adopted}), encoding='utf-8')
+            errors, summary = ledger.validate_note(ok)
+            self.assertEqual(errors, [])
+            self.assertEqual(summary['entries'], {'wait': 'DEFERRED', 'skip': 'NOT_ADOPTED'})
+            self.assertEqual(summary['status'], 'MIXED')
+            filled = dict(deferred)
+            filled['value'] = {'bound': True}
+            valued = directory / 'valued.md'
+            valued.write_text(_note({'wait': filled}), encoding='utf-8')
+            errors, summary = ledger.validate_note(valued)
+            self.assertTrue(any('value must be null' in error for error in errors))
+            self.assertEqual(summary['status'], 'INVALID')
+            unnamed = dict(deferred)
+            unnamed.pop('provided_by')
+            missing = directory / 'missing.md'
+            missing.write_text(_note({'wait': unnamed}), encoding='utf-8')
+            errors, _summary = ledger.validate_note(missing)
+            self.assertTrue(any('provided_by' in error for error in errors))
+            untargeted = dict(deferred)
+            untargeted.pop('target')
+            bare = directory / 'bare.md'
+            bare.write_text(_note({'wait': untargeted}), encoding='utf-8')
+            errors, _summary = ledger.validate_note(bare)
+            self.assertTrue(any('target' in error for error in errors))
 
     def test_valid_undetermined_entry_is_indexed(self):
         with tempfile.TemporaryDirectory() as tmp:

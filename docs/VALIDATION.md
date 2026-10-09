@@ -159,7 +159,7 @@ No existing test was weakened or skipped. This section claims no independent rev
 
 `scripts/acceptance.py` runs six stages on one command: unit, pinned vendor, `node --check`, browser, packaged-artifact smoke, and the seeded demo. It writes untracked `build/acceptance-evidence.json` and exits non-zero when a stage fails or is missing. Human product acceptance is not part of this ladder. `scripts/seed_demo.py` builds a SIMULATED book with fixed operation ids: closed, defaulted, rejected, cancelled, UNBOUND draw, and a pending-settlement case whose draw stays `SETTLEMENT_NOT_COMMITTED`. Amounts are fixture units on the pinned open face, not a product limit. `tests/golden/demo.json` pins `state_digest`, projection totals, and manifest `content_digest`. It has no instance id and no clock field. Drift fails unless `--update-golden` is passed.
 
-`content_digest` is documented to ignore instance id and timestamps. Stored section hashes still cover the saved body, so they still move with instance id and still match `sha256` of that body. The digest now recomputes each section hash after those volatile keys are removed. Two fresh processes, and a file-workspace restore, share one content digest. The verifier still checks the stored section hash before the digest.
+`content_digest` follows the rule in `docs/INTEGRATION.md` and `content_material()`: (a) remove `content_digest` and `signature`, (b) strip `instance_id`, `created_at`, `saved_at`, `timestamp`, and `timestamps` at every depth, then (c) recompute each section's `sha256` over the stripped body. Stored section hashes still cover the saved body, so they move with instance id and still match `sha256` of that body. Two fresh processes, and a file-workspace restore, share one content digest. The verifier still checks the stored section hash before the digest.
 
 Browser coverage saves desktop and 375px PNGs of the portfolio, case, projection, statement, reconciliation, readiness, and organizer, auditor, and observer views under `test-results/acceptance/`. Blank captures and console errors fail the test. Those files are not committed. `python3 -m compileall -q capital` is a local check beside the ladder. It is not one of the six stages.
 
@@ -195,3 +195,16 @@ Documentation and checks only. No file under `capital/`, `capital/vendor/`, `.ai
 - `npm run test:browser`: **33 passed** in 53.0s (exit 0). A following `ss` check showed no listener. Playwright stopped its loopback servers.
 
 After this section was appended, the unit discover was repeated: **139 passed** in 12.870s (exit 0). `python3 scripts/decision_ledger.py` and `python3 scripts/not_bound_checklist.py --check` both exited 0 again. `git diff --name-only -- capital .aiops .github` still printed nothing.
+
+## Merge with origin/main
+
+Conflict resolution kept both auditor assertions: the handbook bind receipt (`applied=bind_settlement` and the enabled draw control) and main's settlement-gate `BOUND` check. The three decision notes already on main stay. CAP-02 and CAP-03 in `docs/CAP_COVERAGE.md` name `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md` and stay `DECISION_REQUIRED`. The ledger accepts `DEFERRED` and `NOT_ADOPTED` only when `value` is null and `provided_by`, an ISO date, and `target` are present. `ADOPTED` and `UNDETERMINED` rules are unchanged. No file under `capital/`, `capital/vendor/`, `.aiops/`, or `.github/` was edited. No test was weakened or skipped. This paragraph claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy.
+
+- `python3 -m unittest discover -s tests -v`: **140 passed** in 12.554s (exit 0).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s (exit 0).
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/decision_ledger.py`: exit 0. The index lists `settlement-policy-decision`, `accounts-tax-legal-decision`, `upstream-binding-decision` (`DEFERRED` / `NOT_ADOPTED` / one `ADOPTED`), and `financial-terms-decision`.
+- `python3 scripts/not_bound_checklist.py --check`: exit 0.
+- `git diff --name-only -- capital .aiops .github`: no output (exit 0).
+- `npm run test:browser`: the first run failed to launch because Playwright 1.58.2's headless shell build 1208 was absent. After `npx playwright install chromium`, **33 passed** in 49.6s (exit 0), including the combined auditor spec.

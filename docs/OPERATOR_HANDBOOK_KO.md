@@ -105,7 +105,7 @@ python3 scripts/acceptance.py
 python3 scripts/decision_ledger.py
 ```
 
-`docs/decisions/*.md` 안의 `capital-decision-v1` 블록을 검사한다. `ADOPTED`는 `provided_by`와 ISO 날짜와 `value`가 있어야 한다. `UNDETERMINED`에 `value`가 있으면 실패다. 커버리지가 가리키는데 파일이 없으면 `PENDING`이고, 그것만으로는 실패가 아니다. 없는 노트의 내용을 만들지 않는다.
+`docs/decisions/*.md` 안의 `capital-decision-v1` 블록을 검사한다. `ADOPTED`는 `provided_by`와 ISO 날짜와 `value`가 있어야 한다. `UNDETERMINED`에 `value`·`provided_by`·`date`가 있으면 실패다. `DEFERRED`와 `NOT_ADOPTED`는 `value`가 null이고 `provided_by`·ISO 날짜·`target`이 있어야 한다. 커버리지가 가리키는데 파일이 없으면 `PENDING`이고, 그것만으로는 실패가 아니다. 없는 노트의 내용을 만들지 않는다.
 
 ## `NOT_BOUND`와 `UNKNOWN` 읽기
 
@@ -142,6 +142,6 @@ python3 scripts/decision_ledger.py
 - `scripts/decision_ledger.py`와 `scripts/not_bound_checklist.py`.
 - `docs/ACCEPTANCE_KO.md`의 설치·역할 절차·사람 점검표.
 
-CAP-02와 CAP-03의 결정 노트는 없다. 원장 상태는 PENDING이다. 금리·수수료·한도·배분 순서를 여기서 정하지 않는다.
+CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`에 있다. 요구사항 상태와 준비도 그룹은 `DECISION_REQUIRED`다. 그 값을 제품에 적용하지 않는다. 계정·세무 노트는 `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`, 바인딩 노트는 `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`다. `DEFERRED`와 `NOT_ADOPTED`는 연결 완료가 아니다. 금리·수수료·한도·배분 순서를 이 노드가 새로 정하지 않는다.
 
 <!-- /handbook-section -->

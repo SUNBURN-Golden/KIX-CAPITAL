@@ -52,6 +52,7 @@ test('auditor session blocks every write and still reads export and reconciliati
     expect(bindReceipt.result.credit.advance_id).toBe(advanceId);
     await expect(page.locator('#phase')).toContainText('APPROVED');
     await expect(page.getByRole('button', {name: '모의 노출 기록', exact: true})).toBeEnabled();
+    await expect(page.locator('#facts dt').filter({hasText: '정산 게이트'}).locator('xpath=following-sibling::dd[1]')).toHaveText('BOUND');
     const prepared = await (await page.request.get('/api/state')).json();
     const operationCount = prepared.operation_count;
     const stateDigest = prepared.state_digest;

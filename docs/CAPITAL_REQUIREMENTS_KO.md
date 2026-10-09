@@ -1,6 +1,6 @@
 # Capital 청사진 요구사항과 구현·선행 매핑
 
-2026-10-07. Capital 구현 기준 `e9bea122102b87a1f11ac673d50e01c31cba6922`.
+2026-10-09. Capital 구현 기준 main `71c79bc413997e4cfa940a0e2f471afb27f36956`.
 Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 모든 Protocol 출처는 아래 SHA에 고정한다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
 
@@ -24,14 +24,14 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 
 ## 요구사항 매트릭스
 
-`SIMULATED`는 이 PR의 로컬 합성 범위만, `READ_ONLY_FIXTURE`는 불변 참조 데이터 조회만, `NOT_BOUND`는 실제 producer 계약 미연결, `DECISION_REQUIRED`는 정책 미정이다. 행을 완료 분모에서 제거하지 않는다.
+`SIMULATED`는 현재 main 구현의 로컬 합성 범위만, `READ_ONLY_FIXTURE`는 불변 참조 데이터 조회만, `NOT_BOUND`는 실제 producer 계약 미연결, `DECISION_REQUIRED`는 정책 미정이다. 행을 완료 분모에서 제거하지 않는다.
 
 | ID | 청사진 요구 | 현재 제품·검증 | 상태 / 다음 선행 |
 |---|---|---|---|
-| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 실제 양/음성 경로 | SIMULATED; 이자·기간·손실 정책은 `f04-mock-deepening` 결정 |
+| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 실제 양/음성 경로 | SIMULATED; 이자·기간·손실 정책은 `f04-mock-deepening` 결정. **PROVISIONAL (CAPITAL-TERMS-V1)**: [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) 참조. 적용은 `terms-overlay` 대기(미적용), upstream 채택 아님 |
 | CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 계약 입력 목록 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정; V2 §7 |
 | CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수 |
-| CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사 | F04 부분 SIMULATED; 외부 담보 완전성·추가 납입·집행 미구현 |
+| CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사 | F04 부분 SIMULATED; 외부 담보 완전성·추가 납입·집행 미구현. **PROVISIONAL (CAPITAL-TERMS-V1)**: [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) 참조. 적용은 `terms-overlay` 대기(미적용) |
 | CAP-05 | 청구·수취인·분할 정산 | F01–F03 고정 시나리오에서 두 배정 순서·부분 명세서·중복/상충·늦은 현금의 단계별 의무 비교 | READ_ONLY_FIXTURE; 운영 배분 순서/잔여·부담 정책은 미정 |
 | CAP-06 | 환불·공연취소·회수 | 배정 전/후 부분 환불, 단일 전액 vs 분할 환불, 취소 수락·회수·은행 미종결 비교 | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담 미정 |
 | CAP-07 | 최초 판매·반복 리셀·입장 연계 | trade/claim identity 조회, 권리/금융 분리 | NOT_BOUND: Commerce 실여정·Protocol producer tuple; 이 PR은 티켓 생성/이전 없음 |
