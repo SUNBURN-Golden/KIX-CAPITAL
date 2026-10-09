@@ -1,6 +1,6 @@
 # Capital 청사진 요구사항과 구현·선행 매핑
 
-2026-10-09. Capital 구현 기준 main `71c79bc413997e4cfa940a0e2f471afb27f36956`.
+2026-10-09. Capital 구현 기준 main `7a4af4955d12ada267b206ea6841c606d7ec91ca`.
 Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 모든 Protocol 출처는 아래 SHA에 고정한다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
 
