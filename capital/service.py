@@ -18,7 +18,11 @@ from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
 from capital.protocol import VENDOR
 from capital.recon import build_reconciliation
-from capital.scenarios import replay_scenarios
+from capital.policy import (
+    POLICY_LABEL, POLICY_NOT_BOUND, SCENARIO_ID, DecisionNoteSettlementPolicy,
+    apply_order, probe_order_freeze,
+)
+from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
 from capital.statement import build_statement
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.readiness import GROUPS, source_integrity
@@ -46,7 +50,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -58,6 +62,7 @@ class CapitalService:
         self.producer = producer if producer is not None else PinnedFsmProducer()
         self.projection_port = projection if projection is not None else SimulationProjection()
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
+        self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
@@ -174,6 +179,7 @@ class CapitalService:
                     'workspace': self.workspace_view(),
                     'terms': self._terms_snapshot(),
                     'decisions': [self._terms_decision_line(),
+                                  self._policy_decision_line(),
                                   'Bank/PG, production DB and deployment: NOT_AUTHORIZED',
                                   'Finance projection/backend/export design: PENDING_NOT_ADOPTED']}
 
@@ -237,6 +243,16 @@ class CapitalService:
     def _terms_decision_line(self):
         return self._terms_quote()
 
+    def _policy_quote(self):
+        applied = self.policy.allocation(POLICY)
+        version = applied.get('policy_version')
+        if applied.get('outcome') == 'NOT_BOUND' or not version:
+            return POLICY_NOT_BOUND
+        return f'PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md ({version})'
+
+    def _policy_decision_line(self):
+        return self._policy_quote() + ' — ' + POLICY_LABEL
+
     def _terms_envelope(self, payload):
         return {
             **payload,
@@ -294,9 +310,107 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def _policy_envelope(self, payload):
+        return {
+            **payload,
+            'funds_executed': False,
+            'workspace_mutated': False,
+            'write_authorized': False,
+            'instance_id': self.instance_id,
+            'observed_state_digest': self.machine.state_digest(),
+        }
+
+    def _comparison_row(self, row_id, kind, order):
+        applied = apply_order(STATEMENT['gross'], POLICY, STATEMENT, order)
+        return {
+            'id': row_id,
+            'kind': kind,
+            'order': list(applied['order']),
+            'per_payee': applied['per_payee'],
+            'distributed_cash': applied['distributed_cash'],
+            'undistributed_cash': applied['undistributed_cash'],
+            'invariants': applied['invariants'],
+            'label': POLICY_LABEL,
+        }
+
+    def _policy_body(self):
+        """Caller holds the lock. Uses disposable books only."""
+        applied = self.policy.allocation(POLICY)
+        note = self.policy.status()
+        outcome = applied['outcome']
+        rows = []
+        decided = None
+        if outcome == 'DECIDED' and applied['order'] is not None:
+            decided_order = list(applied['order'])
+            rows.append(self._comparison_row(SCENARIO_ID, 'DECIDED', decided_order))
+            decided = {
+                'id': SCENARIO_ID,
+                'order': decided_order,
+                'policy_version': applied['alloc_version'],
+                'policy_digest': applied['policy_digest'],
+                'label': POLICY_LABEL,
+            }
+        rows.append(self._comparison_row('shortfall-platform', 'FIXTURE', list(ORDER)))
+        rows.append(self._comparison_row('shortfall-organizer', 'FIXTURE', list(reversed(ORDER))))
+        first = list(applied['order']) if outcome == 'DECIDED' and applied['order'] else list(ORDER)
+        attempted = list(reversed(ORDER)) if first == list(ORDER) else list(ORDER)
+        freeze = probe_order_freeze(STATEMENT['gross'], POLICY, STATEMENT, first, attempted)
+        return {
+            'label': POLICY_LABEL,
+            'mode': 'SIMULATED_POLICY_APPLICATION',
+            'provisional': True,
+            'outcome': outcome,
+            'policy_version': note['policy_version'],
+            'policy_digest': applied['policy_digest'],
+            'decided': decided,
+            'comparison': rows,
+            'order_freeze': {
+                'attempted_order': freeze['attempted_order'],
+                'refused': freeze['refused'],
+                'code': freeze['code'],
+                'label': POLICY_LABEL,
+            },
+            'unsupported': self.policy.unsupported(),
+            'upstream_fsm_change_requests': {
+                'ownership': 'upstream-owned',
+                'items': self.policy.upstream_requests(),
+                'label': POLICY_LABEL,
+            },
+        }
+
+    def policy_status(self):
+        """Read-only policy mark. Does not touch receipts or the workspace FSM."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                applied = self.policy.allocation(POLICY)
+                return self._policy_envelope({
+                    'label': POLICY_LABEL,
+                    'mode': 'SIMULATED_POLICY_APPLICATION',
+                    'provisional': True,
+                    'policy_version': applied['policy_version'],
+                    'policy_digest': applied['policy_digest'],
+                    'outcome': applied['outcome'],
+                    'reason': applied['reason'],
+                })
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def policy_simulation(self):
+        """Apply the decided order on disposable books. Workspace digest stays put."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                return self._policy_envelope(self._policy_body())
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def readiness(self):
         with self.lock:
             terms_note = self._terms_quote()
+            policy_note = self._policy_quote()
             return {'instance_id': self.instance_id, 'mode': 'LOCAL_READINESS_ONLY',
                     'source_commit': self.source['commit'], 'upstream_binding': 'NOT_BOUND',
                     'source_integrity': source_integrity(VENDOR, self.source),
@@ -304,7 +418,11 @@ class CapitalService:
                     'upstream_nodes_completed': [], 'policy_adopted': False,
                     'requirement_notes': {
                         'CAP-01': terms_note,
+                        'CAP-02': policy_note,
+                        'CAP-03': policy_note,
                         'CAP-04': terms_note,
+                        'CAP-05': policy_note,
+                        'CAP-06': policy_note,
                         'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
                         'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
                         'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness',

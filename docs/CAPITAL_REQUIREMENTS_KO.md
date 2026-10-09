@@ -29,11 +29,11 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | ID | 청사진 요구 | 현재 제품·검증 | 상태 / 다음 선행 |
 |---|---|---|---|
 | CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 읽기 전용 조건 오버레이 | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 조회만 |
-| CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 계약 입력 목록 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정; V2 §7 |
-| CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수 |
+| CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 일회용 장부의 잠정 배정 순서 비교 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정은 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 고정 FSM이 표현하지 못해 계산하지 않음; V2 §7 |
+| CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 UNSUPPORTED_BY_PINNED_FSM |
 | CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사, 읽기 전용 완전성·차입기초·준비금 표시 | SIMULATED; [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) **PROVISIONAL (CAPITAL-TERMS-V1)**. 집행·심사 규칙은 applied false. 청약·upstream 채택 아님. 로컬 조회만 |
-| CAP-05 | 청구·수취인·분할 정산 | F01–F03 고정 시나리오에서 두 배정 순서·부분 명세서·중복/상충·늦은 현금의 단계별 의무 비교 | READ_ONLY_FIXTURE; 운영 배분 순서/잔여·부담 정책은 미정 |
-| CAP-06 | 환불·공연취소·회수 | 배정 전/후 부분 환불, 단일 전액 vs 분할 환불, 취소 수락·회수·은행 미종결 비교 | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담 미정 |
+| CAP-05 | 청구·수취인·분할 정산 | F01–F03 고정 시나리오에서 두 배정 순서·부분 명세서·중복/상충·늦은 현금의 단계별 의무 비교. 잠정 순서는 일회용 장부에서만 비교 | READ_ONLY_FIXTURE; 운영 배분 순서는 미채택. 잠정 순서는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md |
+| CAP-06 | 환불·공연취소·회수 | 배정 전/후 부분 환불, 단일 전액 vs 분할 환불, 취소 수락·회수·은행 미종결 비교 | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담은 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 requires upstream FSM change |
 | CAP-07 | 최초 판매·반복 리셀·입장 연계 | trade/claim identity 조회, 권리/금융 분리 | NOT_BOUND: Commerce 실여정·Protocol producer tuple; 이 PR은 티켓 생성/이전 없음 |
 | CAP-08 | 초과 배정·현금/한도 구별 | 동일 claim 두 draw 경합, 부분 repay 후 예약 유지, close만 해제; 활성 상태를 바꾸지 않는 인출 사전점검 | SIMULATED; 외부 담보/분산 자원 한도 아님 |
 | CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | 로컬 다섯 구분 명세서: 승인·노출/상환/잔액·예약은 FSM 조회(SIMULATED), 정산 확인/배정·환불은 고정 fixture. `primary_sales`·`resale_sales`·`actual_paid`는 NOT_BOUND이고 최초판매와 리셀은 합산하지 않음. cut·fixtures digest·capacity bound 표기 | SIMULATED(로컬 후보); 로컬 진단만; 실지급·세무 보고·은행 대사 아님 |

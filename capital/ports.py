@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from capital.policy import SettlementPolicyPort
 from capital.terms import TermsPolicyPort
 
 

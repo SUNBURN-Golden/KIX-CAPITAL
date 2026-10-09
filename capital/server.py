@@ -16,6 +16,7 @@ from capital.auth import (
 from capital.resources import read_static
 from capital.export import DevHmacSigner, ExportError, SignerConfigError, build_signer
 from capital.service import ApiError, CapitalService
+from capital.policy import DecisionNoteSettlementPolicy
 from capital.terms import DecisionNoteTermsPolicy
 from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 
@@ -28,6 +29,7 @@ GET_DISPATCH = (
     ('/api/evidence', False, 'evidence'),
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
+    ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
@@ -90,7 +92,7 @@ def query_day(query, name, required):
     return int(values[0])
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None):
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     storage = None
     if workspace is not None:
@@ -99,7 +101,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         except WorkspaceError as exc:
             storage = UnavailableWorkspace(workspace, exc.code)
     try:
-        service = CapitalService(storage, authorizer=authorizer, signer=signer, terms=terms)
+        service = CapitalService(storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy)
     except Exception:
         if storage is not None:
             storage.close()
@@ -188,6 +190,13 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             if path == '/api/scenarios':
                 return self.reply(200, service.scenarios())
             return self.reply(200, service.scenarios(path.rsplit('/', 1)[-1]))
+
+        def _get_policy(self, route, principal):
+            if route.path == '/api/policy':
+                return self.reply(200, service.policy_status())
+            if route.path == '/api/policy/simulation':
+                return self.reply(200, service.policy_simulation())
+            raise ApiError('NOT_FOUND', 404)
 
         def _get_terms(self, route, principal):
             if route.path == '/api/terms':
@@ -317,6 +326,8 @@ def main():
                         help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
     parser.add_argument('--terms-note', default=None,
                         help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Not bundled in the zipapp.')
+    parser.add_argument('--policy-note', default=None,
+                        help='Decision note for the simulated policy application. A missing note reports policy not bound. Not bundled in the zipapp.')
     parser.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
@@ -326,7 +337,8 @@ def main():
     except (SignerConfigError, ExportError) as exc:
         parser.error(exc.code)
     terms = DecisionNoteTermsPolicy(args.terms_note) if args.terms_note is not None else None
-    with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms) as server:
+    policy = DecisionNoteSettlementPolicy(args.policy_note) if args.policy_note is not None else None
+    with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms, policy=policy) as server:
         print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
         if isinstance(signer, DevHmacSigner):
             print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)

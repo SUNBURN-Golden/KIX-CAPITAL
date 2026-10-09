@@ -3,7 +3,7 @@
 .work-grid{align-items:start}
 
 .scenario-steps{display:flex;gap:8px;flex-wrap:wrap;list-style:none;padding:0;margin-top:20px}.scenario-steps button[aria-current="step"]{background:var(--green);color:white}.scenario-steps button{max-width:220px;text-align:left;line-height:1.6}.table-wrap caption{text-align:left;font-size:11px;color:#637369;margin:16px 0 8px}#scenario-facts{max-width:640px}#scenario-select,#readiness-filter{max-width:530px}.capabilities{margin-top:20px}.capabilities ul{padding-left:16px;font-size:11px;line-height:1.9;color:#63735b}.capabilities .owner{font-size:10px;border-top:1px solid #dfe5d7;padding-top:10px}.comparison-table{margin-top:16px}.comparison-table caption{line-height:1.8}.read-error{color:#874c29}
-#projection,#projection .muted,#projection td,#projection th,#projection .badge,#reconciliation-panel,#statement,#terms,#case-terms{overflow-wrap:anywhere}
+#projection,#projection .muted,#projection td,#projection th,#projection .badge,#reconciliation-panel,#statement,#terms,#case-terms,#policy{overflow-wrap:anywhere}#policy .table-wrap{overflow-x:auto;max-width:100%}
 #recon-gaps,#statement-sales{padding-left:18px;font-size:12px;line-height:1.7}
 #recon-checks td.mismatch{color:#874c29;font-weight:650}
 #projection-totals{font-size:13px;font-variant-numeric:tabular-nums}#projection-totals strong{font-weight:650}
