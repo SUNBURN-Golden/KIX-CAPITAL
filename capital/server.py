@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -15,6 +16,7 @@ from capital.auth import (
 from capital.resources import read_static
 from capital.export import DevHmacSigner, ExportError, SignerConfigError, build_signer
 from capital.service import ApiError, CapitalService
+from capital.terms import DecisionNoteTermsPolicy
 from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 
 # Handler name is the third field. Permissions stay in auth.ROUTE_PERMISSIONS.
@@ -25,6 +27,7 @@ GET_DISPATCH = (
     ('/api/readiness', False, 'readiness'),
     ('/api/evidence', False, 'evidence'),
     ('/api/projection', False, 'projection'),
+    ('/api/terms', True, 'terms'),
     ('/api/preview/', True, 'preview'),
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
@@ -73,7 +76,21 @@ class CapitalHTTPServer(ThreadingHTTPServer):
                 storage.close()
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None):
+_DAY = re.compile(r'0|[1-9]\d{0,5}\Z')
+
+
+def query_day(query, name, required):
+    values = parse_qs(query, keep_blank_values=True).get(name)
+    if not values:
+        if required:
+            raise ApiError('INVALID_ARGUMENTS')
+        return None
+    if len(values) != 1 or _DAY.fullmatch(values[0]) is None:
+        raise ApiError('INVALID_ARGUMENTS')
+    return int(values[0])
+
+
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     storage = None
     if workspace is not None:
@@ -82,7 +99,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None):
         except WorkspaceError as exc:
             storage = UnavailableWorkspace(workspace, exc.code)
     try:
-        service = CapitalService(storage, authorizer=authorizer, signer=signer)
+        service = CapitalService(storage, authorizer=authorizer, signer=signer, terms=terms)
     except Exception:
         if storage is not None:
             storage.close()
@@ -171,6 +188,17 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None):
             if path == '/api/scenarios':
                 return self.reply(200, service.scenarios())
             return self.reply(200, service.scenarios(path.rsplit('/', 1)[-1]))
+
+        def _get_terms(self, route, principal):
+            if route.path == '/api/terms':
+                return self.reply(200, service.terms_status())
+            advance_id = route.path.rsplit('/', 1)[-1]
+            instance = parse_qs(route.query).get('instance_id', [''])[0]
+            draw_day = query_day(route.query, 'draw_day', True)
+            as_of_day = query_day(route.query, 'as_of_day', True)
+            expected = query_day(route.query, 'expected_settlement_cash_day', False)
+            return self.reply(200, service.case_terms(
+                advance_id, instance, draw_day, as_of_day, expected))
 
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
@@ -287,6 +315,8 @@ def main():
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--workspace', default=None,
                         help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
+    parser.add_argument('--terms-note', default=None,
+                        help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Not bundled in the zipapp.')
     parser.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
@@ -295,7 +325,8 @@ def main():
         signer = build_signer(args.workspace, args.dev_hmac)
     except (SignerConfigError, ExportError) as exc:
         parser.error(exc.code)
-    with make_server(args.port, workspace=args.workspace, signer=signer) as server:
+    terms = DecisionNoteTermsPolicy(args.terms_note) if args.terms_note is not None else None
+    with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms) as server:
         print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
         if isinstance(signer, DevHmacSigner):
             print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)

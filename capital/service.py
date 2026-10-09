@@ -20,6 +20,7 @@ from capital.protocol import VENDOR
 from capital.recon import build_reconciliation
 from capital.scenarios import replay_scenarios
 from capital.statement import build_statement
+from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.readiness import GROUPS, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
@@ -45,7 +46,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -56,6 +57,7 @@ class CapitalService:
         # object; the command path below does not call CreditMachine directly.
         self.producer = producer if producer is not None else PinnedFsmProducer()
         self.projection_port = projection if projection is not None else SimulationProjection()
+        self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
@@ -170,7 +172,8 @@ class CapitalService:
                     'operation_count': len(self.receipts), 'operation_capacity': MAX_OPERATIONS,
                     'auth': self.authorizer.describe(principal),
                     'workspace': self.workspace_view(),
-                    'decisions': ['Interest, fees, term, underwriting and KYC: UNDETERMINED',
+                    'terms': self._terms_snapshot(),
+                    'decisions': [self._terms_decision_line(),
                                   'Bank/PG, production DB and deployment: NOT_AUTHORIZED',
                                   'Finance projection/backend/export design: PENDING_NOT_ADOPTED']}
 
@@ -216,14 +219,92 @@ class CapitalService:
                       'all_predicates_matched': row['all_predicates_matched']}
                      for row in self.scenario_results.values()]}
 
+    def _terms_quote(self):
+        policy = self.terms.status()
+        if policy.get('status') == 'NOT_BOUND':
+            return TERMS_NOT_BOUND
+        version = policy.get('terms_version') or ''
+        return f'PROVISIONAL per docs/decisions/CAPITAL_FINANCIAL_TERMS.md ({version})'
+
+    def _terms_snapshot(self):
+        policy = self.terms.status()
+        return {
+            'status': policy['status'],
+            'reason': policy['reason'],
+            'terms_version': policy['terms_version'],
+        }
+
+    def _terms_decision_line(self):
+        return self._terms_quote()
+
+    def _terms_envelope(self, payload):
+        return {
+            **payload,
+            'funds_executed': False,
+            'workspace_mutated': False,
+            'write_authorized': False,
+            'instance_id': self.instance_id,
+            'observed_state_digest': self.machine.state_digest(),
+        }
+
+    def _require_day(self, value):
+        if type(value) is not int or value < 0 or len(str(value)) > 6:
+            raise ApiError('INVALID_ARGUMENTS')
+
+    def terms_status(self):
+        """Read-only policy status. Does not touch receipts or the FSM journal."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                return self._terms_envelope(self.terms.status())
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def case_terms(self, advance_id, instance_id, draw_day, as_of_day, expected_settlement_cash_day=None):
+        """Read-only simulated overlay for one case. Days are hypothetical query inputs."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if advance_id not in self.case_fixtures:
+                raise ApiError('UNKNOWN_ADVANCE', 404)
+            self._require_day(draw_day)
+            self._require_day(as_of_day)
+            if expected_settlement_cash_day is not None:
+                self._require_day(expected_settlement_cash_day)
+            frozen = self._frozen()
+            try:
+                case = self.machine.view(advance_id)
+                claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
+                gate = case['settlement_gate']
+                if case['phase'] == 'APPROVED':
+                    try:
+                        preview = self.producer.preview_draw(advance_id)
+                    except CreditError:
+                        preview = None
+                    if preview is not None:
+                        gate = preview['credit']['settlement_gate']
+                body = self.terms.overlay(
+                    case, claim, draw_day=draw_day, as_of_day=as_of_day,
+                    expected_settlement_cash_day=expected_settlement_cash_day, gate=gate)
+                body = dict(body)
+                body['advance_id'] = advance_id
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def readiness(self):
         with self.lock:
+            terms_note = self._terms_quote()
             return {'instance_id': self.instance_id, 'mode': 'LOCAL_READINESS_ONLY',
                     'source_commit': self.source['commit'], 'upstream_binding': 'NOT_BOUND',
                     'source_integrity': source_integrity(VENDOR, self.source),
                     'groups': copy.deepcopy(GROUPS), 'production_authorized': False,
                     'upstream_nodes_completed': [], 'policy_adopted': False,
                     'requirement_notes': {
+                        'CAP-01': terms_note,
+                        'CAP-04': terms_note,
                         'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
                         'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
                         'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness',

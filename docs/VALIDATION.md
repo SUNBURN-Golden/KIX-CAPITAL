@@ -208,3 +208,22 @@ Conflict resolution kept both auditor assertions: the handbook bind receipt (`ap
 - `python3 scripts/not_bound_checklist.py --check`: exit 0.
 - `git diff --name-only -- capital .aiops .github`: no output (exit 0).
 - `npm run test:browser`: the first run failed to launch because Playwright 1.58.2's headless shell build 1208 was absent. After `npx playwright install chromium`, **33 passed** in 49.6s (exit 0), including the combined auditor spec.
+
+## terms-overlay
+
+Read-only simulated overlay of ADOPTED entries in `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`. Outputs use the label `simulated overlay — not vendor FSM arithmetic, not an offer`. This is not an offer, not vendor FSM arithmetic, and not real funds. No file under `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited. `scripts/build_release.py` was not edited. No test was weakened or skipped. `python3 scripts/not_bound_checklist.py --write` was run once so the generated region in `docs/ACCEPTANCE_KO.md` matches the provisional financial-contracts blocker. This section claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy.
+
+Earlier discovers on incomplete trees failed and were fixed before the results below: an approved case used the settlement envelope instead of its inner claim; the facade `requirement_notes` schema omitted CAP-01 and CAP-04; the checklist block was stale; `capital/terms.py` used `Path(__file__)`, which `tests/test_release.py` rejects.
+
+- `python3 -m unittest discover -s tests -v`: **149 passed** in 13.563s (exit 0). Seed lines that completed printed `state_digest=a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45` and `content_digest=c06f05d3417973287f5c698e4328df710125a3a367e79fe09952e8f464377502`.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.002s (exit 0).
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/decision_ledger.py`: exit 0. `financial-terms-decision` is `PROVISIONAL_PRODUCT_DECISION` with nine `ADOPTED` entries.
+- `python3 scripts/not_bound_checklist.py --check`: exit 0.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output (exit 0).
+- `npm ci`: added 3 packages, 0 vulnerabilities. `node_modules` was absent.
+- `npx playwright install chromium && npm run test:browser`: exit 0. **35 passed** in 54.5s, including `terms-overlay.spec.cjs` bound and unbound cases. The install step printed no download log; Chromium builds were already in the Playwright cache.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `ok` is true. Unit 149 passed, pinned vendor 7 passed, node-check passed, browser 35 passed, packaged-smoke 8 passed, seeded-demo 1 passed.
+- A temporary zipapp `capital-0.1.0.pyz` (sha256 `f377c896cf93a1496b4380276ceeb09c40c24ffd6a37179cbc55c0e0f916717e`, then deleted) reported `default_note_path().is_file()` false and terms status `NOT_BOUND` / `terms not bound`.
+- After the browser run and the acceptance ladder, `ss` showed no listener on 8765–8768 or 8891–8892.

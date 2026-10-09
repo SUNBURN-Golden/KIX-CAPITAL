@@ -156,7 +156,73 @@ async function refresh(){
   paintEvidence(evidence);
  }
  const diagnostics=await loadDiagnostics(next);
- state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);resolveSelection();render();
+ const terms=await loadTerms(next);
+ state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);resolveSelection();render();void loadCaseTerms();
+}
+const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
+let termsEpoch=0;
+function termsQuery(){
+ const params=new URLSearchParams({instance_id:state.instance_id,draw_day:$('terms-draw-day').value,as_of_day:$('terms-as-of-day').value});
+ const expected=$('terms-settlement-day').value;
+ if(expected!=='')params.set('expected_settlement_cash_day',expected);
+ return params;
+}
+function paintTermsFacts(body){
+ const rows=[];
+ const push=(label,value)=>{if(value!==undefined&&value!==null&&value!=='')rows.push([label,String(value)]);};
+ push('status',body.status);push('reason',body.reason);push('tier',body.tier);push('principal',body.principal);
+ const schedule=body.schedule||{};
+ if(schedule.status==='BOUND'){push('term_days',schedule.term_days);push('maturity_day',schedule.maturity_day);push('grace_days',schedule.grace_days);push('default_eligible_day',schedule.default_eligible_day);push('writeoff_day',schedule.writeoff_day);push('schedule_source',schedule.source);}
+ else push('schedule',schedule.reason||schedule.status);
+ const accrual=body.accrual||{};
+ if(accrual.status==='BOUND'){push('exact',accrual.exact);push('interest_krw',accrual.interest_krw);push('all_in_bps_annual',accrual.all_in_bps_annual);push('cap_ok',accrual.cap_ok);push('fee_bps_charged',accrual.fee_bps_charged);push('assumption',accrual.assumption);}
+ else push('accrual',accrual.reason||accrual.status);
+ const collateral=body.collateral||{};
+ if(collateral.status==='BOUND'){push('rung',collateral.rung);push('synthetic',collateral.synthetic);push('real_funds_minimum',collateral.real_funds_minimum);push('collateral_perfected',collateral.flags&&collateral.flags.collateral_perfected);push('external_pledge_complete',collateral.flags&&collateral.flags.external_pledge_complete);push('priority_bound',collateral.flags&&collateral.flags.priority_bound);}
+ else push('collateral',collateral.reason||collateral.status);
+ const base=body.borrowing_base||{};
+ if(base.status==='BOUND'){push('eligible_face',base.eligible_face);push('advance_rate_bps',base.advance_rate_bps);push('base_krw',base.base_krw);push('margin_call',base.margin_call);}
+ else push('borrowing_base',base.reason||base.status);
+ const reserve=body.reserve_provision||{};
+ if(reserve.status==='BOUND'){push('bucket',reserve.bucket);push('provision_bps',reserve.provision_bps);push('provision_krw',reserve.provision_krw);push('funding_source',reserve.funding_source);push('reserve_applied',reserve.applied);}
+ else push('reserve_provision',reserve.reason||reserve.status);
+ const echo=body.not_applied||{};
+ if(echo.status)push('not_applied',echo.reason||echo.status);
+ else{if(echo.underwriting_depth)push('underwriting_applied',echo.underwriting_depth.applied);if(echo.collateral_execution)push('execution_applied',echo.collateral_execution.applied);}
+ $('case-terms-facts').replaceChildren(...rows.flatMap(([label,value])=>[textElement('dt',label),textElement('dd',value)]));
+}
+async function loadTerms(next){
+ const decision=next.auth.permissions['projection:read'];
+ if(!decision?.allowed)return {error:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
+ try{
+  const body=await request('/api/terms');
+  if(body.label!==OVERLAY_LABEL||body.mode!=='SIMULATED_OVERLAY'||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.instance_id!==next.instance_id||body.observed_state_digest!==next.state_digest||body.provisional!==true)return {error:'조건 오버레이 응답이 라벨 또는 절단면과 맞지 않습니다. 청약으로 표시하지 않습니다.'};
+  return {terms:body};
+ }catch{return {error:'조건 오버레이를 확인하지 못했습니다. 제안 상태는 유지합니다.'};}
+}
+function renderTerms(result){
+ const error=$('terms-error');
+ if(!result?.terms){error.hidden=false;error.textContent=result?.error||'조건을 표시하지 않습니다.';$('terms-label').textContent='';$('terms-status').textContent='';$('terms-version').textContent='';return;}
+ error.hidden=true;const terms=result.terms;
+ $('terms-label').textContent=terms.label;
+ $('terms-status').textContent=terms.reason?`${terms.status} · ${terms.reason}`:terms.status;
+ $('terms-version').textContent=terms.terms_version||'';
+}
+async function loadCaseTerms(){
+ const epoch=++termsEpoch;
+ const error=$('case-terms-error');
+ const selectedCase=state?.cases?.find(item=>item.advance_id===selected);
+ if(!selectedCase){$('case-terms-label').textContent='';$('case-terms-facts').replaceChildren();error.hidden=true;return;}
+ if(!can('projection:read')){error.hidden=false;error.textContent=permissionReason('projection:read');$('case-terms-label').textContent='';$('case-terms-facts').replaceChildren();return;}
+ try{
+  const body=await request(`/api/terms/${encodeURIComponent(selectedCase.advance_id)}?${termsQuery()}`);
+  if(epoch!==termsEpoch)return;
+  if(body.label!==OVERLAY_LABEL||body.advance_id!==selectedCase.advance_id||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.observed_state_digest!==state.state_digest)throw Error('INVALID_TERMS');
+  error.hidden=true;$('case-terms-label').textContent=body.label;paintTermsFacts(body);
+ }catch(error){
+  if(epoch!==termsEpoch)return;
+  $('case-terms-error').hidden=false;$('case-terms-error').textContent=error.knownRejection?`조건 조회 거절: ${error.detail?.error||error.message}`:'조건 오버레이를 표시하지 않습니다. 숫자를 청약으로 읽지 마세요.';$('case-terms-facts').replaceChildren();
+ }
 }
 const casePattern=/^sim-[a-zA-Z0-9-]{1,60}$/;
 function caseFromUrl(){const raw=new URLSearchParams(location.search).get('case');return typeof raw==='string'&&casePattern.test(raw)?raw:null;}
@@ -174,7 +240,7 @@ function render(){
  $('exposure').textContent=number(state.cases.reduce((sum,c)=>sum+BigInt(c.outstanding_exposure),0n));
  $('repaid').textContent=number(state.cases.reduce((sum,c)=>sum+BigInt(c.repaid_exposure),0n));
  $('cases').replaceChildren();
- for(const item of state.cases){const row=document.createElement('tr');row.append(textElement('td',item.advance_id.slice(0,14)),textElement('td',phaseNames[item.phase]),textElement('td',number(item.outstanding_exposure)),textElement('td',number(item.reserved_open)));const gateCell=textElement('td',item.settlement_gate,'gate');gateCell.title=item.settlement_gate;gateCell.setAttribute('aria-label',item.settlement_gate);row.append(gateCell);const cell=document.createElement('td');const button=textElement('button',selected===item.advance_id?'선택됨':'열기');button.type='button';button.setAttribute('aria-label',`${item.advance_id} 열기`);button.onclick=()=>{selected=item.advance_id;syncCaseUrl(item.advance_id);render();};cell.append(button);row.append(cell);$('cases').append(row);}
+ for(const item of state.cases){const row=document.createElement('tr');row.append(textElement('td',item.advance_id.slice(0,14)),textElement('td',phaseNames[item.phase]),textElement('td',number(item.outstanding_exposure)),textElement('td',number(item.reserved_open)));const gateCell=textElement('td',item.settlement_gate,'gate');gateCell.title=item.settlement_gate;gateCell.setAttribute('aria-label',item.settlement_gate);row.append(gateCell);const cell=document.createElement('td');const button=textElement('button',selected===item.advance_id?'선택됨':'열기');button.type='button';button.setAttribute('aria-label',`${item.advance_id} 열기`);button.onclick=()=>{selected=item.advance_id;syncCaseUrl(item.advance_id);render();void loadCaseTerms();};cell.append(button);row.append(cell);$('cases').append(row);}
  const c=state.cases.find(item=>item.advance_id===selected);$('empty').hidden=!!c;$('detail').hidden=!c;
  if(!c)$('advanced').hidden=true;
  if(c){$('preview-result').textContent='현재 근거로 확인하며 실제 제안과 예약은 바꾸지 않습니다.';$('case-title').textContent=c.advance_id;$('phase').textContent=`${phaseNames[c.phase]} · ${c.phase}`;
@@ -387,5 +453,6 @@ $('reconcile-readonly').onclick=async()=>{
  }catch(error){$('reconciliation-result').textContent='';notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'재생 조회를 확인하지 못했습니다.',true);}
  finally{busy=false;fence();}
 };
+for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state)void loadCaseTerms();});
 try{const stored=sessionStorage.getItem(roleStorageKey);if(syntheticRoles.includes(stored))$('role').value=stored;}catch{}
 readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(state.workspace&&state.workspace.status!=='ACTIVE')notice(`작업공간을 사용할 수 없습니다 (${state.workspace.status}). 쓰기를 차단했습니다. 빈 시뮬레이션으로 덮어쓰지 않습니다.`,true);else if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});
