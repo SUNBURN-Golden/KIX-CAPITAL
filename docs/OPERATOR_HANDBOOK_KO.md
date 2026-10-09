@@ -71,8 +71,8 @@ python3 -m capital.server --workspace ./var/capital-workspace
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
 | organizer | 명령과 민감 조회 | 없음(로컬 행렬 안) |
-| auditor | 없음. export·투영·대사·명세서는 읽음 | 명령 |
-| observer | 없음. state와 receipt만 읽음 | export, 투영, 대사, 명세서, evidence, preview |
+| auditor | 없음. export·투영·대사·명세서는 읽음. 조건 오버레이(`/api/terms*`)와 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령 |
+| observer | 없음. state와 receipt만 읽음 | export, 투영, 대사, 명세서, evidence, preview, 조건 오버레이(`/api/terms*`), 정책 시뮬레이터(`/api/policy*`) |
 
 거절 코드는 `403 ROLE_FORBIDDEN`이다. 거절된 명령은 operation 수와 저널을 바꾸지 않는다. 실제 IdP·AgentGrant/ActionPermit은 `NOT_BOUND`다.
 
