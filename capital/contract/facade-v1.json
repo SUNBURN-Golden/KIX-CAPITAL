@@ -418,6 +418,52 @@
     },
     {
       "method": "GET",
+      "path": "/api/policy",
+      "operationId": "local_policy",
+      "dispatch": "/api/policy",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/policy_status"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/policy/simulation",
+      "operationId": "local_policy_simulation",
+      "dispatch": "/api/policy",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/policy_simulation"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/preview/{advance_id}",
       "operationId": "local_preview",
       "dispatch": "/api/preview/",
@@ -1117,6 +1163,128 @@
         {"$ref": "#/definitions/terms_case_evaluated"},
         {"$ref": "#/definitions/terms_case_unbound"}
       ]
+    },
+    "policy_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "mode", "provisional", "policy_version", "policy_digest", "outcome", "reason",
+        "funds_executed", "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest"
+      ],
+      "properties": {
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"},
+        "mode": {"const": "SIMULATED_POLICY_APPLICATION"},
+        "provisional": {"const": true},
+        "policy_version": {"type": ["string", "null"]},
+        "policy_digest": {"type": ["string", "null"]},
+        "outcome": {"enum": ["DECIDED", "POLICY_UNDECIDED", "NOT_BOUND", "UNSUPPORTED_BY_PINNED_FSM"]},
+        "reason": {"type": ["string", "null"]},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"}
+      }
+    },
+    "policy_payee_amount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["payee", "face", "distributed", "outstanding"],
+      "properties": {
+        "payee": {"type": "string"},
+        "face": {"type": "integer"},
+        "distributed": {"type": "integer"},
+        "outstanding": {"type": "integer"}
+      }
+    },
+    "policy_comparison_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "order", "per_payee", "distributed_cash", "undistributed_cash", "invariants", "label"],
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {"enum": ["DECIDED", "FIXTURE"]},
+        "order": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+        "per_payee": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/policy_payee_amount"}},
+        "distributed_cash": {"type": "integer"},
+        "undistributed_cash": {"type": "integer"},
+        "invariants": {"type": "array", "items": {"$ref": "#/definitions/predicate_check"}},
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"}
+      }
+    },
+    "policy_decided": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "order", "policy_version", "policy_digest", "label"],
+      "properties": {
+        "id": {"const": "derived-order-v1"},
+        "order": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+        "policy_version": {"type": "string"},
+        "policy_digest": {"type": "string"},
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"}
+      }
+    },
+    "policy_order_freeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted_order", "refused", "code", "label"],
+      "properties": {
+        "attempted_order": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+        "refused": {"type": "boolean"},
+        "code": {"type": ["string", "null"]},
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"}
+      }
+    },
+    "policy_unsupported_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item", "status", "computed", "requires", "note_status", "consumer", "label"],
+      "properties": {
+        "item": {"type": "string"},
+        "status": {"const": "UNSUPPORTED_BY_PINNED_FSM"},
+        "computed": {"const": false},
+        "requires": {"const": "upstream FSM change"},
+        "note_status": {"type": ["string", "null"]},
+        "consumer": {"type": ["string", "null"]},
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"}
+      }
+    },
+    "policy_upstream_requests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownership", "items", "label"],
+      "properties": {
+        "ownership": {"const": "upstream-owned"},
+        "items": {"type": "array", "items": {"type": "string"}},
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"}
+      }
+    },
+    "policy_simulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "mode", "provisional", "funds_executed", "workspace_mutated", "write_authorized",
+        "instance_id", "observed_state_digest", "outcome", "policy_version", "policy_digest",
+        "decided", "comparison", "order_freeze", "unsupported", "upstream_fsm_change_requests"
+      ],
+      "properties": {
+        "label": {"const": "simulated policy application — not executed distribution, not bank movement"},
+        "mode": {"const": "SIMULATED_POLICY_APPLICATION"},
+        "provisional": {"const": true},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"},
+        "outcome": {"enum": ["DECIDED", "POLICY_UNDECIDED", "NOT_BOUND", "UNSUPPORTED_BY_PINNED_FSM"]},
+        "policy_version": {"type": ["string", "null"]},
+        "policy_digest": {"type": ["string", "null"]},
+        "decided": {"anyOf": [{"type": "null"}, {"$ref": "#/definitions/policy_decided"}]},
+        "comparison": {"type": "array", "minItems": 2, "items": {"$ref": "#/definitions/policy_comparison_row"}},
+        "order_freeze": {"$ref": "#/definitions/policy_order_freeze"},
+        "unsupported": {"type": "array", "items": {"$ref": "#/definitions/policy_unsupported_item"}},
+        "upstream_fsm_change_requests": {"$ref": "#/definitions/policy_upstream_requests"}
+      }
     },
     "policy": {
       "type": "object",
@@ -3378,7 +3546,11 @@
       "additionalProperties": false,
       "required": [
         "CAP-01",
+        "CAP-02",
+        "CAP-03",
         "CAP-04",
+        "CAP-05",
+        "CAP-06",
         "CAP-09",
         "CAP-13",
         "CAP-14",
@@ -3389,7 +3561,19 @@
         "CAP-01": {
           "type": "string"
         },
+        "CAP-02": {
+          "type": "string"
+        },
+        "CAP-03": {
+          "type": "string"
+        },
         "CAP-04": {
+          "type": "string"
+        },
+        "CAP-05": {
+          "type": "string"
+        },
+        "CAP-06": {
           "type": "string"
         },
         "CAP-09": {

@@ -157,9 +157,11 @@ async function refresh(){
  }
  const diagnostics=await loadDiagnostics(next);
  const terms=await loadTerms(next);
- state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);resolveSelection();render();void loadCaseTerms();
+ const policyView=await loadPolicy(next);
+ state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
+const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
 let termsEpoch=0;
 function termsQuery(){
  const params=new URLSearchParams({instance_id:state.instance_id,draw_day:$('terms-draw-day').value,as_of_day:$('terms-as-of-day').value});
@@ -199,6 +201,56 @@ async function loadTerms(next){
   if(body.label!==OVERLAY_LABEL||body.mode!=='SIMULATED_OVERLAY'||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.instance_id!==next.instance_id||body.observed_state_digest!==next.state_digest||body.provisional!==true)return {error:'조건 오버레이 응답이 라벨 또는 절단면과 맞지 않습니다. 청약으로 표시하지 않습니다.'};
   return {terms:body};
  }catch{return {error:'조건 오버레이를 확인하지 못했습니다. 제안 상태는 유지합니다.'};}
+}
+function policyEnvelopeOk(body, next){
+ return body&&body.label===POLICY_LABEL&&body.mode==='SIMULATED_POLICY_APPLICATION'&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&body.provisional===true;
+}
+async function loadPolicy(next){
+ const decision=next.auth.permissions['projection:read'];
+ if(!decision?.allowed)return {error:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
+ try{
+  const status=await request('/api/policy');
+  const simulation=await request('/api/policy/simulation');
+  if(!policyEnvelopeOk(status, next)||!policyEnvelopeOk(simulation, next))return {error:'정책 시뮬레이션 응답이 라벨 또는 절단면과 맞지 않습니다. 실행된 배분으로 표시하지 않습니다.'};
+  if((simulation.unsupported||[]).some(item=>item.computed!==false||item.status!=='UNSUPPORTED_BY_PINNED_FSM'))return {error:'표현할 수 없는 정책 항목이 계산된 것처럼 보입니다. 숫자를 표시하지 않습니다.'};
+  return {status, simulation};
+ }catch{return {error:'정책 시뮬레이션을 확인하지 못했습니다. 작업 장부는 유지합니다.'};}
+}
+function renderPolicy(result){
+ const error=$('policy-error');
+ const head=$('policy-head');
+ const body=$('policy-body');
+ const unsupported=$('policy-unsupported');
+ if(!result?.simulation){
+  error.hidden=false;error.textContent=result?.error||'정책을 표시하지 않습니다.';
+  $('policy-label').textContent='';$('policy-outcome').textContent='';$('policy-version').textContent='';
+  head.replaceChildren();body.replaceChildren();unsupported.replaceChildren();return;
+ }
+ error.hidden=true;
+ const simulation=result.simulation;
+ $('policy-label').textContent=simulation.label;
+ $('policy-outcome').textContent=simulation.reason?`${simulation.outcome} · ${simulation.reason}`:simulation.outcome;
+ $('policy-version').textContent=simulation.policy_version||'';
+ const header=document.createElement('tr');
+ header.append(textElement('th','수취인'));
+ for(const column of simulation.comparison){
+  const cell=textElement('th',`${column.kind} · ${column.id} · ${column.order.join(' → ')}`);
+  cell.dataset.kind=column.kind;cell.dataset.id=column.id;header.append(cell);
+ }
+ head.replaceChildren(header);
+ const payees=[];
+ for(const column of simulation.comparison)for(const line of column.per_payee)if(!payees.includes(line.payee))payees.push(line.payee);
+ body.replaceChildren(...payees.map(payee=>{
+  const row=document.createElement('tr');
+  row.append(textElement('th',payee));
+  for(const column of simulation.comparison){
+   const line=column.per_payee.find(item=>item.payee===payee);
+   const cell=textElement('td',line?`${line.distributed} / ${line.face} · 잔여 ${line.outstanding}`:'');
+   cell.dataset.kind=column.kind;cell.dataset.payee=payee;row.append(cell);
+  }
+  return row;
+ }));
+ unsupported.replaceChildren(...(simulation.unsupported||[]).map(item=>textElement('li',`${item.item}: ${item.status} · computed ${item.computed} · ${item.requires}`)));
 }
 function renderTerms(result){
  const error=$('terms-error');

@@ -53,6 +53,7 @@ ROUTE_PERMISSIONS = (
     ('/api/evidence', 'projection:read', False),
     ('/api/projection', 'projection:read', False),
     ('/api/terms', 'projection:read', True),
+    ('/api/policy', 'projection:read', True),
     ('/api/preview/', 'projection:read', True),
     ('/api/operations/', 'receipt:read', True),
     ('/api/export', 'export:read', False),

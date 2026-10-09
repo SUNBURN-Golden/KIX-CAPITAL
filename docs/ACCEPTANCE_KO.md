@@ -67,6 +67,7 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 - [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): 수익·원가 정의와 배분 순서/상한
 - [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): 채권 양도량·보유자·대가·우선순위
 - [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): PROVISIONAL per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)
+- [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): UNSUPPORTED_BY_PINNED_FSM · requires upstream FSM change · 환불 부담·수익 참여·채권 매입·리셀 취소 부담·잔여·늦은 현금은 Capital에서 계산하지 않음
 - [ ] producer-binding (UPSTREAM_REQUIRED; CAP-07, CAP-16): 확대 catalogue와 generated SDK의 exact source/manifest
 - [ ] producer-binding (UPSTREAM_REQUIRED; CAP-07, CAP-16): SEMANTIC_CONFORMANCE profile과 양성/음성 vectors
 - [ ] producer-binding (UPSTREAM_REQUIRED; CAP-07, CAP-16): Commerce/Protocol 동일 producer tuple과 실제 서비스 qualification

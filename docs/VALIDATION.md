@@ -227,3 +227,21 @@ Earlier discovers on incomplete trees failed and were fixed before the results b
 - `python3 scripts/acceptance.py`: exit 0. Evidence `ok` is true. Unit 149 passed, pinned vendor 7 passed, node-check passed, browser 35 passed, packaged-smoke 8 passed, seeded-demo 1 passed.
 - A temporary zipapp `capital-0.1.0.pyz` (sha256 `f377c896cf93a1496b4380276ceeb09c40c24ffd6a37179cbc55c0e0f916717e`, then deleted) reported `default_note_path().is_file()` false and terms status `NOT_BOUND` / `terms not bound`.
 - After the browser run and the acceptance ladder, `ss` showed no listener on 8765–8768 or 8891–8892.
+
+## policy-simulator
+
+Read-only simulated application of the `allocation_order` entry in `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md` through disposable `SettlementMachine` books. Outputs use the label `simulated policy application — not executed distribution, not bank movement`. `policy_adopted` stays false. Production stays `NOT_AUTHORIZED`. Items with `fsm_expressible: false` stay `UNSUPPORTED_BY_PINNED_FSM` with `computed: false`. The note's §7 shadow math (`SHADOW_NOT_APPLIED`) is not implemented; the node spec forbids that arithmetic in Capital. `derived-order-v1` is a comparison row. `/api/scenarios` stays at nine scenarios and 35 steps. No file under `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited. `capital/scenarios.py`, `scripts/build_release.py`, and `tests/golden/demo.json` were not edited. No test was weakened or skipped. `python3 scripts/not_bound_checklist.py --write` was run once so the generated region in `docs/ACCEPTANCE_KO.md` matches the appended `UNSUPPORTED_BY_PINNED_FSM` financial-contracts blocker. This section claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy. The node header says `user_merge: False`; the work encodes allocation priority, so merge stays with JunTae.
+
+An earlier coupled discover failed twice and was fixed before the results below: the source scan matched `row['payee']`, and the checklist block was stale after the new readiness blocker.
+
+- `python3 -m unittest discover -s tests -v`: **160 passed** in 13.922s (exit 0). Seed lines that completed printed `state_digest=a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45` and `content_digest=c06f05d3417973287f5c698e4328df710125a3a367e79fe09952e8f464377502`.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: **7 passed** in 0.003s (exit 0).
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/not_bound_checklist.py --check`: exit 0.
+- `python3 scripts/decision_ledger.py`: exit 0. `settlement-policy-decision` is `PROVISIONAL_PRODUCT_DECISION` with six `ADOPTED` entries (`allocation_order`, `refund_bearer`, `resale_prior_contract_cancel_burden`, `revenue_participation`, `claim_purchase`, `residual_and_late_cash`).
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output (exit 0).
+- `npm ci && npm run test:browser`: exit 0. `npm ci` added 3 packages and reported 0 vulnerabilities (`node_modules` was absent). **37 passed** in 1.0m, including `policy-simulator.spec.cjs` adopted and undecided cases. Chromium was already in the Playwright cache; `npx playwright install chromium` was not run.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `ok` is true. Unit 160 passed, pinned vendor 7 passed, node-check passed, browser 37 passed, packaged-smoke 8 passed, seeded-demo 1 passed. Packaged artifact `build/acceptance-dist/capital-0.1.0.pyz` sha256 `a88c0a73dc6bc243bc33627cf1ebb09b04ee24462c8861ac3e57a4ce32994c32`. Seeded demo printed the same `state_digest` and `content_digest` as the unit run, with `debit=385000` and `credit=385000`.
+- `test_zipapp_reports_not_bound` (inside the 160) asserts zipapp stdout `False`, `NOT_BOUND`, `policy not bound`.
+- After the browser run and the acceptance ladder, `ss -ltnp` filtered for 8765–8768 and 8891–8894 showed no listeners.
