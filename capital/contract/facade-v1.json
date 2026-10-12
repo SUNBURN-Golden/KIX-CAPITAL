@@ -491,6 +491,37 @@
     },
     {
       "method": "GET",
+      "path": "/api/underwrite/{advance_id}",
+      "operationId": "local_underwrite",
+      "dispatch": "/api/underwrite/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/underwrite"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "UNKNOWN_ADVANCE",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id",
+        "sim_day",
+        "amount"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/operations/{operation_id}",
       "operationId": "local_operation",
       "dispatch": "/api/operations/",
@@ -1825,10 +1856,10 @@
           "type": "boolean"
         },
         "underwriting_executed": {
-          "type": "boolean"
+          "const": false
         },
         "kyc_executed": {
-          "type": "boolean"
+          "const": false
         },
         "ownership_mutated": {
           "type": "boolean"
@@ -1969,10 +2000,10 @@
           "type": "boolean"
         },
         "underwriting_executed": {
-          "type": "boolean"
+          "const": false
         },
         "kyc_executed": {
-          "type": "boolean"
+          "const": false
         },
         "credit": {
           "$ref": "#/definitions/credit_view"
@@ -2805,6 +2836,317 @@
           "type": "integer"
         }
       }
+    },
+    "underwrite_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rule",
+        "outcome",
+        "detail"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "rule": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        },
+        "detail": {
+          "type": "object"
+        }
+      }
+    },
+    "underwrite_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible_face",
+        "advance_rate_bps",
+        "base_krw"
+      ],
+      "properties": {
+        "eligible_face": {
+          "type": "integer"
+        },
+        "advance_rate_bps": {
+          "type": "integer"
+        },
+        "base_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "underwrite_caps_remaining": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "single_advance_krw",
+        "beneficiary_aggregate_krw",
+        "portfolio_krw"
+      ],
+      "properties": {
+        "single_advance_krw": {
+          "type": "integer"
+        },
+        "beneficiary_aggregate_krw": {
+          "type": "integer"
+        },
+        "portfolio_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "underwrite_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "terms_version",
+        "rules_version",
+        "advance_id",
+        "candidate",
+        "phase",
+        "gate",
+        "tier",
+        "amount",
+        "beneficiary_role",
+        "borrowing_base",
+        "caps_remaining",
+        "decided_by_role",
+        "two_person_required",
+        "kyc_executed",
+        "underwriting_executed",
+        "checks",
+        "failed_check",
+        "proposal",
+        "inputs_digest",
+        "sim_day"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated underwriting record — rule checks only, not an approval"
+        },
+        "mode": {
+          "const": "SIMULATED_UNDERWRITING_RECORD"
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "BOUND"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rules_version": {
+          "type": "string"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "candidate": {
+          "type": "boolean"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "beneficiary_role": {
+          "type": "string"
+        },
+        "borrowing_base": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/underwrite_base"
+            }
+          ]
+        },
+        "caps_remaining": {
+          "$ref": "#/definitions/underwrite_caps_remaining"
+        },
+        "decided_by_role": {
+          "type": "string"
+        },
+        "two_person_required": {
+          "type": "boolean"
+        },
+        "kyc_executed": {
+          "const": false
+        },
+        "underwriting_executed": {
+          "const": false
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/underwrite_check"
+          }
+        },
+        "failed_check": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "proposal": {
+          "enum": [
+            "APPROVE",
+            "DECLINE"
+          ]
+        },
+        "inputs_digest": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        }
+      }
+    },
+    "underwrite_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "terms_version",
+        "rules_version",
+        "advance_id",
+        "candidate",
+        "decided_by_role",
+        "kyc_executed",
+        "underwriting_executed"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated underwriting record — rule checks only, not an approval"
+        },
+        "mode": {
+          "const": "SIMULATED_UNDERWRITING_RECORD"
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "const": "terms not bound"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rules_version": {
+          "type": "null"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "candidate": {
+          "type": "boolean"
+        },
+        "decided_by_role": {
+          "type": "string"
+        },
+        "kyc_executed": {
+          "const": false
+        },
+        "underwriting_executed": {
+          "const": false
+        }
+      }
+    },
+    "underwrite": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/underwrite_bound"
+        },
+        {
+          "$ref": "#/definitions/underwrite_unbound"
+        }
+      ]
     },
     "scope": {
       "type": "object",

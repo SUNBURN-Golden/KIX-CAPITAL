@@ -12,6 +12,7 @@ from typing import Protocol, runtime_checkable
 
 from capital.policy import SettlementPolicyPort
 from capital.terms import TermsPolicyPort
+from capital.underwriting import UnderwritingPort
 
 
 @runtime_checkable

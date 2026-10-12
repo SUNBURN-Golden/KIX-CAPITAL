@@ -161,3 +161,11 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 `GET /api/policy`와 `GET /api/policy/simulation`은 읽기 전용 시뮬레이티드 정책 적용이다. 라벨은 `simulated policy application — not executed distribution, not bank movement`다. 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 `allocation_order`가 ADOPTED이면 도출된 순서를 기존 fixture 두 순서와 나란히 보여 준다. UNDETERMINED이면 `POLICY_UNDECIDED`이고 fixture 비교만 남는다. 환불 부담, 리셀 취소, 수익 참여, 채권 매입, 잔여·늦은 현금은 `UNSUPPORTED_BY_PINNED_FSM`이며 금액을 계산하지 않는다. 노트가 그림자 계산을 부탁해도 이 노드는 그 산술을 만들지 않는다. `policy_adopted`는 false다. 노트가 없으면 `policy not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 이것은 실행된 배분이 아니고 은행 이동이 아니다. 병합은 JunTae가 한다. 이 노드는 배정 우선순위를 인코딩하므로 스스로 병합하지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:underwriting-rules -->
+
+### underwriting-rules
+
+`GET /api/underwrite/{advance_id}?instance_id=&sim_day=&amount=`는 읽기 전용 시뮬레이티드 심사 결정 레코드다. 라벨은 `simulated underwriting record — rule checks only, not an approval`이고 `mode`는 `SIMULATED_UNDERWRITING_RECORD`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 `underwriting_depth`(`EVIDENCE_RULES_V1`)가 정한 여섯 검사 U1–U6을 노트 순서대로 평가한다: 정산 증거 등급, 환불 노출, 차입기초, 집중도 한도, 결정 권한(2인 원칙 임계값), `kyc_executed=false` 기록. 한도·비율·임계값 숫자는 노트에서 읽으며 코드에 복사하지 않는다. `approve`는 여전히 호출자 결정이고 이 레코드는 제안(`proposal`)일 뿐 승인을 막지 않는다. 기존 F04 케이스는 기록된 금액으로, fixture id(예: `sim-refund`)는 `?amount=`를 요구하는 후보 평가로 읽는다. 노트가 없거나 필요 항목이 ADOPTED가 아니면 `NOT_BOUND`이고 숫자 필드를 내지 않는다. 권한은 `projection:read`라 observer는 `403 ROLE_FORBIDDEN`이다. 호출은 receipt·저널·`state_digest`·`operation_count`를 바꾸지 않는다. `underwriting_executed`·`kyc_executed`는 스키마상 const false로 남는다. 이것은 실제 심사·KYC·승인이 아니다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->

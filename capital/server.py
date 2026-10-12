@@ -31,6 +31,7 @@ GET_DISPATCH = (
     ('/api/terms', True, 'terms'),
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
+    ('/api/underwrite/', True, 'underwrite'),
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
@@ -79,6 +80,7 @@ class CapitalHTTPServer(ThreadingHTTPServer):
 
 
 _DAY = re.compile(r'0|[1-9]\d{0,5}\Z')
+_AMOUNT = re.compile(r'[1-9]\d{0,12}\Z')
 
 
 def query_day(query, name, required):
@@ -92,7 +94,16 @@ def query_day(query, name, required):
     return int(values[0])
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None):
+def query_amount(query):
+    values = parse_qs(query, keep_blank_values=True).get('amount')
+    if not values:
+        return None
+    if len(values) != 1 or _AMOUNT.fullmatch(values[0]) is None:
+        raise ApiError('INVALID_ARGUMENTS')
+    return int(values[0])
+
+
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     storage = None
     if workspace is not None:
@@ -101,7 +112,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         except WorkspaceError as exc:
             storage = UnavailableWorkspace(workspace, exc.code)
     try:
-        service = CapitalService(storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy)
+        service = CapitalService(storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy, underwriting=underwriting)
     except Exception:
         if storage is not None:
             storage.close()
@@ -212,6 +223,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
             return self.reply(200, service.preview_draw(route.path.rsplit('/', 1)[-1], instance))
+
+        def _get_underwrite(self, route, principal):
+            instance = parse_qs(route.query).get('instance_id', [''])[0]
+            sim_day = query_day(route.query, 'sim_day', False)
+            amount = query_amount(route.query)
+            return self.reply(200, service.underwrite(
+                route.path.rsplit('/', 1)[-1], instance, principal.role,
+                sim_day=sim_day or 0, amount=amount))
 
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
