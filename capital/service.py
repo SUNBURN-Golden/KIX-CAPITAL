@@ -9,9 +9,10 @@ import threading
 import uuid
 
 from capital import __version__
+from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
-    DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE, ROLES, UNLABELED,
-    Principal, require, LocalRoleAuthorizer,
+    AGENT_PROPOSE, AGENT_QUERY, DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
+    ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
 from capital.export import UnsignedSigner, build_manifest, manifest_status
 from capital.producer import CreditError, PinnedFsmProducer
@@ -44,6 +45,44 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
 
 
+def _agent_api_error(code, role=None):
+    """Map a lane code to HTTP. Literals stay visible to the facade error scan."""
+    detail = {'role': role} if role is not None else None
+    if code == 'EXECUTE_AUTHORITY_DISABLED':
+        raise ApiError('EXECUTE_AUTHORITY_DISABLED', 403, detail)
+    if code == 'TOOL_NOT_ALLOWED':
+        raise ApiError('TOOL_NOT_ALLOWED', 403, detail)
+    if code == 'GRANT_NOT_CURRENT':
+        raise ApiError('GRANT_NOT_CURRENT', 403, detail)
+    if code == 'GRANT_EXPIRED':
+        raise ApiError('GRANT_EXPIRED', 403, detail)
+    if code == 'GRANT_REVOKED':
+        raise ApiError('GRANT_REVOKED', 403, detail)
+    if code == 'UNKNOWN_GRANT':
+        raise ApiError('UNKNOWN_GRANT', 404, detail)
+    if code == 'UNKNOWN_PROPOSAL':
+        raise ApiError('UNKNOWN_PROPOSAL', 404, detail)
+    if code == 'PROPOSAL_BINDING_CONFLICT':
+        raise ApiError('PROPOSAL_BINDING_CONFLICT', 409, detail)
+    if code == 'PER_ACTION_EXCEEDED':
+        raise ApiError('PER_ACTION_EXCEEDED', 400, detail)
+    if code == 'CUMULATIVE_EXCEEDED':
+        raise ApiError('CUMULATIVE_EXCEEDED', 400, detail)
+    if code == 'COUNT_EXCEEDED':
+        raise ApiError('COUNT_EXCEEDED', 400, detail)
+    if code == 'SCOPE_VIOLATION':
+        raise ApiError('SCOPE_VIOLATION', 400, detail)
+    if code == 'INVALID_AMOUNT':
+        raise ApiError('INVALID_AMOUNT', 400, detail)
+    if code == 'INVALID_PERIOD':
+        raise ApiError('INVALID_PERIOD', 400, detail)
+    if code == 'INVALID_ARGUMENTS':
+        raise ApiError('INVALID_ARGUMENTS', 400, detail)
+    if code == 'NOT_BOUND':
+        raise ApiError('NOT_BOUND', 400, detail)
+    raise ApiError('NOT_BOUND', 500, detail)
+
+
 class ApiError(Exception):
     def __init__(self, code, status=400, detail=None):
         self.code, self.status, self.detail = code, status, detail
@@ -65,6 +104,7 @@ class CapitalService:
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
+        self.agent_lane = AgentLane(self.terms)
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
@@ -556,9 +596,62 @@ class CapitalService:
             except CreditError as exc:
                 return {**result, 'outcome': 'WOULD_REJECT', 'reason': exc.code}
 
+    def agent_query(self, body, role=DEFAULT_ROLE):
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, AGENT_QUERY)
+            frozen = self._machine_frozen()
+            try:
+                return self._agent_call(lambda: self.agent_lane.query_grant(body))
+            finally:
+                self._machine_same(frozen)
+
+    def agent_propose(self, body, role=DEFAULT_ROLE):
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, AGENT_PROPOSE)
+            frozen = self._machine_frozen()
+            try:
+                return self._agent_call(lambda: self.agent_lane.propose_action(body))
+            finally:
+                self._machine_same(frozen)
+
+    def agent_execute(self, body, role=DEFAULT_ROLE):
+        """An EXECUTE attempt. The body is ignored and nothing is written."""
+        del body
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, AGENT_PROPOSE)
+            frozen = self._machine_frozen()
+            proposals = len(self.agent_lane.proposals)
+            try:
+                self.agent_lane.refuse_execute()
+            except AgentLaneError as exc:
+                _agent_api_error(exc.code, principal.role)
+            finally:
+                self._machine_same(frozen)
+                if len(self.agent_lane.proposals) != proposals:
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def _agent_call(self, call):
+        try:
+            return call()
+        except AgentLaneError as exc:
+            _agent_api_error(exc.code)
+
+    def _machine_frozen(self):
+        return (self.machine.state_digest(), self.machine.canonical_state(), len(self.receipts))
+
+    def _machine_same(self, frozen):
+        if self._machine_frozen() != frozen:
+            raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def execute(self, body, role=DEFAULT_ROLE):
         with self.lock:
-            if type(body) is not dict or set(body) != {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}:
+            if type(body) is not dict:
+                raise ApiError('INVALID_COMMAND')
+            allowed = {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}
+            if set(body) - {'proposal_id'} != allowed or not allowed <= set(body):
                 raise ApiError('INVALID_COMMAND')
             # Before instance and idempotency lookups, so a denied role cannot read
             # another role's receipt by replaying its operation_id.
@@ -575,8 +668,11 @@ class CapitalService:
             operation_id = body['operation_id']
             if type(operation_id) is not str or not re.fullmatch(r'[a-zA-Z0-9-]{1,80}', operation_id):
                 raise ApiError('INVALID_OPERATION_ID')
-            # Instance id authorizes the session. It is not part of the stored command identity,
-            # so a restarted process can return the original receipt instead of applying it again.
+            # Instance id authorizes the session. proposal_id is a citation, not identity.
+            # A bad citation is rejected before the fingerprint, which stays
+            # operation_id, op, advance_id, and args.
+            if 'proposal_id' in body and not agent_ident(body['proposal_id']):
+                raise ApiError('INVALID_ARGUMENTS')
             fingerprint = digest({'operation_id': operation_id, 'op': body['op'],
                                   'advance_id': body['advance_id'], 'args': body['args']})
             prior = self.receipts.get(operation_id)
@@ -595,10 +691,18 @@ class CapitalService:
                 raise ApiError('SYNTHETIC_ID_REQUIRED')
             if type(args) is not dict or set(args) != OPS[op]:
                 raise ApiError('INVALID_ARGUMENTS')
+            cited = None
+            if 'proposal_id' in body:
+                try:
+                    cited = self.agent_lane.reference(op, args, body['proposal_id'])
+                except AgentLaneError as exc:
+                    _agent_api_error(exc.code)
             receipt = {'operation_id': operation_id, 'instance_id': self.instance_id,
                        'provenance': PROVENANCE, 'funds_executed': False,
                        'economic_finality_claimed': False, 'transport_duplicate': False,
                        'role': principal.role, 'role_provenance': ROLE_PROVENANCE}
+            if cited is not None:
+                receipt['proposal_id'] = cited
             try:
                 bound = None
                 if op == 'bind_settlement':
