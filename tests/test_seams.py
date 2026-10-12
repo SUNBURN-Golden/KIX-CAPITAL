@@ -80,7 +80,7 @@ class SeamRegistryTests(unittest.TestCase):
         names = protocol_names()
         self.assertEqual(names, [
             'AuthorizerPort', 'ProducerPort', 'ProjectionPort', 'SettlementPolicyPort',
-            'SignaturePort', 'StoragePort', 'TermsPolicyPort',
+            'SignaturePort', 'StoragePort', 'TermsPolicyPort', 'UnderwritingPort',
         ])
         rows = assert_registry(SEAMS.read_text(encoding='utf-8'), names)
         for row in rows:
@@ -141,6 +141,7 @@ class SeamRegistryTests(unittest.TestCase):
         self.assertIsInstance(service.signer, ports.SignaturePort)
         self.assertIsInstance(service.terms, ports.TermsPolicyPort)
         self.assertIsInstance(service.policy, ports.SettlementPolicyPort)
+        self.assertIsInstance(service.underwriting, ports.UnderwritingPort)
 
     def test_readiness_quotes_the_local_contract_and_stays_not_bound(self):
         ready = CapitalService().readiness()

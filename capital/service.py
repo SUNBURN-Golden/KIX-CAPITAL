@@ -25,6 +25,7 @@ from capital.policy import (
 from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
 from capital.statement import build_statement
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
+from capital.underwriting import DecisionNoteUnderwriting
 from capital.readiness import GROUPS, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
@@ -50,7 +51,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -63,6 +64,7 @@ class CapitalService:
         self.projection_port = projection if projection is not None else SimulationProjection()
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
+        self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
@@ -305,6 +307,80 @@ class CapitalService:
                     expected_settlement_cash_day=expected_settlement_cash_day, gate=gate)
                 body = dict(body)
                 body['advance_id'] = advance_id
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def _underwrite_subject(self, advance_id, fixture_id, case, fixture_view, amount, candidate):
+        """Caller holds the lock. Collects the read inputs the rule record needs."""
+        claim = fixture_view['claim']
+        beneficiary = 'fixture-organizer' if candidate else case['beneficiary_role']
+        beneficiary_outstanding = 0
+        portfolio_outstanding = 0
+        sibling_reserved = 0
+        for other_id, bound in self.case_fixtures.items():
+            view = self.machine.view(other_id)
+            portfolio_outstanding += view['outstanding_exposure']
+            if view['beneficiary_role'] == beneficiary:
+                beneficiary_outstanding += view['outstanding_exposure']
+            if bound == fixture_id:
+                sibling_reserved = view['reserved_open']
+        if candidate:
+            return {
+                'advance_id': advance_id, 'candidate': True, 'phase': 'CANDIDATE',
+                'amount': amount, 'beneficiary_role': beneficiary,
+                'settlement_id': fixture_id, 'commit_observed': False,
+                'settlement_phase': fixture_view['phase'], 'claim': claim,
+                'open_face': sum(line['outstanding'] for line in claim['obligations']),
+                'other_reserved': sibling_reserved,
+                'beneficiary_outstanding': beneficiary_outstanding,
+                'portfolio_outstanding': portfolio_outstanding,
+                'incremental': amount,
+            }
+        own_note = case['amount'] if case['note_status'] == 'NOTED' else 0
+        return {
+            'advance_id': advance_id, 'candidate': False, 'phase': case['phase'],
+            'amount': amount, 'beneficiary_role': beneficiary,
+            'settlement_id': case['settlement_id'],
+            'commit_observed': case['mock_settlement_commit_observed'],
+            'settlement_phase': fixture_view['phase'], 'claim': claim,
+            'open_face': case['open_face'],
+            'other_reserved': case['reserved_open'] - own_note,
+            'beneficiary_outstanding': beneficiary_outstanding,
+            'portfolio_outstanding': portfolio_outstanding,
+            'incremental': amount if case['drawn_exposure'] == 0 else 0,
+        }
+
+    def underwrite(self, advance_id, instance_id, role, *, sim_day=0, amount=None):
+        """Read-only simulated decision record. No receipt and no journal write."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            self._require_day(sim_day)
+            if amount is not None and (type(amount) is not int or amount < 1):
+                raise ApiError('INVALID_ARGUMENTS')
+            candidate = False
+            case = None
+            if advance_id in self.case_fixtures:
+                case = self.machine.view(advance_id)
+                fixture_id = self.case_fixtures[advance_id]
+                if amount is not None and amount != case['amount']:
+                    raise ApiError('INVALID_ARGUMENTS')
+                amount = case['amount']
+            elif advance_id in self.fixtures.rows:
+                if amount is None:
+                    raise ApiError('INVALID_ARGUMENTS')
+                candidate = True
+                fixture_id = advance_id
+            else:
+                raise ApiError('UNKNOWN_ADVANCE', 404)
+            frozen = self._frozen()
+            try:
+                fixture_view = self.fixtures.view(fixture_id)
+                subject = self._underwrite_subject(
+                    advance_id, fixture_id, case, fixture_view, amount, candidate)
+                body = self.underwriting.record(subject, decided_by_role=role, sim_day=sim_day)
                 return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):

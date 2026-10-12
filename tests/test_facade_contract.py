@@ -195,6 +195,7 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', '/api/scenarios', '/api/scenarios', None),
             ('GET', '/api/scenarios/full-after', '/api/scenarios/{id}', None),
             ('GET', f'/api/preview/sim-journey?instance_id={instance}', '/api/preview/{{advance_id}}', None),
+            ('GET', f'/api/underwrite/sim-journey?instance_id={instance}&sim_day=0', '/api/underwrite/{{advance_id}}', None),
             ('GET', f'/api/operations/j-offer?instance_id={instance}', '/api/operations/{{operation_id}}', None),
             ('GET', '/api/export', '/api/export', None),
             ('GET', '/api/export/manifest', '/api/export/manifest', None),
