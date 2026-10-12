@@ -28,5 +28,5 @@
 | CAP-16 | SDK·API 적합성 | `facade-contract-seams` | NOT_BOUND | 로컬 capital-local-facade/1은 exact tuple이 아니다. SEMANTIC_CONFORMANCE가 아니다. |
 | CAP-17 | 공개/비공개·권리 규모 | `RS-0~5` | NOT_BOUND | upstream, not adopted. privacy·currentness와 규모 검증이 없다. |
 | CAP-18 | 선택적 토큰 담보·보상 | `TL` | NOT_AUTHORIZED | upstream, not adopted. coin lock 결정이 없고 토큰 호출 코드가 없다. |
-| CAP-19 | AI 운영·권한·최소공개 | `CAPITAL-AUTH-BOUNDARY` | NOT_BOUND | 로컬 합성 역할만 있다. IdP·KYC·AgentGrant/ActionPermit은 upstream, not adopted. |
+| CAP-19 | AI 운영·권한·최소공개 | `CAPITAL-AUTH-BOUNDARY` | NOT_BOUND | 로컬 합성 역할과 SIMULATED QUERY/PROPOSE 픽스처가 있다. 제안은 HUMAN_PENDING이고 effects_executed는 false다. IdP·KYC·AgentGrant/ActionPermit은 upstream, not adopted. |
 | CAP-20 | 접근성·통합 수용 | `acceptance-suite` | SIMULATED | 자동 검증만이다. 브라우저 여정은 `journeys-portfolio`에도 있다. 사람 수용은 PENDING이고 실서비스 출시는 승인되지 않았다. |

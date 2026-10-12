@@ -2,8 +2,10 @@
 
 This module does not import the service layer. It has no accounts, passwords,
 personal data, or network calls. `LocalRoleAuthorizer` keeps one process-local
-loopback token per synthetic role. That table is not an identity provider,
-credential store, or AgentGrant. Identity stays NOT_BOUND.
+loopback token per synthetic role. That table is not an identity provider or
+a credential store. The `agent` token may only reach the simulated QUERY and
+PROPOSE lane. It is not an upstream AgentGrant and not an ActionPermit.
+Identity stays NOT_BOUND.
 """
 from __future__ import annotations
 
@@ -12,11 +14,14 @@ import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-ROLES = ('organizer', 'auditor', 'observer')
+ROLES = ('organizer', 'auditor', 'observer', 'agent')
 DEFAULT_ROLE = 'organizer'
 PROVENANCE = 'SYNTHETIC_LOCAL_ROLE'
 COMMAND_SUBMIT = 'command:submit'
 SESSION_BIND = 'session:bind'
+AGENT_QUERY = 'agent:query_grant'
+AGENT_PROPOSE = 'agent:propose_action'
+AGENT_PERMISSIONS = (AGENT_QUERY, AGENT_PROPOSE)
 
 # Keep this tuple aligned with CapitalService.OPS. The test locks the sets together.
 OP_ORDER = (
@@ -32,14 +37,23 @@ READ_PERMISSIONS = (
 # Observer may read state, reference, and receipts. Export, reconciliation,
 # the five-category statement, and the local projection candidate stay with auditor.
 OBSERVER_READ = ('state:read', 'reference:read', 'receipt:read')
-ALL_PERMISSIONS = (COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND)
+ALL_PERMISSIONS = (
+    COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND, *AGENT_PERMISSIONS,
+)
 
 # Placeholder matrix, not an entitlement policy. Real role-to-person mapping stays NOT_BOUND.
 # session:bind only mints another synthetic loopback token. It is not a financial write.
+# The agent lane is a simulated fixture. It is not authority to run a command.
+_HUMAN_ORGANIZER = frozenset(
+    permission for permission in (
+        COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND,
+    )
+)
 MATRIX = {
-    'organizer': frozenset(ALL_PERMISSIONS),
+    'organizer': _HUMAN_ORGANIZER,
     'auditor': frozenset((*READ_PERMISSIONS, SESSION_BIND)),
     'observer': frozenset((*OBSERVER_READ, SESSION_BIND)),
+    'agent': frozenset(AGENT_PERMISSIONS),
 }
 
 # Receipts saved before this label existed. Not a session role and not in ROLES.

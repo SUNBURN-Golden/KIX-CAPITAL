@@ -46,7 +46,7 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-16 | SDK·API 적합성 | 로컬 계약 `capital-local-facade/1` (`capital/contract/facade-v1.json`)와 ProducerPort 양성·음성 vectors. strict 로컬 envelope와 vendor byte hash. 이 vectors는 SEMANTIC_CONFORMANCE가 아니다 | NOT_BOUND(로컬 후보); 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple. 로컬 facade 계약이 그 tuple을 대체하지 않는다 |
 | CAP-17 | 공개/비공개·권리 규모 | 외부 의존성과 관람권 비권위 표시 | NOT_BOUND: RS-0~5, privacy/currentness, 1024/16384/65536 규모 검증 없음 |
 | CAP-18 | 선택적 토큰 담보·보상 | 향후 연동 설명, 외부 호출·발행 코드 없음 | NOT_AUTHORIZED: TL 계약·coin lock/user 결정; KRW 목을 토큰 한도로 확장 안 함 |
-| CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer)을 서버가 강제하고 receipt에 표시. 계정·비밀번호·개인정보 없음 | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리 |
+| CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer/agent)을 서버가 강제하고 receipt에 표시. agent는 SIMULATED QUERY/PROPOSE 픽스처만 호출하고 제안은 HUMAN_PENDING이며 effects_executed는 false. 계정·비밀번호·개인정보 없음 | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리. SIMULATED 레인은 실권한 아님 |
 | CAP-20 | 접근성·통합 수용 | 실제 browser 정상/거절/UNKNOWN/reload, mobile, keyboard, screenshot | SIMULATED(자동검증만); 사용자 수용 PENDING, full T01→T06/서비스 qualification 미실행 |
 
 ## Finance 후보 8개를 유지하는 후속 위치

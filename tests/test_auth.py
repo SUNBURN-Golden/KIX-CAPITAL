@@ -5,9 +5,9 @@ import unittest
 from email.message import Message
 
 from capital.auth import (
-    ALL_PERMISSIONS, COMMAND_SUBMIT, DEFAULT_ROLE, MATRIX, OP_PERMISSIONS, PROVENANCE,
-    ROLES, ROUTE_PERMISSIONS, SESSION_BIND, AuthorizerPort, Decision, LocalRoleAuthorizer,
-    Principal, require, route_permission,
+    AGENT_PERMISSIONS, ALL_PERMISSIONS, COMMAND_SUBMIT, DEFAULT_ROLE, MATRIX, OP_PERMISSIONS,
+    PROVENANCE, ROLES, ROUTE_PERMISSIONS, SESSION_BIND, AuthorizerPort, Decision,
+    LocalRoleAuthorizer, Principal, require, route_permission,
 )
 from capital.server import GET_DISPATCH, POST_DISPATCH, make_server
 from capital.service import OPS, ApiError, CapitalService, digest
@@ -54,32 +54,51 @@ class MatrixTests(unittest.TestCase):
             [(path, children) for path, children, _name in GET_DISPATCH],
             [(path, children) for path, _permission, children in ROUTE_PERMISSIONS],
         )
-        self.assertEqual([path for path, _permission in POST_DISPATCH], ['/api/commands', '/api/session'])
+        self.assertEqual(
+            [path for path, _permission in POST_DISPATCH],
+            ['/api/commands', '/api/session', '/api/agent/query_grant',
+             '/api/agent/propose_action', '/api/agent/execute'],
+        )
         for path, permission in POST_DISPATCH:
             self.assertIn(permission, ALL_PERMISSIONS, path)
             self.assertIsNone(route_permission(path), path)
 
     def test_matrix_fails_closed_and_splits_the_three_roles(self):
         authorizer = LocalRoleAuthorizer()
-        organizer, auditor, observer = (Principal(role) for role in ROLES)
+        self.assertEqual(ROLES, ('organizer', 'auditor', 'observer', 'agent'))
+        organizer, auditor, observer, agent = (Principal(role) for role in ROLES)
+        agent_only = frozenset(AGENT_PERMISSIONS)
         for permission in ALL_PERMISSIONS:
-            self.assertTrue(authorizer.authorize(organizer, permission).allowed, permission)
+            self.assertEqual(
+                authorizer.authorize(organizer, permission).allowed,
+                permission not in agent_only, permission)
         for permission in ALL_PERMISSIONS:
             decision = authorizer.authorize(auditor, permission)
             financial_write = permission == COMMAND_SUBMIT or permission.startswith('command:')
-            self.assertEqual(decision.allowed, not financial_write, permission)
-        for permission in ('export:read', 'reconciliation:read', 'statement:read', 'projection:read', COMMAND_SUBMIT, 'command:draw'):
+            self.assertEqual(
+                decision.allowed, not financial_write and permission not in agent_only, permission)
+        for permission in (
+            'export:read', 'reconciliation:read', 'statement:read', 'projection:read',
+            COMMAND_SUBMIT, 'command:draw', *AGENT_PERMISSIONS,
+        ):
             self.assertFalse(authorizer.authorize(observer, permission).allowed, permission)
         for permission in ('state:read', 'reference:read', 'receipt:read', SESSION_BIND):
             self.assertTrue(authorizer.authorize(observer, permission).allowed, permission)
+        for permission in ALL_PERMISSIONS:
+            self.assertEqual(
+                authorizer.authorize(agent, permission).allowed, permission in agent_only, permission)
         self.assertTrue(authorizer.authorize(auditor, 'projection:read').allowed)
         self.assertTrue(authorizer.authorize(auditor, 'export:read').allowed)
         self.assertFalse(authorizer.authorize(organizer, 'admin:write').allowed)
         self.assertFalse(authorizer.authorize(Principal('named-person'), 'state:read').allowed)
         self.assertTrue(MATRIX['auditor'].isdisjoint(OP_PERMISSIONS.values()))
+        self.assertTrue(MATRIX['agent'].isdisjoint(OP_PERMISSIONS.values()))
         self.assertNotIn(COMMAND_SUBMIT, MATRIX['auditor'])
         self.assertNotIn(COMMAND_SUBMIT, MATRIX['observer'])
+        self.assertNotIn(COMMAND_SUBMIT, MATRIX['agent'])
+        self.assertNotIn(SESSION_BIND, MATRIX['agent'])
         self.assertNotIn('projection:read', MATRIX['observer'])
+        self.assertNotIn('agent:query_grant', MATRIX['organizer'])
 
     def test_role_is_bound_to_the_loopback_token(self):
         authorizer = LocalRoleAuthorizer()
