@@ -21,7 +21,7 @@
 | CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | `recon-statement` | SIMULATED | 로컬 다섯 구분 명세서다. 실지급이 아니고 최초 판매와 리셀을 합산하지 않는다. |
 | CAP-10 | 원 operation/최초 결과/UNKNOWN | `persistence-port` | SIMULATED | 개발용 LOCAL_FILE_WORKSPACE다. stage5 내구 거래가 아니다. |
 | CAP-11 | 내구 거래·inbox/outbox·장애복구 | `k-stage5-durable-tx` | NOT_BOUND | upstream, not adopted. 자체 저장엔진을 만들지 않는다. |
-| CAP-12 | 자산별 정확한 금액·FX | `product-journey` | SIMULATED | KRW 정수 검증만 로컬이다. u128·registry·FX는 upstream, not adopted. |
+| CAP-12 | 자산별 정확한 금액·FX | `product-journey` | SIMULATED | KRW 정수 검증과 KRW AssetSpec 단일 선언(`assets`, 다른 asset은 `ASSET_MISMATCH`, node `asset-spec-krw`, PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.6)만 로컬이다. u128·registry·FX는 upstream, not adopted. |
 | CAP-13 | 복식 금융 투영 | `finance-projection` | SIMULATED | 로컬 후보 SYNTHETIC_UNADOPTED다. `fin-ledger-contract`는 upstream, not adopted. |
 | CAP-14 | 원관측·대사 예외 | `recon-statement` | SIMULATED | 로컬 진단이다. 은행·PG·제공자 관측은 NOT_BOUND다. |
 | CAP-15 | 인증 export·일관 source cut | `export-manifest` | SIMULATED | 로컬 해시 manifest와 SignaturePort다. stage7 인증 export가 아니다. |

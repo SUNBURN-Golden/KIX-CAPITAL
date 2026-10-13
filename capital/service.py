@@ -9,6 +9,7 @@ import threading
 import uuid
 
 from capital import __version__
+from capital.assets import declared as declared_assets, matches as asset_matches
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_QUERY, DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
@@ -29,7 +30,7 @@ from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
 from capital.statement import build_statement
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
-from capital.readiness import GROUPS, resolve_note_blockers, source_integrity
+from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
 
@@ -236,7 +237,7 @@ class CapitalService:
             principal = Principal(role or DEFAULT_ROLE)
             return {'instance_id': self.instance_id, 'version': __version__, 'mode': 'LOCAL_SIMULATION',
                     'provenance': PROVENANCE, 'durable': self.storage.durable_label, 'funds_executed': False,
-                    'source_commit': self.source['commit'], 'cases': cases,
+                    'source_commit': self.source['commit'], 'assets': declared_assets(), 'cases': cases,
                     'fixtures': copy.deepcopy(self.fixtures.rows),
                     'state_digest': self.machine.state_digest(),
                     'operation_count': len(self.receipts), 'operation_capacity': MAX_OPERATIONS,
@@ -314,6 +315,12 @@ class CapitalService:
         if applied.get('outcome') == 'NOT_BOUND' or not version:
             return POLICY_NOT_BOUND
         return f'PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md ({version})'
+
+    def _asset_quote(self):
+        line = self.decision_index.note_line(UPSTREAM_BINDING_NOTE)
+        return (f'KRW declared once as an AssetSpec (fiat/KRW, decimals 0, max_atoms 10^12 fixture bound), '
+                f'{line}; any other asset on a command is rejected ASSET_MISMATCH before it is applied; '
+                f'asset registry, u128 and FX stay NOT_BOUND')
 
     def _policy_decision_line(self):
         return self._policy_quote() + ' — ' + POLICY_LABEL
@@ -610,6 +617,7 @@ class CapitalService:
                         'CAP-05': policy_note,
                         'CAP-06': policy_note,
                         'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
+                        'CAP-12': self._asset_quote(),
                         'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
                         'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness',
                         'CAP-15': 'local hashed manifest and SignaturePort only; not stage7 authenticated export; no external key, cross-service cursor, watermark, or retention duration; retention_policy names five empty owner slots',
@@ -721,7 +729,7 @@ class CapitalService:
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             allowed = {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}
-            if set(body) - {'proposal_id'} != allowed or not allowed <= set(body):
+            if set(body) - {'proposal_id', 'asset'} != allowed or not allowed <= set(body):
                 raise ApiError('INVALID_COMMAND')
             # Before instance and idempotency lookups, so a denied role cannot read
             # another role's receipt by replaying its operation_id.
@@ -735,6 +743,13 @@ class CapitalService:
                 raise ApiError(self.workspace_status, 503)
             if body['instance_id'] != self.instance_id:
                 raise ApiError('SESSION_CHANGED', 409)
+            # The optional asset must equal the one declared spec. A mismatch is a boundary
+            # error like INVALID_COMMAND: before the fingerprint and receipt lookup, so no
+            # journal entry, receipt or idempotency record exists for it. After the
+            # authorizer, so a denied role learns nothing from validation. asset is not in
+            # the fingerprint: only one value is ever accepted, so it cannot conflict.
+            if 'asset' in body and not asset_matches(body['asset']):
+                raise ApiError('ASSET_MISMATCH')
             operation_id = body['operation_id']
             if type(operation_id) is not str or not re.fullmatch(r'[a-zA-Z0-9-]{1,80}', operation_id):
                 raise ApiError('INVALID_OPERATION_ID')
@@ -977,6 +992,7 @@ class CapitalService:
                         'repository': self.source['repository'],
                         'files': copy.deepcopy(self.source['files']),
                         'integrity': source_integrity(VENDOR, self.source),
+                        'assets': declared_assets(),
                     },
                 }
                 status, reasons = manifest_status(reconciliation['status'], self.workspace_status)
