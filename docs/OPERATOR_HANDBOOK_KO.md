@@ -217,3 +217,58 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 `GET /api/readiness`의 `financial-contracts` 차단 사유 중 금융 조건 노트를 인용하는 줄은 이제 이 노트 행에서 만든다. 형식은 `<status> per <note> (<version>)`이고, 예를 들면 `PROVISIONAL_PRODUCT_DECISION per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)`다. 노트를 읽을 수 없으면 `NOT_BOUND per docs/decisions/CAPITAL_FINANCIAL_TERMS.md`다. 그룹 상태 `DECISION_REQUIRED`와 `policy_adopted=false`는 그대로다. 이 줄이 바뀌면 [수용 점검표](ACCEPTANCE_KO.md)의 생성 블록도 `python3 scripts/not_bound_checklist.py --write`로 다시 쓴다. 이 응답은 채택이 아니고 청약이 아니며 실자금과 무관하다. 법무·세무 항목은 전문가 검토 전까지 작업 가정이다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:auth-matrix-freeze -->
+
+### auth-matrix-freeze
+
+등록된 모든 경로를 organizer, auditor, observer, agent와 토큰 없는 호출자로 나눠 허용·거절을 `tests/auth_matrix.json`에 고정했다. 이 노드는 표와 검사만 추가한다. 경로, 권한, 역할은 바뀌지 않았고 새 권한도 IdP도 없다. 위 `## 역할`의 요약 표는 그대로 두며, 두 표가 다르면 아래 생성 표가 맞다. 아래 표는 루프백 서버로 칸마다 확인한 값이다. 이 표는 합성 역할의 자리표시자이며 권한 정책이 아니다. 신원과 인증은 계속 `NOT_BOUND`다.
+
+<!-- generated:auth-matrix begin -->
+이 블록은 `tests/auth_matrix.json`(`KIX_CAPITAL_AUTH_MATRIX_V1`)에서 `python3 scripts/auth_matrix.py --write`가 만든다. 손으로 고치지 않는다. 라벨은 `SIMULATED`이고 역할 출처는 `SYNTHETIC_LOCAL_ROLE`다. 신원과 인증은 `NOT_BOUND`이며 이 표는 권한 정책이 아니라 합성 자리표시자다. `python3 -m unittest tests.test_auth_matrix`가 모든 칸을 루프백 서버에 실제로 보내 확인한다.
+
+`허용`은 그 역할이 권한을 가진다는 뜻이고 `거절`은 `403 ROLE_FORBIDDEN`이다. `no-token`은 `X-Capital-Token`이 없는 호출자다. GET은 기본 `organizer`로 처리돼 그 열과 같고, POST는 어느 권한이든 `403 LOCAL_TOKEN_REQUIRED`(`토큰 필요`)다. 정적 파일(`/`, `/app.js`, `/style.css`)은 인증 전에 응답해 권한이 없다.
+
+| 권한 | organizer | auditor | observer | agent | no-token | 경로 |
+|---|---|---|---|---|---|---|
+| `command:submit` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` |
+| `command:offer` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `offer`) |
+| `command:approve` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `approve`) |
+| `command:reject` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reject`) |
+| `command:cancel` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `cancel`) |
+| `command:bind_settlement` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `bind_settlement`) |
+| `command:draw` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `draw`) |
+| `command:repay` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `repay`) |
+| `command:close` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `close`) |
+| `command:default` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `default`) |
+| `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
+| `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
+| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
+| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
+| `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
+| `statement:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/statement` |
+| `metrics:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/metrics` |
+| `health:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/health` |
+| `session:bind` | 허용 | 허용 | 허용 | 거절 | 토큰 필요 | `POST /api/session` |
+| `agent:query_grant` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/query_grant` |
+| `agent:propose_action` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/propose_action`, `POST /api/agent/execute` |
+
+권한 표 밖에서 표가 고정한 오류 코드는 다음과 같다.
+
+| 코드 | 뜻 |
+|---|---|
+| `ROLE_FORBIDDEN` | 토큰의 역할에 그 권한이 없다. |
+| `LOCAL_TOKEN_REQUIRED` | 토큰이 없거나 알 수 없다. 모든 POST는 먼저 토큰을 본다. |
+| `EXECUTE_AUTHORITY_DISABLED` | agent 레인이 EXECUTE를 거절한다. 게이트는 통과했다. |
+| `INVALID_ARGUMENTS` | 게이트를 통과한 뒤 인자 검사에서 쓰기 전에 거절됐다. |
+| `NOT_FOUND` | 등록되지 않은 (메서드, 경로)다. 기본 거절이다. |
+| `ROLE_MISMATCH` | `X-Capital-Role`이 토큰의 역할과 다르다. 헤더로 역할을 바꿀 수 없다. |
+| `SESSION_REQUIRED` | 토큰 없이 organizer가 아닌 역할을 주장했다. 먼저 `POST /api/session`이 필요하다. |
+| `ROLE_UNKNOWN` | `X-Capital-Role`이 알 수 없거나 중복된 역할이다. |
+<!-- generated:auth-matrix end -->
+
+경로나 권한을 바꾸면 `python3 scripts/auth_matrix.py --write`로 표와 두 문서의 생성 블록을 다시 쓴다. 그 전에는 `python3 -m unittest discover -s tests`가 실패한다. 표만 검사하려면 `python3 scripts/auth_matrix.py --check`를 쓴다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->

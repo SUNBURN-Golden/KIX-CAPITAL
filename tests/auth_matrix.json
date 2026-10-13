@@ -1,0 +1,2948 @@
+{
+  "format": "KIX_CAPITAL_AUTH_MATRIX_V1",
+  "label": "SIMULATED",
+  "provenance": "SYNTHETIC_LOCAL_ROLE",
+  "identity": "NOT_BOUND",
+  "authentication": "NOT_BOUND",
+  "note": "Synthetic placeholder roles, not an entitlement policy. Regenerate with python3 scripts/auth_matrix.py --write.",
+  "callers": [
+    "organizer",
+    "auditor",
+    "observer",
+    "agent",
+    "no-token"
+  ],
+  "no_token_principal": "organizer",
+  "role_permissions": {
+    "organizer": [
+      "command:submit",
+      "command:offer",
+      "command:approve",
+      "command:reject",
+      "command:cancel",
+      "command:bind_settlement",
+      "command:draw",
+      "command:repay",
+      "command:close",
+      "command:default",
+      "command:reconcile",
+      "state:read",
+      "reference:read",
+      "projection:read",
+      "receipt:read",
+      "export:read",
+      "reconciliation:read",
+      "statement:read",
+      "metrics:read",
+      "health:read",
+      "session:bind"
+    ],
+    "auditor": [
+      "state:read",
+      "reference:read",
+      "projection:read",
+      "receipt:read",
+      "export:read",
+      "reconciliation:read",
+      "statement:read",
+      "metrics:read",
+      "health:read",
+      "session:bind"
+    ],
+    "observer": [
+      "state:read",
+      "reference:read",
+      "receipt:read",
+      "health:read",
+      "session:bind"
+    ],
+    "agent": [
+      "agent:query_grant",
+      "agent:propose_action"
+    ]
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "route": "/api/state",
+      "children": false,
+      "handler": "_get_state",
+      "permission": "state:read",
+      "probes": [
+        "/api/state"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/scenarios",
+      "children": true,
+      "handler": "_get_scenarios",
+      "permission": "reference:read",
+      "probes": [
+        "/api/scenarios",
+        "/api/scenarios/full-after"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/readiness",
+      "children": false,
+      "handler": "_get_readiness",
+      "permission": "reference:read",
+      "probes": [
+        "/api/readiness"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/decisions",
+      "children": false,
+      "handler": "_get_decisions",
+      "permission": "reference:read",
+      "probes": [
+        "/api/decisions"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/evidence",
+      "children": false,
+      "handler": "_get_evidence",
+      "permission": "projection:read",
+      "probes": [
+        "/api/evidence"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/projection",
+      "children": false,
+      "handler": "_get_projection",
+      "permission": "projection:read",
+      "probes": [
+        "/api/projection"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/terms",
+      "children": true,
+      "handler": "_get_terms",
+      "permission": "projection:read",
+      "probes": [
+        "/api/terms",
+        "/api/terms/sim-mtx?instance_id=@instance&draw_day=0&as_of_day=1",
+        "/api/terms/sim-mtx/allocation?instance_id=@instance&as_of_day=1&cash=1"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/policy",
+      "children": true,
+      "handler": "_get_policy",
+      "permission": "projection:read",
+      "probes": [
+        "/api/policy",
+        "/api/policy/simulation"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/preview/",
+      "children": true,
+      "handler": "_get_preview",
+      "permission": "projection:read",
+      "probes": [
+        "/api/preview/sim-mtx?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/underwrite/",
+      "children": true,
+      "handler": "_get_underwrite",
+      "permission": "projection:read",
+      "probes": [
+        "/api/underwrite/sim-mtx?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/operations/",
+      "children": true,
+      "handler": "_get_operation",
+      "permission": "receipt:read",
+      "probes": [
+        "/api/operations/sim-mtx-offer?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/export",
+      "children": false,
+      "handler": "_get_export",
+      "permission": "export:read",
+      "probes": [
+        "/api/export"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/manifest",
+      "children": false,
+      "handler": "_get_export_manifest",
+      "permission": "export:read",
+      "probes": [
+        "/api/export/manifest"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/reconciliation",
+      "children": false,
+      "handler": "_get_reconciliation",
+      "permission": "reconciliation:read",
+      "probes": [
+        "/api/reconciliation"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/statement",
+      "children": false,
+      "handler": "_get_statement",
+      "permission": "statement:read",
+      "probes": [
+        "/api/statement"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "children": false,
+      "handler": "_get_metrics",
+      "permission": "metrics:read",
+      "probes": [
+        "/api/metrics"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/health",
+      "children": false,
+      "handler": "_get_health",
+      "permission": "health:read",
+      "probes": [
+        "/api/health"
+      ]
+    },
+    {
+      "method": "POST",
+      "route": "/api/commands",
+      "permission": "command:submit",
+      "body": {
+        "instance_id": "@instance",
+        "operation_id": "sim-mtx-reconcile",
+        "op": "reconcile",
+        "advance_id": "sim-mtx",
+        "args": {}
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/session",
+      "permission": "session:bind",
+      "body": {
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_grant",
+      "permission": "agent:query_grant",
+      "body": {
+        "grant_id": "sim-grant-agent",
+        "generation": 2,
+        "now": 1
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_action",
+      "permission": "agent:propose_action",
+      "body": {
+        "grant_id": "sim-grant-agent",
+        "generation": 2,
+        "now": 10,
+        "proposal_id": "sim-matrix",
+        "surface": "capital:offer",
+        "amount": 100,
+        "kind": "PROPOSE"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/execute",
+      "permission": "agent:propose_action",
+      "body": {
+        "kind": "EXECUTE"
+      },
+      "note": "The gate passes agent:propose_action and the lane then refuses. There is no execute switch."
+    },
+    {
+      "method": "GET",
+      "route": "/",
+      "permission": null,
+      "kind": "STATIC_ASSET",
+      "content_type": "text/html; charset=utf-8",
+      "note": "Static assets are served after the loopback boundary and before authentication. Role and token headers are not read."
+    },
+    {
+      "method": "GET",
+      "route": "/app.js",
+      "permission": null,
+      "kind": "STATIC_ASSET",
+      "content_type": "text/javascript; charset=utf-8",
+      "note": "Static assets are served after the loopback boundary and before authentication. Role and token headers are not read."
+    },
+    {
+      "method": "GET",
+      "route": "/style.css",
+      "permission": null,
+      "kind": "STATIC_ASSET",
+      "content_type": "text/css; charset=utf-8",
+      "note": "Static assets are served after the loopback boundary and before authentication. Role and token headers are not read."
+    }
+  ],
+  "cells": [
+    {
+      "method": "GET",
+      "route": "/api/state",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/state",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/state",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/state",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "state:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/state",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/scenarios",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/scenarios",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/scenarios",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/scenarios",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reference:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/scenarios",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/readiness",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/readiness",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/readiness",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/readiness",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reference:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/readiness",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/decisions",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/decisions",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/decisions",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/decisions",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reference:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/decisions",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/evidence",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/evidence",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/evidence",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/evidence",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/evidence",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/projection",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/projection",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/projection",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/projection",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/projection",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/terms",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/terms",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/terms",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/terms",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/terms",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/policy",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/policy",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/policy",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/policy",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/policy",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/preview/",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/preview/",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/preview/",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/preview/",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/preview/",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/underwrite/",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/underwrite/",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/underwrite/",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/underwrite/",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/underwrite/",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/operations/",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/operations/",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/operations/",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/operations/",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "receipt:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/operations/",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/manifest",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/manifest",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/manifest",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/manifest",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/manifest",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/reconciliation",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/reconciliation",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/reconciliation",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reconciliation:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/reconciliation",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reconciliation:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/reconciliation",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/statement",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/statement",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/statement",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "statement:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/statement",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "statement:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/statement",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "metrics:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "metrics:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/health",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/health",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/health",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/health",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "health:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/health",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/commands",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/commands",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/commands",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/commands",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/commands",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/session",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/session",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/session",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/session",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "session:bind",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/session",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_grant",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:query_grant",
+        "role": "organizer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_grant",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:query_grant",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_grant",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:query_grant",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_grant",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_grant",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_action",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_action",
+        "role": "organizer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_action",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_action",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_action",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_action",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_action",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_action",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/execute",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_action",
+        "role": "organizer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/execute",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_action",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/execute",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_action",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/execute",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 403,
+        "error": "EXECUTE_AUTHORITY_DISABLED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/execute",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/",
+      "caller": "organizer",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/",
+      "caller": "auditor",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/",
+      "caller": "observer",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/",
+      "caller": "agent",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/",
+      "caller": "no-token",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/app.js",
+      "caller": "organizer",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/app.js",
+      "caller": "auditor",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/app.js",
+      "caller": "observer",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/app.js",
+      "caller": "agent",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/app.js",
+      "caller": "no-token",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/style.css",
+      "caller": "organizer",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/style.css",
+      "caller": "auditor",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/style.css",
+      "caller": "observer",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/style.css",
+      "caller": "agent",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/style.css",
+      "caller": "no-token",
+      "outcome": "PUBLIC",
+      "expect": {
+        "status": 200
+      }
+    }
+  ],
+  "command_permissions": {
+    "submit_gate": "command:submit",
+    "unmapped_op_permission": "command:submit",
+    "ops": {
+      "offer": {
+        "permission": "command:offer",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "approve": {
+        "permission": "command:approve",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "reject": {
+        "permission": "command:reject",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "cancel": {
+        "permission": "command:cancel",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "bind_settlement": {
+        "permission": "command:bind_settlement",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "draw": {
+        "permission": "command:draw",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "repay": {
+        "permission": "command:repay",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "close": {
+        "permission": "command:close",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "default": {
+        "permission": "command:default",
+        "roles": [
+          "organizer"
+        ]
+      },
+      "reconcile": {
+        "permission": "command:reconcile",
+        "roles": [
+          "organizer"
+        ]
+      }
+    },
+    "probe": {
+      "advance_id": "sim-mtx-probe",
+      "args": {
+        "_probe": 0
+      }
+    }
+  },
+  "command_cells": [
+    {
+      "op": "offer",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "offer",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "offer",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "offer",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "offer",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "approve",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "approve",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "approve",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "approve",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "approve",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "reject",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "reject",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "reject",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "reject",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "reject",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "cancel",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "cancel",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "cancel",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "cancel",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "cancel",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "bind_settlement",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "bind_settlement",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "bind_settlement",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "bind_settlement",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "bind_settlement",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "draw",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "draw",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "draw",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "draw",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "draw",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "repay",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "repay",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "repay",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "repay",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "repay",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "close",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "close",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "close",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "close",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "close",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "default",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "default",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "default",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "default",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "default",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "op": "reconcile",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "op": "reconcile",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "auditor"
+      }
+    },
+    {
+      "op": "reconcile",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "observer"
+      }
+    },
+    {
+      "op": "reconcile",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "command:submit",
+        "role": "agent"
+      }
+    },
+    {
+      "op": "reconcile",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "name": "unregistered GET path",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "unregistered GET path",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "unregistered GET path",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "unregistered GET path",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "unregistered GET path",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "unregistered POST path",
+      "method": "POST",
+      "path": "/api/no-such-route",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "unregistered POST path",
+      "method": "POST",
+      "path": "/api/no-such-route",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "unregistered POST path",
+      "method": "POST",
+      "path": "/api/no-such-route",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "unregistered POST path",
+      "method": "POST",
+      "path": "/api/no-such-route",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "unregistered POST path",
+      "method": "POST",
+      "path": "/api/no-such-route",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      },
+      "body": {}
+    },
+    {
+      "name": "near-miss GET path",
+      "method": "GET",
+      "path": "/api/projection/extra",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "near-miss GET path",
+      "method": "GET",
+      "path": "/api/state/",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "near-miss GET path",
+      "method": "GET",
+      "path": "/api/preview",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "near-miss POST path",
+      "method": "POST",
+      "path": "/api/session/",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/commands",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/commands",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/commands",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/commands",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/commands",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/session",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/session",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/session",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/session",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/session",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_grant",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_grant",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_grant",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_grant",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_grant",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_action",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_action",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_action",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_action",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_action",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/execute",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/execute",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/execute",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/execute",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/execute",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "POST on a GET-only route",
+      "method": "POST",
+      "path": "/api/state",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "POST on a GET-only route",
+      "method": "POST",
+      "path": "/api/state",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "POST on a GET-only route",
+      "method": "POST",
+      "path": "/api/state",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "POST on a GET-only route",
+      "method": "POST",
+      "path": "/api/state",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      },
+      "body": {}
+    },
+    {
+      "name": "POST on a GET-only route",
+      "method": "POST",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      },
+      "body": {}
+    },
+    {
+      "name": "token role differs from the claimed role",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "organizer",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_MISMATCH",
+        "role": "organizer",
+        "claimed": "auditor"
+      },
+      "headers": {
+        "X-Capital-Role": "auditor"
+      }
+    },
+    {
+      "name": "token role differs from the claimed role",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "auditor",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_MISMATCH",
+        "role": "auditor",
+        "claimed": "organizer"
+      },
+      "headers": {
+        "X-Capital-Role": "organizer"
+      }
+    },
+    {
+      "name": "token role differs from the claimed role",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_MISMATCH",
+        "role": "agent",
+        "claimed": "organizer"
+      },
+      "headers": {
+        "X-Capital-Role": "organizer"
+      }
+    },
+    {
+      "name": "a mismatch is reported before a permission denial",
+      "method": "GET",
+      "path": "/api/metrics",
+      "token": "observer",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_MISMATCH",
+        "role": "observer",
+        "claimed": "organizer"
+      },
+      "headers": {
+        "X-Capital-Role": "organizer"
+      }
+    },
+    {
+      "name": "token role differs from the claimed role",
+      "method": "POST",
+      "path": "/api/session",
+      "token": "organizer",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_MISMATCH",
+        "role": "organizer",
+        "claimed": "auditor"
+      },
+      "headers": {
+        "X-Capital-Role": "auditor"
+      },
+      "body": {
+        "role": "auditor"
+      }
+    },
+    {
+      "name": "token role differs from the claimed role",
+      "method": "POST",
+      "path": "/api/agent/propose_action",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_MISMATCH",
+        "role": "agent",
+        "claimed": "organizer"
+      },
+      "headers": {
+        "X-Capital-Role": "organizer"
+      },
+      "body": {
+        "grant_id": "sim-grant-agent",
+        "generation": 2,
+        "now": 10,
+        "proposal_id": "sim-matrix",
+        "surface": "capital:offer",
+        "amount": 100,
+        "kind": "PROPOSE"
+      }
+    },
+    {
+      "name": "non-organizer role claimed without a token",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "SESSION_REQUIRED",
+        "role": "auditor"
+      },
+      "headers": {
+        "X-Capital-Role": "auditor"
+      }
+    },
+    {
+      "name": "non-organizer role claimed without a token",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "SESSION_REQUIRED",
+        "role": "observer"
+      },
+      "headers": {
+        "X-Capital-Role": "observer"
+      }
+    },
+    {
+      "name": "non-organizer role claimed without a token",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "SESSION_REQUIRED",
+        "role": "agent"
+      },
+      "headers": {
+        "X-Capital-Role": "agent"
+      }
+    },
+    {
+      "name": "organizer claimed without a token is the default",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 200
+      },
+      "headers": {
+        "X-Capital-Role": "organizer"
+      }
+    },
+    {
+      "name": "authentication runs before the unregistered-path 404",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "SESSION_REQUIRED",
+        "role": "auditor"
+      },
+      "headers": {
+        "X-Capital-Role": "auditor"
+      }
+    },
+    {
+      "name": "unknown role header",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_UNKNOWN"
+      },
+      "headers": {
+        "X-Capital-Role": "clerk"
+      }
+    },
+    {
+      "name": "unknown role header",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "organizer",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_UNKNOWN"
+      },
+      "headers": {
+        "X-Capital-Role": "clerk"
+      }
+    },
+    {
+      "name": "unknown role header",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "none",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_UNKNOWN"
+      },
+      "headers": {
+        "X-Capital-Role": "UNLABELED"
+      }
+    },
+    {
+      "name": "unknown role header",
+      "method": "POST",
+      "path": "/api/session",
+      "token": "organizer",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_UNKNOWN"
+      },
+      "headers": {
+        "X-Capital-Role": "clerk"
+      },
+      "body": {
+        "role": "auditor"
+      }
+    },
+    {
+      "name": "unknown token",
+      "method": "GET",
+      "path": "/api/state",
+      "token": "bogus",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "name": "unknown token",
+      "method": "GET",
+      "path": "/api/no-such-route",
+      "token": "bogus",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "name": "unknown token",
+      "method": "POST",
+      "path": "/api/session",
+      "token": "bogus",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      },
+      "body": {
+        "role": "auditor"
+      }
+    },
+    {
+      "name": "unknown token",
+      "method": "POST",
+      "path": "/api/commands",
+      "token": "bogus",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      },
+      "body": {
+        "instance_id": "@instance",
+        "operation_id": "sim-mtx-reconcile",
+        "op": "reconcile",
+        "advance_id": "sim-mtx",
+        "args": {}
+      }
+    },
+    {
+      "name": "static asset ignores token and role headers",
+      "method": "GET",
+      "path": "/",
+      "token": "bogus",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "static asset ignores token and role headers",
+      "method": "GET",
+      "path": "/",
+      "token": "none",
+      "expect": {
+        "status": 200
+      },
+      "headers": {
+        "X-Capital-Role": "clerk"
+      }
+    },
+    {
+      "name": "static asset ignores token and role headers",
+      "method": "GET",
+      "path": "/app.js",
+      "token": "bogus",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "static asset ignores token and role headers",
+      "method": "GET",
+      "path": "/app.js",
+      "token": "none",
+      "expect": {
+        "status": 200
+      },
+      "headers": {
+        "X-Capital-Role": "clerk"
+      }
+    },
+    {
+      "name": "static asset ignores token and role headers",
+      "method": "GET",
+      "path": "/style.css",
+      "token": "bogus",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "static asset ignores token and role headers",
+      "method": "GET",
+      "path": "/style.css",
+      "token": "none",
+      "expect": {
+        "status": 200
+      },
+      "headers": {
+        "X-Capital-Role": "clerk"
+      }
+    }
+  ]
+}

@@ -31,6 +31,7 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 
 1. auditor로 바꾼 뒤 쓰기는 거절되고 export와 대사는 읽히는지 본다. 검증: tests/browser/auditor-role.spec.cjs::auditor session blocks every write and still reads export and reconciliation
 2. 민감 읽기 경로가 역할 행렬과 같은지 확인한다. 검증: tests/test_auth.py::HttpAuthTests.test_sensitive_reads_follow_the_matrix
+3. 등록된 모든 경로를 네 역할과 토큰 없는 호출자로 나눈 표 전체가 루프백 서버의 실제 응답과 같은지, agent 레인과 등록되지 않은 경로 404를 포함해 확인한다. 검증: tests/test_auth_matrix.py::LiveMatrixTests.test_every_cell
 
 ### observer
 
