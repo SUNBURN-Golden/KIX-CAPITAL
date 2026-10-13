@@ -52,6 +52,7 @@ _ONE_TIME_FEE_KEYS = (
     'prepayment_penalty_bps',
 )
 _NO_DRAW_PHASES = frozenset(('OFFERED', 'REJECTED', 'CANCELLED'))
+_ALLOCATION_BUCKETS = frozenset(('DEFAULT_INTEREST', 'INTEREST', 'PRINCIPAL'))
 _PRINCIPAL_CONSTANT = 'principal is constant; the pinned journal has no repayment days'
 _PAST_DUE = 'PAST_DUE_ANY_TIER'
 _DEFAULTED_BUCKET = 'DEFAULTED'
@@ -329,6 +330,9 @@ class TermsPolicyPort(Protocol):
     def overlay(self, case, claim, *, draw_day, as_of_day, expected_settlement_cash_day, gate) -> dict:
         """Simulated schedule, accrual preview, and indicators for one case."""
 
+    def allocation(self, case, claim, *, draw_day, as_of_day, expected_settlement_cash_day, gate, cash) -> dict:
+        """Hypothetical repayment allocation quote for one case. Not a posting."""
+
 
 class DecisionNoteTermsPolicy:
     """Load one capital-decision-v1 note. Unsupported tokens stay NOT_BOUND."""
@@ -464,6 +468,26 @@ class DecisionNoteTermsPolicy:
             'source': source,
         }
 
+    def _day_split(self, draw_day, as_of_day, term_days):
+        interest = self._value('interest_rate')
+        minimum = interest['min_interest_days']
+        elapsed = as_of_day - draw_day
+        if elapsed < minimum:
+            elapsed = minimum
+        if elapsed <= term_days:
+            return elapsed, 0
+        return term_days, elapsed - term_days
+
+    def _interest_exacts(self, principal, contractual_days, default_days, tier):
+        interest = self._value('interest_rate')
+        day_count = _day_count(interest['day_count'])
+        contract_bps = tier['all_in_bps_annual']
+        default_bps = contract_bps + interest['default_interest_add_bps_annual']
+        denominator = BPS_SCALE * day_count
+        contract_exact = Fraction(principal * contractual_days * contract_bps, denominator)
+        default_exact = Fraction(principal * default_days * default_bps, denominator)
+        return contract_bps, contract_exact, default_exact
+
     def _accrual(self, principal, draw_day, as_of_day, tier, schedule):
         if not self._ready('interest_rate', 'fees', 'term'):
             return _unbound_section()
@@ -472,22 +496,10 @@ class DecisionNoteTermsPolicy:
         interest = self._value('interest_rate')
         fees = self._value('fees')
         day_count = _day_count(interest['day_count'])
-        minimum = interest['min_interest_days']
-        elapsed = as_of_day - draw_day
-        if elapsed < minimum:
-            elapsed = minimum
-        contractual_limit = schedule['term_days']
-        if elapsed <= contractual_limit:
-            contractual_days = elapsed
-            default_days = 0
-        else:
-            contractual_days = contractual_limit
-            default_days = elapsed - contractual_limit
-        contract_bps = tier['all_in_bps_annual']
-        default_bps = contract_bps + interest['default_interest_add_bps_annual']
-        numerator = principal * contractual_days * contract_bps + principal * default_days * default_bps
-        denominator = BPS_SCALE * day_count
-        exact = Fraction(numerator, denominator)
+        contractual_days, default_days = self._day_split(draw_day, as_of_day, schedule['term_days'])
+        contract_bps, contract_exact, default_exact = self._interest_exacts(
+            principal, contractual_days, default_days, tier)
+        exact = contract_exact + default_exact
         annual = contract_bps + interest['default_interest_add_bps_annual']
         for key in _ANNUAL_FEE_KEYS:
             annual += fees[key]
@@ -687,4 +699,124 @@ class DecisionNoteTermsPolicy:
             'borrowing_base': self._borrowing_base(case, claim, tier),
             'reserve_provision': self._reserve(case, as_of_day, tier, schedule),
             'not_applied': self._echo(),
+        }
+
+    def _outstanding(self, case):
+        value = case.get('outstanding_exposure')
+        if type(value) is not int:
+            return None
+        return value
+
+    def _allocation_interest(self, outstanding, draw_day, as_of_day, expected_settlement_cash_day, tier):
+        if not self._ready('interest_rate', 'term'):
+            return _unbound_section()
+        if tier is None or outstanding is None:
+            return _not_applicable_section()
+        term_days, _source = self._term_days(draw_day, expected_settlement_cash_day)
+        contractual_days, default_days = self._day_split(draw_day, as_of_day, term_days)
+        _bps, contract_exact, default_exact = self._interest_exacts(
+            outstanding, contractual_days, default_days, tier)
+        exact = contract_exact + default_exact
+        return {
+            'status': 'BOUND',
+            'term_days': term_days,
+            'maturity_day': draw_day + term_days,
+            'contractual_days': contractual_days,
+            'default_days': default_days,
+            'contract_exact': f'{contract_exact.numerator}/{contract_exact.denominator}',
+            'default_exact': f'{default_exact.numerator}/{default_exact.denominator}',
+            'exact': f'{exact.numerator}/{exact.denominator}',
+            'interest_due_krw': contract_exact.numerator // contract_exact.denominator,
+            'default_interest_due_krw': default_exact.numerator // default_exact.denominator,
+            'assumption': _PRINCIPAL_CONSTANT,
+        }
+
+    def _repay_allocation(self, outstanding, interest_section, cash):
+        if not self._ready('interest_rate', 'term'):
+            return _unbound_section()
+        if interest_section.get('status') == 'NOT_APPLICABLE':
+            return _not_applicable_section()
+        if interest_section.get('status') != 'BOUND':
+            return _unbound_section()
+        order = self._value('interest_rate').get('repayment_allocation_order')
+        if type(order) is not list or not order or any(token not in _ALLOCATION_BUCKETS for token in order):
+            return _unbound_section()
+        dues = {
+            'DEFAULT_INTEREST': interest_section['default_interest_due_krw'],
+            'INTEREST': interest_section['interest_due_krw'],
+            'PRINCIPAL': outstanding,
+        }
+        applied = {token: 0 for token in _ALLOCATION_BUCKETS}
+        remaining = dict(dues)
+        left = cash
+        for token in order:
+            pay = min(left, remaining[token])
+            applied[token] += pay
+            remaining[token] -= pay
+            left -= pay
+        return {
+            'status': 'BOUND',
+            'order': list(order),
+            'to_default_interest': applied['DEFAULT_INTEREST'],
+            'to_interest': applied['INTEREST'],
+            'to_principal': applied['PRINCIPAL'],
+            'unapplied_cash': left,
+            'remaining': {
+                'default_interest_due': remaining['DEFAULT_INTEREST'],
+                'interest_due': remaining['INTEREST'],
+                'principal_outstanding': remaining['PRINCIPAL'],
+            },
+        }
+
+    def _unbound_allocation(self):
+        return {
+            'label': OVERLAY_LABEL,
+            'mode': 'SIMULATED_OVERLAY',
+            'terms_version': self.version,
+            'provisional': True,
+            'status': 'NOT_BOUND',
+            'reason': TERMS_NOT_BOUND,
+            'interest': _unbound_section(),
+            'allocation': _unbound_section(),
+            'fsm_repay': None,
+            'close_ready': False,
+        }
+
+    def allocation(self, case, claim, *, draw_day, as_of_day, expected_settlement_cash_day, gate, cash) -> dict:
+        if self.top == 'NOT_BOUND' or type(case) is not dict or type(claim) is not dict:
+            return self._unbound_allocation()
+        tier = self._tier(case, claim, gate)
+        short = None if tier is None else tier['id'].split('_', 1)[0]
+        outstanding = self._outstanding(case)
+        interest = self._allocation_interest(
+            outstanding, draw_day, as_of_day, expected_settlement_cash_day, tier)
+        split = self._repay_allocation(outstanding, interest, cash)
+        phase = case.get('phase')
+        to_principal = split.get('to_principal', 0)
+        fsm_repay = None
+        if phase == 'DRAWN' and to_principal > 0:
+            sequence = case.get('next_repayment_sequence')
+            if type(sequence) is int:
+                fsm_repay = {'amount': to_principal, 'sequence': sequence}
+        remaining = split.get('remaining')
+        close_ready = (
+            phase == 'DRAWN'
+            and remaining is not None
+            and remaining['principal_outstanding'] == 0
+            and remaining['interest_due'] == 0
+            and remaining['default_interest_due'] == 0
+        )
+        return {
+            'label': OVERLAY_LABEL,
+            'mode': 'SIMULATED_OVERLAY',
+            'terms_version': self.version,
+            'provisional': True,
+            'status': self.top,
+            'reason': self.reason,
+            'tier': 'NOT_APPLICABLE' if short is None else short,
+            'principal': outstanding,
+            'interest': interest,
+            'allocation': split,
+            'fsm_repay': fsm_repay,
+            'close_ready': close_ready,
         }

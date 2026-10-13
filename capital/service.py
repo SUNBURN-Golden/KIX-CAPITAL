@@ -330,6 +330,22 @@ class CapitalService:
         if type(value) is not int or value < 0 or len(str(value)) > 6:
             raise ApiError('INVALID_ARGUMENTS')
 
+    def _require_cash(self, value):
+        if type(value) is not int or value < 0 or len(str(value)) > 13:
+            raise ApiError('INVALID_ARGUMENTS')
+
+    def _case_gate(self, advance_id, case):
+        """Caller holds the lock. Gate from the view; APPROVED peeks at preview_draw."""
+        gate = case['settlement_gate']
+        if case['phase'] == 'APPROVED':
+            try:
+                preview = self.producer.preview_draw(advance_id)
+            except CreditError:
+                preview = None
+            if preview is not None:
+                gate = preview['credit']['settlement_gate']
+        return gate
+
     def terms_status(self):
         """Read-only policy status. Does not touch receipts or the FSM journal."""
         with self.lock:
@@ -355,17 +371,37 @@ class CapitalService:
             try:
                 case = self.machine.view(advance_id)
                 claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
-                gate = case['settlement_gate']
-                if case['phase'] == 'APPROVED':
-                    try:
-                        preview = self.producer.preview_draw(advance_id)
-                    except CreditError:
-                        preview = None
-                    if preview is not None:
-                        gate = preview['credit']['settlement_gate']
+                gate = self._case_gate(advance_id, case)
                 body = self.terms.overlay(
                     case, claim, draw_day=draw_day, as_of_day=as_of_day,
                     expected_settlement_cash_day=expected_settlement_cash_day, gate=gate)
+                body = dict(body)
+                body['advance_id'] = advance_id
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def case_allocation(self, advance_id, instance_id, *, draw_day, as_of_day, cash, expected_settlement_cash_day=None):
+        """Read-only repayment allocation quote. Days and cash are hypothetical query inputs."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if advance_id not in self.case_fixtures:
+                raise ApiError('UNKNOWN_ADVANCE', 404)
+            self._require_day(draw_day)
+            self._require_day(as_of_day)
+            if expected_settlement_cash_day is not None:
+                self._require_day(expected_settlement_cash_day)
+            self._require_cash(cash)
+            frozen = self._frozen()
+            try:
+                case = self.machine.view(advance_id)
+                claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
+                gate = self._case_gate(advance_id, case)
+                body = self.terms.allocation(
+                    case, claim, draw_day=draw_day, as_of_day=as_of_day,
+                    expected_settlement_cash_day=expected_settlement_cash_day, gate=gate, cash=cash)
                 body = dict(body)
                 body['advance_id'] = advance_id
                 return self._terms_envelope(body)

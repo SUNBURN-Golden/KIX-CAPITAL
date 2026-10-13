@@ -313,3 +313,24 @@ Commands actually run, in order:
 - After the browser run and after the ladder, nothing was listening on 127.0.0.1 ports 8765–8768. No `capital.server` process was left running.
 
 The plan's manual `python3 -m capital.server --event-log` smoke was not started. `tests/test_observability.py` covers the JSONL writer, the unwritable path, the byte cap, and `--help`. No test was weakened or skipped. No product decision was left open.
+
+## repay-allocation-preview
+
+Read-only repayment allocation quote on the terms overlay: `GET /api/terms/{advance_id}/allocation?instance_id=&as_of_day=&cash=&draw_day=&expected_settlement_cash_day=`. Contract and default interest buckets are exact rationales floored to 1 KRW each; the hypothetical cash splits in the note's `repayment_allocation_order` (DEFAULT_INTEREST, INTEREST, PRINCIPAL); `fsm_repay` carries only the principal portion and is `null` when it is 0; `close_ready` requires phase `DRAWN` and all post-application dues at 0. Missing or unknown allocation orders fail closed to `NOT_BOUND`. Labels stay `SIMULATED_OVERLAY`. No file under `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited. `scripts/build_release.py` was not edited. No test was weakened or skipped. This section claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy.
+
+Commands actually run, in order:
+
+- `python3 -m unittest tests.test_repay_allocation -v`: exit 0. **10 passed** in 0.668s. An intermediate run failed once (`test_partial_note_and_bad_order_fail_closed`) because dropping the order line left an illegal trailing comma in the note JSON; the test was fixed to remove the preceding comma and to assert per-section status.
+- `python3 -m unittest tests.test_terms tests.test_facade_contract tests.test_auth tests.test_seams -v`: exit 0. **34 passed** in 2.841s.
+- `python3 -m unittest discover -s tests -v`: exit 0. **241 passed** in 50.484s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0. **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/not_bound_checklist.py --check`: exit 0.
+- `python3 scripts/decision_ledger.py`: exit 0.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output (exit 0).
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`.
+- `npm ci`: exit 0. Added 3 packages, audited 4 packages, 0 vulnerabilities. `node_modules` was absent.
+- `npm run test:browser`: exit 0. **37 passed** (1.1m). Chromium is `/usr/bin/google-chrome`; no browser download was required.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` has `ok` true. Unit 241 passed, storage-conformance 7 passed, pinned-vendor 7 passed, upstream-claims `passed=87`, node-check passed, browser 37 passed, packaged-smoke 8 passed, seeded-demo 1 passed.
+- After the browser run and after the ladder, `ss` showed no listener on 127.0.0.1 ports 8765–8768 and no `capital.server` process remained.

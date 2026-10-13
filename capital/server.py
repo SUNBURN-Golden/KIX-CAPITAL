@@ -117,6 +117,7 @@ class CapitalHTTPServer(ThreadingHTTPServer):
 
 
 _DAY = re.compile(r'0|[1-9]\d{0,5}\Z')
+_CASH = re.compile(r'0|[1-9]\d{0,12}\Z')
 _AMOUNT = re.compile(r'[1-9]\d{0,12}\Z')
 
 
@@ -136,6 +137,13 @@ def query_amount(query):
     if not values:
         return None
     if len(values) != 1 or _AMOUNT.fullmatch(values[0]) is None:
+        raise ApiError('INVALID_ARGUMENTS')
+    return int(values[0])
+
+
+def query_cash(query):
+    values = parse_qs(query, keep_blank_values=True).get('cash')
+    if not values or len(values) != 1 or _CASH.fullmatch(values[0]) is None:
         raise ApiError('INVALID_ARGUMENTS')
     return int(values[0])
 
@@ -253,6 +261,16 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_terms(self, route, principal):
             if route.path == '/api/terms':
                 return self.reply(200, service.terms_status())
+            if route.path.endswith('/allocation'):
+                advance_id = route.path[len('/api/terms/'):-len('/allocation')].rstrip('/')
+                instance = parse_qs(route.query).get('instance_id', [''])[0]
+                draw_day = query_day(route.query, 'draw_day', False)
+                as_of_day = query_day(route.query, 'as_of_day', True)
+                cash = query_cash(route.query)
+                expected = query_day(route.query, 'expected_settlement_cash_day', False)
+                return self.reply(200, service.case_allocation(
+                    advance_id, instance, draw_day=draw_day or 0, as_of_day=as_of_day,
+                    cash=cash, expected_settlement_cash_day=expected))
             advance_id = route.path.rsplit('/', 1)[-1]
             instance = parse_qs(route.query).get('instance_id', [''])[0]
             draw_day = query_day(route.query, 'draw_day', True)
