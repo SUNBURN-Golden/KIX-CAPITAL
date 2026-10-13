@@ -269,3 +269,27 @@ The first narrow run failed one honesty assertion because the helper docstring w
 - `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` has `ok` true and label `SIMULATED`. Unit 208 passed in 40.080s, storage-conformance 7 passed in 13.575s, pinned vendor 7 passed, node-check passed (`test_count` null), browser passed (`test_count` null; tail shows `37 passed (56.8s)`), packaged-smoke 8 passed, seeded-demo 1 passed. Packaged artifact `build/acceptance-dist/capital-0.1.0.pyz` sha256 `3c67763e3121f42702d02c96cab282b4ba2c8fb84bda662a5fed70b930075b00`. Seeded demo printed the same digests, with `debit=385000` and `credit=385000`.
 - `ss -ltnp`: header only. No leftover listener.
 - Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`.
+
+## upstream-claims-conformance
+
+Executable CLAIM_CONFORMANCE table for the pinned FSM wrappers and the local facade. `tests/upstream_claims.json` has 87 claims. Each row has `source_doc`, `section`, `pinned_sha` `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, claim text, `check_id`, a citation needle, and the observed `expected` value. Checks run through `capital.protocol` and `capital/contract/facade-v1.json`. Amounts are synthetic fixture units. The label is SIMULATED. `funds_executed` stays false. This section claims no human acceptance, no GitHub CI run, no commit, no push, and no deploy. No file under `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited. Upstream docs were not copied into the repo. The kix-protocol checkout was read only.
+
+The first full `unittest discover` failed one package rule: `capital/upstream_claims.py` located the table with `Path(__file__)`. The locator now uses the parent of `capital.resources.ROOT`. After that change, every run below exited 0.
+
+- `python3 -m unittest tests.test_upstream_claims tests.test_acceptance tests.test_handbook -v`: exit 0. **21 passed** in 4.589s. This was before the locator fix. Those three modules do not cover the package-path rule.
+- `python3 -m unittest discover -s tests -v`: exit 1. **218 tests**, 1 failure, `test_package_modules_do_not_use_path_dunder_file` on `upstream_claims.py`.
+- `python3 -m unittest tests.test_release.ResourceTests.test_package_modules_do_not_use_path_dunder_file tests.test_upstream_claims tests.test_release.SmokeTests -v`: exit 0 after the locator fix. **12 passed** in 2.863s.
+- `python3 -m unittest discover -s tests -v`: exit 0. **218 passed** in 41.454s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0. **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/upstream_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro`: exit 0. `CLAIM_DRIFT verified=87 total=87`. The checkout was not modified.
+- `python3 scripts/upstream_claims_check.py`: exit 0. First line `SKIPPED`. JSON status `SKIPPED`, label `CLAIM_CONFORMANCE`. The output has no success count.
+- `python3 scripts/upstream_claims_check.py --execute`: exit 0. `CLAIM_CONFORMANCE passed=87 total=87 failed=0`.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output (exit 0).
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`.
+- `npm ci`: exit 0. Added 3 packages, audited 4 packages in 303ms, 0 vulnerabilities. `node_modules` was absent. npm warned that `NO_COLOR` is ignored because `FORCE_COLOR` is set.
+- `npm run test:browser`: exit 0. **37 passed** (1.0m). Chromium is `/usr/bin/google-chrome`. `npx playwright install chromium` was not run.
+- `ss -ltnp` after the browser run: header only. No leftover listener.
+- `python3 scripts/acceptance.py`: exit 0 in 907s. Evidence `build/acceptance-evidence.json` has `ok` true, label `SIMULATED`, and `funds_executed` false. HEAD `863152c592aed04243bc578b5ef1137062ad9805`. Tools: Python 3.13.5, Node v20.19.2, npm 9.2.0, Playwright 1.58.2, capital 0.1.0. Unit 218 passed in 42.977s, storage-conformance 7 passed, pinned vendor 7 passed, upstream-claims passed with label `CLAIM_CONFORMANCE`, `passed=87`, `total=87`, and output `CLAIM_CONFORMANCE passed=87 total=87 failed=0`. node-check passed (`test_count` null). Browser passed (`test_count` null; tail shows `37 passed (1.8m)`). Packaged-smoke 8 passed. Artifact `build/acceptance-dist/capital-0.1.0.pyz` sha256 `11d98fcf527714c4f5961857f04941eaac557e9afae2a2be55c932af5da04c18`. Seeded demo 1 passed, `state_digest=a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`, `content_digest=c06f05d3417973287f5c698e4328df710125a3a367e79fe09952e8f464377502`, `debit=385000`, `credit=385000`. A search of that evidence file found no `SEMANTIC_CONFORMANCE` string.
+- `ss -ltnp` after the ladder: header only. No leftover listener.

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """One-command local acceptance ladder for the Capital simulation.
 
-Stages: unit, storage-conformance, pinned vendor, node --check, browser,
-packaged-artifact smoke, and the seeded demo. Evidence is written to
+Stages: unit, storage-conformance, pinned vendor, upstream claim checks,
+node --check, browser, packaged-artifact smoke, and the seeded demo.
+Evidence is written to
 build/acceptance-evidence.json (untracked). A failed or missing stage exits
 non-zero. This is a SIMULATED ladder, not human product acceptance and not a
 payment, loan, or deployment.
@@ -31,6 +32,7 @@ REQUIRED_STAGES = (
     'unit',
     'storage-conformance',
     'pinned-vendor',
+    'upstream-claims',
     'node-check',
     'browser',
     'packaged-smoke',
@@ -42,11 +44,12 @@ _FAILED_LINE = re.compile(r'^(\d+) failed$')
 _UNIT_FAILED = re.compile(r'^FAILED \((.+)\)$')
 _SMOKE = re.compile(r'^smoke ok: (.+)$')
 _SEED = re.compile(r'^seed demo (ok|updated) ')
+_CLAIMS = re.compile(r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)$')
 _COUNT_WORD = re.compile(r'(failures|errors|skipped)=(\d+)')
 
 
 def build_plan(root=None):
-    """The seven required stages, in ladder order. Commands are relative to root."""
+    """The required stages, in ladder order. Commands are relative to root."""
     py = sys.executable
     root = ROOT if root is None else Path(root)
     return [
@@ -71,6 +74,12 @@ def build_plan(root=None):
                 '-s', 'capital/vendor/credit_advance_f04',
                 '-p', 'test_mock_credit.py', '-v',
             ]],
+        },
+        {
+            'id': 'upstream-claims',
+            'kind': 'upstream-claims',
+            'timeout': 60,
+            'commands': [[py, 'scripts/upstream_claims_check.py', '--execute']],
         },
         {
             'id': 'node-check',
@@ -151,6 +160,12 @@ def parse_test_count(text):
         if _SEED.match(line):
             ran = passed = 1
             failed = 0
+            continue
+        match = _CLAIMS.fullmatch(line)
+        if match:
+            passed = int(match.group(1))
+            ran = int(match.group(2))
+            failed = int(match.group(3))
     if smoke_checks is not None:
         return {'ran': len(smoke_checks), 'passed': len(smoke_checks), 'failed': 0}
     if ran is None and passed is None and failed is None:
@@ -351,6 +366,26 @@ def golden_digests(root):
     }
 
 
+def _annotate_upstream(stage, body):
+    """Attach CLAIM_CONFORMANCE counts. Injected stages keep the command result."""
+    if stage.get('kind') != 'upstream-claims' or stage.get('injected'):
+        return
+    body['label'] = 'CLAIM_CONFORMANCE'
+    count = body.get('test_count') or {}
+    ran = count.get('ran')
+    passed = count.get('passed')
+    failed = count.get('failed')
+    if ran is None or passed is None:
+        body['status'] = 'failed'
+        body['passed'] = None
+        body['total'] = None
+        return
+    body['passed'] = passed
+    body['total'] = ran
+    if body['exit_code'] != 0 or failed or passed != ran:
+        body['status'] = 'failed'
+
+
 def _write_json(path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=True) + '\n'
@@ -379,6 +414,8 @@ def execute_plan(plan, *, root, evidence_path, required=REQUIRED_STAGES):
             'test_count': _merge_counts(records),
             'commands': records,
         }
+        _annotate_upstream(stage, body)
+        status = body['status']
         stages.append(body)
         by_id[stage['id']] = body
         count = body['test_count'] or {}

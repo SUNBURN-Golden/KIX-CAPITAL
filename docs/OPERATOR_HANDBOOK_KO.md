@@ -96,7 +96,7 @@ python3 scripts/acceptance.py
 - `evidence.tool_versions.*` (`python`, `node`, `npm`, `playwright`, `capital`)
 - `evidence.vendor_hashes.verified`
 - `evidence.golden_digests.status`
-- `evidence.stages[*].status` — stage id는 `unit`, `storage-conformance`, `pinned-vendor`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 일곱이다.
+- `evidence.stages[*].status` — stage id는 `unit`, `storage-conformance`, `pinned-vendor`, `upstream-claims`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 여덟이다.
 
 합격·불합격 문장은 [수용 점검표](ACCEPTANCE_KO.md)에 있다. 그 점검표를 사람이 채우기 전에는 수용이 아니다.
 
@@ -160,6 +160,14 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 ### policy-simulator
 
 `GET /api/policy`와 `GET /api/policy/simulation`은 읽기 전용 시뮬레이티드 정책 적용이다. 라벨은 `simulated policy application — not executed distribution, not bank movement`다. 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 `allocation_order`가 ADOPTED이면 도출된 순서를 기존 fixture 두 순서와 나란히 보여 준다. UNDETERMINED이면 `POLICY_UNDECIDED`이고 fixture 비교만 남는다. 환불 부담, 리셀 취소, 수익 참여, 채권 매입, 잔여·늦은 현금은 `UNSUPPORTED_BY_PINNED_FSM`이며 금액을 계산하지 않는다. 노트가 그림자 계산을 부탁해도 이 노드는 그 산술을 만들지 않는다. `policy_adopted`는 false다. 노트가 없으면 `policy not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 이것은 실행된 배분이 아니고 은행 이동이 아니다. 병합은 JunTae가 한다. 이 노드는 배정 우선순위를 인코딩하므로 스스로 병합하지 않는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:upstream-claims-conformance -->
+
+### upstream-claims-conformance
+
+`scripts/upstream_claims_check.py --execute`는 고정된 FSM 래퍼와 로컬 facade에 대해 클레임 표를 실행한다. 수용 사다리 단계 id는 `upstream-claims`이고 그 단계의 label은 `CLAIM_CONFORMANCE`다. `passed`와 `total`은 그 표의 검사 수다. 인자 없이 실행하면 프로토콜 체크아웃이 없어 `SKIPPED`이며, 그 상태는 통과가 아니다. `--protocol-dir`는 인용된 제목과 문자열만 읽기 전용으로 확인한다. 결과는 SIMULATED다. 실자금을 움직이지 않는다. 이 단계는 프로듀서 프로필 채택이 아니다.
 
 <!-- /handbook-section -->
 
