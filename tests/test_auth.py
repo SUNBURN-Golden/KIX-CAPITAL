@@ -41,6 +41,8 @@ class MatrixTests(unittest.TestCase):
             '/api/export': 'export:read',
             '/api/reconciliation': 'reconciliation:read',
             '/api/statement': 'statement:read',
+            '/api/metrics': 'metrics:read',
+            '/api/health': 'health:read',
         }
         for path, permission in routes.items():
             self.assertEqual(route_permission(path), permission, path)
@@ -79,10 +81,10 @@ class MatrixTests(unittest.TestCase):
                 decision.allowed, not financial_write and permission not in agent_only, permission)
         for permission in (
             'export:read', 'reconciliation:read', 'statement:read', 'projection:read',
-            COMMAND_SUBMIT, 'command:draw', *AGENT_PERMISSIONS,
+            'metrics:read', COMMAND_SUBMIT, 'command:draw', *AGENT_PERMISSIONS,
         ):
             self.assertFalse(authorizer.authorize(observer, permission).allowed, permission)
-        for permission in ('state:read', 'reference:read', 'receipt:read', SESSION_BIND):
+        for permission in ('state:read', 'reference:read', 'receipt:read', 'health:read', SESSION_BIND):
             self.assertTrue(authorizer.authorize(observer, permission).allowed, permission)
         for permission in ALL_PERMISSIONS:
             self.assertEqual(

@@ -178,3 +178,28 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 `GET /api/underwrite/{advance_id}?instance_id=&sim_day=&amount=`는 읽기 전용 시뮬레이티드 심사 결정 레코드다. 라벨은 `simulated underwriting record — rule checks only, not an approval`이고 `mode`는 `SIMULATED_UNDERWRITING_RECORD`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 `underwriting_depth`(`EVIDENCE_RULES_V1`)가 정한 여섯 검사 U1–U6을 노트 순서대로 평가한다: 정산 증거 등급, 환불 노출, 차입기초, 집중도 한도, 결정 권한(2인 원칙 임계값), `kyc_executed=false` 기록. 한도·비율·임계값 숫자는 노트에서 읽으며 코드에 복사하지 않는다. `approve`는 여전히 호출자 결정이고 이 레코드는 제안(`proposal`)일 뿐 승인을 막지 않는다. 기존 F04 케이스는 기록된 금액으로, fixture id(예: `sim-refund`)는 `?amount=`를 요구하는 후보 평가로 읽는다. 노트가 없거나 필요 항목이 ADOPTED가 아니면 `NOT_BOUND`이고 숫자 필드를 내지 않는다. 권한은 `projection:read`라 observer는 `403 ROLE_FORBIDDEN`이다. 호출은 receipt·저널·`state_digest`·`operation_count`를 바꾸지 않는다. `underwriting_executed`·`kyc_executed`는 스키마상 const false로 남는다. 이것은 실제 심사·KYC·승인이 아니다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:observability-metrics -->
+
+### observability-metrics
+
+`GET /api/metrics`와 `GET /api/health`는 이 프로세스 안의 관측 값이다. `mode`는 `LOCAL_OBSERVABILITY`이고 metrics의 `label`은 `SIMULATED`이다. 외부 exporter, tracing, network sink, alerting은 `NOT_BOUND`다. `funds_executed`는 false다. 권한 `metrics:read`는 organizer와 auditor만 가진다. observer는 metrics에서 `403 ROLE_FORBIDDEN`이다. `health:read`는 organizer, auditor, observer가 가진다. observer의 health는 `200`이고 본문은 `status`, `uptime_seconds`, `workspace_status`, `mode`뿐이다. agent는 두 권한 모두 없다.
+
+카운터는 프로세스 메모리에만 있다. 프로세스가 끝나면 0부터 다시 센다. idempotency fingerprint, `state_digest`, `operation_count`, workspace payload, export manifest 섹션에 들어가지 않는다. metrics와 health를 읽어도 장부는 바뀌지 않는다. metrics 응답은 그 요청 자신을 세지 않는다. 다음 조회부터 직전 조회가 보인다.
+
+| 이름 | 이 프로세스에서 의미하는 것 | 증명하지 않는 것 |
+|---|---|---|
+| `counters.commands.{op}.ACCEPTED` / `REJECTED` | 반환된 receipt의 op와 outcome. op는 고정 명령 목록이거나 `other`. | 저널의 서로 다른 명령 수, 내구성, 정확성, 실자금. transport duplicate도 반환될 때마다 다시 센다. 저장 후 파일 쓰기가 503이면 명령 outcome으로 세지 않는다. |
+| `counters.rejections.{code}` | receipt에 담긴 도메인 거절 코드와 HTTP `ApiError` 코드. 코드 모양이 아니면 `other`. | 거절이 옳다는 것, 감사 로그, 금융 증거. |
+| `counters.operation_lookups.KNOWN` / `UNKNOWN` | `GET /api/operations/…`가 영수증을 찾았는지. | 재시도 허가. UNKNOWN은 retry를 허가하지 않는다. |
+| `counters.http_requests.{route}.{2xx\|4xx\|5xx}` | 응답을 보낸 뒤의 HTTP 상태 계급. 경로 라벨은 등록된 dispatch이거나 `other`. | 원인 분석, SLO, 추적. 등록되지 않은 경로의 원문은 라벨이 되지 않는다. |
+| `counters.event_log` | `--event-log FILE`이 켜졌는지, 쓴 줄 수, 열기·쓰기 `OSError` 수, 크기 한도로 버린 줄 수, `max_bytes`(1048576). | 전달 보장, 외부 수집, 감사 보관. |
+| `latency_ms.{route}` | 고정 밀리초 버킷 `le_5`, `le_25`, `le_100`, `le_500`, `le_2500`, `gt_2500`와 `count`, `max_ms`. 한 요청은 한 버킷만 증가하고 `count`는 그 합이다. | 백분위 SLO, 용량 계획, 분산 추적. |
+| `uptime_seconds` | 이 프로세스의 observability 객체가 살아 있는 초. | 호스트 가동 시간, 무중단. |
+| `workspace.status`와 health의 `workspace_status` | 로컬 작업공간 상태. `ACTIVE`가 아니면 health는 `degraded`다. path는 넣지 않는다. | 파일 무결성 그 자체. 그 판단은 기존 workspace 코드가 한다. |
+
+`--event-log FILE`은 옵트인 JSONL이다. 한 줄의 키는 정확히 `time`, `route`, `status`, `code`, `operation_id`다. 본문, 인자, 토큰은 쓰지 않는다. `time`은 UTC ISO-8601이다. HTTP 200인 거절 receipt의 `code`는 null이다. 도메인 코드는 `counters.rejections`에만 있다. 다음 줄이 `max_bytes`를 넘으면 그 줄을 쓰지 않고 `dropped`를 올린다. 경로를 열거나 쓸 수 없어도 명령은 실패하지 않고 `errors`가 증가한다. 부모 디렉터리를 만들지 않는다. 이 파일은 감사 증거도 금융 증거도 아니다.
+
+이 카운터는 정확성, 내구성, 자금 이동, 신원, SLO를 증명하지 않는다. 외부로 내보내지 않는다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
