@@ -28,6 +28,7 @@
     "command": [
       "INVALID_COMMAND",
       "SESSION_CHANGED",
+      "ASSET_MISMATCH",
       "INVALID_OPERATION_ID",
       "IDEMPOTENCY_CONFLICT",
       "SIMULATION_CAPACITY",
@@ -156,6 +157,10 @@
     },
     {
       "code": "INVALID_COMMAND",
+      "status": 400
+    },
+    {
+      "code": "ASSET_MISMATCH",
       "status": 400
     },
     {
@@ -856,6 +861,7 @@
         "INVALID_JSON",
         "INVALID_COMMAND",
         "SESSION_CHANGED",
+        "ASSET_MISMATCH",
         "INVALID_OPERATION_ID",
         "IDEMPOTENCY_CONFLICT",
         "SIMULATION_CAPACITY",
@@ -912,6 +918,9 @@
               },
               "proposal_id": {
                 "type": "string"
+              },
+              "asset": {
+                "$ref": "#/definitions/asset_spec"
               }
             }
           },
@@ -955,6 +964,9 @@
               },
               "proposal_id": {
                 "type": "string"
+              },
+              "asset": {
+                "$ref": "#/definitions/asset_spec"
               }
             }
           },
@@ -999,6 +1011,9 @@
               },
               "proposal_id": {
                 "type": "string"
+              },
+              "asset": {
+                "$ref": "#/definitions/asset_spec"
               }
             }
           }
@@ -3694,6 +3709,44 @@
         }
       }
     },
+    "asset_spec": {
+      "description": "AssetSpec shape per upstream reference/v0.3-rc1/assets.py. Exactly one is declared: KRW, whole won, max_atoms is the pinned FSM MONEY_MAX fixture bound (not a registry limit). PROVISIONAL per docs/decisions/CAPITAL_UPSTREAM_BINDING.md section 3.6. A command body may carry it as the optional asset field; any other value is rejected ASSET_MISMATCH (400) before the command is applied, with no journal entry and no receipt. Asset registry DEFERRED, FX NOT_ADOPTED, amounts stay integers.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace",
+        "reference",
+        "decimals",
+        "max_atoms"
+      ],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "const": "fiat"
+        },
+        "reference": {
+          "type": "string",
+          "const": "KRW"
+        },
+        "decimals": {
+          "type": "integer",
+          "const": 0
+        },
+        "max_atoms": {
+          "type": "integer",
+          "const": 1000000000000
+        }
+      }
+    },
+    "assets": {
+      "description": "Exactly one declared AssetSpec. No second asset, no registry, no FX.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "$ref": "#/definitions/asset_spec"
+      }
+    },
     "state": {
       "type": "object",
       "additionalProperties": false,
@@ -3705,6 +3758,7 @@
         "durable",
         "funds_executed",
         "source_commit",
+        "assets",
         "cases",
         "fixtures",
         "state_digest",
@@ -3740,6 +3794,9 @@
         },
         "source_commit": {
           "type": "string"
+        },
+        "assets": {
+          "$ref": "#/definitions/assets"
         },
         "cases": {
           "type": "array",
@@ -5445,6 +5502,7 @@
         "CAP-05",
         "CAP-06",
         "CAP-09",
+        "CAP-12",
         "CAP-13",
         "CAP-14",
         "CAP-15",
@@ -5470,6 +5528,9 @@
           "type": "string"
         },
         "CAP-09": {
+          "type": "string"
+        },
+        "CAP-12": {
           "type": "string"
         },
         "CAP-13": {
@@ -6079,7 +6140,8 @@
         "commit",
         "repository",
         "files",
-        "integrity"
+        "integrity",
+        "assets"
       ],
       "properties": {
         "part_tag": {
@@ -6102,6 +6164,9 @@
         },
         "integrity": {
           "$ref": "#/definitions/integrity"
+        },
+        "assets": {
+          "$ref": "#/definitions/assets"
         }
       }
     },
@@ -6578,6 +6643,7 @@
             "SESSION_CHANGED",
             "UNKNOWN_ADVANCE",
             "INVALID_COMMAND",
+            "ASSET_MISMATCH",
             "WORKSPACE_UNREADABLE",
             "WORKSPACE_LOCKED",
             "WORKSPACE_WRITE_FAILED",
@@ -6661,6 +6727,9 @@
             },
             "proposal_id": {
               "type": "string"
+            },
+            "asset": {
+              "$ref": "#/definitions/asset_spec"
             }
           }
         },
@@ -6704,6 +6773,9 @@
             },
             "proposal_id": {
               "type": "string"
+            },
+            "asset": {
+              "$ref": "#/definitions/asset_spec"
             }
           }
         },
@@ -6748,6 +6820,9 @@
             },
             "proposal_id": {
               "type": "string"
+            },
+            "asset": {
+              "$ref": "#/definitions/asset_spec"
             }
           }
         }

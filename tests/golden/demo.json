@@ -37,7 +37,7 @@
       "settlement_gate": "BOUND"
     }
   ],
-  "content_digest": "c07015019fce15d78ef1054f7aceee92928adc3da3211c4710ec474e1a040376",
+  "content_digest": "7a7da50041081d45ebb704ed57b9a11e44ff13c4c17ec9663a8b32ce441d17da",
   "funds_executed": false,
   "label": "SIMULATED",
   "note": "SIMULATED pin of state_digest, projection totals, and manifest content_digest. Process identity and clock fields are excluded.",
