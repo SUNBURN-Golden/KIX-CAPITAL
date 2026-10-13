@@ -490,6 +490,39 @@
     },
     {
       "method": "GET",
+      "path": "/api/terms/{advance_id}/allocation",
+      "operationId": "local_terms_allocation",
+      "dispatch": "/api/terms",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/terms_allocation"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "UNKNOWN_ADVANCE",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id",
+        "as_of_day",
+        "cash",
+        "draw_day",
+        "expected_settlement_cash_day"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/policy",
       "operationId": "local_policy",
       "dispatch": "/api/policy",
@@ -1917,6 +1950,345 @@
         },
         {
           "$ref": "#/definitions/terms_case_unbound"
+        }
+      ]
+    },
+    "allocation_interest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "term_days",
+        "maturity_day",
+        "contractual_days",
+        "default_days",
+        "contract_exact",
+        "default_exact",
+        "exact",
+        "interest_due_krw",
+        "default_interest_due_krw",
+        "assumption"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "term_days": {
+          "type": "integer"
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "contractual_days": {
+          "type": "integer"
+        },
+        "default_days": {
+          "type": "integer"
+        },
+        "contract_exact": {
+          "type": "string"
+        },
+        "default_exact": {
+          "type": "string"
+        },
+        "exact": {
+          "type": "string"
+        },
+        "interest_due_krw": {
+          "type": "integer"
+        },
+        "default_interest_due_krw": {
+          "type": "integer"
+        },
+        "assumption": {
+          "const": "principal is constant; the pinned journal has no repayment days"
+        }
+      }
+    },
+    "allocation_split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "order",
+        "to_default_interest",
+        "to_interest",
+        "to_principal",
+        "unapplied_cash",
+        "remaining"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "order": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "DEFAULT_INTEREST",
+              "INTEREST",
+              "PRINCIPAL"
+            ]
+          }
+        },
+        "to_default_interest": {
+          "type": "integer"
+        },
+        "to_interest": {
+          "type": "integer"
+        },
+        "to_principal": {
+          "type": "integer"
+        },
+        "unapplied_cash": {
+          "type": "integer"
+        },
+        "remaining": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "default_interest_due",
+            "interest_due",
+            "principal_outstanding"
+          ],
+          "properties": {
+            "default_interest_due": {
+              "type": "integer"
+            },
+            "interest_due": {
+              "type": "integer"
+            },
+            "principal_outstanding": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "allocation_interest_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/terms_na_section"
+        },
+        {
+          "$ref": "#/definitions/allocation_interest"
+        }
+      ]
+    },
+    "allocation_split_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/terms_na_section"
+        },
+        {
+          "$ref": "#/definitions/allocation_split"
+        }
+      ]
+    },
+    "fsm_repay_hint": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount",
+            "sequence"
+          ],
+          "properties": {
+            "amount": {
+              "type": "integer"
+            },
+            "sequence": {
+              "type": "integer"
+            }
+          }
+        }
+      ]
+    },
+    "terms_allocation_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "advance_id",
+        "tier",
+        "principal",
+        "interest",
+        "allocation",
+        "fsm_repay",
+        "close_ready"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "principal": {
+          "type": "integer"
+        },
+        "interest": {
+          "$ref": "#/definitions/allocation_interest_section"
+        },
+        "allocation": {
+          "$ref": "#/definitions/allocation_split_section"
+        },
+        "fsm_repay": {
+          "$ref": "#/definitions/fsm_repay_hint"
+        },
+        "close_ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "terms_allocation_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "advance_id",
+        "interest",
+        "allocation",
+        "fsm_repay",
+        "close_ready"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "const": "terms not bound"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "interest": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "allocation": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "fsm_repay": {
+          "type": "null"
+        },
+        "close_ready": {
+          "const": false
+        }
+      }
+    },
+    "terms_allocation": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_allocation_evaluated"
+        },
+        {
+          "$ref": "#/definitions/terms_allocation_unbound"
         }
       ]
     },
