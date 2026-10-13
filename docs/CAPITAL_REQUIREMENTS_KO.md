@@ -1,6 +1,6 @@
 # Capital 청사진 요구사항과 구현·선행 매핑
 
-2026-10-14. Capital 구현 기준 main `2802bac8d0731c96635a16edd9390baf3d682864`.
+2026-10-14. Capital 구현 기준 main `78d58358282a9d6255500f3998cce6c7b4c3ec92`.
 Protocol 읽기 기준은 둘이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 모든 Protocol 출처는 위 두 SHA 중 해당 범위의 것에 고정한다(FSM 원본은 `7481b0e`, AI 위임 초안은 `e2a029d`). 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
 
