@@ -79,7 +79,10 @@ def build_plan(root=None):
             'id': 'upstream-claims',
             'kind': 'upstream-claims',
             'timeout': 60,
-            'commands': [[py, 'scripts/upstream_claims_check.py', '--execute']],
+            'commands': [
+                [py, 'scripts/upstream_claims_check.py', '--execute'],
+                [py, 'scripts/agent_claims_check.py', '--execute'],
+            ],
         },
         {
             'id': 'node-check',
