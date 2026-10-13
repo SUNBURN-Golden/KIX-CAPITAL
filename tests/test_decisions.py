@@ -124,6 +124,51 @@ class DecisionTests(unittest.TestCase):
         self.assertIn('identity_provider_kyc=NOT_ADOPTED', printed)
         self.assertIn('CAPITAL_SETTLEMENT_POLICY.md', printed)
 
+    def test_rows_carry_provisional_and_version_without_changing_the_cli(self):
+        coverage = (ROOT / 'docs' / 'CAP_COVERAGE.md').read_text(encoding='utf-8')
+        rows = ledger.build_index(ROOT / 'docs' / 'decisions', ledger.expected_note_paths(coverage))
+        by_note = {row['note']: row for row in rows}
+        terms = by_note['docs/decisions/CAPITAL_FINANCIAL_TERMS.md']
+        self.assertIs(terms['provisional'], True)
+        self.assertEqual(terms['version'], 'CAPITAL-TERMS-V1')
+        policy = by_note['docs/decisions/CAPITAL_SETTLEMENT_POLICY.md']
+        self.assertIs(policy['provisional'], True)
+        self.assertEqual(policy['version'], 'CAPITAL-SETTLEMENT-POLICY-V1')
+        for name in ('CAPITAL_ACCOUNTS_TAX_LEGAL.md', 'CAPITAL_UPSTREAM_BINDING.md'):
+            self.assertIs(by_note[f'docs/decisions/{name}']['provisional'], True)
+            self.assertIsNone(by_note[f'docs/decisions/{name}']['version'])
+        printed = ledger.format_index(rows)
+        self.assertEqual(printed.splitlines()[0], 'note\tdecision_id\tstatus\tentries')
+        for line in printed.splitlines()[1:]:
+            self.assertEqual(len(line.split('\t')), 4, line)
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(ledger.main([]), 0)
+        self.assertEqual(buffer.getvalue(), printed)
+
+    def test_pending_invalid_and_unversioned_rows_report_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            pending = ledger.build_index(directory, ['docs/decisions/absent.md'])[0]
+            self.assertEqual((pending['status'], pending['provisional'], pending['version']), ('PENDING', None, None))
+            broken = directory / 'broken.md'
+            broken.write_text(_note({}, blocks=0), encoding='utf-8')
+            _errors, summary = ledger.validate_note(broken)
+            self.assertEqual((summary['status'], summary['provisional'], summary['version']), ('INVALID', None, None))
+            payload = {
+                'schema': 'capital-decision-v1', 'decision_id': 'versioned', 'provisional': False,
+                'policy_version': ' ', 'rules_version': 'RULES-V7', 'entries': {'item': _entry()},
+            }
+            versioned = directory / 'versioned.md'
+            versioned.write_text(_note({}, raw=json.dumps(payload)), encoding='utf-8')
+            errors, summary = ledger.validate_note(versioned)
+            self.assertEqual(errors, [])
+            self.assertIs(summary['provisional'], False)
+            self.assertEqual(summary['version'], 'RULES-V7')
+            payload['provisional'] = 'yes'
+            versioned.write_text(_note({}, raw=json.dumps(payload)), encoding='utf-8')
+            self.assertIsNone(ledger.validate_note(versioned)[1]['provisional'])
+
     def test_adopted_and_undetermined_rules(self):
         cases = [
             (_entry(provided_by=''), 'provided_by'),

@@ -28,6 +28,7 @@ GET_DISPATCH = (
     ('/api/state', False, 'state'),
     ('/api/scenarios', True, 'scenarios'),
     ('/api/readiness', False, 'readiness'),
+    ('/api/decisions', False, 'decisions'),
     ('/api/evidence', False, 'evidence'),
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
@@ -148,7 +149,7 @@ def query_cash(query):
     return int(values[0])
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, producer=None, event_log=None):
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, producer=None, event_log=None, decisions=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     observability = Observability(event_log, routes=route_labels())
     storage = None
@@ -160,7 +161,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
     try:
         service = CapitalService(
             storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy,
-            underwriting=underwriting, producer=producer, observability=observability)
+            underwriting=underwriting, producer=producer, observability=observability, decisions=decisions)
     except Exception:
         observability.close()
         if storage is not None:
@@ -244,6 +245,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_readiness(self, route, principal):
             return self.reply(200, service.readiness())
+
+        def _get_decisions(self, route, principal):
+            return self.reply(200, service.decisions())
 
         def _get_scenarios(self, route, principal):
             path = route.path

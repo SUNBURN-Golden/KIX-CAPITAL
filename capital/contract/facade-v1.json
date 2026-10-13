@@ -385,6 +385,29 @@
     },
     {
       "method": "GET",
+      "path": "/api/decisions",
+      "operationId": "local_decisions",
+      "dispatch": "/api/decisions",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/decisions"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/evidence",
       "operationId": "local_evidence",
       "dispatch": "/api/evidence",
@@ -5200,6 +5223,163 @@
           "type": "string"
         }
       }
+    },
+    "decision_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "note",
+        "decision_id",
+        "status",
+        "provisional",
+        "version",
+        "entries"
+      ],
+      "properties": {
+        "note": {
+          "type": "string"
+        },
+        "decision_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "provisional": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "entries": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "decisions_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "status",
+        "reason",
+        "rows",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated decision index — local note summary, not an adoption"
+        },
+        "mode": {
+          "const": "READ_ONLY_DECISION_INDEX"
+        },
+        "status": {
+          "const": "BOUND"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/decision_row"
+          }
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "decisions_not_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "status",
+        "reason",
+        "rows",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated decision index — local note summary, not an adoption"
+        },
+        "mode": {
+          "const": "READ_ONLY_DECISION_INDEX"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/decision_row"
+          },
+          "maxItems": 0
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "decisions": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/decisions_bound"
+        },
+        {
+          "$ref": "#/definitions/decisions_not_bound"
+        }
+      ]
     },
     "readiness_group": {
       "type": "object",

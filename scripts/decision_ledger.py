@@ -90,7 +90,18 @@ def _note_name(path):
 
 
 def _blank(note):
-    return {'note': note, 'decision_id': None, 'status': 'INVALID', 'entries': {}}
+    return {'note': note, 'decision_id': None, 'status': 'INVALID', 'provisional': None,
+            'version': None, 'entries': {}}
+
+
+def _block_version(block):
+    """The block's own version label: `version` or a `*_version` key, else None."""
+    for key in sorted(block):
+        if key == 'version' or key.endswith('_version'):
+            value = block[key]
+            if type(value) is str and value.strip():
+                return value
+    return None
 
 
 def _rollup(entries):
@@ -191,17 +202,24 @@ def validate_note(path):
     else:
         block_status = block.get('status')
         status = block_status if type(block_status) is str and block_status else _rollup(recorded)
+    provisional = block.get('provisional')
     summary = {
         'note': note,
         'decision_id': decision_id,
         'status': status,
+        'provisional': provisional if type(provisional) is bool else None,
+        'version': _block_version(block),
         'entries': recorded,
     }
     return errors, summary
 
 
 def build_index(decisions_dir, expected):
-    """Rows of {note, decision_id, status, entries} for expected paths, then extras."""
+    """Rows of {note, decision_id, status, provisional, version, entries} for expected paths, then extras.
+
+    `provisional` and `version` come from the block's top-level fields and are None
+    when absent. format_index prints only note, decision_id, status and entries.
+    """
     decisions_dir = Path(decisions_dir)
     rows = []
     seen = set()
@@ -213,6 +231,8 @@ def build_index(decisions_dir, expected):
                 'note': f'docs/decisions/{Path(rel).name}',
                 'decision_id': None,
                 'status': 'PENDING',
+                'provisional': None,
+                'version': None,
                 'entries': {},
             })
             continue
