@@ -36,6 +36,8 @@ READS = (
     '/api/export/manifest',
     '/api/reconciliation',
     '/api/statement',
+    '/api/metrics',
+    '/api/health',
     '/api/preview/sim-agent',
     '/api/underwrite/sim-agent',
 )

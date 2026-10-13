@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import secrets
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -13,6 +14,7 @@ from capital.auth import (
     AGENT_PROPOSE, AGENT_QUERY, COMMAND_SUBMIT, DEFAULT_ROLE, PROVENANCE, ROLES,
     SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
 )
+from capital.observability import EVENT_LOG_MAX_BYTES, Observability
 from capital.resources import read_static
 from capital.export import DevHmacSigner, ExportError, SignerConfigError, build_signer
 from capital.service import ApiError, CapitalService
@@ -37,6 +39,8 @@ GET_DISPATCH = (
     ('/api/export/manifest', False, 'export_manifest'),
     ('/api/reconciliation', False, 'reconciliation'),
     ('/api/statement', False, 'statement'),
+    ('/api/metrics', False, 'metrics'),
+    ('/api/health', False, 'health'),
 )
 POST_DISPATCH = (
     ('/api/commands', COMMAND_SUBMIT),
@@ -48,6 +52,23 @@ POST_DISPATCH = (
 ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
+
+
+def route_labels():
+    """Closed HTTP label set. Unlisted paths collapse to `other` in route_label."""
+    return tuple(prefix for prefix, _children, _name in GET_DISPATCH) + tuple(
+        prefix for prefix, _permission in POST_DISPATCH)
+
+
+def route_label(path):
+    """Map a path to one dispatch label. Unknown paths are `other`, not the raw path."""
+    for prefix, children, _name in GET_DISPATCH:
+        if path_matches(prefix, children, path):
+            return prefix
+    for prefix, _permission in POST_DISPATCH:
+        if path == prefix:
+            return prefix
+    return 'other'
 
 
 def strict_object(pairs):
@@ -76,15 +97,23 @@ class CapitalHTTPServer(ThreadingHTTPServer):
         try:
             super().server_close()
         finally:
-            storage = getattr(self, 'storage', None)
-            self.storage = None
-            if storage is not None:
-                storage.close()
-            producer = getattr(self, 'producer', None)
-            self.producer = None
-            close = getattr(producer, 'close', None)
-            if callable(close):
-                close()
+            try:
+                storage = getattr(self, 'storage', None)
+                self.storage = None
+                if storage is not None:
+                    storage.close()
+            finally:
+                try:
+                    producer = getattr(self, 'producer', None)
+                    self.producer = None
+                    close = getattr(producer, 'close', None)
+                    if callable(close):
+                        close()
+                finally:
+                    observability = getattr(self, 'observability', None)
+                    self.observability = None
+                    if observability is not None:
+                        observability.close()
 
 
 _DAY = re.compile(r'0|[1-9]\d{0,5}\Z')
@@ -111,8 +140,9 @@ def query_amount(query):
     return int(values[0])
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, producer=None):
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, producer=None, event_log=None):
     authorizer = authorizer or LocalRoleAuthorizer()
+    observability = Observability(event_log, routes=route_labels())
     storage = None
     if workspace is not None:
         try:
@@ -122,8 +152,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
     try:
         service = CapitalService(
             storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy,
-            underwriting=underwriting, producer=producer)
+            underwriting=underwriting, producer=producer, observability=observability)
     except Exception:
+        observability.close()
         if storage is not None:
             storage.close()
         raise
@@ -256,6 +287,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_statement(self, route, principal):
             return self.reply(200, service.statement())
 
+        def _get_metrics(self, route, principal):
+            return self.reply(200, service.metrics())
+
+        def _get_health(self, route, principal):
+            return self.reply(200, service.health())
+
         def _get_operation(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
             return self.reply(200, service.operation(route.path.rsplit('/', 1)[-1], instance))
@@ -297,27 +334,56 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 'action_permit': 'NOT_BOUND',
             })
 
-        def do_GET(self):
+        def _observe(self, started, path, status, code, operation_id):
+            # After the reply, so a metrics read does not count itself.
+            elapsed_ms = (time.perf_counter() - started) * 1000.0
             try:
+                service.observability.record_http(
+                    route_label(path), status, code, operation_id, elapsed_ms)
+            except Exception:
+                return
+
+        def do_GET(self):
+            started = time.perf_counter()
+            status = 500
+            code = None
+            operation_id = None
+            path = ''
+            try:
+                path = urlsplit(self.path).path
+                if path.startswith('/api/operations/'):
+                    operation_id = path[len('/api/operations/'):]
                 self.boundary()
                 route = urlsplit(self.path)
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
-                    return self.reply(200, read_static(name), kind)
+                    self.reply(200, read_static(name), kind)
+                    status = 200
+                    return
                 principal = self.principal()
                 permission = route_permission(route.path)
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
                 require(authorizer, principal, permission)
                 self.dispatch_get(route, principal)
+                status = 200
             except ApiError as exc:
+                status = exc.status
+                code = exc.code
                 self.fail(exc)
+            finally:
+                self._observe(started, path, status, code, operation_id)
 
         def do_POST(self):
+            started = time.perf_counter()
+            status = 500
+            code = None
+            operation_id = None
+            path = ''
             try:
+                path = urlsplit(self.path).path
                 self.boundary(mutate=True)
                 principal = self.principal()
-                path = urlsplit(self.path).path
                 permission = None
                 for prefix, required in POST_DISPATCH:
                     if path == prefix:
@@ -327,6 +393,8 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                     raise ApiError('NOT_FOUND', 404)
                 require(authorizer, principal, permission)
                 body = self.read_json()
+                if path == '/api/commands' and type(body) is dict and type(body.get('operation_id')) is str:
+                    operation_id = body.get('operation_id')
                 if path == '/api/session':
                     self.open_session(body)
                 elif path == '/api/commands':
@@ -339,12 +407,18 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                     self.reply(200, service.agent_execute(body, role=principal.role))
                 else:
                     raise ApiError('NOT_FOUND', 404)
+                status = 200
             except ApiError as exc:
+                status = exc.status
+                code = exc.code
                 self.fail(exc)
+            finally:
+                self._observe(started, path, status, code, operation_id)
 
     try:
         server = CapitalHTTPServer(('127.0.0.1', port), Handler)
     except Exception:
+        observability.close()
         if storage is not None:
             storage.close()
         close = getattr(service.producer, 'close', None)
@@ -355,6 +429,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
     server.authorizer = authorizer
     server.storage = storage
     server.producer = service.producer
+    server.observability = observability
     return server
 
 
@@ -372,6 +447,9 @@ def main():
     parser.add_argument('--producer', choices=('pinned', 'gate-fake'), default='pinned',
                         help='Opt-in producer. pinned is the in-process FSM (default). '
                              'gate-fake starts LOCAL_FAKE_GATE on 127.0.0.1. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND.')
+    parser.add_argument('--event-log', default=None,
+                        help='Opt-in size-bounded JSONL event log. An unwritable path does not fail commands. '
+                             'Not an exporter, a trace, or a network sink.')
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
     args = parser.parse_args()
     try:
@@ -388,13 +466,17 @@ def main():
         except GateUnavailable as exc:
             parser.error(exc.code)
     try:
-        with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms, policy=policy, producer=producer) as server:
+        with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms, policy=policy, producer=producer, event_log=args.event_log) as server:
             print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
             if isinstance(signer, DevHmacSigner):
                 print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)
             if producer is not None:
                 print(
                     f'producer LOCAL_FAKE_GATE {producer.base_url} NOT_BOUND semantic_conformance=false',
+                    flush=True)
+            if args.event_log:
+                print(
+                    f'event log {args.event_log} LOCAL_OBSERVABILITY max_bytes={EVENT_LOG_MAX_BYTES} not an exporter',
                     flush=True)
             view = server.service.workspace_view()
             if view['kind'] == 'LOCAL_FILE_WORKSPACE':

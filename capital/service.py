@@ -14,6 +14,7 @@ from capital.auth import (
     AGENT_PROPOSE, AGENT_QUERY, DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
     ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
+from capital.observability import Observability
 from capital.export import UnsignedSigner, build_manifest, manifest_status
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
@@ -97,7 +98,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, observability=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -112,6 +113,7 @@ class CapitalService:
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
         self.agent_lane = AgentLane(self.terms)
+        self.observability = observability or Observability()
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
@@ -689,7 +691,7 @@ class CapitalService:
                 raise ApiError('INVALID_OPERATION_ID')
             # Instance id authorizes the session. proposal_id is a citation, not identity.
             # A bad citation is rejected before the fingerprint, which stays
-            # operation_id, op, advance_id, and args.
+            # operation_id, op, advance_id, and args. Observability counters are not inputs.
             if 'proposal_id' in body and not agent_ident(body['proposal_id']):
                 raise ApiError('INVALID_ARGUMENTS')
             fingerprint = digest({'operation_id': operation_id, 'op': body['op'],
@@ -700,11 +702,13 @@ class CapitalService:
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 result = copy.deepcopy(prior['receipt'])
                 result['transport_duplicate'] = True
+                self._note_receipt(body['op'], result)
                 return result
             if len(self.receipts) >= MAX_OPERATIONS:
                 raise ApiError('SIMULATION_CAPACITY', 409)
             op, case, args = body['op'], body['advance_id'], body['args']
             if type(op) is not str or op not in OPS:
+                self.observability.record_command(op if type(op) is str else None, 'REJECTED', None)
                 raise ApiError('UNSUPPORTED_OPERATION')
             if type(case) is not str or not re.fullmatch(r'sim-[a-zA-Z0-9-]{1,60}', case):
                 raise ApiError('SYNTHETIC_ID_REQUIRED')
@@ -741,7 +745,18 @@ class CapitalService:
             except WorkspaceError as exc:
                 self.workspace_status = exc.code
                 raise ApiError(exc.code, 503)
+            self._note_receipt(op, receipt)
             return receipt
+
+    def _note_receipt(self, op, receipt):
+        """Count one returned receipt. A persist failure never reaches this."""
+        outcome = receipt.get('outcome') if type(receipt) is dict else None
+        code = None
+        if outcome == 'REJECTED' and type(receipt) is dict:
+            error = receipt.get('error')
+            if type(error) is str:
+                code = error
+        self.observability.record_command(op, outcome, code)
 
     def operation(self, operation_id, instance_id):
         with self.lock:
@@ -749,9 +764,52 @@ class CapitalService:
                 raise ApiError('SESSION_CHANGED', 409)
             stored = self.receipts.get(operation_id)
             if stored is None:
+                self.observability.record_lookup('UNKNOWN')
                 return {'outcome': 'UNKNOWN', 'operation_id': operation_id,
                         'instance_id': self.instance_id, 'retry_authorized': False}
+            self.observability.record_lookup('KNOWN')
             return copy.deepcopy(stored['receipt'])
+
+    def metrics(self):
+        """Process-local counters. The read does not write a receipt or the digest."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                view = self.workspace_view()
+                observed = self.observability.snapshot()
+                return {
+                    'mode': 'LOCAL_OBSERVABILITY',
+                    'label': 'SIMULATED',
+                    'instance_id': self.instance_id,
+                    'version': __version__,
+                    'uptime_seconds': observed['uptime_seconds'],
+                    'workspace': {'kind': view['kind'], 'status': view['status']},
+                    'counters': observed['counters'],
+                    'latency_ms': observed['latency_ms'],
+                    'external_exporters': 'NOT_BOUND',
+                    'tracing': 'NOT_BOUND',
+                    'alerting': 'NOT_BOUND',
+                    'network_sinks': 'NOT_BOUND',
+                    'funds_executed': False,
+                }
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def health(self):
+        """Minimal liveness. The read does not write a receipt or the digest."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                return {
+                    'status': 'ok' if self.workspace_status == 'ACTIVE' else 'degraded',
+                    'uptime_seconds': self.observability.uptime_seconds(),
+                    'workspace_status': self.workspace_status,
+                    'mode': 'LOCAL_OBSERVABILITY',
+                }
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
 
     def _replay_journal(self):
         """Caller holds the service lock. Restores a scratch machine and does not write."""

@@ -723,6 +723,52 @@
       "permission": "statement:read"
     },
     {
+      "method": "GET",
+      "path": "/api/metrics",
+      "operationId": "local_metrics",
+      "dispatch": "/api/metrics",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/metrics"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "metrics:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "operationId": "local_health",
+      "dispatch": "/api/health",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/health"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "health:read"
+    },
+    {
       "method": "POST",
       "path": "/api/commands",
       "operationId": "local_command",
@@ -3130,6 +3176,8 @@
             "export:read",
             "reconciliation:read",
             "statement:read",
+            "metrics:read",
+            "health:read",
             "session:bind",
             "agent:query_grant",
             "agent:propose_action"
@@ -3187,6 +3235,12 @@
               "$ref": "#/definitions/permission_decision"
             },
             "statement:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "metrics:read": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "health:read": {
               "$ref": "#/definitions/permission_decision"
             },
             "session:bind": {
@@ -6594,6 +6648,144 @@
         "subject": {
           "type": "string"
         }
+      }
+    },
+    "command_outcome_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ACCEPTED", "REJECTED"],
+      "properties": {
+        "ACCEPTED": {"type": "integer"},
+        "REJECTED": {"type": "integer"}
+      }
+    },
+    "http_class_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["2xx", "4xx", "5xx"],
+      "properties": {
+        "2xx": {"type": "integer"},
+        "4xx": {"type": "integer"},
+        "5xx": {"type": "integer"}
+      }
+    },
+    "latency_histogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["le_5", "le_25", "le_100", "le_500", "le_2500", "gt_2500", "count", "max_ms"],
+      "properties": {
+        "le_5": {"type": "integer"},
+        "le_25": {"type": "integer"},
+        "le_100": {"type": "integer"},
+        "le_500": {"type": "integer"},
+        "le_2500": {"type": "integer"},
+        "gt_2500": {"type": "integer"},
+        "count": {"type": "integer"},
+        "max_ms": {"type": "integer"}
+      }
+    },
+    "event_log_counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "written", "errors", "dropped", "max_bytes"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "written": {"type": "integer"},
+        "errors": {"type": "integer"},
+        "dropped": {"type": "integer"},
+        "max_bytes": {"type": "integer"}
+      }
+    },
+    "metrics_workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status"],
+      "properties": {
+        "kind": {"type": "string"},
+        "status": {"type": "string"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode", "label", "instance_id", "version", "uptime_seconds", "workspace",
+        "counters", "latency_ms", "external_exporters", "tracing", "alerting",
+        "network_sinks", "funds_executed"
+      ],
+      "properties": {
+        "mode": {"const": "LOCAL_OBSERVABILITY"},
+        "label": {"const": "SIMULATED"},
+        "instance_id": {"type": "string"},
+        "version": {"type": "string"},
+        "uptime_seconds": {"type": "integer"},
+        "workspace": {"$ref": "#/definitions/metrics_workspace"},
+        "counters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commands", "rejections", "operation_lookups", "http_requests", "event_log"],
+          "properties": {
+            "commands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "offer", "approve", "reject", "cancel", "bind_settlement",
+                "draw", "repay", "close", "default", "reconcile", "other"
+              ],
+              "properties": {
+                "offer": {"$ref": "#/definitions/command_outcome_counts"},
+                "approve": {"$ref": "#/definitions/command_outcome_counts"},
+                "reject": {"$ref": "#/definitions/command_outcome_counts"},
+                "cancel": {"$ref": "#/definitions/command_outcome_counts"},
+                "bind_settlement": {"$ref": "#/definitions/command_outcome_counts"},
+                "draw": {"$ref": "#/definitions/command_outcome_counts"},
+                "repay": {"$ref": "#/definitions/command_outcome_counts"},
+                "close": {"$ref": "#/definitions/command_outcome_counts"},
+                "default": {"$ref": "#/definitions/command_outcome_counts"},
+                "reconcile": {"$ref": "#/definitions/command_outcome_counts"},
+                "other": {"$ref": "#/definitions/command_outcome_counts"}
+              }
+            },
+            "rejections": {
+              "type": "object",
+              "additionalProperties": {"type": "integer"}
+            },
+            "operation_lookups": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["KNOWN", "UNKNOWN"],
+              "properties": {
+                "KNOWN": {"type": "integer"},
+                "UNKNOWN": {"type": "integer"}
+              }
+            },
+            "http_requests": {
+              "type": "object",
+              "additionalProperties": {"$ref": "#/definitions/http_class_counts"}
+            },
+            "event_log": {"$ref": "#/definitions/event_log_counters"}
+          }
+        },
+        "latency_ms": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/latency_histogram"}
+        },
+        "external_exporters": {"const": "NOT_BOUND"},
+        "tracing": {"const": "NOT_BOUND"},
+        "alerting": {"const": "NOT_BOUND"},
+        "network_sinks": {"const": "NOT_BOUND"},
+        "funds_executed": {"const": false}
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "uptime_seconds", "workspace_status", "mode"],
+      "properties": {
+        "status": {"enum": ["ok", "degraded"]},
+        "uptime_seconds": {"type": "integer"},
+        "workspace_status": {"type": "string"},
+        "mode": {"const": "LOCAL_OBSERVABILITY"}
       }
     }
   }
