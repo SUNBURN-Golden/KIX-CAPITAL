@@ -176,10 +176,16 @@ class ManifestVectorTests(unittest.TestCase):
 
 class RegenerationTests(unittest.TestCase):
     def committed(self):
+        """Every file this script owns: the key and everything under manifest/.
+
+        Sibling artifacts in tests/vectors/ (finance_vectors.json) have their own
+        generator and test. An unexpected file under manifest/ still fails here.
+        """
         found = {}
         for path in sorted(VECTORS.rglob('*')):
-            if path.is_file():
-                found[path.relative_to(VECTORS).as_posix()] = path.read_bytes()
+            relative = path.relative_to(VECTORS)
+            if path.is_file() and (relative.parts[0] == MANIFESTS.name or relative.as_posix() == KEY.name):
+                found[relative.as_posix()] = path.read_bytes()
         return found
 
     def test_regeneration_reproduces_the_committed_bytes(self):
