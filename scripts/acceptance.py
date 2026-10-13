@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """One-command local acceptance ladder for the Capital simulation.
 
-Stages: unit, pinned vendor, node --check, browser, packaged-artifact smoke,
-and the seeded demo. Evidence is written to build/acceptance-evidence.json
-(untracked). A failed or missing stage exits non-zero. This is a SIMULATED
-ladder, not human product acceptance and not a payment, loan, or deployment.
+Stages: unit, storage-conformance, pinned vendor, node --check, browser,
+packaged-artifact smoke, and the seeded demo. Evidence is written to
+build/acceptance-evidence.json (untracked). A failed or missing stage exits
+non-zero. This is a SIMULATED ladder, not human product acceptance and not a
+payment, loan, or deployment.
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ FORMAT = 'KIX_CAPITAL_ACCEPTANCE_EVIDENCE_V1'
 EVIDENCE = ROOT / 'build' / 'acceptance-evidence.json'
 REQUIRED_STAGES = (
     'unit',
+    'storage-conformance',
     'pinned-vendor',
     'node-check',
     'browser',
@@ -44,7 +46,7 @@ _COUNT_WORD = re.compile(r'(failures|errors|skipped)=(\d+)')
 
 
 def build_plan(root=None):
-    """The six required stages, in ladder order. Commands are relative to root."""
+    """The seven required stages, in ladder order. Commands are relative to root."""
     py = sys.executable
     root = ROOT if root is None else Path(root)
     return [
@@ -52,6 +54,14 @@ def build_plan(root=None):
             'id': 'unit',
             'timeout': 300,
             'commands': [[py, '-m', 'unittest', 'discover', '-s', 'tests', '-v']],
+        },
+        {
+            'id': 'storage-conformance',
+            'timeout': 300,
+            'commands': [[
+                py, '-m', 'unittest', 'discover',
+                '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
+            ]],
         },
         {
             'id': 'pinned-vendor',

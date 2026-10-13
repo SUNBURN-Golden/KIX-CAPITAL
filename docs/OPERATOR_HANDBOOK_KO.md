@@ -96,7 +96,7 @@ python3 scripts/acceptance.py
 - `evidence.tool_versions.*` (`python`, `node`, `npm`, `playwright`, `capital`)
 - `evidence.vendor_hashes.verified`
 - `evidence.golden_digests.status`
-- `evidence.stages[*].status` — stage id는 `unit`, `pinned-vendor`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 여섯이다.
+- `evidence.stages[*].status` — stage id는 `unit`, `storage-conformance`, `pinned-vendor`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 일곱이다.
 
 합격·불합격 문장은 [수용 점검표](ACCEPTANCE_KO.md)에 있다. 그 점검표를 사람이 채우기 전에는 수용이 아니다.
 

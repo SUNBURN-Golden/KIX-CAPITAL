@@ -29,12 +29,15 @@ def _ok_stage(stage_id, passed=2):
 
 
 class AcceptanceTests(unittest.TestCase):
-    def test_default_plan_is_the_six_required_stages(self):
+    def test_default_plan_is_the_seven_required_stages(self):
         plan = acceptance.build_plan(ROOT)
         self.assertEqual([stage['id'] for stage in plan], list(acceptance.REQUIRED_STAGES))
         commands = {stage['id']: stage['commands'] for stage in plan}
         self.assertEqual(commands['unit'][0][1:5], ['-m', 'unittest', 'discover', '-s'])
         self.assertEqual(commands['unit'][0][5], 'tests')
+        self.assertEqual(commands['storage-conformance'][0][1:], [
+            '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
+        ])
         self.assertIn('test_mock_credit.py', commands['pinned-vendor'][0])
         self.assertEqual(commands['node-check'][0][1:], ['--check', 'capital/static/app.js'])
         self.assertEqual(commands['browser'][0], ['npm', 'run', 'test:browser'])
