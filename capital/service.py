@@ -612,7 +612,7 @@ class CapitalService:
                         'CAP-09': 'local five-category statement only; primary_sales, resale_sales and actual_paid stay NOT_BOUND and are never summed',
                         'CAP-13': 'local candidate projection; fin-ledger-contract still upstream',
                         'CAP-14': 'local reconciliation diagnostics only; no bank reconciliation or provider-authenticated completeness',
-                        'CAP-15': 'local hashed manifest and SignaturePort only; not stage7 authenticated export; no external key, cross-service cursor, watermark, or retention policy',
+                        'CAP-15': 'local hashed manifest and SignaturePort only; not stage7 authenticated export; no external key, cross-service cursor, watermark, or retention duration; retention_policy names five empty owner slots',
                         'CAP-16': 'local facade contract capital-local-facade/1 at capital/contract/facade-v1.json; producer vectors are not SEMANTIC_CONFORMANCE; exact producer/SDK tuple stays NOT_BOUND'}}
 
     def projection(self, mode=None):

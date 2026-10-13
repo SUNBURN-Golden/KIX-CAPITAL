@@ -539,9 +539,22 @@ $('export-journal').onclick=async()=>{
  }catch(error){notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'내보내기 결과를 확인하지 못했습니다.',true);}
  finally{busy=false;fence();}
 };
+const retentionSlots={legal_dispute_hold:'UNDETERMINED',business_reconciliation:'UNDETERMINED',retry_support:'DECISION_REQUIRED',memory_residency:'DECISION_REQUIRED',tax_accounting_records:'UNDETERMINED'};
+function retentionValid(policy){
+ if(!policy||typeof policy!=='object'||Array.isArray(policy))return false;
+ const names=Object.keys(retentionSlots);
+ const keys=Object.keys(policy);
+ if(keys.length!==names.length||names.some(name=>!Object.prototype.hasOwnProperty.call(policy,name)))return false;
+ return names.every(name=>{
+  const slot=policy[name];
+  if(!slot||typeof slot!=='object'||Array.isArray(slot))return false;
+  const fields=Object.keys(slot);
+  return fields.length===2&&typeof slot.owner==='string'&&slot.owner.length>0&&slot.status===retentionSlots[name];
+ });
+}
 function manifestValid(data,next){
  if(!data||data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V2'||data.funds_executed!==false||data.label!=='SIMULATED'||data.diagnostic!=='READ_ONLY')return false;
- if(data.stage7_authenticated_export!==false||data.authentication!=='NOT_BOUND'||data.external_key!=='NOT_BOUND'||data.retention_policy!=='NOT_BOUND')return false;
+ if(data.stage7_authenticated_export!==false||data.authentication!=='NOT_BOUND'||data.external_key!=='NOT_BOUND'||!retentionValid(data.retention_policy))return false;
  if(data.cursor!==null||data.watermark!==null||data.source_cut!==null||data.timestamps!==null||data.instance_id!==next.instance_id)return false;
  if((data.status!=='COMPLETE'&&data.status!=='INCOMPLETE')||!Array.isArray(data.incomplete_reasons))return false;
  if((data.status==='COMPLETE')!==(data.incomplete_reasons.length===0))return false;

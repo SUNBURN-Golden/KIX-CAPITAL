@@ -6286,6 +6286,66 @@
         }
       }
     },
+    "retention_slot_undetermined": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "status"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "status": {
+          "const": "UNDETERMINED"
+        }
+      }
+    },
+    "retention_slot_decision_required": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "status"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "status": {
+          "const": "DECISION_REQUIRED"
+        }
+      }
+    },
+    "retention_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legal_dispute_hold",
+        "business_reconciliation",
+        "retry_support",
+        "memory_residency",
+        "tax_accounting_records"
+      ],
+      "properties": {
+        "legal_dispute_hold": {
+          "$ref": "#/definitions/retention_slot_undetermined"
+        },
+        "business_reconciliation": {
+          "$ref": "#/definitions/retention_slot_undetermined"
+        },
+        "retry_support": {
+          "$ref": "#/definitions/retention_slot_decision_required"
+        },
+        "memory_residency": {
+          "$ref": "#/definitions/retention_slot_decision_required"
+        },
+        "tax_accounting_records": {
+          "$ref": "#/definitions/retention_slot_undetermined"
+        }
+      }
+    },
     "manifest": {
       "type": "object",
       "additionalProperties": false,
@@ -6361,7 +6421,7 @@
           "const": "NOT_BOUND"
         },
         "retention_policy": {
-          "const": "NOT_BOUND"
+          "$ref": "#/definitions/retention_policy"
         },
         "authentication": {
           "const": "NOT_BOUND"

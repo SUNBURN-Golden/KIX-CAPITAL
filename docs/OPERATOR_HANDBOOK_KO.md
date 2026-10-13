@@ -272,3 +272,23 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 경로나 권한을 바꾸면 `python3 scripts/auth_matrix.py --write`로 표와 두 문서의 생성 블록을 다시 쓴다. 그 전에는 `python3 -m unittest discover -s tests`가 실패한다. 표만 검사하려면 `python3 scripts/auth_matrix.py --check`를 쓴다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:retention-slots-sync -->
+
+### retention-slots-sync
+
+`GET /api/export/manifest`의 `retention_policy`가 `NOT_BOUND` 상수에서 다섯 이름 있는 빈 칸으로 바뀌었다. 칸과 주인은 upstream RETENTION_PERIODS_PROPOSAL R1(kix-protocol PR #139 `6e54e723`, 사용자 병합)의 네 칸과 `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`의 `CAPITAL-RETENTION-PRIVACY-V1`이 더한 세무·회계 칸이다.
+
+| 칸 | owner | status |
+|---|---|---|
+| `legal_dispute_hold` | legal/privacy counsel designated by JunTae | `UNDETERMINED` |
+| `business_reconciliation` | Toss contract/technical | `UNDETERMINED` |
+| `retry_support` | Astra | `DECISION_REQUIRED` |
+| `memory_residency` | Astra | `DECISION_REQUIRED` |
+| `tax_accounting_records` | accountant and tax adviser designated by JunTae | `UNDETERMINED` |
+
+각 칸은 `{owner, status}` 두 필드뿐이다. 기간·상한 숫자는 어디에도 없다 — `memory_residency`의 `{count, bytes, age}` 상한은 노트에 prose로만 있고 manifest에는 `DECISION_REQUIRED` 하나로 눌린다. `MAX_OPERATIONS 500`은 데모 용량 상한이지 보존 값이 아니다. `not_bound` 목록에는 `retention_policy` 행이 그대로 남아 기간과 상한 값이 정해지지 않았음을 말한다. 삭제·축출·타이머 코드는 없다 — 시뮬레이션은 `RETAIN_ALL_NO_AUTOMATIC_DELETION`이고, 열린 법정·분쟁 보류가 다른 칸의 삭제를 막는다는 규칙은 노트의 문장이지 이 코드의 동작이 아니다.
+
+`python3 -m capital.verify FILE`는 섹션 해시·content digest·서명만 검사하므로 새 manifest도 그대로 검증된다. `retention_policy`는 `content_digest`에 들어가므로 구조를 바꾸면 `python3 scripts/seed_demo.py --update-golden`으로 golden을, `python3 scripts/manifest_vectors.py --write`로 `tests/vectors/manifest/`를 다시 쓴다. golden diff는 `content_digest` 한 줄만 달라야 한다. `capital/contract/facade-v1.json`은 다섯 칸을 `additionalProperties: false`로 고정하고 status를 칸별 `const`로 잠근다. 값을 채우는 것은 `k-stage5-durable-tx` 저장이 생기고 주인들이 답한 뒤다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->

@@ -80,7 +80,7 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 - [ ] assets-and-rights (UPSTREAM_REQUIRED; CAP-12, CAP-17, CAP-18, CAP-19): AgentGrant/ActionPermit 및 최소 공개 계약
 - [ ] release (NOT_AUTHORIZED; CAP-20): 사용자 제품 수용과 적용 가능한 독립 감사
 - [ ] release (NOT_AUTHORIZED; CAP-20): 실여신/PG/은행/KYC·면허/법무와 운영 책임
-- [ ] release (NOT_AUTHORIZED; CAP-20): 인증/TLS/보존·복구·개인정보·배포 명시 승인
+- [ ] release (NOT_AUTHORIZED; CAP-20): 인증/TLS/보존·복구·개인정보·배포 명시 승인 per docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md
 upstream_binding: NOT_BOUND
 source_integrity.all_matched: true
 <!-- generated:not-bound end -->

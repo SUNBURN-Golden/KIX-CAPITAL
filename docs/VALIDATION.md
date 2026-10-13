@@ -414,3 +414,32 @@ Commands actually run, in order:
 - `python3 scripts/build_release.py --out` twice into temporary directories, then `cmp`: identical. `python3 scripts/smoke_release.py` on that archive: exit 0, eight checks ok. The archive contains no `scripts/`, `tests/`, or `auth_matrix` entry, so the zipapp surface is unchanged. The temporary directories were removed.
 - `python3 scripts/acceptance.py` was not run in full. Its stages are the commands above, run one by one, except `upstream-claims`, which `tests/test_upstream_claims.py` covers inside the unit suite.
 - After the browser run, the only listener on 127.0.0.1:87xx/88xx was `sand-egress-tun` on 8791, which belongs to the sandbox and not to this repo. No `capital.server` process remained.
+
+## retention-slots-sync
+
+The manifest `retention_policy` `NOT_BOUND` constant became five named empty slots — `legal_dispute_hold`, `business_reconciliation`, `retry_support`, `memory_residency`, `tax_accounting_records` — each exactly `{owner, status}`, status `UNDETERMINED` or `DECISION_REQUIRED`. Names, owners and statuses come from the merged `capital-decision-v1` blocks in `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` (`deployment_tls_retention`, upstream R1 / PR #139 `6e54e723`) and `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md` (`data_retention_privacy`, `CAPITAL-RETENTION-PRIVACY-V1`; `NOT_SET_OWNER_SUPPLIED` reads as `UNDETERMINED`, `NOT_SET_DECISION_REQUIRED` as `DECISION_REQUIRED`). The `memory_residency` `{count, bytes, age}` bounds stay prose in the notes and flatten to one `DECISION_REQUIRED`; `MAX_OPERATIONS 500` is a demo capacity bound, not a retention value. No duration, bound, timer, or deletion code was added anywhere. The `not_bound` `retention_policy` row keeps `status` `NOT_BOUND` and `value` null because the durations are what stay unbound.
+
+`capital/verify.py` semantics are unchanged: it still checks only sections, `content_digest`, and signature. Because `retention_policy` is inside `content_material()`, the pin moved exactly one field: `tests/golden/demo.json` `content_digest` `c06f05d3…7502` → `c0701501…0376`, regenerated only via `python3 scripts/seed_demo.py --update-golden`; `state_digest` `a8609033…ef45` and `debit=385000`/`credit=385000` are unchanged. The 12 files under `tests/vectors/manifest/` were regenerated only via `python3 scripts/manifest_vectors.py --write`. `capital/static/app.js` `manifestValid` now fail-closed checks the five keys, each `{owner: non-empty string, status}` with the per-slot status. `capital/contract/facade-v1.json` gains `retention_slot_undetermined`/`retention_slot_decision_required`/`retention_policy` definitions with `additionalProperties: false` and a per-slot `const` status. The readiness `release` blocker `인증/TLS/보존·복구·개인정보·배포 명시 승인` now cites `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md` per that note's consumer row; the generated block in `docs/ACCEPTANCE_KO.md` was rewritten only by `python3 scripts/not_bound_checklist.py --write`. No file under `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited. No test was weakened or skipped. This section claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy. Labels stay SIMULATED / provisional.
+
+Commands actually run, in order:
+
+- `python3 -m unittest tests.test_export_manifest -v`: exit 0. **16 passed** in 1.611s, including the new `test_retention_policy_mirrors_the_merged_decision_notes`, which derives expected owners and statuses from the two decision-note blocks instead of copied literals.
+- `python3 scripts/not_bound_checklist.py --write` then `--check`: exit 0 both. The regenerated block differs only in the release blocker line.
+- `python3 -m unittest tests.test_export_manifest tests.test_manifest_vectors tests.test_facade_contract tests.test_seed_demo tests.test_handbook`: exit 0. **43 passed** in 7.180s.
+- `python3 scripts/manifest_vectors.py --check`: exit 0, `manifest vectors ok: 13 files match`.
+- `python3 -m capital.verify tests/vectors/manifest/unsigned.json`: exit 0, `ok:true`, all seven sections `MATCHED`, `content_digest` `MATCHED`, signature `NOT_BOUND`.
+- `git diff tests/golden/demo.json`: only the `content_digest` line changed.
+- `python3 -m unittest discover -s tests`: exit 0. **309 passed** in 57.599s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0. **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/auth_matrix.py --check`: exit 0 (no route or permission change).
+- `python3 scripts/decision_ledger.py`: exit 0.
+- `python3 scripts/seed_demo.py`: exit 0, golden matches (`state_digest=a8609033…ef45`, `content_digest=c0701501…0376`, `debit=385000`, `credit=385000`). The golden was not rewritten a second time.
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output.
+- `npm ci`: exit 0. Added 3 packages, 0 vulnerabilities. `node_modules` was absent. Chromium builds were already in the Playwright cache; `/usr/bin/google-chrome` exists.
+- `npm run test:browser`: exit 0. **43 passed** (1.4m), including the updated `export-manifest.spec.cjs` slot assertions. Playwright started and stopped the loopback servers; a later `pgrep`/`ss` check found no `capital.server` process and no listener on 8765–8768.
+- `python3 scripts/acceptance.py` was not run in full. Its stages are the commands above, run one by one, except `upstream-claims`, which `tests/test_upstream_claims.py` covers inside the unit suite.
+
+No `DECISION_REQUIRED.md` was written: slot names, owners, statuses, and the no-durations rule are all decided by the merged notes, so no product decision was left open.
