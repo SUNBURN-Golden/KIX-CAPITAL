@@ -19,6 +19,7 @@ from pathlib import Path
 from unittest import mock
 
 from capital import scenarios as scenario_module
+from capital.export import content_material, strip_volatile
 from capital.protocol import CreditMachine
 from capital.service import CapitalService, digest
 
@@ -65,7 +66,13 @@ GROUP_CANDIDATE = {
     'scenario_obligations': 'fin-multi-payee-refund-proof',
     'f04_command_outcomes': 'fin-ledger-contract',
     'journal_projection_digests': 'fin-double-entry-projection',
+    'seed_reconciliation': 'fin-observation-reconciliation',
+    'statement_and_previews': 'fin-credit-exposure-reconciliation',
+    'manifest_section_digests': 'fin-consistent-accounting-export',
+    'facade_read_model': 'fin-catalogue-read-model',
 }
+# The one candidate with no group: its named input is an untracked per-run file.
+NO_VECTORS = 'fin-finance-closeout'
 
 # Per scenario, per step: (op, outcome, error, duplicate,
 #   organizer (distributed, cancelled_unpaid, recovery_due, outstanding),
@@ -168,6 +175,53 @@ CONSERVATION = [
     'DEBITS_EQUAL_CREDITS_EVERY_STEP', 'CLAIM_FACE_EQUALS_PAYEE_FACES', 'ADVANCE_EXPOSURE_CONSERVATION',
     'REFUND_ACCEPTANCE_CONSERVATION', 'NO_REAL_EFFECT',
 ]
+
+# Written by hand from recon.py, statement.py, export.py and capital/contract/facade-v1.json.
+RECON_CHECKS = [
+    'receipts_vs_journal_keys', 'rejected_receipts_absent_from_journal', 'replay_digest_equals_state_digest',
+    'case_fixture_map_vs_journal_offers', 'projection_totals_vs_case_views', 'fixtures_digest',
+]
+RECON_GAPS = ['bank_pg_provider_observations', 'source_cut', 'completeness']
+STATEMENT_CATEGORIES = ['approved', 'exposure', 'reserved', 'settlement', 'refund']
+STATEMENT_GAPS = ['primary_sales', 'resale_sales', 'actual_paid']
+# advance_id -> (draw preview outcome, reason, settlement gate). Only sim-pending-settlement is APPROVED.
+PREVIEWS = [
+    ('sim-cancelled', 'NOT_APPLICABLE', 'APPROVED_PHASE_REQUIRED', 'UNBOUND'),
+    ('sim-closed', 'NOT_APPLICABLE', 'APPROVED_PHASE_REQUIRED', 'MOCK_COMMIT_OBSERVED'),
+    ('sim-defaulted', 'NOT_APPLICABLE', 'APPROVED_PHASE_REQUIRED', 'MOCK_COMMIT_OBSERVED'),
+    ('sim-pending-settlement', 'WOULD_REJECT', 'SETTLEMENT_NOT_COMMITTED', 'BOUND'),
+    ('sim-rejected', 'NOT_APPLICABLE', 'APPROVED_PHASE_REQUIRED', 'UNBOUND'),
+    ('sim-unbound', 'NOT_APPLICABLE', 'APPROVED_PHASE_REQUIRED', 'UNBOUND'),
+]
+MANIFEST_SECTIONS = ['journal', 'receipts', 'projection', 'reconciliation', 'statement', 'fixtures', 'source_pin']
+# Sections whose saved body carries instance_id, so the stored hash is not the instance-free one.
+INSTANCE_BOUND_SECTIONS = ['receipts', 'projection', 'reconciliation', 'statement']
+SHA256 = re.compile(r'[0-9a-f]{64}')
+# Every GET api route of the facade contract, in contract order: path -> response definitions.
+FACADE_READS = [
+    ('/api/state', ['state']),
+    ('/api/scenarios', ['scenario_list']),
+    ('/api/scenarios/{id}', ['scenario_detail']),
+    ('/api/readiness', ['readiness']),
+    ('/api/decisions', ['decisions']),
+    ('/api/evidence', ['evidence']),
+    ('/api/projection', ['projection']),
+    ('/api/terms', ['terms_status']),
+    ('/api/terms/{advance_id}', ['terms_case']),
+    ('/api/terms/{advance_id}/allocation', ['terms_allocation']),
+    ('/api/policy', ['policy_status']),
+    ('/api/policy/simulation', ['policy_simulation']),
+    ('/api/preview/{advance_id}', ['preview']),
+    ('/api/underwrite/{advance_id}', ['underwrite']),
+    ('/api/operations/{operation_id}', ['accepted_receipt', 'rejected_receipt', 'unknown_operation']),
+    ('/api/export', ['export_v1']),
+    ('/api/export/manifest', ['manifest']),
+    ('/api/reconciliation', ['reconciliation']),
+    ('/api/statement', ['statement']),
+    ('/api/metrics', ['metrics']),
+    ('/api/health', ['health']),
+]
+FACADE = ROOT / 'capital' / 'contract' / 'facade-v1.json'
 UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 
@@ -207,8 +261,23 @@ class ArtifactShapeTests(unittest.TestCase):
         supplied = {row['id']: row['vectors'] for row in self.artifact['candidates']}
         for name, candidate in GROUP_CANDIDATE.items():
             self.assertEqual(supplied[candidate], name)
-        self.assertEqual(sorted(key for key, value in supplied.items() if value is None), sorted(
-            set(ids) - set(GROUP_CANDIDATE.values())))
+        self.assertEqual(sorted(key for key, value in supplied.items() if value is None), [NO_VECTORS])
+        self.assertEqual(sorted(set(ids) - set(GROUP_CANDIDATE.values())), [NO_VECTORS])
+        self.assertEqual(len(set(GROUP_CANDIDATE.values())), 7)
+
+    def test_only_the_closeout_candidate_is_null_and_it_says_why(self):
+        rows = {row['id']: row for row in self.artifact['candidates']}
+        self.assertEqual(sum(row['vectors'] is not None for row in rows.values()), 7)
+        for name, row in rows.items():
+            with self.subTest(candidate=name):
+                self.assertEqual(sorted(row), ['id', 'reason', 'vectors'])
+                if name == NO_VECTORS:
+                    self.assertIsNone(row['vectors'])
+                    self.assertIsInstance(row['reason'], str)
+                    self.assertIn('build/acceptance-evidence.json', row['reason'])
+                    self.assertIn('untracked', row['reason'])
+                else:
+                    self.assertIsNone(row['reason'])
 
     def test_bytes_are_canonical_ascii_with_no_volatile_or_host_text(self):
         self.assertTrue(self.raw.endswith(b'\n') and not self.raw.endswith(b'\n\n'))
@@ -228,6 +297,10 @@ class ArtifactShapeTests(unittest.TestCase):
             self.assertIn(phrase, section)
         self.assertIn('not SEMANTIC_CONFORMANCE', script.__doc__)
         self.assertIn('completes no upstream node', script.__doc__)
+        # Seven of eight candidates have vectors; the section must not still call five of them null.
+        self.assertNotIn('The other five candidates', section)
+        self.assertIn('Seven of the eight candidates now have vectors', section)
+        self.assertIn('fin-finance-closeout', section)
 
 
 class ScenarioVectorTests(unittest.TestCase):
@@ -439,6 +512,276 @@ class ProjectionDigestTests(unittest.TestCase):
         self.assertEqual(accounts['SIM_REPAY_MEMO:sim-closed']['credit_total'], 20000)
         self.assertEqual(accounts['SIM_CLAIM_FACE:sim-committed']['debit_total'], 100000)
         self.assertNotIn('SIM_ADVANCE_EXPOSURE:sim-pending-settlement', accounts)
+
+
+def live_seed_service():
+    """The seed book on a fresh, random instance id: the vectors must not depend on it."""
+    service = seed_demo.build_service()
+    assert service.instance_id != script.INSTANCE_ID
+    return service
+
+
+class ReconciliationVectorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.group = load_artifact()['groups']['seed_reconciliation']
+        cls.report = cls.group['report']
+        cls.golden = json.loads(GOLDEN.read_text(encoding='utf-8'))
+
+    def test_the_six_checks_are_matched_in_order(self):
+        self.assertEqual(self.group['check_ids'], RECON_CHECKS)
+        self.assertEqual([row['id'] for row in self.report['checks']], RECON_CHECKS)
+        self.assertEqual([row['status'] for row in self.report['checks']], ['MATCHED'] * 6)
+        self.assertEqual(self.report['status'], 'MATCHED')
+
+    def test_book_facts_follow_the_seed_story(self):
+        report = self.report
+        self.assertEqual((report['label'], report['mode'], report['diagnostic']),
+                         ('SIMULATED', 'READ_ONLY_RECONCILIATION', 'LOCAL_ONLY'))
+        self.assertIs(report['replay_matched'], True)
+        self.assertEqual((report['entry_count'], report['operation_capacity']), (21, 500))
+        self.assertEqual(report['workspace_status'], 'ACTIVE')
+        self.assertIs(report['funds_executed'], False)
+        self.assertIs(report['workspace_mutated'], False)
+        self.assertEqual(report['state_digest'], self.golden['state_digest'])
+        self.assertEqual(report['cut'], self.golden['state_digest'])
+
+    def test_probe_is_unknown_unresolved_and_never_retried(self):
+        self.assertEqual(self.group['probe_operation_id'], 'op-never-issued')
+        self.assertEqual(self.report['unknown_unresolved'], [{
+            'operation_id': 'op-never-issued', 'outcome': 'UNKNOWN_UNRESOLVED',
+            'resolved': False, 'retry_authorized': False}])
+        self.assertEqual(self.report['unknown_policy'], {
+            'absent_receipt': 'UNKNOWN_UNRESOLVED', 'resolved_by_reconciliation': False,
+            'retry_authorized': False})
+
+    def test_bank_provider_and_cut_stay_not_bound(self):
+        report = self.report
+        self.assertEqual([row['id'] for row in report['not_bound']], RECON_GAPS)
+        self.assertEqual({row['status'] for row in report['not_bound']}, {'NOT_BOUND'})
+        for key in ('bank_reconciliation', 'provider_authenticated_completeness', 'source_cut'):
+            self.assertEqual(report[key], 'NOT_BOUND')
+
+    def test_report_is_what_a_different_instance_produces(self):
+        service = live_seed_service()
+        try:
+            live = strip_volatile(service.reconciliation(probe_operation_id='op-never-issued'))
+        finally:
+            seed_demo._release(service.producer)
+        self.assertEqual(live, self.report)
+        self.assertEqual(digest(live), self.group['report_digest'])
+
+
+class StatementVectorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.group = load_artifact()['groups']['statement_and_previews']
+        cls.statement = cls.group['statement']
+        cls.categories = {row['id']: row for row in cls.statement['categories']}
+        cls.golden = json.loads(GOLDEN.read_text(encoding='utf-8'))
+
+    def test_five_categories_in_order_with_envelope_labels(self):
+        self.assertEqual(self.group['category_ids'], STATEMENT_CATEGORIES)
+        self.assertEqual([row['id'] for row in self.statement['categories']], STATEMENT_CATEGORIES)
+        statement = self.statement
+        self.assertEqual((statement['label'], statement['mode'], statement['diagnostic']),
+                         ('SIMULATED', 'READ_ONLY_STATEMENT', 'LOCAL_ONLY'))
+        self.assertEqual(statement['state_digest'], self.golden['state_digest'])
+        self.assertIs(statement['funds_executed'], False)
+        self.assertEqual((statement['tax_reporting'], statement['bank_reconciliation']), ('NOT_BOUND', 'NOT_BOUND'))
+
+    def test_sales_are_never_summed(self):
+        self.assertIs(self.statement['sales_combined'], False)
+        self.assertEqual(self.statement['primary_and_resale'], 'NOT_SUMMED')
+        self.assertEqual([row['id'] for row in self.statement['not_bound']], STATEMENT_GAPS)
+
+    def test_approved_category_lists_the_four_approved_advances(self):
+        approved = self.categories['approved']
+        self.assertEqual([(row['advance_id'], row['amount'], row['phase']) for row in approved['rows']], [
+            ('sim-closed', 20000, 'CLOSED'), ('sim-defaulted', 30000, 'DEFAULTED'),
+            ('sim-pending-settlement', 25000, 'APPROVED'), ('sim-unbound', 15000, 'DRAWN')])
+        self.assertEqual(approved['total'], 90000)
+
+    def test_exposure_category_follows_the_draw_and_repay_story(self):
+        exposure = self.categories['exposure']
+        self.assertEqual([(row['advance_id'], row['phase'], row['drawn'], row['repaid'], row['outstanding'])
+                          for row in exposure['rows']], [
+            ('sim-cancelled', 'CANCELLED', 0, 0, 0), ('sim-closed', 'CLOSED', 20000, 20000, 0),
+            ('sim-defaulted', 'DEFAULTED', 30000, 0, 30000), ('sim-pending-settlement', 'APPROVED', 0, 0, 0),
+            ('sim-rejected', 'REJECTED', 0, 0, 0), ('sim-unbound', 'DRAWN', 15000, 0, 15000)])
+        self.assertEqual((exposure['drawn'], exposure['repaid'], exposure['outstanding']), (65000, 20000, 45000))
+        self.assertEqual(exposure['drawn'] - exposure['repaid'], exposure['outstanding'])
+
+    def test_reserved_settlement_and_refund_categories(self):
+        reserved = self.categories['reserved']
+        self.assertEqual(reserved['total'], 45000)
+        self.assertIs(reserved['consistent'], True)
+        # Four advances share the committed claim, two share the pending one; each claim reserves once.
+        self.assertEqual(sorted({(row['claim_id'], row['reserved_open']) for row in reserved['rows']}),
+                         [('sim-committed', 30000), ('sim-pending', 15000)])
+        settlement = self.categories['settlement']
+        self.assertEqual((settlement['confirmed'], settlement['distributed']), (194000, 0))
+        self.assertEqual([(row['claim_id'], row['phase'], row['confirmed_cash']) for row in settlement['rows']], [
+            ('sim-committed', 'COMMITTED', 97000), ('sim-pending', 'CAPTURED', 0), ('sim-refund', 'COMMITTED', 97000)])
+        refund = self.categories['refund']
+        self.assertEqual((refund['refund_face'], refund['refund_accepted'], refund['refund_outstanding']),
+                         (10000, 0, 10000))
+        self.assertEqual([row['claim_id'] for row in refund['rows'] if row['refund_face']], ['sim-refund'])
+
+    def test_one_preview_per_case_and_only_the_pending_settlement_would_reject(self):
+        self.assertEqual([(row['advance_id'], row['outcome'], row['reason'], row['settlement_gate'])
+                          for row in self.group['previews']], PREVIEWS)
+        for row in self.group['previews']:
+            with self.subTest(advance_id=row['advance_id']):
+                self.assertEqual(row['mode'], 'READ_ONLY_PREVIEW')
+                self.assertEqual(row['observed_state_digest'], self.golden['state_digest'])
+                self.assertIs(row['funds_executed'], False)
+                self.assertIs(row['workspace_mutated'], False)
+                self.assertIs(row['write_authorized'], False)
+
+    def test_vectors_are_what_a_different_instance_produces(self):
+        service = live_seed_service()
+        try:
+            statement = strip_volatile(service.statement())
+            previews = [strip_volatile(service.preview_draw(row['advance_id'], service.instance_id))
+                        for row in self.group['previews']]
+        finally:
+            seed_demo._release(service.producer)
+        self.assertEqual(statement, self.statement)
+        self.assertEqual(digest(statement), self.group['statement_digest'])
+        self.assertEqual(previews, self.group['previews'])
+
+
+class ManifestVectorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.group = load_artifact()['groups']['manifest_section_digests']
+        cls.golden = json.loads(GOLDEN.read_text(encoding='utf-8'))
+
+    def test_content_digest_is_the_golden_content_digest(self):
+        self.assertEqual(self.group['content_digest'], self.golden['content_digest'])
+        self.assertRegex(self.group['content_digest'], SHA256)
+
+    def test_manifest_is_complete_and_unsigned(self):
+        group = self.group
+        self.assertEqual(group['manifest_format'], 'KIX_CAPITAL_EXPORT_MANIFEST_V2')
+        self.assertEqual(group['status'], 'COMPLETE')
+        self.assertEqual(group['incomplete_reasons'], [])
+        self.assertEqual((group['signature_status'], group['signature_alg']), ('NOT_BOUND', 'UNSIGNED'))
+        self.assertIs(group['stage7_authenticated_export'], False)
+
+    def test_seven_sections_each_with_a_sha256(self):
+        self.assertEqual(self.group['section_ids'], MANIFEST_SECTIONS)
+        for key in ('section_sha256', 'section_content_sha256'):
+            with self.subTest(key=key):
+                self.assertEqual(sorted(self.group[key]), sorted(MANIFEST_SECTIONS))
+                for name, value in self.group[key].items():
+                    self.assertRegex(value, SHA256, name)
+                self.assertEqual(len(set(self.group[key].values())), 7)
+
+    def test_stored_hash_differs_only_where_the_saved_body_carries_an_instance_id(self):
+        stored, covered = self.group['section_sha256'], self.group['section_content_sha256']
+        self.assertEqual(sorted(name for name in MANIFEST_SECTIONS if stored[name] != covered[name]),
+                         sorted(INSTANCE_BOUND_SECTIONS))
+
+    def test_instance_free_hashes_and_digest_are_what_a_different_instance_produces(self):
+        service = live_seed_service()
+        try:
+            manifest = service.export_manifest()
+        finally:
+            seed_demo._release(service.producer)
+        self.assertEqual(manifest['content_digest'], self.group['content_digest'])
+        covered = content_material(manifest)['sections']
+        self.assertEqual({name: covered[name]['sha256'] for name in MANIFEST_SECTIONS},
+                         self.group['section_content_sha256'])
+        # The stored hash of an instance-bound section does move with the instance id.
+        for name in INSTANCE_BOUND_SECTIONS:
+            self.assertNotEqual(manifest['sections'][name]['sha256'], self.group['section_sha256'][name])
+        for name in sorted(set(MANIFEST_SECTIONS) - set(INSTANCE_BOUND_SECTIONS)):
+            self.assertEqual(manifest['sections'][name]['sha256'], self.group['section_sha256'][name])
+
+    def test_the_manifest_body_is_not_copied(self):
+        self.assertEqual(sorted(self.group), sorted([
+            'candidate', 'label', 'data_label', 'source', 'manifest_format', 'status', 'incomplete_reasons',
+            'section_ids', 'section_sha256', 'section_content_sha256', 'signature_status', 'signature_alg',
+            'stage7_authenticated_export', 'content_digest']))
+
+
+class FacadeReadModelVectorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.group = load_artifact()['groups']['facade_read_model']
+        cls.contract = json.loads(FACADE.read_text(encoding='utf-8'))
+        cls.by_path = {row['path']: row for row in cls.group['routes']}
+
+    def test_contract_identity_and_non_claims(self):
+        group = self.group
+        self.assertEqual(group['namespace'], 'capital-local-facade/1')
+        self.assertEqual(group['source'], 'capital/contract/facade-v1.json')
+        self.assertEqual(group['contract_label'], 'SIMULATED')
+        self.assertIs(group['semantic_conformance'], False)
+        self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
+        self.assertIs(group['catalogue'], False)
+
+    def test_exactly_the_twenty_one_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 21)
+        self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
+                          for row in self.group['routes']], FACADE_READS)
+
+    def test_post_and_static_routes_are_left_out(self):
+        left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
+        self.assertEqual(len(self.contract['routes']), 29)
+        self.assertEqual(len(left_out), 8)
+        self.assertTrue(any(route['method'] == 'POST' for route in left_out))
+        self.assertTrue(any(route['kind'] == 'static' for route in left_out))
+        # A POST command path may share a path with a GET read; only the GET rows are kept.
+        self.assertEqual(len(self.by_path), len(self.group['routes']))
+        self.assertEqual(sorted(self.by_path), sorted(path for path, _ in FACADE_READS))
+
+    def test_permission_and_operation_id_come_from_the_contract(self):
+        for route in self.contract['routes']:
+            if route['kind'] == 'api' and route['method'] == 'GET':
+                with self.subTest(path=route['path']):
+                    row = self.by_path[route['path']]
+                    self.assertEqual((row['operation_id'], row['permission']),
+                                     (route['operationId'], route['permission']))
+        self.assertEqual(self.by_path['/api/statement']['permission'], 'statement:read')
+        self.assertEqual(self.by_path['/api/reconciliation']['permission'], 'reconciliation:read')
+        self.assertEqual(self.by_path['/api/export/manifest']['permission'], 'export:read')
+
+    def test_definition_digests_are_recomputed_from_the_contract_file(self):
+        definitions = self.contract['definitions']
+        for row in self.group['routes']:
+            with self.subTest(path=row['path']):
+                for item in row['response_definitions']:
+                    self.assertEqual(item['definition_digest'], digest(definitions[item['definition']]))
+                    self.assertIn(item['definition'], row['closure'])
+                self.assertEqual(row['closure'], sorted(row['closure']))
+                self.assertEqual(row['closure_digest'], digest({name: definitions[name] for name in row['closure']}))
+        self.assertEqual(self.group['contract_digest'], digest(self.contract))
+
+    def test_closure_follows_nested_refs(self):
+        self.assertEqual(self.by_path['/api/health']['closure'], ['health'])
+        self.assertEqual(self.by_path['/api/statement']['closure'], [
+            'approved_row', 'exposure_row', 'gap', 'refund_row', 'reserved_row', 'scope', 'settlement_row', 'statement'])
+        self.assertEqual(self.by_path['/api/operations/{operation_id}']['closure'], [
+            'accepted_receipt', 'command_result', 'credit_view', 'rejected_receipt', 'repayment', 'unknown_operation'])
+        self.assertIn('statement', self.by_path['/api/export/manifest']['closure'])
+        self.assertGreater(len(self.by_path['/api/export/manifest']['closure']), 40)
+
+    def test_a_nested_definition_edit_moves_the_closure_digest_but_not_the_route_definition(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            edited = json.loads(FACADE.read_text(encoding='utf-8'))
+            edited['definitions']['gap']['description'] = 'edited by test'
+            copy_path = Path(tmp) / 'facade.json'
+            copy_path.write_text(json.dumps(edited), encoding='utf-8')
+            with mock.patch.object(script, 'FACADE_FILE', copy_path):
+                changed = {row['path']: row for row in script.facade_read_model()['routes']}
+        for path in ('/api/statement', '/api/reconciliation'):
+            with self.subTest(path=path):
+                self.assertEqual(changed[path]['response_definitions'], self.by_path[path]['response_definitions'])
+                self.assertNotEqual(changed[path]['closure_digest'], self.by_path[path]['closure_digest'])
+        self.assertEqual(changed['/api/health'], self.by_path['/api/health'])
 
 
 class RegenerationTests(unittest.TestCase):

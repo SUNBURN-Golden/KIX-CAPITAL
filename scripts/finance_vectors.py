@@ -5,7 +5,7 @@ The artifact is SIMULATED and deterministic: no clock, no random instance id, no
 path. It supplies INPUT_VECTOR_CANDIDATE material for FINANCE_PENDING_NODES
 candidates, which is the vector-supplier role of
 docs/decisions/CAPITAL_UPSTREAM_BINDING.md (entry stage6_finance_candidates).
-Three groups, each naming one candidate id:
+Seven groups, each naming one candidate id:
 
 - scenario_obligations -> fin-multi-payee-refund-proof: the nine F01-F03
   scenarios of capital/scenarios.py, 35 steps, with the per-payee obligation
@@ -16,9 +16,20 @@ Three groups, each naming one candidate id:
 - journal_projection_digests -> fin-double-entry-projection: for every journal
   prefix, the restored state_digest and the SIMULATION_FIXED_V1 entries,
   accounts and read-model digests with debit and credit totals.
+- seed_reconciliation -> fin-observation-reconciliation: the six-check
+  reconciliation report on the fixed-instance seed book, with one probed
+  operation id that was never issued.
+- statement_and_previews -> fin-credit-exposure-reconciliation: the
+  five-category statement and the read-only draw preview of every case.
+- manifest_section_digests -> fin-consistent-accounting-export: the manifest v2
+  section sha256 values and content_digest of the fixed-instance seed book.
+- facade_read_model -> fin-catalogue-read-model: the response definition
+  digests of every GET route in capital/contract/facade-v1.json.
 
-Five other candidates have no vectors here. Their Capital inputs are named in the
-binding note and are not copied.
+fin-finance-closeout has no vectors. Its named input, build/acceptance-evidence.json,
+is an untracked per-run file, so the candidates index says why and holds null.
+The report, statement and preview bodies are stored with instance id keys removed
+(capital.export.strip_volatile), so the artifact carries no instance id.
 
 This is not SEMANTIC_CONFORMANCE and it completes no upstream node. Passing
 --check says only that the pinned local code still produces these bytes. It
@@ -40,14 +51,18 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from capital.export import SECTION_IDS, content_digest, content_material, strip_volatile
 from capital.producer import FixtureViews
 from capital.projection import SimulationProjection
 from capital.protocol import CreditMachine
+from capital.recon import CHECK_IDS
 from capital.resources import vendor_manifest
 from capital.scenarios import replay_scenarios
 from capital.service import CapitalService, digest
 
 DEFAULT_FILE = ROOT / 'tests' / 'vectors' / 'finance_vectors.json'
+FACADE_SOURCE = 'capital/contract/facade-v1.json'
+FACADE_FILE = ROOT.joinpath(*FACADE_SOURCE.split('/'))
 FORMAT = 'KIX_CAPITAL_FINANCE_VECTORS_V1'
 INSTANCE_ID = 'finance-vectors'
 ROLE = 'INPUT_VECTOR_CANDIDATE'
@@ -68,7 +83,20 @@ GROUP_CANDIDATES = {
     'scenario_obligations': 'fin-multi-payee-refund-proof',
     'f04_command_outcomes': 'fin-ledger-contract',
     'journal_projection_digests': 'fin-double-entry-projection',
+    'seed_reconciliation': 'fin-observation-reconciliation',
+    'statement_and_previews': 'fin-credit-exposure-reconciliation',
+    'manifest_section_digests': 'fin-consistent-accounting-export',
+    'facade_read_model': 'fin-catalogue-read-model',
 }
+CLOSEOUT = 'fin-finance-closeout'
+CLOSEOUT_REASON = (
+    'build/acceptance-evidence.json is an untracked per-run file (it records the git head_sha and the local '
+    'tool versions), so no stable bytes exist to pin as a vector. The input stays named in '
+    'docs/decisions/CAPITAL_UPSTREAM_BINDING.md only.'
+)
+PROBE_OPERATION_ID = 'op-never-issued'
+STATEMENT_CATEGORIES = ('approved', 'exposure', 'reserved', 'settlement', 'refund')
+DEFINITION_PREFIX = '#/definitions/'
 NOTE = (
     'SIMULATED input vectors for FINANCE_PENDING_NODES candidates. INPUT_VECTOR_CANDIDATE is the '
     'vector-supplier role of docs/decisions/CAPITAL_UPSTREAM_BINDING.md. This is not SEMANTIC_CONFORMANCE, '
@@ -232,6 +260,132 @@ def journal_projection_digests(service):
     }
 
 
+def seed_reconciliation(service):
+    """The six-check report on the seed book. Instance ids are stripped, so the report is the same on any instance."""
+    report = strip_volatile(service.reconciliation(probe_operation_id=PROBE_OPERATION_ID))
+    _require(report['status'] == 'MATCHED', f'reconciliation status {report["status"]}')
+    _require([(row['id'], row['status']) for row in report['checks']] == [(name, 'MATCHED') for name in CHECK_IDS],
+             'reconciliation checks are not the six CHECK_IDS, all MATCHED')
+    _require([row['operation_id'] for row in report['unknown_unresolved']] == [PROBE_OPERATION_ID],
+             'probe row missing from unknown_unresolved')
+    return {
+        'candidate': GROUP_CANDIDATES['seed_reconciliation'], 'label': ROLE, 'data_label': 'SIMULATED',
+        'source': 'CapitalService.reconciliation on the fixed-instance seed book (capital/recon.py)',
+        'check_ids': list(CHECK_IDS), 'probe_operation_id': PROBE_OPERATION_ID,
+        'report': report, 'report_digest': digest(report),
+    }
+
+
+def statement_and_previews(service):
+    """The five-category statement and one read-only draw preview per case, instance ids stripped."""
+    statement = strip_volatile(service.statement())
+    category_ids = [row['id'] for row in statement['categories']]
+    _require(category_ids == list(STATEMENT_CATEGORIES), f'statement categories {category_ids}')
+    previews = [strip_volatile(service.preview_draw(advance_id, INSTANCE_ID))
+                for advance_id in sorted(service.case_fixtures)]
+    _require(all(row['funds_executed'] is False and row['workspace_mutated'] is False for row in previews),
+             'a preview wrote or moved funds')
+    return {
+        'candidate': GROUP_CANDIDATES['statement_and_previews'], 'label': ROLE, 'data_label': 'SIMULATED',
+        'source': 'CapitalService.statement and preview_draw on the fixed-instance seed book (capital/statement.py)',
+        'category_ids': category_ids, 'statement': statement, 'statement_digest': digest(statement),
+        'previews': previews,
+    }
+
+
+def manifest_section_digests(service):
+    """Section hashes and content_digest of the v2 manifest. The manifest body itself is not copied.
+
+    section_sha256 is the stored hash, which covers a body that carries this seed's instance id.
+    section_content_sha256 is the hash content_digest covers, with instance and timestamp keys removed.
+    """
+    manifest = service.export_manifest()
+    _require(manifest['status'] == 'COMPLETE' and manifest['incomplete_reasons'] == [],
+             f'manifest status {manifest["status"]}')
+    _require(list(manifest['sections']) == list(SECTION_IDS), 'manifest section set changed')
+    _require(content_digest(manifest) == manifest['content_digest'], 'content_digest does not recompute')
+    covered = content_material(manifest)['sections']
+    return {
+        'candidate': GROUP_CANDIDATES['manifest_section_digests'], 'label': ROLE, 'data_label': 'SIMULATED',
+        'source': 'CapitalService.export_manifest on the fixed-instance seed book (capital/export.py)',
+        'manifest_format': manifest['format'], 'status': manifest['status'],
+        'incomplete_reasons': manifest['incomplete_reasons'], 'section_ids': list(SECTION_IDS),
+        'section_sha256': {name: manifest['sections'][name]['sha256'] for name in SECTION_IDS},
+        'section_content_sha256': {name: covered[name]['sha256'] for name in SECTION_IDS},
+        'signature_status': manifest['signature']['status'], 'signature_alg': manifest['signature']['alg'],
+        'stage7_authenticated_export': manifest['stage7_authenticated_export'],
+        'content_digest': manifest['content_digest'],
+    }
+
+
+def _definition_refs(node, found):
+    """Add every '#/definitions/<name>' target under node to found."""
+    if type(node) is dict:
+        for key, item in node.items():
+            if key == '$ref' and type(item) is str and item.startswith(DEFINITION_PREFIX):
+                found.add(item[len(DEFINITION_PREFIX):])
+            else:
+                _definition_refs(item, found)
+    elif type(node) is list:
+        for item in node:
+            _definition_refs(item, found)
+
+
+def _definition_closure(definitions, names):
+    """Sorted names of the given definitions and every definition they reach through $ref."""
+    seen = set()
+    pending = list(names)
+    while pending:
+        name = pending.pop()
+        if name in seen:
+            continue
+        _require(name in definitions, f'facade definition {name} is not declared')
+        seen.add(name)
+        nested = set()
+        _definition_refs(definitions[name], nested)
+        pending.extend(nested - seen)
+    return sorted(seen)
+
+
+def facade_read_model():
+    """Response definition digests of every GET api route. Reads the contract file, no server."""
+    contract = json.loads(FACADE_FILE.read_text(encoding='utf-8'))
+    _require(contract['namespace'] == 'capital-local-facade/1' and contract['semantic_conformance'] is False,
+             'facade contract is not the local, non-conformance one')
+    definitions = contract['definitions']
+    routes = []
+    reached = set()
+    for route in contract['routes']:
+        if route['kind'] != 'api' or route['method'] != 'GET':
+            continue
+        refs = set()
+        _definition_refs(route['response'], refs)
+        _require(refs, f'{route["path"]} response names no definition')
+        closure = _definition_closure(definitions, refs)
+        reached.update(closure)
+        routes.append({
+            'path': route['path'], 'operation_id': route['operationId'], 'permission': route['permission'],
+            'response_definitions': [{'definition': name, 'definition_digest': digest(definitions[name])}
+                                     for name in sorted(refs)],
+            'closure': closure, 'closure_digest': digest({name: definitions[name] for name in closure}),
+        })
+    return {
+        'candidate': GROUP_CANDIDATES['facade_read_model'], 'label': ROLE, 'data_label': 'SIMULATED',
+        'source': FACADE_SOURCE, 'namespace': contract['namespace'], 'contract_label': contract['label'],
+        'semantic_conformance': contract['semantic_conformance'], 'cap16_exact_tuple': contract['cap16_exact_tuple'],
+        'catalogue': False, 'route_count': len(routes), 'routes': routes,
+        'definitions_digest': digest({name: definitions[name] for name in sorted(reached)}),
+        'contract_digest': digest(contract),
+    }
+
+
+def candidate_row(name):
+    """Index row: the group that supplies the candidate, or null with the reason none does."""
+    group = next((group for group, held in GROUP_CANDIDATES.items() if held == name), None)
+    return {'id': name, 'vectors': group,
+            'reason': CLOSEOUT_REASON if group is None and name == CLOSEOUT else None}
+
+
 def build_body() -> dict:
     seed = _load_seed()
     service, rows = replay_f04(seed)
@@ -240,6 +394,10 @@ def build_body() -> dict:
             'scenario_obligations': scenario_obligations(),
             'f04_command_outcomes': f04_command_outcomes(service, rows),
             'journal_projection_digests': journal_projection_digests(service),
+            'seed_reconciliation': seed_reconciliation(service),
+            'statement_and_previews': statement_and_previews(service),
+            'manifest_section_digests': manifest_section_digests(service),
+            'facade_read_model': facade_read_model(),
         }
     finally:
         seed._release(service.producer)
@@ -247,9 +405,7 @@ def build_body() -> dict:
         'format': FORMAT, 'label': 'SIMULATED', 'funds_executed': False, 'vector_role': ROLE,
         'semantic_conformance': False, 'upstream_nodes_completed': [],
         'source_commit': vendor_manifest()['commit'],
-        'candidates': [{'id': name, 'vectors': next((group for group, held in GROUP_CANDIDATES.items()
-                                                      if held == name), None)}
-                       for name in CANDIDATES],
+        'candidates': [candidate_row(name) for name in CANDIDATES],
         'note': NOTE, 'groups': groups,
     }
     try:
