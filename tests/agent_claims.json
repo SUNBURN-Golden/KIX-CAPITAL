@@ -1,0 +1,689 @@
+{
+  "format": "KIX_CAPITAL_AGENT_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+  "note": "CLAIM_CONFORMANCE checks against the simulated agent lane over the in-process loopback facade (CapitalService). Results are SIMULATED. The lane is a Capital fixture (SIMULATED_AGENT_GRANT / IN_MEMORY_FIXTURE), not the upstream reference/ai_delegation/ai_delegation_mock.py, which stays a read-only reference and is not vendored. Adapter mapping, stated honestly: the draft's PROPOSED memo phase maps to the lane's HUMAN_PENDING label; the draft's always-failing attempt_execution (DELEGATED_EXECUTION_DISABLED) maps to the lane's EXECUTE_AUTHORITY_DISABLED refusal; the draft's PROPOSED/HUMAN_APPROVED decision flow has no lane counterpart because the lane has no decide step — a human organizer command may cite a pending proposal_id on its receipt without executing the memo. Money and two-person values come from the adopted CAPITAL-TERMS-V1 underwriting_depth entry, not from the draft, which leaves product limits undetermined. A missing protocol checkout is SKIPPED and is not a pass.",
+  "claims": [
+    {
+      "id": "agent-query-grant-id",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "query_grant returns the fixture grant id for the lane's active grant (DLG-33 QUERY read).",
+      "check_id": "agent.query.grant_id",
+      "needle": "grant_id",
+      "expected": "sim-grant-agent"
+    },
+    {
+      "id": "agent-query-generation",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The fixture grant view carries a generation number like the draft's per-pair generation record.",
+      "check_id": "agent.query.generation",
+      "needle": "generation",
+      "expected": 2
+    },
+    {
+      "id": "agent-query-phase",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The active fixture grant reports phase ACTIVE inside its window.",
+      "check_id": "agent.query.phase",
+      "needle": "ACTIVE",
+      "expected": "ACTIVE"
+    },
+    {
+      "id": "agent-query-authority",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "3. 권한 수준",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The grant authority is the sorted non-empty subset of QUERY and PROPOSE; it contains no EXECUTE (DLG-03).",
+      "check_id": "agent.query.authority",
+      "needle": "authority",
+      "expected": ["PROPOSE", "QUERY"]
+    },
+    {
+      "id": "agent-query-agent-id",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "1. 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The fixture grant names the registered AI agent identifier of the lane.",
+      "check_id": "agent.query.agent_id",
+      "needle": "AI 에이전트",
+      "expected": "sim-agent"
+    },
+    {
+      "id": "agent-query-issuer",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "1. 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The fixture grant names a simulated human-principal issuer; the draft's human-principal registry is a fixture too.",
+      "check_id": "agent.query.issuer",
+      "needle": "인간 주체",
+      "expected": "sim-organizer"
+    },
+    {
+      "id": "agent-query-issuer-kind",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "1. 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The issuer is labeled a simulated fixture, not a registered person.",
+      "check_id": "agent.query.issuer_kind",
+      "needle": "fixture",
+      "expected": "SIMULATED_FIXTURE"
+    },
+    {
+      "id": "agent-query-scope",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The grant scope is a non-empty opaque surface list with subjects omitted (DLG-13 membership only).",
+      "check_id": "agent.query.scope",
+      "needle": "surfaces",
+      "expected": {
+        "surfaces": [
+          "capital:approve",
+          "capital:close",
+          "capital:default",
+          "capital:draw",
+          "capital:offer",
+          "capital:reconcile",
+          "capital:repay"
+        ],
+        "subjects": null
+      }
+    },
+    {
+      "id": "agent-query-ai-role",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "3. 권한 수준",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The grant view carries the adopted terms note's ai_role label, consistent with the draft's QUERY/PROPOSE-only authority.",
+      "check_id": "agent.query.ai_role",
+      "needle": "PROPOSE",
+      "expected": "PROPOSE_ONLY (executionAuthorized=false)"
+    },
+    {
+      "id": "agent-query-limits",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The grant exposes all four limit fields plus currency with no default or unlimited value (DLG-14); numbers come from the adopted terms note.",
+      "check_id": "agent.query.limits",
+      "needle": "per_action_max",
+      "expected": {
+        "per_action_max": 500000000,
+        "cumulative_max": 2000000000,
+        "count_max": 1000000000000,
+        "currency": "KRW",
+        "count_max_meaning": "DRAFT_INPUT_CEILING_NOT_A_PRODUCT_LIMIT"
+      }
+    },
+    {
+      "id": "agent-query-currency",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The limit currency is KRW (DLG-34).",
+      "check_id": "agent.query.currency",
+      "needle": "KRW",
+      "expected": "KRW"
+    },
+    {
+      "id": "agent-query-count-meaning",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "count_max is labeled a draft input ceiling, not a product limit (DLG-34).",
+      "check_id": "agent.query.count_meaning",
+      "needle": "제품 한도가 아니다",
+      "expected": "DRAFT_INPUT_CEILING_NOT_A_PRODUCT_LIMIT"
+    },
+    {
+      "id": "agent-query-period",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The grant period is a caller-supplied logical integer pair, not wall-clock time; the lane labels it a simulated logical window.",
+      "check_id": "agent.query.period",
+      "needle": "not_before",
+      "expected": {
+        "not_before": 1,
+        "not_after": 1000,
+        "period_meaning": "SIMULATED_LOGICAL_WINDOW"
+      }
+    },
+    {
+      "id": "agent-query-provenance",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "0. 범위와 상태",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Every lane envelope carries a provenance marker (DLG-30); Capital labels it SIMULATED_AGENT_GRANT, not the upstream mock's marker.",
+      "check_id": "agent.query.provenance",
+      "needle": "provenance",
+      "expected": "SIMULATED_AGENT_GRANT"
+    },
+    {
+      "id": "agent-query-lifecycle",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "0. 범위와 상태",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Every lane envelope carries lifecycle_authority (DLG-30); Capital labels it IN_MEMORY_FIXTURE.",
+      "check_id": "agent.query.lifecycle",
+      "needle": "lifecycle_authority",
+      "expected": "IN_MEMORY_FIXTURE"
+    },
+    {
+      "id": "agent-query-identity",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "9. UNDETERMINED와 후속 결정",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The lane reports identity NOT_BOUND while the draft leaves AI service identity undetermined.",
+      "check_id": "agent.query.identity",
+      "needle": "identity",
+      "expected": "NOT_BOUND"
+    },
+    {
+      "id": "agent-query-action-permit",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "9. UNDETERMINED와 후속 결정",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The lane reports action_permit NOT_BOUND; the draft leaves wire commands and on-chain grant work outside this node.",
+      "check_id": "agent.query.action_permit",
+      "needle": "온체인 grant",
+      "expected": "NOT_BOUND"
+    },
+    {
+      "id": "agent-query-idp",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "9. UNDETERMINED와 후속 결정",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The lane reports idp NOT_BOUND; the draft assigns open decisions to named later deciders, not to this fixture.",
+      "check_id": "agent.query.idp",
+      "needle": "정할 주체",
+      "expected": "NOT_BOUND"
+    },
+    {
+      "id": "agent-query-kyc",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "0. 범위와 상태",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The lane calls no KYC and reports kyc NOT_BOUND, mirroring the draft's no-KYC-call rule.",
+      "check_id": "agent.query.kyc",
+      "needle": "KYC",
+      "expected": "NOT_BOUND"
+    },
+    {
+      "id": "agent-query-upstream-receipt",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "# AI 위임 권한 — 초안 0.1",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Draft 0.1 is a draft: the lane envelope reports upstream_receipt NONE and claims no adopted upstream artifact.",
+      "check_id": "agent.query.upstream_receipt",
+      "needle": "MOCK_AI_DELEGATION_ONLY",
+      "expected": "NONE"
+    },
+    {
+      "id": "agent-query-workspace-mutated",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-01: the QUERY read mutates nothing; the envelope reports workspace_mutated false.",
+      "check_id": "agent.query.workspace_mutated",
+      "needle": "상태를 바꾸지 않는다",
+      "expected": false
+    },
+    {
+      "id": "agent-query-duplicate",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A fresh query reports duplicate false; the draft reserves duplicate: true for replays.",
+      "check_id": "agent.query.duplicate",
+      "needle": "duplicate: true",
+      "expected": false
+    },
+    {
+      "id": "agent-query-no-receipt",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-01: a query writes no command receipt into the facade.",
+      "check_id": "agent.query.no_receipt",
+      "needle": "상태를 바꾸지 않는다",
+      "expected": 0
+    },
+    {
+      "id": "agent-query-not-bound",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "9. UNDETERMINED와 후속 결정",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "With no usable terms note the lane fails closed NOT_BOUND; the draft leaves product limits undetermined so no fixture invents them.",
+      "check_id": "agent.query.not_bound",
+      "needle": "UNDETERMINED",
+      "expected": "NOT_BOUND"
+    },
+    {
+      "id": "agent-flag-execution-enabled",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps execution_enabled false.",
+      "check_id": "agent.flag.execution_enabled",
+      "needle": "execution_enabled",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-issued",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps issued false.",
+      "check_id": "agent.flag.issued",
+      "needle": "issued",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-paid",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps paid false.",
+      "check_id": "agent.flag.paid",
+      "needle": "paid",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-signed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps signed false.",
+      "check_id": "agent.flag.signed",
+      "needle": "signed",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-transferred",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps transferred false.",
+      "check_id": "agent.flag.transferred",
+      "needle": "transferred",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-effects-executed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-28: the lane envelope keeps effects_executed false; an approved memo never executes.",
+      "check_id": "agent.flag.effects_executed",
+      "needle": "effects_executed",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-funds-executed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps funds_executed false.",
+      "check_id": "agent.flag.funds_executed",
+      "needle": "funds_executed",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-refund-executed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps refund_executed false.",
+      "check_id": "agent.flag.refund_executed",
+      "needle": "refund_executed",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-chain-grant-confirmed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps chain_grant_confirmed false.",
+      "check_id": "agent.flag.chain_grant_confirmed",
+      "needle": "chain_grant_confirmed",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-revocation-cut-confirmed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps revocation_cut_confirmed false.",
+      "check_id": "agent.flag.revocation_cut_confirmed",
+      "needle": "revocation_cut_confirmed",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-durable",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps durable false.",
+      "check_id": "agent.flag.durable",
+      "needle": "durable",
+      "expected": false
+    },
+    {
+      "id": "agent-flag-legal-authority",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-29: a successful lane call keeps legal_authority false.",
+      "check_id": "agent.flag.legal_authority",
+      "needle": "legal_authority",
+      "expected": false
+    },
+    {
+      "id": "agent-propose-phase",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-02: propose_action stores a non-executing memo; the lane phase reads HUMAN_PENDING (the Capital label for the draft's PROPOSED memo state).",
+      "check_id": "agent.propose.phase",
+      "needle": "비활성 제안 메모",
+      "expected": "HUMAN_PENDING"
+    },
+    {
+      "id": "agent-propose-effects-false",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-28: the stored proposal keeps effects_executed false.",
+      "check_id": "agent.propose.effects_executed",
+      "needle": "승인은 메모다",
+      "expected": false
+    },
+    {
+      "id": "agent-propose-decision-null",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The lane stores no decision: decide_proposal is a human-only upstream tool and the lane has no decide step, so the memo keeps decision null.",
+      "check_id": "agent.propose.decision",
+      "needle": "decide_proposal",
+      "expected": null
+    },
+    {
+      "id": "agent-propose-stored",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The stored proposal row keeps the pending phase (HUMAN_PENDING mirrors the draft's PROPOSED) with effects_executed false.",
+      "check_id": "agent.propose.stored",
+      "needle": "PROPOSED",
+      "expected": {"phase": "HUMAN_PENDING", "effects_executed": false}
+    },
+    {
+      "id": "agent-propose-duplicate",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-26: the same proposal_id with the same binding replays as duplicate true.",
+      "check_id": "agent.propose.duplicate",
+      "needle": "duplicate: true",
+      "expected": true
+    },
+    {
+      "id": "agent-propose-binding-conflict",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-26: the same proposal_id with a different binding is PROPOSAL_BINDING_CONFLICT.",
+      "check_id": "agent.propose.binding_conflict",
+      "needle": "PROPOSAL_BINDING_CONFLICT",
+      "expected": {"code": "PROPOSAL_BINDING_CONFLICT", "status": 409}
+    },
+    {
+      "id": "agent-propose-two-person",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "9. UNDETERMINED와 후속 결정",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A proposal above the adopted terms note's two-person threshold is marked two_person_required; the draft leaves product thresholds undetermined so the marker names the note's value, not a draft value.",
+      "check_id": "agent.propose.two_person",
+      "needle": "UNDETERMINED",
+      "expected": true
+    },
+    {
+      "id": "agent-propose-scope-violation",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-13: a surface outside the grant's surfaces list is SCOPE_VIOLATION.",
+      "check_id": "agent.propose.scope_violation",
+      "needle": "SCOPE_VIOLATION",
+      "expected": {"code": "SCOPE_VIOLATION", "status": 400}
+    },
+    {
+      "id": "agent-propose-invalid-amount",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-18: a zero amount is INVALID_AMOUNT.",
+      "check_id": "agent.propose.invalid_amount",
+      "needle": "INVALID_AMOUNT",
+      "expected": {"code": "INVALID_AMOUNT", "status": 400}
+    },
+    {
+      "id": "agent-propose-per-action",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "An amount above the grant's per_action_max is PER_ACTION_EXCEEDED.",
+      "check_id": "agent.propose.per_action",
+      "needle": "PER_ACTION_EXCEEDED",
+      "expected": {"code": "PER_ACTION_EXCEEDED", "status": 400}
+    },
+    {
+      "id": "agent-propose-cumulative",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-17: pending proposals charge the cumulative cap, so the memo that would exceed cumulative_max is CUMULATIVE_EXCEEDED.",
+      "check_id": "agent.propose.cumulative",
+      "needle": "CUMULATIVE_EXCEEDED",
+      "expected": {"code": "CUMULATIVE_EXCEEDED", "status": 400}
+    },
+    {
+      "id": "agent-propose-execute-kind",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-03: a proposal whose kind is EXECUTE is EXECUTE_AUTHORITY_DISABLED and stores nothing.",
+      "check_id": "agent.propose.execute_kind",
+      "needle": "EXECUTE_AUTHORITY_DISABLED",
+      "expected": {"code": "EXECUTE_AUTHORITY_DISABLED", "status": 403}
+    },
+    {
+      "id": "agent-propose-tool-not-allowed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-33/DLG-36: a grant without the PROPOSE level refuses propose_action with TOOL_NOT_ALLOWED.",
+      "check_id": "agent.propose.tool_not_allowed",
+      "needle": "TOOL_NOT_ALLOWED",
+      "expected": {"code": "TOOL_NOT_ALLOWED", "status": 403}
+    },
+    {
+      "id": "agent-execute-refused",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "3. 권한 수준",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-04: the lane refuses EXECUTE with EXECUTE_AUTHORITY_DISABLED 403, mirroring the draft's always-failing attempt_execution (DELEGATED_EXECUTION_DISABLED).",
+      "check_id": "agent.execute.refused",
+      "needle": "DELEGATED_EXECUTION_DISABLED",
+      "expected": {"code": "EXECUTE_AUTHORITY_DISABLED", "status": 403}
+    },
+    {
+      "id": "agent-execute-no-write",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-04: a refused EXECUTE writes nothing; the proposal register stays empty.",
+      "check_id": "agent.execute.no_write",
+      "needle": "상태를 바꾸지 않는다",
+      "expected": 0
+    },
+    {
+      "id": "agent-period-not-before",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-19: now at not_before is inside the inclusive window and the grant reads ACTIVE.",
+      "check_id": "agent.period.not_before",
+      "needle": "양 끝 포함",
+      "expected": "ACTIVE"
+    },
+    {
+      "id": "agent-period-not-after",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-19: now at not_after is inside the inclusive window and the grant reads ACTIVE.",
+      "check_id": "agent.period.not_after",
+      "needle": "not_after",
+      "expected": "ACTIVE"
+    },
+    {
+      "id": "agent-period-before",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-19: now before not_before is GRANT_NOT_CURRENT.",
+      "check_id": "agent.period.before",
+      "needle": "GRANT_NOT_CURRENT",
+      "expected": {"code": "GRANT_NOT_CURRENT", "status": 403}
+    },
+    {
+      "id": "agent-period-after",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-19: now after not_after is GRANT_EXPIRED.",
+      "check_id": "agent.period.after",
+      "needle": "GRANT_EXPIRED",
+      "expected": {"code": "GRANT_EXPIRED", "status": 403}
+    },
+    {
+      "id": "agent-period-stale",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "4. 부여 기록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A stale generation reads GRANT_NOT_CURRENT; the draft's rule is that changes are a new generation.",
+      "check_id": "agent.period.stale",
+      "needle": "새 세대",
+      "expected": {"code": "GRANT_NOT_CURRENT", "status": 403}
+    },
+    {
+      "id": "agent-period-revoked",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-20: a revoked generation refuses tool use with GRANT_REVOKED.",
+      "check_id": "agent.period.revoked",
+      "needle": "GRANT_REVOKED",
+      "expected": {"code": "GRANT_REVOKED", "status": 403}
+    },
+    {
+      "id": "agent-period-unknown",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A missing grant_id is UNKNOWN_GRANT, kept distinct from a binding conflict.",
+      "check_id": "agent.period.unknown",
+      "needle": "UNKNOWN_GRANT",
+      "expected": {"code": "UNKNOWN_GRANT", "status": 404}
+    },
+    {
+      "id": "agent-period-invalid",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A malformed now is INVALID_PERIOD; the draft validates the period and now format.",
+      "check_id": "agent.period.invalid",
+      "needle": "INVALID_PERIOD",
+      "expected": {"code": "INVALID_PERIOD", "status": 400}
+    },
+    {
+      "id": "agent-cite-stamped",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "1. 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "An organizer command citing proposal_id stamps it on the receipt; the cited memo is referenced, not executed (the draft's proposal is only a memo).",
+      "check_id": "agent.cite.stamped",
+      "needle": "AI가 남긴 메모",
+      "expected": "sim-claim-cite"
+    },
+    {
+      "id": "agent-cite-outcome",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "1. 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The citing organizer command runs on its own merits and is ACCEPTED; the human principal, not the agent, submits it (DLG-32 analogue).",
+      "check_id": "agent.cite.outcome",
+      "needle": "인간 주체",
+      "expected": "ACCEPTED"
+    },
+    {
+      "id": "agent-cite-role",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "1. 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The receipt records the human organizer role; the agent lane cannot submit commands.",
+      "check_id": "agent.cite.role",
+      "needle": "인간 주체",
+      "expected": "organizer"
+    },
+    {
+      "id": "agent-cite-pending",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "After citation the stored proposal stays pending with effects_executed false (DLG-28); the human command does not execute the memo.",
+      "check_id": "agent.cite.pending",
+      "needle": "거짓으로 남는다",
+      "expected": {"phase": "HUMAN_PENDING", "effects_executed": false}
+    },
+    {
+      "id": "agent-cite-unknown",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Citing a proposal_id that is not stored is UNKNOWN_PROPOSAL, kept distinct from a binding conflict.",
+      "check_id": "agent.cite.unknown",
+      "needle": "UNKNOWN_PROPOSAL",
+      "expected": {"code": "UNKNOWN_PROPOSAL", "status": 404}
+    },
+    {
+      "id": "agent-cite-mismatch",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A command whose amount disagrees with the cited memo is PROPOSAL_BINDING_CONFLICT.",
+      "check_id": "agent.cite.mismatch",
+      "needle": "PROPOSAL_BINDING_CONFLICT",
+      "expected": {"code": "PROPOSAL_BINDING_CONFLICT", "status": 409}
+    },
+    {
+      "id": "agent-mock-not-vendored",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "0. 범위와 상태",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The upstream mock stays a read-only reference; Capital does not vendor ai_delegation_mock.py.",
+      "check_id": "agent.vendor.not_vendored",
+      "needle": "reference/ai_delegation/ai_delegation_mock.py",
+      "expected": false
+    }
+  ]
+}

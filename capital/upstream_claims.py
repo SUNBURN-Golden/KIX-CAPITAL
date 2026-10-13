@@ -48,24 +48,24 @@ def table_path(path=None):
     return Path(str(ROOT)).resolve().parent / 'tests' / 'upstream_claims.json'
 
 
-def load_table(path=None):
+def load_table(path=None, *, format=FORMAT, label=LABEL, pinned_sha=PINNED_SHA):
     raw_path = table_path(path)
     try:
         data = json.loads(raw_path.read_text(encoding='utf-8'))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ClaimTableError(f'claim table is not readable JSON: {exc}') from exc
-    validate_table(data)
+    validate_table(data, format=format, label=label, pinned_sha=pinned_sha)
     return data
 
 
-def validate_table(data):
+def validate_table(data, *, format=FORMAT, label=LABEL, pinned_sha=PINNED_SHA):
     if type(data) is not dict:
         raise ClaimTableError('claim table must be an object')
-    if data.get('format') != FORMAT:
-        raise ClaimTableError('claim table format is not ' + FORMAT)
-    if data.get('label') != LABEL:
-        raise ClaimTableError('claim table label is not ' + LABEL)
-    if data.get('pinned_sha') != PINNED_SHA:
+    if data.get('format') != format:
+        raise ClaimTableError('claim table format is not ' + format)
+    if data.get('label') != label:
+        raise ClaimTableError('claim table label is not ' + label)
+    if data.get('pinned_sha') != pinned_sha:
         raise ClaimTableError('claim table pinned_sha is not the vendor pin')
     claims = data.get('claims')
     if type(claims) is not list or not claims:
@@ -83,7 +83,7 @@ def validate_table(data):
         needle = claim.get('needle')
         if type(needle) is not str or not needle:
             raise ClaimTableError(f'claim {claim["id"]} is missing needle')
-        if claim['pinned_sha'] != PINNED_SHA:
+        if claim['pinned_sha'] != pinned_sha:
             raise ClaimTableError(f'claim {claim["id"]} pinned_sha is not the vendor pin')
         if claim['id'] in seen:
             raise ClaimTableError(f'duplicate claim id {claim["id"]}')
@@ -99,15 +99,16 @@ def _relative_source(source_doc, claim_id):
     return rel
 
 
-def run_claims(table):
+def run_claims(table, *, checks=None, format=FORMAT, label=LABEL, pinned_sha=PINNED_SHA):
     """Run every check. An unmapped check fails that claim and no other."""
-    validate_table(table)
+    validate_table(table, format=format, label=label, pinned_sha=pinned_sha)
+    checks = CHECKS if checks is None else checks
     _CACHE.clear()
     rows = []
     for claim in table['claims']:
         check_id = claim['check_id']
         expected = claim['expected']
-        if check_id not in CHECKS:
+        if check_id not in checks:
             rows.append({
                 'id': claim['id'],
                 'check_id': check_id,
@@ -118,7 +119,7 @@ def run_claims(table):
             })
             continue
         try:
-            observed = CHECKS[check_id]()
+            observed = checks[check_id]()
         except Exception as exc:
             observed = {'error': type(exc).__name__, 'detail': str(exc)}
         rows.append({
@@ -131,7 +132,7 @@ def run_claims(table):
         })
     failed = [row for row in rows if not row['ok']]
     return {
-        'label': LABEL,
+        'label': label,
         'passed': len(rows) - len(failed),
         'total': len(rows),
         'failed': failed,
@@ -140,21 +141,21 @@ def run_claims(table):
     }
 
 
-def check_protocol(protocol_dir, table=None):
+def check_protocol(protocol_dir, table=None, *, format=FORMAT, label=LABEL, pinned_sha=PINNED_SHA):
     """Read cited headings and needles. Never writes the checkout.
 
     A missing directory argument is the caller's SKIPPED path. This function
     requires a directory and returns verified or failed.
     """
     if table is None:
-        table = load_table()
+        table = load_table(format=format, label=label, pinned_sha=pinned_sha)
     else:
-        validate_table(table)
+        validate_table(table, format=format, label=label, pinned_sha=pinned_sha)
     root = Path(protocol_dir)
     if not root.is_dir():
         return {
             'status': 'failed',
-            'label': LABEL,
+            'label': label,
             'verified': 0,
             'total': len(table['claims']),
             'missing': [{'id': '*', 'problem': 'protocol dir is not a directory'}],
@@ -188,7 +189,7 @@ def check_protocol(protocol_dir, table=None):
     verified = total - len({item['id'] for item in missing})
     return {
         'status': 'verified' if not missing else 'failed',
-        'label': LABEL,
+        'label': label,
         'verified': verified,
         'total': total,
         'missing': missing,
