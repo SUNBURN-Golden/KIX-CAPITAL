@@ -7,3 +7,6 @@
 #recon-gaps,#statement-sales{padding-left:18px;font-size:12px;line-height:1.7}
 #recon-checks td.mismatch{color:#874c29;font-weight:650}
 #projection-totals{font-size:13px;font-variant-numeric:tabular-nums}#projection-totals strong{font-weight:650}
+#underwrite,#case-underwrite{overflow-wrap:anywhere}.uw-scroll{overflow:auto;max-width:100%;min-width:0}.uw-scroll caption{text-align:left;font-size:11px;color:#637369;margin:16px 0 8px}#uw-fixture,#uw-amount{max-width:530px}.uw-day{max-width:200px}
+.uw-checks td.mismatch{color:#874c29;font-weight:650}.uw-rule{display:block;margin-top:4px;font-size:10px;line-height:1.6;font-weight:400;color:var(--muted)}
+.uw-checks th:nth-child(2),.uw-checks td:nth-child(2){white-space:nowrap}

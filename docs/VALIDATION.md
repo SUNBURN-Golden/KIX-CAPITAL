@@ -334,3 +334,25 @@ Commands actually run, in order:
 - `npm run test:browser`: exit 0. **37 passed** (1.1m). Chromium is `/usr/bin/google-chrome`; no browser download was required.
 - `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` has `ok` true. Unit 241 passed, storage-conformance 7 passed, pinned-vendor 7 passed, upstream-claims `passed=87`, node-check passed, browser 37 passed, packaged-smoke 8 passed, seeded-demo 1 passed.
 - After the browser run and after the ladder, `ss` showed no listener on 127.0.0.1 ports 8765–8768 and no `capital.server` process remained.
+
+## terms-policy-ui
+
+Read-only panels over existing GET responses in `capital/static`: the per-advance terms overlay card (interest, maturity, cap readout), the policy comparison table (DECIDED derived order beside the FIXTURE orders, with the `UNSUPPORTED_BY_PINNED_FSM` rows), and the U1–U6 underwriting record from `GET /api/underwrite/{id}`. The terms and policy panels were already present; this node adds the underwriting record in two places: `#case-underwrite` in the case detail (existing advance) and a full-width `#underwrite` section (fixture candidate with an assumed amount; GET-only inputs for scenario, amount and day). Values are shown verbatim from the response; the page does no arithmetic and shows full values without truncation. Responses are validated fail-closed (label, mode, `provisional`, `funds_executed`, `workspace_mutated`, `write_authorized`, `kyc_executed`, `underwriting_executed`, instance and state digest, `failed_check` equals the first FAIL, `proposal` matches). Invalid amount or day input is refused in the page and sends no request. Observer sees the authorizer's forbidden reason and no request is sent; auditor sees the same panels with no button, form or `data-op` control. `proposal` is labelled a rule-check record, not an approval. No endpoint, command, role, permission or CSP change. `capital/server.py` was not edited. No file under `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited. No test was weakened or skipped. This section claims no human acceptance, independent review, GitHub CI run, commit, push, or deploy. All amounts are SIMULATED fixture units.
+
+Commands actually run, in order:
+
+- `npx playwright test tests/browser/underwrite-record.spec.cjs --project=workspace`: first run **5 passed, 1 failed**. The failing check was the test's own reference GET: the record echoes the caller's role (`decided_by_role`), and the Node-side reference carried no session token, so it compared `organizer` against the page's `auditor`. The page was correct. The reference GET now sends the auditor's `X-Capital-Token` and asserts `decided_by_role == auditor`. Rerun: **6 passed**.
+- A visual check of the 375px screenshot showed `PASS`/`FAIL` splitting across lines in the narrow outcome column. Fixed with `white-space:nowrap` on that column.
+- `npm run test:browser` (first full run): exit 1, **42 passed, 1 failed**. `tests/browser/acceptance-views.spec.cjs` uses the selector `#workspace .table-wrap`, and the new per-case table wrapper inside `#workspace` also carried `.table-wrap`, so Playwright's strict mode saw two elements. The existing assertion was not changed. The new wrappers use their own class `uw-scroll` instead.
+- `npm run test:browser` (rerun): exit 0. **43 passed** (1.5m): the 37 existing specs plus 6 in `tests/browser/underwrite-record.spec.cjs`. Chromium is `/usr/bin/google-chrome`; the Playwright cache already had chromium. `node_modules` was absent and `npm ci` added 3 packages, 0 vulnerabilities.
+- `python3 -m unittest discover -s tests -v`: exit 0. **241 passed** in 46.279s.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0. **7 passed** in 0.002s.
+- `python3 -m compileall -q capital`: exit 0.
+- `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/not_bound_checklist.py --check`: exit 0.
+- `python3 scripts/decision_ledger.py`: exit 0.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output (exit 0).
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` has `ok` true, label `SIMULATED`, `funds_executed` false. Unit 241 passed, storage-conformance 7 passed, pinned-vendor 7 passed, upstream-claims `passed=87` `failed=0`, node-check passed, browser 43 passed, packaged-smoke 8 passed, seeded-demo 1 passed.
+- Screenshots were written under `test-results/terms-policy-ui/` (15 files: desktop and 375px for the terms card, policy table, case record APPROVE and DECLINE, candidate APPROVE, U1 decline and U2 decline, plus auditor and observer views) and under `test-results/acceptance/{desktop,mobile}/` (`case-underwrite.png`, `candidate-underwrite.png` added to the seeded-demo views). `test-results/` is git-ignored.
+- After the browser runs and the ladder, nothing was listening on 127.0.0.1 ports 8765–8768 or 8895–8899, and no `capital.server` process remained.
