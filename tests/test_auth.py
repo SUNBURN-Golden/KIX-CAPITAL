@@ -29,6 +29,7 @@ class MatrixTests(unittest.TestCase):
             '/api/scenarios': 'reference:read',
             '/api/scenarios/full-after': 'reference:read',
             '/api/readiness': 'reference:read',
+            '/api/decisions': 'reference:read',
             '/api/evidence': 'projection:read',
             '/api/projection': 'projection:read',
             '/api/terms': 'projection:read',

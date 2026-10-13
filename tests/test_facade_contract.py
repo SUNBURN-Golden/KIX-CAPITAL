@@ -193,6 +193,7 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', f'/api/terms/sim-journey?instance_id={instance}&draw_day=0&as_of_day=0', '/api/terms/{{advance_id}}', None),
             ('GET', f'/api/terms/sim-journey/allocation?instance_id={instance}&as_of_day=30&cash=50000', '/api/terms/{{advance_id}}/allocation', None),
             ('GET', '/api/readiness?unused=1', '/api/readiness', None),
+            ('GET', '/api/decisions', '/api/decisions', None),
             ('GET', '/api/scenarios', '/api/scenarios', None),
             ('GET', '/api/scenarios/full-after', '/api/scenarios/{id}', None),
             ('GET', f'/api/preview/sim-journey?instance_id={instance}', '/api/preview/{{advance_id}}', None),

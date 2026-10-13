@@ -587,7 +587,12 @@ class TermsOverlayTests(unittest.TestCase):
         self.assertIn(QUOTE, self.service.snapshot()['decisions'][0])
         group = next(row for row in ready['groups'] if row['id'] == 'financial-contracts')
         self.assertEqual(group['status'], 'DECISION_REQUIRED')
-        self.assertTrue(any('PROVISIONAL per docs/decisions/CAPITAL_FINANCIAL_TERMS.md' in item for item in group['blockers']))
+        live = 'PROVISIONAL_PRODUCT_DECISION per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)'
+        self.assertIn(live, group['blockers'])
+        row = next(item for item in self.service.decision_index.rows()
+                   if item['note'] == 'docs/decisions/CAPITAL_FINANCIAL_TERMS.md')
+        self.assertEqual(live, f"{row['status']} per {row['note']} ({row['version']})")
+        self.assertFalse(any(item.startswith('@note-status:') for item in group['blockers']))
         handbook = (ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md').read_text(encoding='utf-8')
         coverage = (ROOT / 'docs' / 'CAP_COVERAGE.md').read_text(encoding='utf-8')
         self.assertIn('<!-- handbook-section:terms-overlay -->', handbook)

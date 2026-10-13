@@ -15,6 +15,7 @@ from capital.auth import (
     ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
 from capital.observability import Observability
+from capital.decisions import DecisionIndex
 from capital.export import UnsignedSigner, build_manifest, manifest_status
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
@@ -28,7 +29,7 @@ from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
 from capital.statement import build_statement
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
-from capital.readiness import GROUPS, source_integrity
+from capital.readiness import GROUPS, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, verify_document
 
@@ -98,7 +99,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, observability=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, observability=None, decisions=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -112,6 +113,7 @@ class CapitalService:
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
+        self.decision_index = decisions if decisions is not None else DecisionIndex()
         self.agent_lane = AgentLane(self.terms)
         self.observability = observability or Observability()
         self.receipts = {}
@@ -580,14 +582,25 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def decisions(self):
+        """Read-only index of the decision notes. Does not touch receipts or the workspace FSM."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                return self._terms_envelope(self.decision_index.body())
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def readiness(self):
         with self.lock:
             terms_note = self._terms_quote()
             policy_note = self._policy_quote()
+            groups = resolve_note_blockers(copy.deepcopy(GROUPS), self.decision_index.note_line)
             return {'instance_id': self.instance_id, 'mode': 'LOCAL_READINESS_ONLY',
                     'source_commit': self.source['commit'], 'upstream_binding': 'NOT_BOUND',
                     'source_integrity': source_integrity(VENDOR, self.source),
-                    'groups': copy.deepcopy(GROUPS), 'production_authorized': False,
+                    'groups': groups, 'production_authorized': False,
                     'upstream_nodes_completed': [], 'policy_adopted': False,
                     'requirement_notes': {
                         'CAP-01': terms_note,

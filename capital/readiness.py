@@ -3,6 +3,11 @@ from __future__ import annotations
 
 import hashlib
 
+TERMS_NOTE = 'docs/decisions/CAPITAL_FINANCIAL_TERMS.md'
+# A blocker that starts with this prefix names a decision note. readiness() in the
+# service replaces it with the note's live status line, so it never reaches a response.
+NOTE_STATUS_PREFIX = '@note-status:'
+
 GROUPS = [
     {'id': 'local-simulation', 'title': '정산·노출·환불의 로컬 검증', 'status': 'AVAILABLE_LOCAL',
      'requirements': ['CAP-01', 'CAP-04', 'CAP-05', 'CAP-06', 'CAP-08', 'CAP-09', 'CAP-10', 'CAP-14', 'CAP-20'],
@@ -17,7 +22,7 @@ GROUPS = [
      'behavior': '수익 회수 순서·채권 양수와 약정 조건을 실행하려면 승인된 계약이 필요합니다. CAP-01·CAP-04의 잠정 값은 읽기 전용 오버레이로만 보입니다. 배정 순서만 일회용 장부에서 잠정 적용하고, 고정 FSM이 표현하지 못하는 항목은 계산하지 않는다.',
      'available': ['원 청구/수취인별 의무 조회', '공유 노출 한도 시뮬레이션', '잠정 조건 오버레이 조회 (청약 아님)'],
      'blockers': ['수익·원가 정의와 배분 순서/상한', '채권 양도량·보유자·대가·우선순위',
-                  'PROVISIONAL per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)',
+                  NOTE_STATUS_PREFIX + TERMS_NOTE,
                   'UNSUPPORTED_BY_PINNED_FSM · requires upstream FSM change · 환불 부담·수익 참여·채권 매입·리셀 취소 부담·잔여·늦은 현금은 Capital에서 계산하지 않음'],
      'owner': '사용자 및 지정 금융·법무 담당 / f04-mock-deepening, settlement-policy-deepening',
      'claim': 'CAP-02·CAP-03은 미적용이다. 이자·수수료·기간·담보 오버레이는 PROVISIONAL이며 청약이 아니다'},
@@ -49,6 +54,15 @@ GROUPS = [
      'blockers': ['사용자 제품 수용과 적용 가능한 독립 감사', '실여신/PG/은행/KYC·면허/법무와 운영 책임', '인증/TLS/보존·복구·개인정보·배포 명시 승인'],
      'owner': '사용자 및 지정 외부/운영 담당', 'claim': '개발 CI는 실거래 또는 배포 승인이 아님'},
 ]
+
+
+def resolve_note_blockers(groups, line_for):
+    """Replace each note-status placeholder blocker with line_for(note). Returns groups."""
+    for group in groups:
+        group['blockers'] = [
+            line_for(item[len(NOTE_STATUS_PREFIX):]) if item.startswith(NOTE_STATUS_PREFIX) else item
+            for item in group['blockers']]
+    return groups
 
 
 def source_integrity(vendor, manifest):

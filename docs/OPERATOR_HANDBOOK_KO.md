@@ -203,3 +203,17 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 이 카운터는 정확성, 내구성, 자금 이동, 신원, SLO를 증명하지 않는다. 외부로 내보내지 않는다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:decision-status-surface -->
+
+### decision-status-surface
+
+`GET /api/decisions`는 `docs/decisions/`의 `capital-decision-v1` 블록을 기계가 읽을 수 있게 요약한다. 라벨은 `simulated decision index — local note summary, not an adoption`이고 `mode`는 `READ_ONLY_DECISION_INDEX`다. `rows`는 노트마다 한 줄이다. 각 줄은 `note`, `decision_id`, `status`, `provisional`, `version`, 항목별 상태 지도 `entries`를 가진다. `status`는 노트 블록의 상태이거나 검사기가 보고한 `INVALID`(블록이 틀림)와 `PENDING`(커버리지가 가리키는데 파일이 없음)이다. `provisional`과 `version`은 블록에 있는 값만 보이고 없으면 null이다. 현재 계정·세무 노트와 바인딩 노트에는 버전 필드가 없으므로 `version`이 null이다. `entries` 값은 `ADOPTED`, `UNDETERMINED`, `DEFERRED`, `NOT_ADOPTED` 중 하나다. `DEFERRED`와 `NOT_ADOPTED`는 연결 완료가 아니다. 금리·수수료·한도 같은 값은 응답에 복사하지 않는다.
+
+파싱은 `python3 scripts/decision_ledger.py`와 같은 코드를 쓴다. 그 스크립트의 출력은 바뀌지 않는다. 권한은 `reference:read`라 organizer, auditor, observer가 읽고 agent는 `403 ROLE_FORBIDDEN`이다. 호출은 receipt·저널·`state_digest`·`operation_count`를 바꾸지 않는다.
+
+`docs/`가 없으면(`.pyz` 실행 등) `status`는 `NOT_BOUND`, `reason`은 `decision notes not bound`, `rows`는 빈 목록이고 숫자 필드는 없다. 이것은 노트가 없다는 뜻이 아니라 이 실행이 노트를 읽을 수 없다는 뜻이다.
+
+`GET /api/readiness`의 `financial-contracts` 차단 사유 중 금융 조건 노트를 인용하는 줄은 이제 이 노트 행에서 만든다. 형식은 `<status> per <note> (<version>)`이고, 예를 들면 `PROVISIONAL_PRODUCT_DECISION per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)`다. 노트를 읽을 수 없으면 `NOT_BOUND per docs/decisions/CAPITAL_FINANCIAL_TERMS.md`다. 그룹 상태 `DECISION_REQUIRED`와 `policy_adopted=false`는 그대로다. 이 줄이 바뀌면 [수용 점검표](ACCEPTANCE_KO.md)의 생성 블록도 `python3 scripts/not_bound_checklist.py --write`로 다시 쓴다. 이 응답은 채택이 아니고 청약이 아니며 실자금과 무관하다. 법무·세무 항목은 전문가 검토 전까지 작업 가정이다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
