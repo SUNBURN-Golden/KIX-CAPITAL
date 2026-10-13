@@ -63,10 +63,12 @@ class SignaturePort(Protocol):
 class ProducerPort(Protocol):
     """Command and read gateway in front of the pinned credit and settlement FSMs.
 
-    `PinnedFsmProducer` is the local implementation. A later producer adapter
-    replaces that wrapper and must pass `tests/test_producer_port.py`. Passing
-    those vectors is not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND for the
-    exact Protocol/Commerce producer tuple.
+    `PinnedFsmProducer` is the local implementation. Opt-in `GateHttpProducer`
+    talks to a loopback `LOCAL_FAKE_GATE` and is not an adoption. A later
+    producer adapter replaces that wrapper and must pass
+    `tests/test_producer_port.py`. Passing those vectors is not
+    SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND for the exact
+    Protocol/Commerce producer tuple.
     """
 
     def apply(self, op, advance_id, *, idempotency_key, args, bound_settlement_id):
