@@ -71,8 +71,8 @@ python3 -m capital.server --workspace ./var/capital-workspace
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
 | organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시 | agent 레인 (`query_grant` / `propose_action`) |
-| auditor | 없음. export·투영·대사·명세서는 읽음. 조건 오버레이(`/api/terms*`)와 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
-| observer | 없음. state와 receipt만 읽음 | export, 투영, 대사, 명세서, evidence, preview, 조건 오버레이(`/api/terms*`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
+| auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
+| observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`와 `POST /api/agent/propose_action`만. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 `EXECUTE_AUTHORITY_DISABLED` | 모든 `command:*`, `session:bind`, export, 투영, 대사, 명세서 |
 
 거절 코드는 `403 ROLE_FORBIDDEN`이다. 거절된 명령은 operation 수와 저널을 바꾸지 않는다. 실제 IdP·AgentGrant/ActionPermit은 `NOT_BOUND`다. `agent` 레인은 그 계약을 대신하지 않는 `SIMULATED` 픽스처다. 제안 등록부는 프로세스 메모리이고 workspace payload에 넣지 않는다.
