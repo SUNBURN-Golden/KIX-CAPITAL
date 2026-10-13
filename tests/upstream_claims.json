@@ -1,0 +1,884 @@
+{
+  "format": "KIX_CAPITAL_UPSTREAM_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "note": "CLAIM_CONFORMANCE checks against the pinned FSM wrappers and the local facade. Results are SIMULATED. A missing protocol checkout is SKIPPED and is not a pass.",
+  "claims": [
+    {
+      "id": "f04-funds-executed-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps funds_executed false.",
+      "check_id": "f04.flag.funds_executed",
+      "needle": "funds_executed",
+      "expected": false
+    },
+    {
+      "id": "f04-license-granted-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps license_granted false.",
+      "check_id": "f04.flag.license_granted",
+      "needle": "license_granted",
+      "expected": false
+    },
+    {
+      "id": "f04-regulated-product-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps regulated_product false.",
+      "check_id": "f04.flag.regulated_product",
+      "needle": "regulated_product",
+      "expected": false
+    },
+    {
+      "id": "f04-collateral-perfected-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps collateral_perfected false.",
+      "check_id": "f04.flag.collateral_perfected",
+      "needle": "collateral_perfected",
+      "expected": false
+    },
+    {
+      "id": "f04-priority-bound-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps priority_bound false.",
+      "check_id": "f04.flag.priority_bound",
+      "needle": "priority_bound",
+      "expected": false
+    },
+    {
+      "id": "f04-disposal-controlled-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps disposal_controlled false.",
+      "check_id": "f04.flag.disposal_controlled",
+      "needle": "disposal_controlled",
+      "expected": false
+    },
+    {
+      "id": "f04-revenue-assigned-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps revenue_assigned false.",
+      "check_id": "f04.flag.revenue_assigned",
+      "needle": "revenue_assigned",
+      "expected": false
+    },
+    {
+      "id": "f04-admission-granted-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps admission_granted false.",
+      "check_id": "f04.flag.admission_granted",
+      "needle": "admission_granted",
+      "expected": false
+    },
+    {
+      "id": "f04-legal-debtor-bound-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps legal_debtor_bound false.",
+      "check_id": "f04.flag.legal_debtor_bound",
+      "needle": "legal_debtor_bound",
+      "expected": false
+    },
+    {
+      "id": "f04-bank-debit-observed-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps bank_debit_observed false.",
+      "check_id": "f04.flag.bank_debit_observed",
+      "needle": "bank_debit_observed",
+      "expected": false
+    },
+    {
+      "id": "f04-external-pledge-complete-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps external_pledge_complete false.",
+      "check_id": "f04.flag.external_pledge_complete",
+      "needle": "external_pledge_complete",
+      "expected": false
+    },
+    {
+      "id": "f04-durable-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps durable false.",
+      "check_id": "f04.flag.durable",
+      "needle": "durable",
+      "expected": false
+    },
+    {
+      "id": "f04-repayment-observed-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps repayment_observed false.",
+      "check_id": "f04.flag.repayment_observed",
+      "needle": "repayment_observed",
+      "expected": false
+    },
+    {
+      "id": "f04-interest-defined-false",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A successful F04 draw keeps interest_defined false.",
+      "check_id": "f04.flag.interest_defined",
+      "needle": "interest_defined",
+      "expected": false
+    },
+    {
+      "id": "f04-provenance",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "F04 views keep provenance MOCK_CREDIT_F04_ONLY.",
+      "check_id": "f04.provenance",
+      "needle": "MOCK_CREDIT_F04_ONLY",
+      "expected": "MOCK_CREDIT_F04_ONLY"
+    },
+    {
+      "id": "f04-currency",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An F04 face whose currency is not KRW is CURRENCY_UNSUPPORTED.",
+      "check_id": "f04.currency",
+      "needle": "CURRENCY_UNSUPPORTED",
+      "expected": "CURRENCY_UNSUPPORTED"
+    },
+    {
+      "id": "f04-bool-amount",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A boolean advance amount is INVALID_AMOUNT.",
+      "check_id": "f04.bool_amount",
+      "needle": "예약 금액은 `bool`이 아닌 `int`다.",
+      "expected": "INVALID_AMOUNT"
+    },
+    {
+      "id": "f04-product-undefined",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "3. 게이트 호출",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An offer with a product object is CREDIT_PRODUCT_UNDEFINED.",
+      "check_id": "f04.product",
+      "needle": "CREDIT_PRODUCT_UNDEFINED",
+      "expected": "CREDIT_PRODUCT_UNDEFINED"
+    },
+    {
+      "id": "f04-refund-open",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "3. 게이트 호출",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An open refund whose bearer is not reclassified blocks the offer.",
+      "check_id": "f04.refund_open",
+      "needle": "REFUND_OBLIGATION_OPEN",
+      "expected": "REFUND_OBLIGATION_OPEN"
+    },
+    {
+      "id": "f04-real-funds",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "3. 게이트 호출",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "attempt_execution DISBURSE after a draw is REAL_FUNDS_FORBIDDEN.",
+      "check_id": "f04.real_funds",
+      "needle": "REAL_FUNDS_FORBIDDEN",
+      "expected": "REAL_FUNDS_FORBIDDEN"
+    },
+    {
+      "id": "f04-phase-unchanged",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "3. 게이트 호출",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A refused DISBURSE leaves the advance in DRAWN.",
+      "check_id": "f04.phase_after_execution",
+      "needle": "상태를 바꾸지 않음",
+      "expected": "DRAWN"
+    },
+    {
+      "id": "f04-unknown-advance",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "4. 오류 코드",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "view of a missing advance is UNKNOWN_ADVANCE.",
+      "check_id": "f04.unknown_advance",
+      "needle": "UNKNOWN_ADVANCE",
+      "expected": "UNKNOWN_ADVANCE"
+    },
+    {
+      "id": "f04-unknown-journal",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "4. 오류 코드",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "UNKNOWN_ADVANCE does not append a journal row.",
+      "check_id": "f04.unknown_journal",
+      "needle": "없는 노트",
+      "expected": 0
+    },
+    {
+      "id": "f04-duplicate-draw",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A second draw_id on an already drawn advance is DUPLICATE_DRAW.",
+      "check_id": "f04.duplicate_draw",
+      "needle": "DUPLICATE_DRAW",
+      "expected": "DUPLICATE_DRAW"
+    },
+    {
+      "id": "f04-outstanding",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Draw exposes the full offered amount in one step.",
+      "check_id": "f04.outstanding",
+      "needle": "부분 인출은 없다",
+      "expected": 1000
+    },
+    {
+      "id": "f04-journal-after-second-draw",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A refused second draw does not append another journal row.",
+      "check_id": "f04.journal_after_second_draw",
+      "needle": "한 번",
+      "expected": 3
+    },
+    {
+      "id": "f04-economic-finality",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.5 정산 게이트",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The draw envelope keeps economic_finality_claimed false.",
+      "check_id": "f04.economic_finality",
+      "needle": "economic_finality_claimed",
+      "expected": false
+    },
+    {
+      "id": "f04-repayment-after-repay",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A mock repay leaves repayment_observed false.",
+      "check_id": "f04.repayment_after_repay",
+      "needle": "repayment_observed",
+      "expected": false
+    },
+    {
+      "id": "f04-close-not-repayment",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "3. 게이트 호출",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "close releases the note and repayment_observed stays false.",
+      "check_id": "f04.close_not_repayment",
+      "needle": "해제는 상환이 아니다",
+      "expected": false
+    },
+    {
+      "id": "f04-open-face",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "2. 입력 — Wave 3 청구 조회 스냅샷",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "open_face is the unpaid obligation sum and does not add confirmed cash.",
+      "check_id": "f04.open_face",
+      "needle": "확인 현금은 대여 재원이 아니고",
+      "expected": 100000
+    },
+    {
+      "id": "f04-confirmed-cash-copied",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "2. 입력 — Wave 3 청구 조회 스냅샷",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "confirmed_cash is copied onto the offer and is not the ceiling.",
+      "check_id": "f04.confirmed_cash_copied",
+      "needle": "confirmed_cash",
+      "expected": 97000
+    },
+    {
+      "id": "f04-terminal",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.1 단계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "approve after reject is TERMINAL_IMMUTABLE.",
+      "check_id": "f04.terminal",
+      "needle": "TERMINAL_IMMUTABLE",
+      "expected": "TERMINAL_IMMUTABLE"
+    },
+    {
+      "id": "f04-duplicate-replay",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.3 멱등키",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Replaying an accepted offer with the same key is a duplicate.",
+      "check_id": "f04.duplicate_replay",
+      "needle": "duplicate: true",
+      "expected": true
+    },
+    {
+      "id": "f04-idempotency-conflict",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.3 멱등키",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The same idempotency key with a different amount is IDEMPOTENCY_CONFLICT.",
+      "check_id": "f04.idempotency_conflict",
+      "needle": "IDEMPOTENCY_CONFLICT",
+      "expected": "IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "id": "f04-lifecycle",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7. 참조 수락 상태 기계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "lifecycle_authority stays IN_MEMORY_FSM.",
+      "check_id": "f04.lifecycle",
+      "needle": "IN_MEMORY_FSM",
+      "expected": "IN_MEMORY_FSM"
+    },
+    {
+      "id": "f04-kyc",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.1 단계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "kyc_executed stays false after draw.",
+      "check_id": "f04.kyc",
+      "needle": "kyc_executed",
+      "expected": false
+    },
+    {
+      "id": "f04-underwriting",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.1 단계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "underwriting_executed stays false after draw.",
+      "check_id": "f04.underwriting",
+      "needle": "underwriting_executed",
+      "expected": false
+    },
+    {
+      "id": "vendor-credit-fsm-sha",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Vendored credit_fsm.py bytes match the manifest hash for the pinned commit.",
+      "check_id": "vendor.credit_fsm_sha",
+      "needle": "reference/credit_advance_f04/credit_fsm.py",
+      "expected": "f4f6b3698dd848538d2efa10b276cb33659eb4877fcbea0feb7429b28456491b"
+    },
+    {
+      "id": "vendor-manifest-commit",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The vendor manifest commit is the pinned SHA.",
+      "check_id": "vendor.manifest_commit",
+      "needle": "reference/credit_advance_f04/credit_fsm.py",
+      "expected": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "settlement-funds-executed-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "1. 공통 돈·식별 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps funds_executed false.",
+      "check_id": "settlement.flag.funds_executed",
+      "needle": "funds_executed",
+      "expected": false
+    },
+    {
+      "id": "settlement-admission-granted-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "1. 공통 돈·식별 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps admission_granted false.",
+      "check_id": "settlement.flag.admission_granted",
+      "needle": "admission_granted",
+      "expected": false
+    },
+    {
+      "id": "settlement-legal-debtor-bound-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "1. 공통 돈·식별 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps legal_debtor_bound false.",
+      "check_id": "settlement.flag.legal_debtor_bound",
+      "needle": "legal_debtor_bound",
+      "expected": false
+    },
+    {
+      "id": "settlement-bank-debit-observed-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "1. 공통 돈·식별 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps bank_debit_observed false.",
+      "check_id": "settlement.flag.bank_debit_observed",
+      "needle": "bank_debit_observed",
+      "expected": false
+    },
+    {
+      "id": "settlement-external-return-closed-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "1. 공통 돈·식별 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps external_return_closed false.",
+      "check_id": "settlement.flag.external_return_closed",
+      "needle": "external_return_closed",
+      "expected": false
+    },
+    {
+      "id": "settlement-right-cancelled-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "1. 공통 돈·식별 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps right_cancelled false.",
+      "check_id": "settlement.flag.right_cancelled",
+      "needle": "right_cancelled",
+      "expected": false
+    },
+    {
+      "id": "settlement-durable-false",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.5 외부 결제 경계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A committed settlement view keeps durable false.",
+      "check_id": "settlement.flag.durable",
+      "needle": "durable",
+      "expected": false
+    },
+    {
+      "id": "settlement-fee-face",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "2. F01 — 청구와 의무 액면",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Primary fee at 500 bps on 100000 is the integer 5000.",
+      "check_id": "settlement.fee_face",
+      "needle": "fee = gross * fee_bps // 10000",
+      "expected": 5000
+    },
+    {
+      "id": "settlement-face-sum",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "2. F01 — 청구와 의무 액면",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Fee face plus residual face equals gross.",
+      "check_id": "settlement.face_sum",
+      "needle": "residual = gross - fee",
+      "expected": 100000
+    },
+    {
+      "id": "settlement-floor-fee",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "0.3 정수 잔여 단위의 배분 원칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Fee on 19999 at 1 bps is floor division, so the fee face is 1.",
+      "check_id": "settlement.floor_fee",
+      "needle": "부동소수점 반올림을 쓰지 않는다",
+      "expected": 1
+    },
+    {
+      "id": "settlement-float-gross",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "0.3 정수 잔여 단위의 배분 원칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A float gross is INVALID_AMOUNT.",
+      "check_id": "settlement.float_gross",
+      "needle": "부동소수점 반올림을 쓰지 않는다",
+      "expected": "INVALID_AMOUNT"
+    },
+    {
+      "id": "settlement-order-frozen",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "4. F02 — 분할 배정과 호출자 순서",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A second distribution with a different order is DISTRIBUTION_ORDER_FROZEN.",
+      "check_id": "settlement.order_frozen",
+      "needle": "DISTRIBUTION_ORDER_FROZEN",
+      "expected": "DISTRIBUTION_ORDER_FROZEN"
+    },
+    {
+      "id": "settlement-frozen-order",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "4. F02 — 분할 배정과 호출자 순서",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The first accepted distribution order stays on the claim.",
+      "check_id": "settlement.frozen_order",
+      "needle": "수락된 첫 호출의 `order`가 그 청구의 순서로 고정된다",
+      "expected": [
+        "organizer",
+        "platform"
+      ]
+    },
+    {
+      "id": "settlement-rejected-order",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "4. F02 — 분할 배정과 호출자 순서",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A rejected distribution order does not freeze distribution_order.",
+      "check_id": "settlement.rejected_order",
+      "needle": "거절된 호출은 순서를 고정하지 않는다",
+      "expected": null
+    },
+    {
+      "id": "settlement-zero-cash-order",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "4. F02 — 분할 배정과 호출자 순서",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A zero-cash accepted distribution still freezes the order.",
+      "check_id": "settlement.zero_cash_order",
+      "needle": "현금이 0이어도 수락된 호출은 순서를 고정하고 배정액은 0이다.",
+      "expected": [
+        "organizer",
+        "platform"
+      ]
+    },
+    {
+      "id": "settlement-refund-ceiling",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A refund above gross is REFUND_CEILING.",
+      "check_id": "settlement.refund_ceiling",
+      "needle": "REFUND_CEILING",
+      "expected": "REFUND_CEILING"
+    },
+    {
+      "id": "settlement-partial-bearer",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A partial refund leaves refund_bearer_policy UNDEFINED.",
+      "check_id": "settlement.partial_bearer",
+      "needle": "refund_bearer_policy = UNDEFINED",
+      "expected": "UNDEFINED"
+    },
+    {
+      "id": "settlement-distribution-blocked",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Distribution while the bearer is undefined is blocked.",
+      "check_id": "settlement.distribution_blocked",
+      "needle": "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+      "expected": "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED"
+    },
+    {
+      "id": "settlement-full-reclass",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "One full-gross refund is the fixture reclass policy.",
+      "check_id": "settlement.full_reclass",
+      "needle": "FIXTURE_FULL_GROSS_RECLASS",
+      "expected": "FIXTURE_FULL_GROSS_RECLASS"
+    },
+    {
+      "id": "settlement-remainder-undefined",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Topping a partial refund up to gross does not become the full reclass.",
+      "check_id": "settlement.remainder_undefined",
+      "needle": "부분 환불 뒤에 나머지를 더해 합이 `gross`가 되어도 전액 재분류로 바꾸지 않는다.",
+      "expected": "UNDEFINED"
+    },
+    {
+      "id": "settlement-distributed-sum",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "0.3 정수 잔여 단위의 배분 원칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Distributed cash after one pass equals confirmed cash.",
+      "check_id": "settlement.distributed_sum",
+      "needle": "배분액의 합은 배분 총액을 보존한다",
+      "expected": 97000
+    },
+    {
+      "id": "settlement-component-mismatch",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "3. 정산 명세서 — 추측하지 않는 구성",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A statement whose parts do not add to gross is SETTLEMENT_COMPONENT_MISMATCH.",
+      "check_id": "settlement.component_mismatch",
+      "needle": "SETTLEMENT_COMPONENT_MISMATCH",
+      "expected": "SETTLEMENT_COMPONENT_MISMATCH"
+    },
+    {
+      "id": "settlement-external-return-after-acceptance",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Mock cancel acceptance leaves external_return_closed false.",
+      "check_id": "settlement.external_return_after_acceptance",
+      "needle": "external_return_closed",
+      "expected": false
+    },
+    {
+      "id": "settlement-confirmed-cash-after-refund",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03 — 환불 의무와 목 취소 수락",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A partial refund does not reduce confirmed cash.",
+      "check_id": "settlement.confirmed_cash_after_refund",
+      "needle": "확인 현금을 줄이지 않는다",
+      "expected": 97000
+    },
+    {
+      "id": "settlement-unknown-claim",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "6. 오류 코드",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A missing claim view is UNKNOWN_CLAIM.",
+      "check_id": "settlement.unknown_claim",
+      "needle": "UNKNOWN_CLAIM",
+      "expected": "UNKNOWN_CLAIM"
+    },
+    {
+      "id": "settlement-unknown-settlement",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "6. 오류 코드",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A missing settlement view is UNKNOWN_SETTLEMENT.",
+      "check_id": "settlement.unknown_settlement",
+      "needle": "UNKNOWN_SETTLEMENT",
+      "expected": "UNKNOWN_SETTLEMENT"
+    },
+    {
+      "id": "settlement-provenance",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.5 외부 결제 경계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Settlement provenance stays MOCK_SETTLEMENT_ONLY.",
+      "check_id": "settlement.provenance",
+      "needle": "MOCK_SETTLEMENT_ONLY",
+      "expected": "MOCK_SETTLEMENT_ONLY"
+    },
+    {
+      "id": "settlement-provider-authorization",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.5 외부 결제 경계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "authorize does not set provider_authorization_executed.",
+      "check_id": "settlement.provider_authorization",
+      "needle": "provider_authorization_executed",
+      "expected": false
+    },
+    {
+      "id": "settlement-mock-authorized",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.1 단계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "authorize sets mock_authorized and does not call a provider.",
+      "check_id": "settlement.mock_authorized",
+      "needle": "mock_authorized",
+      "expected": true
+    },
+    {
+      "id": "settlement-external-payment",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.5 외부 결제 경계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "reject_external is EXTERNAL_PAYMENT_UNSUPPORTED.",
+      "check_id": "settlement.external_payment",
+      "needle": "EXTERNAL_PAYMENT_UNSUPPORTED",
+      "expected": "EXTERNAL_PAYMENT_UNSUPPORTED"
+    },
+    {
+      "id": "settlement-replay-journal",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Replaying initiate keeps a single journal row.",
+      "check_id": "settlement.replay_journal",
+      "needle": "duplicate이고 금액은 한 번이다",
+      "expected": 1
+    },
+    {
+      "id": "settlement-digest-length",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "state_digest is a 64 character sha256 hex string.",
+      "check_id": "settlement.digest_length",
+      "needle": "state_digest",
+      "expected": 64
+    },
+    {
+      "id": "settlement-restore-digest",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Restoring the settlement journal reproduces state_digest.",
+      "check_id": "settlement.restore_digest",
+      "needle": "같은 저널이면 `canonical_state`가 같고, `state_digest`도 같다.",
+      "expected": true
+    },
+    {
+      "id": "commerce-float-gross",
+      "source_doc": "docs/COMMERCE_CONTRACTS.md",
+      "section": "금액과 자산의 규격",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The pinned settlement machine rejects a float gross.",
+      "check_id": "commerce.float_gross",
+      "needle": "가격 입력에 float를 받거나 금액을 반올림해 맞추지 않는다.",
+      "expected": "INVALID_AMOUNT"
+    },
+    {
+      "id": "commerce-money-max",
+      "source_doc": "docs/COMMERCE_CONTRACTS.md",
+      "section": "금액과 자산의 규격",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Gross above 10**12 is INVALID_AMOUNT on the pinned machine.",
+      "check_id": "commerce.money_max",
+      "needle": "KRW 10^12 한도",
+      "expected": "INVALID_AMOUNT"
+    },
+    {
+      "id": "commerce-no-auto-cash",
+      "source_doc": "docs/COMMERCE_CONTRACTS.md",
+      "section": "복수 결제와 선택 주문행 반환",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A refund obligation is not booked as a reduction of confirmed cash.",
+      "check_id": "commerce.confirmed_cash_after_refund",
+      "needle": "수취 가능한 현금이나 확정된 외부 채권으로 자동 분개하지 않는다.",
+      "expected": 97000
+    },
+    {
+      "id": "commerce-execution-unauthorized",
+      "source_doc": "docs/COMMERCE_CONTRACTS.md",
+      "section": "복수 결제와 선택 주문행 반환",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An external payment attempt is refused and does not authorize execution.",
+      "check_id": "commerce.external_payment",
+      "needle": "executionAuthorized: false",
+      "expected": "EXTERNAL_PAYMENT_UNSUPPORTED"
+    },
+    {
+      "id": "commerce-same-asset-sum",
+      "source_doc": "docs/COMMERCE_CONTRACTS.md",
+      "section": "금액과 자산의 규격",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Statement parts that do not sum to gross are rejected.",
+      "check_id": "commerce.component_mismatch",
+      "needle": "동일한 전체 자산 명세만 더하기/빼기",
+      "expected": "SETTLEMENT_COMPONENT_MISMATCH"
+    },
+    {
+      "id": "authority-replay-funds",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Replaying an accepted draw keeps funds_executed false.",
+      "check_id": "authority.replay_funds",
+      "needle": "과거 사실 재생은 새로운 외부 실행 허가가 아님",
+      "expected": false
+    },
+    {
+      "id": "authority-unknown-outcome",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A missing receipt lookup is UNKNOWN.",
+      "check_id": "authority.unknown_outcome",
+      "needle": "침묵/timeout으로 미사용이라 간주 금지",
+      "expected": "UNKNOWN"
+    },
+    {
+      "id": "authority-unknown-retry",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "UNKNOWN does not authorize a retry.",
+      "check_id": "authority.unknown_retry",
+      "needle": "침묵/timeout으로 미사용이라 간주 금지",
+      "expected": false
+    },
+    {
+      "id": "authority-gate-retry",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A lost gate response is UNKNOWN and retry_authorized is false.",
+      "check_id": "authority.gate_retry",
+      "needle": "과거 사실 재생은 새로운 외부 실행 허가가 아님",
+      "expected": false
+    },
+    {
+      "id": "authority-recon-retry",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Reconciliation keeps retry_authorized false for an absent receipt.",
+      "check_id": "authority.recon_retry",
+      "needle": "침묵/timeout으로 미사용이라 간주 금지",
+      "expected": false
+    },
+    {
+      "id": "authority-facade-retry-const",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The local facade locks the absent-receipt retry flag false.",
+      "check_id": "authority.facade_retry_const",
+      "needle": "과거 사실 재생은 새로운 외부 실행 허가가 아님",
+      "expected": false
+    },
+    {
+      "id": "authority-profile-flag",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "권위 모델",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The local facade profile flag stays false.",
+      "check_id": "authority.profile_flag",
+      "needle": "특정 backend를 채택하지 않는다",
+      "expected": false
+    },
+    {
+      "id": "authority-bank-debit",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "권위 모델",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A drawn advance still reports bank_debit_observed false.",
+      "check_id": "authority.bank_debit",
+      "needle": "체인이 자동 보증하지 않는다.",
+      "expected": false
+    },
+    {
+      "id": "authority-replay-finality",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "승인된 A-4 — 기록과 재생의 필수 분리",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Replaying a draw does not set economic_finality_claimed.",
+      "check_id": "authority.replay_finality",
+      "needle": "local sync/sequence를 chain finality로 대체 금지",
+      "expected": false
+    },
+    {
+      "id": "authority-reservation-not-payment",
+      "source_doc": "docs/decisions/AUTHORITY_MODEL_1.md",
+      "section": "권위 모델",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "authorize does not execute a provider authorization.",
+      "check_id": "authority.provider_not_payment",
+      "needle": "예약 확정 ≠ 결제 확인 ≠ 체인 권리 발행 완료",
+      "expected": false
+    }
+  ]
+}

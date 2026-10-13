@@ -41,7 +41,7 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 
 아래 칸은 사람이 `build/acceptance-evidence.json`을 읽고 채운다. 자동 사다리가 파일을 만들어도 이 점검표가 통과한 것은 아니다. 칸은 비워 둔다.
 
-`stages[*]`는 stage id `unit`, `storage-conformance`, `pinned-vendor`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 일곱 전부다.
+`stages[*]`는 stage id `unit`, `storage-conformance`, `pinned-vendor`, `upstream-claims`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 여덟 전부다.
 
 - [ ] 사다리 결과
   - PASS: evidence.ok == true 이고 evidence.stages[*].status == "passed"

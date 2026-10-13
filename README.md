@@ -68,7 +68,7 @@ npm run test:browser
 python3 scripts/acceptance.py
 ```
 
-결과는 커밋하지 않는 `build/acceptance-evidence.json`입니다. 명령, 종료 코드, 테스트 수, HEAD SHA, 도구 버전, vendor 해시, golden digest가 들어 있습니다. 단계가 실패하거나 빠지면 0이 아닌 코드로 끝납니다. CI는 매 HEAD에서 이 명령을 실행하고 evidence 파일을 올립니다. `storage-conformance` 단계는 `run_storage_vectors(factory)`로 메모리와 `LOCAL_FILE_WORKSPACE`를 같은 벡터에 통과시킨다. 그 통과는 SEMANTIC_CONFORMANCE가 아니고 CAP-11은 `NOT_BOUND`다.
+결과는 커밋하지 않는 `build/acceptance-evidence.json`입니다. 명령, 종료 코드, 테스트 수, HEAD SHA, 도구 버전, vendor 해시, golden digest가 들어 있습니다. 단계가 실패하거나 빠지면 0이 아닌 코드로 끝납니다. CI는 매 HEAD에서 이 명령을 실행하고 evidence 파일을 올립니다. `storage-conformance` 단계는 `run_storage_vectors(factory)`로 메모리와 `LOCAL_FILE_WORKSPACE`를 같은 벡터에 통과시킨다. 그 통과는 SEMANTIC_CONFORMANCE가 아니고 CAP-11은 `NOT_BOUND`다. `upstream-claims` 단계의 라벨은 `CLAIM_CONFORMANCE`다. 프로토콜 체크아웃이 없으면 `scripts/upstream_claims_check.py`는 `SKIPPED`이며 그 상태는 통과가 아니다.
 
 `python3 scripts/seed_demo.py`는 고정 operation id로 종결·미이행·거절·취소·UNBOUND·정산 대기 케이스를 만듭니다. `tests/golden/demo.json`은 `state_digest`, 투영 합계, manifest `content_digest`만 고정합니다. instance id와 시각은 넣지 않습니다. 값이 달라지면 실패하고, 핀을 고치려면 `python3 scripts/seed_demo.py --update-golden`이 필요합니다. 금액은 합성 fixture 단위입니다.
 
