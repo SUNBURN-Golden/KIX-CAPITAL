@@ -62,6 +62,8 @@ Default storage is in-memory (`workspace.kind=MEMORY`, `durable=false`). `python
 
 `workspace.status=ACTIVE` is the only writable file state. Degraded mode is fail-closed. It is not a silent empty start.
 
+`tests/storage_conformance.py` exports `run_storage_vectors(factory)`. The factory returns a fresh `StoragePort`. The same vectors are the gate a future storage adapter must pass. That pass is not SEMANTIC_CONFORMANCE. CAP-11 stays `NOT_BOUND`. `LOCAL_FILE_WORKSPACE` stays a development-file label, not stage5 durable transaction recovery.
+
 ## Local contract `capital-local-facade/1`
 
 `capital/contract/facade-v1.json` describes this loopback facade: every route, the command request, response shapes, and error codes. The namespace is `capital-local-facade/1`. A stdlib checker validates a scripted journey and rejects an unknown field. Those names are not the promoted 40-command catalogue (`kix:fixture:lifecycle:0.3`).
