@@ -1,8 +1,8 @@
 # Capital 청사진 요구사항과 구현·선행 매핑
 
-2026-10-09. Capital 구현 기준 main `7a4af4955d12ada267b206ea6841c606d7ec91ca`.
-Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
-모든 Protocol 출처는 아래 SHA에 고정한다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
+2026-10-14. Capital 구현 기준 main `2802bac8d0731c96635a16edd9390baf3d682864`.
+Protocol 읽기 기준은 둘이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
+모든 Protocol 출처는 위 두 SHA 중 해당 범위의 것에 고정한다(FSM 원본은 `7481b0e`, AI 위임 초안은 `e2a029d`). 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
 
 ## 권위와 전체 범위
 
@@ -28,7 +28,7 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 
 | ID | 청사진 요구 | 현재 제품·검증 | 상태 / 다음 선행 |
 |---|---|---|---|
-| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 읽기 전용 조건 오버레이 | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 조회만 |
+| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 읽기 전용 조건 오버레이, 읽기 전용 상환 배분 견적(`GET /api/terms/{id}/allocation`)과 U1–U6 인수 기록(`GET /api/underwrite/{id}`, `SIMULATED_UNDERWRITING_RECORD`) | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 조회만 |
 | CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 일회용 장부의 잠정 배정 순서 비교 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정은 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 고정 FSM이 표현하지 못해 계산하지 않음; V2 §7 |
 | CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 UNSUPPORTED_BY_PINNED_FSM |
 | CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사, 읽기 전용 완전성·차입기초·준비금 표시 | SIMULATED; [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) **PROVISIONAL (CAPITAL-TERMS-V1)**. 집행·심사 규칙은 applied false. 청약·upstream 채택 아님. 로컬 조회만 |
@@ -46,7 +46,7 @@ Protocol 읽기 기준 **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**, Commerce 
 | CAP-16 | SDK·API 적합성 | 로컬 계약 `capital-local-facade/1` (`capital/contract/facade-v1.json`)와 ProducerPort 양성·음성 vectors. strict 로컬 envelope와 vendor byte hash. 이 vectors는 SEMANTIC_CONFORMANCE가 아니다 | NOT_BOUND(로컬 후보); 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple. 로컬 facade 계약이 그 tuple을 대체하지 않는다 |
 | CAP-17 | 공개/비공개·권리 규모 | 외부 의존성과 관람권 비권위 표시 | NOT_BOUND: RS-0~5, privacy/currentness, 1024/16384/65536 규모 검증 없음 |
 | CAP-18 | 선택적 토큰 담보·보상 | 향후 연동 설명, 외부 호출·발행 코드 없음 | NOT_AUTHORIZED: TL 계약·coin lock/user 결정; KRW 목을 토큰 한도로 확장 안 함 |
-| CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer/agent)을 서버가 강제하고 receipt에 표시. agent는 SIMULATED QUERY/PROPOSE 픽스처만 호출하고 제안은 HUMAN_PENDING이며 effects_executed는 false. 계정·비밀번호·개인정보 없음 | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리. SIMULATED 레인은 실권한 아님 |
+| CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer/agent)을 서버가 강제하고 receipt에 표시. agent는 SIMULATED QUERY/PROPOSE 픽스처만 호출하고 제안은 HUMAN_PENDING이며 effects_executed는 false. 계정·비밀번호·개인정보 없음. `tests/agent_claims.json`과 `scripts/agent_claims_check.py`가 초안 `e2a029d`의 클레임을 이 SIMULATED agent lane에 대조한다(`CLAIM_CONFORMANCE`; 결과는 SIMULATED이고, upstream 인용 드리프트 검사는 프로토콜 체크아웃 없이는 `SKIPPED`이며 통과가 아니다) | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리. SIMULATED 레인은 실권한 아님 |
 | CAP-20 | 접근성·통합 수용 | 실제 browser 정상/거절/UNKNOWN/reload, mobile, keyboard, screenshot | SIMULATED(자동검증만); 사용자 수용 PENDING, full T01→T06/서비스 qualification 미실행 |
 
 ## Finance 후보 8개를 유지하는 후속 위치
