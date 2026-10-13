@@ -158,7 +158,7 @@ async function refresh(){
  const diagnostics=await loadDiagnostics(next);
  const terms=await loadTerms(next);
  const policyView=await loadPolicy(next);
- state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();
+ state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
@@ -276,6 +276,88 @@ async function loadCaseTerms(){
   $('case-terms-error').hidden=false;$('case-terms-error').textContent=error.knownRejection?`조건 조회 거절: ${error.detail?.error||error.message}`:'조건 오버레이를 표시하지 않습니다. 숫자를 청약으로 읽지 마세요.';$('case-terms-facts').replaceChildren();
  }
 }
+const UNDERWRITE_LABEL='simulated underwriting record — rule checks only, not an approval';
+const UW_DAY=/^(0|[1-9]\d{0,5})$/;
+const UW_AMOUNT=/^[1-9]\d*$/;
+const UW_DIGEST=/^[0-9a-f]{64}$/;
+let caseUwEpoch=0,candUwEpoch=0;
+function underwriteOk(body,expected){
+ if(!body||body.label!==UNDERWRITE_LABEL||body.mode!=='SIMULATED_UNDERWRITING_RECORD'||body.provisional!==true)return false;
+ if(body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.kyc_executed!==false||body.underwriting_executed!==false)return false;
+ if(body.instance_id!==state.instance_id||body.observed_state_digest!==state.state_digest)return false;
+ if(body.advance_id!==expected.advance_id||body.candidate!==expected.candidate)return false;
+ if(body.status==='NOT_BOUND')return typeof body.reason==='string'&&body.checks===undefined;
+ if(body.status!=='BOUND'||body.sim_day!==expected.sim_day||(expected.amount!==undefined&&body.amount!==expected.amount))return false;
+ if(!Array.isArray(body.checks)||!body.checks.length||typeof body.inputs_digest!=='string'||!UW_DIGEST.test(body.inputs_digest))return false;
+ if(!body.checks.every(row=>row&&typeof row.id==='string'&&(typeof row.rule==='string'||row.rule===null)&&(row.outcome==='PASS'||row.outcome==='FAIL')))return false;
+ const firstFail=body.checks.find(row=>row.outcome==='FAIL');
+ return body.failed_check===(firstFail?firstFail.id:null)&&body.proposal===(firstFail?'DECLINE':'APPROVE');
+}
+function clearUnderwrite(prefix,message){
+ const error=$(`${prefix}-error`);
+ $(`${prefix}-label`).textContent='';$(`${prefix}-body`).hidden=true;delete $(`${prefix}-body`).dataset.subject;
+ $(`${prefix}-checks`).replaceChildren();$(`${prefix}-facts`).replaceChildren();
+ error.hidden=!message;error.textContent=message||'';
+}
+function paintUnderwrite(prefix,body){
+ const bound=body.status==='BOUND';
+ $(`${prefix}-error`).hidden=true;$(`${prefix}-body`).hidden=false;$(`${prefix}-body`).dataset.subject=body.advance_id;
+ $(`${prefix}-label`).textContent=body.label;
+ $(`${prefix}-summary`).textContent=bound?[body.status,`proposal ${body.proposal}`,body.failed_check?`failed ${body.failed_check}`:'failed none',`tier ${body.tier}`,`gate ${body.gate}`].join(' · '):`${body.status} · ${body.reason}`;
+ $(`${prefix}-table`).hidden=!bound;
+ $(`${prefix}-checks`).replaceChildren(...(bound?body.checks:[]).map(row=>{
+  const tr=document.createElement('tr'),head=textElement('td',row.id);
+  if(row.rule)head.append(textElement('small',row.rule,'uw-rule'));
+  tr.append(head,textElement('td',row.outcome,row.outcome==='FAIL'?'mismatch':''),textElement('td',JSON.stringify(row.detail)));
+  return tr;
+ }));
+ const rows=[];
+ const push=(label,value)=>{if(value!==undefined)rows.push([label,value===null?'null':String(value)]);};
+ if(bound){
+  push('proposal',body.proposal);push('failed_check',body.failed_check);push('tier',body.tier);push('gate',body.gate);push('phase',body.phase);push('amount',body.amount);push('beneficiary_role',body.beneficiary_role);
+  push('two_person_required',body.two_person_required);push('decided_by_role',body.decided_by_role);push('sim_day',body.sim_day);
+  const base=body.borrowing_base;
+  if(base){push('eligible_face',base.eligible_face);push('advance_rate_bps',base.advance_rate_bps);push('base_krw',base.base_krw);}
+  else push('borrowing_base',null);
+  const caps=body.caps_remaining||{};
+  push('single_advance_krw',caps.single_advance_krw);push('beneficiary_aggregate_krw',caps.beneficiary_aggregate_krw);push('portfolio_krw',caps.portfolio_krw);
+  push('terms_version',body.terms_version);push('rules_version',body.rules_version);push('inputs_digest',body.inputs_digest);
+ }
+ push('kyc_executed',body.kyc_executed);push('underwriting_executed',body.underwriting_executed);
+ $(`${prefix}-facts`).replaceChildren(...rows.flatMap(([label,value])=>[textElement('dt',label),textElement('dd',value)]));
+}
+async function runUnderwrite(prefix,isCurrent,advanceId,params,expected){
+ try{
+  const body=await request(`/api/underwrite/${encodeURIComponent(advanceId)}?${params}`);
+  if(!isCurrent())return;
+  if(!underwriteOk(body,expected))throw Error('INVALID_UNDERWRITE');
+  paintUnderwrite(prefix,body);
+ }catch(error){
+  if(!isCurrent())return;
+  clearUnderwrite(prefix,error.knownRejection?`심사 기록 조회 거절: ${error.detail?.error||error.message}`:'심사 기록을 표시하지 않습니다. 규칙 검사 결과를 승인으로 읽지 마세요.');
+ }
+}
+async function loadCaseUnderwrite(){
+ const epoch=++caseUwEpoch;
+ const selectedCase=state?.cases?.find(item=>item.advance_id===selected);
+ if(!selectedCase){clearUnderwrite('case-uw','');return;}
+ if($('case-uw-body').dataset.subject!==selectedCase.advance_id)clearUnderwrite('case-uw','');
+ if(!can('projection:read')){clearUnderwrite('case-uw',permissionReason('projection:read'));return;}
+ const day=$('underwrite-sim-day').value;
+ if(!UW_DAY.test(day)){clearUnderwrite('case-uw','가정 심사일은 0부터 999999 사이의 정수여야 합니다.');return;}
+ const params=new URLSearchParams({instance_id:state.instance_id,sim_day:day});
+ await runUnderwrite('case-uw',()=>epoch===caseUwEpoch,selectedCase.advance_id,params,{advance_id:selectedCase.advance_id,candidate:false,sim_day:Number(day)});
+}
+async function loadCandidateUnderwrite(){
+ const epoch=++candUwEpoch;
+ if(!state)return;
+ if(!can('projection:read')){clearUnderwrite('cand-uw',permissionReason('projection:read'));return;}
+ const fixture=$('uw-fixture').value,amount=$('uw-amount').value,day=$('uw-sim-day').value;
+ if(!UW_AMOUNT.test(amount)||Number(amount)>1e12){clearUnderwrite('cand-uw','가정 금액은 1부터 10¹² 사이의 정수여야 합니다.');return;}
+ if(!UW_DAY.test(day)){clearUnderwrite('cand-uw','가정 심사일은 0부터 999999 사이의 정수여야 합니다.');return;}
+ const params=new URLSearchParams({instance_id:state.instance_id,sim_day:day,amount});
+ await runUnderwrite('cand-uw',()=>epoch===candUwEpoch,fixture,params,{advance_id:fixture,candidate:true,sim_day:Number(day),amount:Number(amount)});
+}
 const casePattern=/^sim-[a-zA-Z0-9-]{1,60}$/;
 function caseFromUrl(){const raw=new URLSearchParams(location.search).get('case');return typeof raw==='string'&&casePattern.test(raw)?raw:null;}
 function syncCaseUrl(id){const params=new URLSearchParams(location.search);params.delete('case');const rest=params.toString();const query=[id?`case=${encodeURIComponent(id)}`:null,rest||null].filter(Boolean).join('&');const next=location.pathname+(query?`?${query}`:'')+location.hash;if(next!==location.pathname+location.search+location.hash)history.replaceState(null,'',next);}
@@ -292,7 +374,7 @@ function render(){
  $('exposure').textContent=number(state.cases.reduce((sum,c)=>sum+BigInt(c.outstanding_exposure),0n));
  $('repaid').textContent=number(state.cases.reduce((sum,c)=>sum+BigInt(c.repaid_exposure),0n));
  $('cases').replaceChildren();
- for(const item of state.cases){const row=document.createElement('tr');row.append(textElement('td',item.advance_id.slice(0,14)),textElement('td',phaseNames[item.phase]),textElement('td',number(item.outstanding_exposure)),textElement('td',number(item.reserved_open)));const gateCell=textElement('td',item.settlement_gate,'gate');gateCell.title=item.settlement_gate;gateCell.setAttribute('aria-label',item.settlement_gate);row.append(gateCell);const cell=document.createElement('td');const button=textElement('button',selected===item.advance_id?'선택됨':'열기');button.type='button';button.setAttribute('aria-label',`${item.advance_id} 열기`);button.onclick=()=>{selected=item.advance_id;syncCaseUrl(item.advance_id);render();void loadCaseTerms();};cell.append(button);row.append(cell);$('cases').append(row);}
+ for(const item of state.cases){const row=document.createElement('tr');row.append(textElement('td',item.advance_id.slice(0,14)),textElement('td',phaseNames[item.phase]),textElement('td',number(item.outstanding_exposure)),textElement('td',number(item.reserved_open)));const gateCell=textElement('td',item.settlement_gate,'gate');gateCell.title=item.settlement_gate;gateCell.setAttribute('aria-label',item.settlement_gate);row.append(gateCell);const cell=document.createElement('td');const button=textElement('button',selected===item.advance_id?'선택됨':'열기');button.type='button';button.setAttribute('aria-label',`${item.advance_id} 열기`);button.onclick=()=>{selected=item.advance_id;syncCaseUrl(item.advance_id);render();void loadCaseTerms();void loadCaseUnderwrite();};cell.append(button);row.append(cell);$('cases').append(row);}
  const c=state.cases.find(item=>item.advance_id===selected);$('empty').hidden=!!c;$('detail').hidden=!c;
  if(!c)$('advanced').hidden=true;
  if(c){$('preview-result').textContent='현재 근거로 확인하며 실제 제안과 예약은 바꾸지 않습니다.';$('case-title').textContent=c.advance_id;$('phase').textContent=`${phaseNames[c.phase]} · ${c.phase}`;
@@ -506,5 +588,7 @@ $('reconcile-readonly').onclick=async()=>{
  finally{busy=false;fence();}
 };
 for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state)void loadCaseTerms();});
+$('underwrite-sim-day').addEventListener('change',()=>{if(state)void loadCaseUnderwrite();});
+for(const id of ['uw-fixture','uw-amount','uw-sim-day'])$(id).addEventListener('change',()=>{if(state)void loadCandidateUnderwrite();});
 try{const stored=sessionStorage.getItem(roleStorageKey);if(syntheticRoles.includes(stored))$('role').value=stored;}catch{}
 readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(state.workspace&&state.workspace.status!=='ACTIVE')notice(`작업공간을 사용할 수 없습니다 (${state.workspace.status}). 쓰기를 차단했습니다. 빈 시뮬레이션으로 덮어쓰지 않습니다.`,true);else if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});

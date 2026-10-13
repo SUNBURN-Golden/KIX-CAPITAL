@@ -7,6 +7,8 @@ const OUT = path.join('test-results', 'acceptance');
 const VIEWS = [
   ['portfolio', '#workspace .table-wrap'],
   ['case', '#detail'],
+  ['case-underwrite', '#case-underwrite'],
+  ['candidate-underwrite', '#underwrite'],
   ['projection', '#projection'],
   ['statement', '#statement'],
   ['reconciliation', '#reconciliation-panel'],
