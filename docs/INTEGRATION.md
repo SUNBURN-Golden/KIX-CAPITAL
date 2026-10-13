@@ -98,3 +98,80 @@ This is a **local authorization boundary**, not authentication and not an entitl
 - Those two receipt fields are stored in the workspace payload and come back on save/restore. A file written before the label, with neither field, loads each such receipt as `role=UNLABELED` and `role_provenance=UNLABELED`. `UNLABELED` is not a session role: `POST /api/session` with `UNLABELED`, or `X-Capital-Role: UNLABELED`, is `403 ROLE_UNKNOWN`. Loading does not rewrite the file. The next accepted command persists the labeled copy.
 - `GET /api/state` returns the loopback token bound to the caller. A request with no token is organizer and receives the organizer token. An auditor request receives the auditor token, not the organizer write token. The `auth` block reports `identity: NOT_BOUND` and `authentication: NOT_BOUND`. The machine `state_digest` does not include that block. This seam is access control for synthetic roles. It does not establish who a person is.
 - Real IdP, KYC, and credential flows stay **NOT_BOUND**. AgentGrant and ActionPermit (CAP-19) stay **NOT_BOUND**. The simulated lane stores proposals as `HUMAN_PENDING` with `effects_executed` false in process memory only. Citing `proposal_id` on an organizer command stamps that id on the receipt and does not execute the proposal. Proposals are not part of the workspace payload. Which real person may approve, draw, or default a real advance is not decided here. The matrix is a synthetic placeholder. Vendor files under `capital/vendor/` are not part of this boundary and stay byte-identical. `AuthorizerPort` stays `NOT_BOUND` with upstream receipt `NONE`.
+
+### Route-by-role matrix
+
+<!-- generated:auth-matrix begin -->
+Generated from `tests/auth_matrix.json` (`KIX_CAPITAL_AUTH_MATRIX_V1`, label `SIMULATED`, role provenance `SYNTHETIC_LOCAL_ROLE`, identity and authentication `NOT_BOUND`). Do not edit this block by hand: `python3 scripts/auth_matrix.py --write` rewrites it, and `python3 -m unittest tests.test_auth_matrix` sends every cell below to a real loopback server and fails when the table, this block, the dispatcher or `ROUTE_PERMISSIONS` drift apart.
+
+Each cell is the HTTP result for that caller and route. A bare `200` means the gate passed. `no-token` sends no `X-Capital-Token`: a GET is the default organizer, and every POST is `403 LOCAL_TOKEN_REQUIRED` because the loopback boundary checks the token first. A static asset (`permission` `none`) is served before authentication. Denied cells carry the permission and role in the body.
+
+| Method | Route | Permission | organizer | auditor | observer | agent | no-token |
+|---|---|---|---|---|---|---|---|
+| GET | `/api/state` | `state:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/scenarios[/…]` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/readiness` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/decisions` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/evidence` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/projection` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/terms[/…]` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/policy[/…]` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/preview/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/underwrite/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/operations/…` | `receipt:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/export` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/export/manifest` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/reconciliation` | `reconciliation:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/statement` | `statement:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/metrics` | `metrics:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/health` | `health:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| POST | `/api/commands` | `command:submit` | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 403 LOCAL_TOKEN_REQUIRED |
+| POST | `/api/session` | `session:bind` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 403 LOCAL_TOKEN_REQUIRED |
+| POST | `/api/agent/query_grant` | `agent:query_grant` | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 | 403 LOCAL_TOKEN_REQUIRED |
+| POST | `/api/agent/propose_action` | `agent:propose_action` | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 | 403 LOCAL_TOKEN_REQUIRED |
+| POST | `/api/agent/execute` | `agent:propose_action` | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 403 EXECUTE_AUTHORITY_DISABLED | 403 LOCAL_TOKEN_REQUIRED |
+| GET | `/` | none | 200 | 200 | 200 | 200 | 200 |
+| GET | `/app.js` | none | 200 | 200 | 200 | 200 | 200 |
+| GET | `/style.css` | none | 200 | 200 | 200 | 200 | 200 |
+
+`POST /api/commands` passes the route gate with `command:submit`. The service then requires `command:{op}` for the named operation. An `op` outside this list needs only `command:submit` and is then `UNSUPPORTED_OPERATION`.
+
+| op | Permission | Roles that hold it |
+|---|---|---|
+| `offer` | `command:offer` | organizer |
+| `approve` | `command:approve` | organizer |
+| `reject` | `command:reject` | organizer |
+| `cancel` | `command:cancel` | organizer |
+| `bind_settlement` | `command:bind_settlement` | organizer |
+| `draw` | `command:draw` | organizer |
+| `repay` | `command:repay` | organizer |
+| `close` | `command:close` | organizer |
+| `default` | `command:default` | organizer |
+| `reconcile` | `command:reconcile` | organizer |
+
+Outside the route-by-role cells the table also pins these cases. Each lists what a real server returned.
+
+| Case | Request | Result |
+|---|---|---|
+| unregistered GET path | `GET /api/no-such-route` | every caller: 404 NOT_FOUND |
+| unregistered POST path | `POST /api/no-such-route` | organizer, auditor, observer, agent: 404 NOT_FOUND; no-token: 403 LOCAL_TOKEN_REQUIRED |
+| near-miss GET path | `GET /api/projection/extra`, `GET /api/state/`, `GET /api/preview` | organizer: 404 NOT_FOUND |
+| near-miss POST path | `POST /api/session/` | organizer: 404 NOT_FOUND |
+| GET on a POST-only route | `GET /api/commands`, `GET /api/session`, `GET /api/agent/query_grant`, `GET /api/agent/propose_action`, `GET /api/agent/execute` | every caller: 404 NOT_FOUND |
+| POST on a GET-only route | `POST /api/state` | organizer, auditor, observer, agent: 404 NOT_FOUND; no-token: 403 LOCAL_TOKEN_REQUIRED |
+| token role differs from the claimed role | `GET /api/state`, `POST /api/session` (X-Capital-Role: auditor) | organizer: 403 ROLE_MISMATCH |
+| token role differs from the claimed role | `GET /api/state` (X-Capital-Role: organizer) | auditor, agent: 403 ROLE_MISMATCH |
+| a mismatch is reported before a permission denial | `GET /api/metrics` (X-Capital-Role: organizer) | observer: 403 ROLE_MISMATCH |
+| token role differs from the claimed role | `POST /api/agent/propose_action` (X-Capital-Role: organizer) | agent: 403 ROLE_MISMATCH |
+| non-organizer role claimed without a token | `GET /api/state` (X-Capital-Role: auditor) | no-token: 403 SESSION_REQUIRED |
+| non-organizer role claimed without a token | `GET /api/state` (X-Capital-Role: observer) | no-token: 403 SESSION_REQUIRED |
+| non-organizer role claimed without a token | `GET /api/state` (X-Capital-Role: agent) | no-token: 403 SESSION_REQUIRED |
+| organizer claimed without a token is the default | `GET /api/state` (X-Capital-Role: organizer) | no-token: 200 |
+| authentication runs before the unregistered-path 404 | `GET /api/no-such-route` (X-Capital-Role: auditor) | no-token: 403 SESSION_REQUIRED |
+| unknown role header | `GET /api/state` (X-Capital-Role: clerk) | no-token, organizer: 403 ROLE_UNKNOWN |
+| unknown role header | `GET /api/state` (X-Capital-Role: UNLABELED) | no-token: 403 ROLE_UNKNOWN |
+| unknown role header | `POST /api/session` (X-Capital-Role: clerk) | organizer: 403 ROLE_UNKNOWN |
+| unknown token | `GET /api/state`, `GET /api/no-such-route`, `POST /api/session`, `POST /api/commands` | bogus-token: 403 LOCAL_TOKEN_REQUIRED |
+| static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
+| static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
+<!-- generated:auth-matrix end -->
