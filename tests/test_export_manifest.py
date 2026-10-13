@@ -1,4 +1,5 @@
 import copy
+import importlib.util
 import json
 import os
 import stat
@@ -22,6 +23,42 @@ from capital.verify import main as verify_main
 from capital.verify import verify_path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+decision_ledger = _load('decision_ledger', ROOT / 'scripts' / 'decision_ledger.py')
+
+
+def decision_block(name):
+    """The single capital-decision-v1 block of docs/decisions/<name>."""
+    text = (ROOT / 'docs' / 'decisions' / name).read_text(encoding='utf-8')
+    blocks = decision_ledger.extract_blocks(text)
+    assert len(blocks) == 1
+    return blocks[0]
+
+
+def retention_markers(node):
+    """Duration-style keys and bare numbers anywhere under retention_policy."""
+    found = []
+    if type(node) is dict:
+        for key, value in node.items():
+            if any(part in key for part in ('duration', 'bound', 'timer')):
+                found.append(key)
+            found.extend(retention_markers(value))
+    elif type(node) is list:
+        for item in node:
+            found.extend(retention_markers(item))
+    elif type(node) in (int, float):
+        found.append(node)
+    return found
+
+
 V1_KEYS = {
     'format', 'instance_id', 'provenance', 'source', 'fixtures_digest', 'journal',
     'state_digest', 'replay_matched', 'durable', 'funds_executed', 'note',
@@ -101,10 +138,21 @@ class ManifestTests(unittest.TestCase):
         for gap_id in ('cursor', 'watermark', 'source_cut', 'external_key', 'retention_policy', 'authentication'):
             self.assertEqual(gaps[gap_id]['status'], 'NOT_BOUND')
             self.assertIsNone(gaps[gap_id]['value'])
+        for slot in ('legal_dispute_hold', 'business_reconciliation', 'retry_support',
+                     'memory_residency', 'tax_accounting_records'):
+            self.assertIn(slot, gaps['retention_policy']['meaning'])
         self.assertFalse(manifest['stage7_authenticated_export'])
         self.assertEqual(manifest['authentication'], 'NOT_BOUND')
         self.assertEqual(manifest['external_key'], 'NOT_BOUND')
-        self.assertEqual(manifest['retention_policy'], 'NOT_BOUND')
+        policy = manifest['retention_policy']
+        self.assertEqual(
+            set(policy),
+            {'legal_dispute_hold', 'business_reconciliation', 'retry_support',
+             'memory_residency', 'tax_accounting_records'})
+        for slot in policy.values():
+            self.assertEqual(set(slot), {'owner', 'status'})
+            self.assertIn(slot['status'], ('UNDETERMINED', 'DECISION_REQUIRED'))
+        self.assertEqual(retention_markers(policy), [])
         self.assertEqual(manifest['import_endpoint'], 'NOT_PROVIDED')
         self.assertEqual(manifest['resume_endpoint'], 'NOT_PROVIDED')
         self.assertFalse(manifest['funds_executed'])
@@ -168,6 +216,47 @@ class ManifestTests(unittest.TestCase):
             right_manifest['sections']['projection']['sha256'])
         self.assertEqual(left_manifest['content_digest'], right_manifest['content_digest'])
         self.assertEqual(left_manifest['sections']['projection']['sha256'], sha256_hex(left_manifest['sections']['projection']['body']))
+
+    def test_retention_policy_mirrors_the_merged_decision_notes(self):
+        upstream = decision_block('CAPITAL_UPSTREAM_BINDING.md')['entries'][
+            'deployment_tls_retention']['target']['retention_structure']['slots']
+        accounts = decision_block('CAPITAL_ACCOUNTS_TAX_LEGAL.md')['entries'][
+            'data_retention_privacy']['value']['retention_slots']
+        self.assertEqual(
+            set(accounts),
+            {'legal_dispute_hold', 'business_reconciliation', 'retry_support',
+             'memory_residency', 'tax_accounting_records'})
+        self.assertEqual(set(upstream), set(accounts) - {'tax_accounting_records'})
+        marker_to_status = {
+            'NOT_SET_OWNER_SUPPLIED': 'UNDETERMINED',
+            'NOT_SET_DECISION_REQUIRED': 'DECISION_REQUIRED',
+        }
+        policy = CapitalService().export_manifest()['retention_policy']
+        self.assertEqual(set(policy), set(accounts))
+        for name, slot in policy.items():
+            self.assertEqual(set(slot), {'owner', 'status'})
+            self.assertTrue(slot['owner'].strip())
+            note = accounts[name]
+            markers = [note['duration']] if 'duration' in note else list(note['bounds'].values())
+            for marker in markers:
+                self.assertEqual(slot['status'], marker_to_status[marker], name)
+            self.assertTrue(
+                note['owner'] == slot['owner'] or note['owner'].startswith(slot['owner']),
+                (name, slot['owner'], note['owner']))
+            if name in upstream:
+                value = upstream[name]['value']
+                if type(value) is dict:
+                    for bound_status in value.values():
+                        self.assertEqual(slot['status'], bound_status, name)
+                else:
+                    self.assertEqual(slot['status'], value, name)
+                owner = upstream[name]['owner']
+                self.assertTrue(
+                    slot['owner'] == owner or slot['owner'].startswith(owner),
+                    (name, slot['owner'], owner))
+        self.assertEqual(retention_markers(policy), [])
+        self.assertEqual(
+            [slot['status'] for slot in policy.values()].count('DECISION_REQUIRED'), 2)
 
     def test_status_is_incomplete_unless_reconciliation_and_workspace_are_clean(self):
         self.assertEqual(manifest_status('MATCHED', 'ACTIVE'), ('COMPLETE', []))
@@ -387,6 +476,11 @@ class ManifestTests(unittest.TestCase):
             body = json.loads(raw)
             self.assertEqual(body['format'], FORMAT)
             self.assertEqual(body['signature']['status'], 'NOT_BOUND')
+            self.assertEqual(
+                set(body['retention_policy']),
+                {'legal_dispute_hold', 'business_reconciliation', 'retry_support',
+                 'memory_residency', 'tax_accounting_records'})
+            self.assertEqual(retention_markers(body['retention_policy']), [])
             status, raw = request('GET', '/api/export/manifest', headers={'X-Capital-Token': observer})
             denied = json.loads(raw)
             self.assertEqual(status, 403)

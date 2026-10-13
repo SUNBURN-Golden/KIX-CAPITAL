@@ -41,7 +41,7 @@ GROUPS = [
                    '내용 주소 export manifest (SignaturePort · DEV HMAC은 무결성만 · stage7 인증 아님)'],
      'blockers': ['채택 backend와 stage5/6 경제 원천', 'Finance 후보 8개 채택과 계정/세무 정책', 'stage7 source cut·watermark·인증 export·부분 자료 거절'],
      'owner': 'Protocol stage5/6/7 및 사용자/회계 담당',
-     'claim': '현재 JSON은 내구 원장·인증 회계 export가 아님. LOCAL_FILE_WORKSPACE도 stage5 내구 거래가 아님. 로컬 대사 예외는 은행 대사·제공자 인증 완전성이 아님. 내용 주소 manifest와 SignaturePort는 stage7 인증 export가 아니며 외부 키·cursor·watermark·보존 정책이 없다'},
+     'claim': '현재 JSON은 내구 원장·인증 회계 export가 아님. LOCAL_FILE_WORKSPACE도 stage5 내구 거래가 아님. 로컬 대사 예외는 은행 대사·제공자 인증 완전성이 아님. 내용 주소 manifest와 SignaturePort는 stage7 인증 export가 아니며 외부 키·cursor·watermark·보존 기간 값이 없고 보존 칸 다섯은 주인만 있는 빈 칸이다'},
     {'id': 'assets-and-rights', 'title': '다중 자산·권리 규모·비공개·AI', 'status': 'UPSTREAM_REQUIRED',
      'requirements': ['CAP-12', 'CAP-17', 'CAP-18', 'CAP-19'],
      'behavior': '자산별 금액·대규모 권리·최소 공개·위임 권한을 동일 producer 계약으로 연결합니다.',
@@ -51,7 +51,7 @@ GROUPS = [
     {'id': 'release', 'title': '실서비스 수용·출시', 'status': 'NOT_AUTHORIZED',
      'requirements': ['CAP-20'], 'behavior': '실제 사용자·제공자·운영 환경에서 제품을 사용합니다.',
      'available': ['브라우저 합성 여정과 독립 코드 리뷰'],
-     'blockers': ['사용자 제품 수용과 적용 가능한 독립 감사', '실여신/PG/은행/KYC·면허/법무와 운영 책임', '인증/TLS/보존·복구·개인정보·배포 명시 승인'],
+     'blockers': ['사용자 제품 수용과 적용 가능한 독립 감사', '실여신/PG/은행/KYC·면허/법무와 운영 책임', '인증/TLS/보존·복구·개인정보·배포 명시 승인 per docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md'],
      'owner': '사용자 및 지정 외부/운영 담당', 'claim': '개발 CI는 실거래 또는 배포 승인이 아님'},
 ]
 

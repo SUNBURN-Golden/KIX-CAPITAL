@@ -33,11 +33,28 @@ test('manifest download states the local limits and observer cannot export', asy
   expect(manifest.signature.status).toBe('NOT_BOUND');
   expect(manifest.signature.value).toBeNull();
   expect(manifest.signature).not.toHaveProperty('key');
+  const slots = manifest.retention_policy;
+  expect(Object.keys(slots).sort()).toEqual([
+    'business_reconciliation', 'legal_dispute_hold', 'memory_residency',
+    'retry_support', 'tax_accounting_records',
+  ]);
+  for (const [name, status] of [
+    ['legal_dispute_hold', 'UNDETERMINED'],
+    ['business_reconciliation', 'UNDETERMINED'],
+    ['retry_support', 'DECISION_REQUIRED'],
+    ['memory_residency', 'DECISION_REQUIRED'],
+    ['tax_accounting_records', 'UNDETERMINED'],
+  ]) {
+    expect(Object.keys(slots[name]).sort()).toEqual(['owner', 'status']);
+    expect(typeof slots[name].owner).toBe('string');
+    expect(slots[name].owner.length).toBeGreaterThan(0);
+    expect(slots[name].status).toBe(status);
+  }
   for (const name of ['journal', 'receipts', 'projection', 'reconciliation', 'statement', 'fixtures', 'source_pin']) {
     expect(manifest.sections[name].sha256).toMatch(/^[0-9a-f]{64}$/);
   }
   expect(manifest.content_digest).toMatch(/^[0-9a-f]{64}$/);
-  expect(manifest.not_bound.filter(row => ['cursor', 'watermark', 'source_cut'].includes(row.id)).every(row => row.status === 'NOT_BOUND' && row.value === null)).toBe(true);
+  expect(manifest.not_bound.filter(row => ['cursor', 'watermark', 'source_cut', 'retention_policy'].includes(row.id)).every(row => row.status === 'NOT_BOUND' && row.value === null)).toBe(true);
   await expect(page.locator('#notice')).toContainText('stage7 인증 export가 아니며');
   await expect(page.locator('#notice')).toContainText('무결성만');
   const after = await (await page.request.get('/api/state')).json();

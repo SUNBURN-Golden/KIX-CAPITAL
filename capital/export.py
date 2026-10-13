@@ -1,7 +1,11 @@
 """Content-addressed export manifest and the SignaturePort seam.
 
 This is a local diagnostic. It is not stage7 authenticated export. There is
-no external key, cross-service cursor, watermark, or retention policy.
+no external key, cross-service cursor, watermark, or retention duration.
+`retention_policy` names five empty slots with an owner each (upstream
+RETENTION_PERIODS_PROPOSAL R1 plus the Capital-added tax slot of
+CAPITAL-RETENTION-PRIVACY-V1). No slot holds a duration, bound, or timer, and
+nothing here deletes anything.
 `SignaturePort` is the adoption seam: `UnsignedSigner` leaves the signature
 NOT_BOUND, and `DevHmacSigner` is an opt-in per-workspace HMAC. A shared HMAC
 key is integrity only, not authentication. The key is labeled DEV_ONLY, created
@@ -45,17 +49,35 @@ VOLATILE_KEYS = frozenset({
     'timestamp',
     'timestamps',
 })
+# (slot, owner, status). The statuses are the two empty states of upstream R1:
+# UNDETERMINED (an owner must supply the value) and DECISION_REQUIRED (the owner
+# must still decide). The slots and owners mirror the capital-decision-v1 blocks
+# in docs/decisions/CAPITAL_UPSTREAM_BINDING.md and CAPITAL_ACCOUNTS_TAX_LEGAL.md;
+# tests/test_export_manifest.py compares them. The zipapp bundles no docs/, so
+# the manifest cannot read them at runtime. No duration is defaulted here.
+RETENTION_SLOTS = (
+    ('legal_dispute_hold', 'legal/privacy counsel designated by JunTae', 'UNDETERMINED'),
+    ('business_reconciliation', 'Toss contract/technical', 'UNDETERMINED'),
+    ('retry_support', 'Astra', 'DECISION_REQUIRED'),
+    ('memory_residency', 'Astra', 'DECISION_REQUIRED'),
+    ('tax_accounting_records', 'accountant and tax adviser designated by JunTae', 'UNDETERMINED'),
+)
 NOT_BOUND_FIELDS = (
     ('cursor', '교차 서비스 cursor는 연결되지 않았습니다.'),
     ('watermark', 'watermark는 연결되지 않았습니다.'),
     ('source_cut', '인증된 source cut이 없습니다.'),
     ('external_key', '외부 서명 키는 연결되지 않았습니다.'),
-    ('retention_policy', '보존 정책은 정해지지 않았습니다.'),
+    ('retention_policy', '보존 칸 다섯(legal_dispute_hold, business_reconciliation, retry_support, memory_residency, tax_accounting_records)은 retention_policy 객체에 {owner, status}로 이름과 주인만 있고 비어 있습니다. 보존 기간과 상한 값은 정해지지 않았습니다.'),
     ('authentication', 'stage7 인증 export가 아닙니다. SignaturePort는 채택 경계입니다.'),
 )
 NOTE = (
     'Local content-addressed manifest. Not stage7 authenticated export. '
-    'No external key, cross-service cursor, watermark, or retention policy. '
+    'No external key, cross-service cursor, watermark, or retention duration. '
+    'retention_policy names five empty slots, each with an owner and a status of UNDETERMINED or DECISION_REQUIRED; '
+    'no duration, bound, or timer is set, and the simulation retains every record with no automatic deletion '
+    '(RETAIN_ALL_NO_AUTOMATIC_DELETION). '
+    'Data classes journal, receipts, case_fixtures, derived_views, export_manifests, dev_hmac_key, and test_and_ci_artifacts '
+    'hold no personal data by design (NO_PERSONAL_DATA_BY_DESIGN_V1). '
     'SignaturePort is the adoption seam. A shared HMAC key is integrity only, not authentication.'
 )
 DEV_KEY_NAME = 'export-dev.key'
@@ -140,6 +162,11 @@ def manifest_status(reconciliation_status, workspace_status):
     return 'COMPLETE', []
 
 
+def retention_policy():
+    """The five named empty retention slots. Owner and status only, never a duration."""
+    return {name: {'owner': owner, 'status': status} for name, owner, status in RETENTION_SLOTS}
+
+
 def _seal_section(name, body):
     if type(body) is not dict or 'part_tag' in body:
         raise ExportError('SECTION_BODY')
@@ -175,7 +202,7 @@ def build_manifest(*, sections, instance_id, signer, status, incomplete_reasons)
             for gap_id, meaning in NOT_BOUND_FIELDS
         ],
         'external_key': 'NOT_BOUND',
-        'retention_policy': 'NOT_BOUND',
+        'retention_policy': retention_policy(),
         'authentication': 'NOT_BOUND',
         'stage7_authenticated_export': False,
         'signature_port': 'SignaturePort',
