@@ -292,3 +292,74 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 `python3 -m capital.verify FILE`는 섹션 해시·content digest·서명만 검사하므로 새 manifest도 그대로 검증된다. `retention_policy`는 `content_digest`에 들어가므로 구조를 바꾸면 `python3 scripts/seed_demo.py --update-golden`으로 golden을, `python3 scripts/manifest_vectors.py --write`로 `tests/vectors/manifest/`를 다시 쓴다. golden diff는 `content_digest` 한 줄만 달라야 한다. `capital/contract/facade-v1.json`은 다섯 칸을 `additionalProperties: false`로 고정하고 status를 칸별 `const`로 잠근다. 값을 채우는 것은 `k-stage5-durable-tx` 저장이 생기고 주인들이 답한 뒤다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:delegation-claims-conformance -->
+
+### delegation-claims-conformance
+
+`tests/agent_claims.json`(`KIX_CAPITAL_AGENT_CLAIMS_V1`, 66행)은 시뮬레이티드 agent 레인을 kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232`의 초안 `docs/contracts/AI_DELEGATION_AUTHORITY.md`에 비춰 고정한 클레임 표다. `python3 scripts/agent_claims_check.py --execute`가 `CLAIM_CONFORMANCE passed=66 total=66 failed=0`을 낸다. 위 `upstream-claims-conformance` 절의 "그 표의 검사 수"는 표가 하나였을 때의 문장이며 고치지 않는다. 지금 값은 이 절이 말한다.
+
+수용 사다리의 `upstream-claims` 단계는 이제 명령을 둘 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(`tests/upstream_claims.json`, 87행)이고 둘째가 `scripts/agent_claims_check.py --execute`(66행)다. 단계가 보고하는 `passed`와 `total`은 두 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+66=153이고 label은 그대로 `CLAIM_CONFORMANCE`다. 첫 명령이 0이 아닌 코드로 끝나면 둘째는 실행하지 않고, 둘째가 0이 아니어도 그 단계는 `failed`다.
+
+인자 없이 실행하면(`--execute`도 `--protocol-dir`도 없을 때) 두 스크립트 모두 `SKIPPED`를 찍고 종료 코드 0으로 끝난다. 그 상태는 통과가 아니고 성공 개수도 없다. `--protocol-dir`는 초안의 제목과 인용 문자열만 읽기 전용으로 확인하며 `CLAIM_DRIFT verified=N total=N`을 낸다.
+
+표 안의 두 이름은 어댑터 매핑이다. `HUMAN_PENDING`은 초안의 `PROPOSED` 메모 단계를 가리키는 Capital 레인의 라벨이고, 저장된 메모는 `effects_executed` false로 남는다. `EXECUTE_AUTHORITY_DISABLED`(403)는 초안의 항상 실패하는 `attempt_execution`(`DELEGATED_EXECUTION_DISABLED`)에 대응하는 레인의 거절이다. 초안의 `PROPOSED`/`HUMAN_APPROVED` 결정 흐름에는 레인 쪽 짝이 없다. 업스트림 `ai_delegation_mock.py`는 vendor하지 않았고 읽기 전용 참조로만 남는다. 결과는 SIMULATED이고 실자금을 움직이지 않는다. 이 단계는 SEMANTIC_CONFORMANCE도 프로듀서 프로필 채택도 아니다. 인증, EXECUTE, ActionPermit은 바뀌지 않았다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:asset-spec-krw -->
+
+### asset-spec-krw
+
+Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{namespace: "fiat", reference: "KRW", decimals: 0, max_atoms: 1000000000000}`이다. `max_atoms`는 고정된 FSM의 `MONEY_MAX` fixture 상한이지 registry 한도가 아니다. 이 선언은 `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` 3.6절의 `PROVISIONAL` 항목이다. 자산 registry는 `DEFERRED`, FX와 자산 간 합산은 `NOT_ADOPTED`이며 둘째 자산은 어디서도 받지 않는다. 금액은 이 한 자산의 정수로 남는다.
+
+선언은 `GET /api/state`의 `assets`(항목이 정확히 하나인 배열)와 export manifest의 `source_pin`에서 읽는다. organizer, auditor, observer가 읽는 값은 같고(agent는 GET이 모두 거절이다) 읽어도 장부는 바뀌지 않는다.
+
+`POST /api/commands`의 `asset`은 선택 필드다. 있으면 선언된 AssetSpec과 모든 필드와 그 자료형까지 같아야 한다. 문자열 `"KRW"`, 정수 자리의 float나 bool, 키가 더하거나 모자란 객체는 모두 틀린 값이다. 틀리면 `400 ASSET_MISMATCH`다. 이 검사는 역할 검사와 `SESSION_CHANGED` 뒤, idempotency 조회 앞에서 한다. 그래서 권한 없는 역할은 이 검증으로 아무것도 알 수 없다. 거절된 요청은 저널 항목도 receipt도 idempotency 기록도 남기지 않는다. `GET /api/operations/{operation_id}`는 계속 `UNKNOWN`이고 `state_digest`와 `operation_count`는 그대로이며 그 operation id는 아직 비어 있다. 이미 받아들여진 operation id에 틀린 `asset`을 실어 다시 보내도 `400 ASSET_MISMATCH`일 뿐 저장된 receipt를 돌려주지도 바꾸지도 않는다. 선언된 값을 실은 요청은 `asset` 없는 요청과 똑같이 처리되고, `asset`은 receipt나 idempotency fingerprint에 들어가지 않는다. 같은 operation id에 다른 인자를 보내면 `asset`이 있어도 `IDEMPOTENCY_CONFLICT`다.
+
+이것은 통화 지원이 아니다. 둘째 자산, 환산, u128 금액은 `NOT_BOUND`다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:manifest-verifier-vectors -->
+
+### manifest-verifier-vectors
+
+`python3 -m capital.verify FILE [--key-file KEY]`가 오프라인 manifest 검증기다. `tests/vectors/manifest/`는 그 검증기가 변조를 잡는지 보는 SIMULATED 변조 코퍼스다. 같은 `seed_demo` 이야기를 파일 작업공간에 고정 instance id `manifest-vectors`로 다시 돌려 만들어서 실행마다 같은 바이트가 나온다.
+
+| 파일 | 만든 방법 | 기대하는 결과 |
+|---|---|---|
+| `unsigned.json` | 서명 없는 깨끗한 manifest | `ok` true, signature `NOT_BOUND` |
+| `dev-hmac.json` | 같은 장부를 `DEV_HMAC_SHA256`으로 서명 | `ok` true, signature `VERIFIED_DEV_ONLY_INTEGRITY` (키 필요) |
+| `section-<id>.json` | 그 섹션 본문의 한 바이트를 뒤집음. 섹션은 `journal`, `receipts`, `projection`, `reconciliation`, `statement`, `fixtures`, `source_pin` 일곱 개 | `SECTION_HASH_MISMATCH:<id>` |
+| `content-digest.json` | `content_digest`의 16진 한 글자를 뒤집음 | `CONTENT_DIGEST_MISMATCH` |
+| `signature.json` | HMAC 값의 16진 한 글자를 뒤집음 | `SIGNATURE_MISMATCH` (키 필요) |
+| `malformed.json` | 서명된 manifest를 문서 중간에서 자름 | `MANIFEST_UNREADABLE` |
+
+`tests/vectors/export-dev.key`는 `dev-hmac.json`과 `signature.json`을 위한 고정 합성 DEV_ONLY 키로, 시험 재료이지 자격 증명이 아니고 다른 곳에 쓰지 않는다. git에서는 모드 0644로 저장되는데 검증기는 모드 0600인 키 파일만 읽는다. 그대로 `--key-file`에 주면 `SIGNATURE_KEY_MODE`다. 임시 위치에 복사한 뒤 `chmod 0600`을 하고 그 사본을 넘긴다. 통과하면 종료 코드 0, 거절이면 1이다.
+
+`python3 scripts/manifest_vectors.py --check`는 메모리에서 코퍼스를 다시 만들어 바이트를 비교하고, 다르거나 빠졌거나 `manifest/` 아래에 예상 밖 파일이 있으면 1로 끝난다. `--write`는 파일을 다시 쓰고 나머지 `manifest/*.json`을 지운다. manifest 구조를 바꾸면 `python3 scripts/seed_demo.py --update-golden`과 함께 `--write`가 필요하다. 공유 HMAC은 무결성만 확인하고 인증이 아니다. 이것은 stage7 인증 export가 아니고 새 서명 방식도 아니다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:finance-vector-pack -->
+
+### finance-vector-pack
+
+`tests/vectors/finance_vectors.json`(`KIX_CAPITAL_FINANCE_VECTORS_V1`)은 결정적 입력 벡터 묶음이다. `label`은 `SIMULATED`, `vector_role`은 `INPUT_VECTOR_CANDIDATE`다. `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`의 `stage6_finance_candidates`(DEFERRED)가 말하는 대로, Capital이 두 번째 원장을 만들지 않고 로컬 산출물을 여덟 `FINANCE_PENDING_NODES` 후보의 입력 벡터 후보로 내놓는다. 파일은 고정 instance `finance-vectors`로 만들지만 instance id는 담지 않는다. 시계, 무작위 값, 경로도 없다.
+
+| 묶음 | 후보 | 담는 것 |
+|---|---|---|
+| `scenario_obligations` | `fin-multi-payee-refund-proof` | F01–F03 시나리오 9개, 35 단계의 payee별 의무 값과 현금·환불 합계. 정책은 고르지 않는다. |
+| `f04_command_outcomes` | `fin-ledger-contract` | `seed_demo` 명령 22개의 outcome·오류·phase·`state_digest`와 받아들여진 저널 항목 21개 |
+| `journal_projection_digests` | `fin-double-entry-projection` | 저널 prefix마다 복원한 `state_digest`와 `SIMULATION_FIXED_V1` 항목·계정·read-model digest, 차변·대변 합계 |
+| `seed_reconciliation` | `fin-observation-reconciliation` | 고정 instance seed 장부의 대사 검사 여섯 개 보고서와 발급된 적 없는 operation id 하나 |
+| `statement_and_previews` | `fin-credit-exposure-reconciliation` | 다섯 범주 명세서와 모든 케이스의 읽기 전용 draw preview |
+| `manifest_section_digests` | `fin-consistent-accounting-export` | manifest v2 섹션 sha256과 `content_digest` |
+| `facade_read_model` | `fin-catalogue-read-model` | `capital/contract/facade-v1.json`의 모든 GET 경로 응답 정의 digest |
+
+`fin-finance-closeout`은 벡터가 없다. 그 입력인 `build/acceptance-evidence.json`은 실행마다 달라지고 커밋하지 않는 파일이라 고정할 바이트가 없다. 후보 색인의 그 행은 `vectors`가 null이고 이유를 적어 둔다.
+
+`python3 scripts/finance_vectors.py --check`는 메모리에서 다시 만들어 파일과 비교하고, 다르거나 파일이 없으면 1로 끝난다. 통과는 고정된 로컬 코드가 아직 이 바이트를 만든다는 말뿐이다. 투영, 계정과목, 회계 정책을 바꾸지 않는다. 원본 산출물이 바뀌어 검사가 실패하면 `--write`로 다시 쓴다. 파일은 `semantic_conformance` false, `funds_executed` false, `upstream_nodes_completed` 빈 목록을 스스로 적는다. SEMANTIC_CONFORMANCE가 아니고 어떤 업스트림 노드도 끝내지 않으며 회계·정산 정책을 채택하지 않는다. 후보가 이 벡터를 쓰려면 그 후보 자신의 업스트림 완료 증거가 있어야 한다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
