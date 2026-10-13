@@ -80,6 +80,11 @@ class CapitalHTTPServer(ThreadingHTTPServer):
             self.storage = None
             if storage is not None:
                 storage.close()
+            producer = getattr(self, 'producer', None)
+            self.producer = None
+            close = getattr(producer, 'close', None)
+            if callable(close):
+                close()
 
 
 _DAY = re.compile(r'0|[1-9]\d{0,5}\Z')
@@ -106,7 +111,7 @@ def query_amount(query):
     return int(values[0])
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None):
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, producer=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     storage = None
     if workspace is not None:
@@ -115,7 +120,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         except WorkspaceError as exc:
             storage = UnavailableWorkspace(workspace, exc.code)
     try:
-        service = CapitalService(storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy, underwriting=underwriting)
+        service = CapitalService(
+            storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy,
+            underwriting=underwriting, producer=producer)
     except Exception:
         if storage is not None:
             storage.close()
@@ -340,10 +347,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
     except Exception:
         if storage is not None:
             storage.close()
+        close = getattr(service.producer, 'close', None)
+        if callable(close):
+            close()
         raise
     server.service = service
     server.authorizer = authorizer
     server.storage = storage
+    server.producer = service.producer
     return server
 
 
@@ -358,6 +369,9 @@ def main():
                         help='Decision note for the simulated policy application. A missing note reports policy not bound. Not bundled in the zipapp.')
     parser.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')
+    parser.add_argument('--producer', choices=('pinned', 'gate-fake'), default='pinned',
+                        help='Opt-in producer. pinned is the in-process FSM (default). '
+                             'gate-fake starts LOCAL_FAKE_GATE on 127.0.0.1. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND.')
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
     args = parser.parse_args()
     try:
@@ -366,17 +380,32 @@ def main():
         parser.error(exc.code)
     terms = DecisionNoteTermsPolicy(args.terms_note) if args.terms_note is not None else None
     policy = DecisionNoteSettlementPolicy(args.policy_note) if args.policy_note is not None else None
-    with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms, policy=policy) as server:
-        print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
-        if isinstance(signer, DevHmacSigner):
-            print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)
-        view = server.service.workspace_view()
-        if view['kind'] == 'LOCAL_FILE_WORKSPACE':
-            print(f"workspace {view['status']} LOCAL_FILE_WORKSPACE {view['path']}", flush=True)
+    producer = None
+    if args.producer == 'gate-fake':
+        from capital.gate_producer import GateHttpProducer, GateUnavailable
         try:
-            server.serve_forever()
-        except KeyboardInterrupt:
-            pass
+            producer = GateHttpProducer()
+        except GateUnavailable as exc:
+            parser.error(exc.code)
+    try:
+        with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms, policy=policy, producer=producer) as server:
+            print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
+            if isinstance(signer, DevHmacSigner):
+                print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)
+            if producer is not None:
+                print(
+                    f'producer LOCAL_FAKE_GATE {producer.base_url} NOT_BOUND semantic_conformance=false',
+                    flush=True)
+            view = server.service.workspace_view()
+            if view['kind'] == 'LOCAL_FILE_WORKSPACE':
+                print(f"workspace {view['status']} LOCAL_FILE_WORKSPACE {view['path']}", flush=True)
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                pass
+    finally:
+        if producer is not None:
+            producer.close()
 
 
 if __name__ == '__main__':

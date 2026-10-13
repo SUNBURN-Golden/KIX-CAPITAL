@@ -17,6 +17,10 @@ Cases, in story order, use fixed operation ids:
 `tests/golden/demo.json` pins state_digest, projection totals, and the export
 manifest content_digest. A mismatch fails. Rewriting the pin requires
 `--update-golden`.
+
+`--producer gate-fake` replays the same story through ``LOCAL_FAKE_GATE`` on
+127.0.0.1. The default stays the pinned FSM. That pass is not
+SEMANTIC_CONFORMANCE, and ProducerPort stays NOT_BOUND.
 """
 from __future__ import annotations
 
@@ -180,9 +184,33 @@ def capture(service):
     return body
 
 
-def build_service(storage=None):
-    service = CapitalService(storage)
-    apply_steps(service)
+def _release(producer):
+    close = getattr(producer, 'close', None)
+    if callable(close):
+        close()
+
+
+def build_service(storage=None, producer_name='pinned'):
+    """Replay the story. ``gate-fake`` is an opt-in LOCAL_FAKE_GATE client."""
+    producer = None
+    if producer_name == 'gate-fake':
+        from capital.gate_producer import GateHttpProducer
+        producer = GateHttpProducer()
+    elif producer_name != 'pinned':
+        raise SeedError(f'unknown producer {producer_name}')
+    service = None
+    try:
+        if producer is None:
+            service = CapitalService(storage)
+        else:
+            service = CapitalService(storage, producer=producer)
+        apply_steps(service)
+    except Exception:
+        if service is not None:
+            _release(service.producer)
+        elif producer is not None:
+            producer.close()
+        raise
     return service
 
 
@@ -250,18 +278,24 @@ def main(argv=None) -> int:
     parser.add_argument('--golden', type=Path, default=GOLDEN, help='Pin file. Default tests/golden/demo.json')
     parser.add_argument('--update-golden', action='store_true', help='Rewrite the pin from this run')
     parser.add_argument('--workspace', type=Path, default=None, help='Optional local JSON workspace directory')
+    parser.add_argument('--producer', choices=('pinned', 'gate-fake'), default='pinned',
+                        help='Opt-in producer. gate-fake uses LOCAL_FAKE_GATE on 127.0.0.1. '
+                             'Default is the pinned FSM. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND.')
     args = parser.parse_args(argv)
     storage = None
+    service = None
     try:
         if args.workspace is not None:
             storage = open_fresh(args.workspace)
-        service = build_service(storage)
+        service = build_service(storage, producer_name=args.producer)
         body = capture(service)
         drifted = check_or_update(body, args.golden, args.update_golden)
     except SeedError as exc:
         print(f'seed demo failed: {exc}', file=sys.stderr)
         return 1
     finally:
+        if service is not None:
+            _release(service.producer)
         if storage is not None:
             storage.close()
     totals = body['projection_totals']

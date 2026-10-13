@@ -45,6 +45,13 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
 
 
+def _release_producer(producer):
+    """Close an opt-in gate client. The pinned producer has no close method."""
+    close = getattr(producer, 'close', None)
+    if callable(close):
+        close()
+
+
 def _agent_api_error(code, role=None):
     """Map a lane code to HTTP. Literals stay visible to the facade error scan."""
     detail = {'role': role} if role is not None else None
@@ -141,7 +148,11 @@ class CapitalService:
             self.receipts = {}
             self.case_fixtures = {}
             return
-        self.producer, self.receipts, self.case_fixtures = installed
+        restored, self.receipts, self.case_fixtures = installed
+        previous = self.producer
+        self.producer = restored
+        if previous is not restored:
+            _release_producer(previous)
 
     def _validated_restore(self, document):
         verify_document(document)
@@ -153,26 +164,34 @@ class CapitalService:
         if type(receipts) is not dict or type(journal) is not list or type(mapping) is not dict or type(state_digest) is not str:
             raise WorkspaceError('WORKSPACE_UNREADABLE')
         self._require_receipts(receipts)
+        restored = None
         try:
-            restored = self.producer.restored(copy.deepcopy(journal))
-        except CreditError as exc:
-            raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
-        if restored.state_digest() != state_digest:
-            raise WorkspaceError('WORKSPACE_UNREADABLE')
-        expected = {}
-        seen = []
-        for entry in journal:
-            advance_id = entry['advance_id']
-            if advance_id not in seen:
-                seen.append(advance_id)
-                expected[advance_id] = restored.view(advance_id)['claim_id']
-        if mapping != expected or any(fixture_id not in self.fixtures.rows for fixture_id in mapping.values()):
-            raise WorkspaceError('WORKSPACE_UNREADABLE')
-        for entry in journal:
-            stored = receipts.get(entry['idempotency_key'])
-            if stored is None or stored['receipt'].get('outcome') != 'ACCEPTED':
+            try:
+                restored = self.producer.restored(copy.deepcopy(journal))
+            except CreditError as exc:
+                raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
+            if restored.state_digest() != state_digest:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
-        return restored, self._label_restored_receipts(receipts), copy.deepcopy(mapping)
+            expected = {}
+            seen = []
+            for entry in journal:
+                advance_id = entry['advance_id']
+                if advance_id not in seen:
+                    seen.append(advance_id)
+                    expected[advance_id] = restored.view(advance_id)['claim_id']
+            if mapping != expected or any(fixture_id not in self.fixtures.rows for fixture_id in mapping.values()):
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+            for entry in journal:
+                stored = receipts.get(entry['idempotency_key'])
+                if stored is None or stored['receipt'].get('outcome') != 'ACCEPTED':
+                    raise WorkspaceError('WORKSPACE_UNREADABLE')
+            labeled = self._label_restored_receipts(receipts)
+            mapping_copy = copy.deepcopy(mapping)
+        except Exception:
+            if restored is not None and restored is not self.producer:
+                _release_producer(restored)
+            raise
+        return restored, labeled, mapping_copy
 
     def _label_restored_receipts(self, receipts):
         """Keep a stored role. A pre-label workspace file loads as UNLABELED and is not rewritten here."""
@@ -738,7 +757,12 @@ class CapitalService:
         """Caller holds the service lock. Restores a scratch machine and does not write."""
         journal = self.producer.export_journal()
         restored = self.producer.restored(journal)
-        return journal, restored.canonical_state() == self.producer.canonical_state()
+        try:
+            matched = restored.canonical_state() == self.producer.canonical_state()
+        finally:
+            if restored is not self.producer:
+                _release_producer(restored)
+        return journal, matched
 
     def _frozen(self):
         return (

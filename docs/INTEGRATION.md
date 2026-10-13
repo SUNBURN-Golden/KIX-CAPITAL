@@ -70,6 +70,8 @@ Default storage is in-memory (`workspace.kind=MEMORY`, `durable=false`). `python
 
 `tests/test_producer_port.py` exports `run_producer_vectors(factory)`. The factory returns a fresh `ProducerPort`. Positive and negative command vectors run through it, so a later adapter must pass the same function. That pass is not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND` for the exact Protocol/Commerce producer, SDK, and profile tuple. The local schema does not replace that tuple.
 
+`python3 scripts/seed_demo.py --producer gate-fake` and `python3 -m capital.server --producer gate-fake` opt in to `GateHttpProducer`. The default remains `PinnedFsmProducer`. The fake gate is `scripts/fake_gate.py`, a stdlib server that binds a loopback address only and wraps the same pinned FSM. Its label is `LOCAL_FAKE_GATE`. It is not a promoted catalogue, not an OpenAPI pin, and not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND`. Command bodies reject unknown fields. `operationId` must equal `operation_id`. `actor` is not authentication. If the gate applies a command and drops the response, the client reports `UNKNOWN`, does not POST again, and a later GET of that receipt returns the original receipt.
+
 ## Upstream adapter replacement prerequisites (NOT_BOUND)
 
 Before consuming promoted commands or finance queries, require exact producer repository/commit/tree, domain/schema, OpenAPI source+generated hashes, generated SDK/toolchain/output hashes, immutable manifest and SEMANTIC_CONFORMANCE profile kind/revision/digest and positive/negative vectors. BOOTSTRAP or a prior profile pass is insufficient. Map command bytes/receipt meanings explicitly; never reuse similar catalogue names.
