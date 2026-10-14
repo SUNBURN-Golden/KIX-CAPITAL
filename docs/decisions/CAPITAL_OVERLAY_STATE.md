@@ -19,13 +19,13 @@
 | item | 결정 (요지) | CAP rows | 소비 노드 / seam |
 |---|---|---|---|
 | `overlay_storage_shape` | **SINGLE_ENVELOPE_TWO_JOURNALS**: 별도 `overlay` 저널을 기존 단일 workspace envelope 안의 섹션으로 영속한다(derived-only 아님, 두 번째 파일 아님). materialized `overlay_state`는 fold 결과의 검증용 캐시다 | CAP-11 | `persistence-port` 어댑터(`capital/store.py`), `terms-overlay` |
-| `overlay_replay_rule` | **FOLD_THEN_VERIFY**: checksum → `envelope_version` 검사 → command journal 재생(기존 pinned FSM 경로) → overlay journal deterministic fold → 재계산 digest와 persisted `overlay_state.digest` 비교. 불일치·unreadable → fail closed, 자동 복구 없음 | CAP-11 | service load 경로, replay vectors |
-| `workspace_envelope_version` | **`envelope_version: 2`, 내부 `overlay_schema: 1`**. v1 파일(overlay 섹션 없음)은 정상 승격 로드 후 다음 save에서 v2로 기록. 상위 미지원 버전·parse 실패·overlay 섹션 unreadable → envelope 전체 거부 | CAP-11 | `FileWorkspace`, `tests/storage_conformance.py` |
+| `overlay_replay_rule` | **FOLD_THEN_VERIFY**: checksum → envelope 판별 → command journal 재생(기존 pinned FSM 경로) → overlay journal deterministic fold → 재계산 digest와 persisted `overlay_state.digest` 비교. 불일치·unreadable → fail closed, 자동 복구 없음 | CAP-11 | service load 경로, replay vectors |
+| `workspace_envelope_version` | **`envelope_version: 2`, 내부 `overlay_schema: 1`**. `format` 필드는 문서 유형 태그로 `KIX_CAPITAL_LOCAL_WORKSPACE_V1` **불변**. **legacy-v1 판별자 = `format`이 그 값이면서 `envelope_version` 부재** → 빈 overlay로 정상 로드 후 다음 save에서 v2로 기록. `envelope_version`이 존재하며 2가 아님·비정수 → 거부. v2 하의 `overlay` 섹션 부재·unreadable → envelope 전체 거부 | CAP-11 | `FileWorkspace`, `tests/storage_conformance.py` |
 | `overlay_capacity_bounds` | `OVERLAY_MAX_ENTRIES=2000`, `OVERLAY_ENTRY_MAX_BYTES=4096`, `SIM_DAY_MAX=3650`, `AGENT_PROPOSALS_MAX=500`, `DECISION_RECORDS_MAX=64`, `ENVELOPE_MAX_BYTES=4194304`. 초과 시 fail-closed 거부·미기록·`state_digest` 불변. 데모 한계이지 금융 한도가 아니다 | CAP-11 | service 용량 검사, `GET /api/state` `capacity` 블록 |
 
 ## 2. KIX 비전 연결
 
-`docs/CAPITAL_REQUIREMENTS_KO.md`의 청사진 매핑은 원 요청·관측·금전 의무·실행 분리와 금융 근거의 기준시점/범위를 요구한다. 오버레이의 `sim_day`·이자 메모 원장·결정 기록은 그 "관측·기준시점" 계층의 로컬 구현체이며, 금전 의무나 실행을 대표하지 않는다. `docs/SEAMS.md`가 고정한 바대로 `StoragePort`의 upstream 목표는 `k-stage5-durable-tx`이고 CAP-11은 `NOT_BOUND`로 남는다 — 본 결정의 envelope v2는 그 계약의 채택이 아니라 로컬 seam 안의 진화다. `docs/INTEGRATION.md`의 `terms` 스냅샷(`{status, reason, terms_version}`)·`capacity`·`workspace status` 표면이 본 결정의 상태를 읽는 소비자다. `docs/VALIDATION.md`는 이미 replay·capacity·malformed JSON 벡터를 다루므로 본 결정은 그 검증 틀의 연장이다. `capital/service.py`의 `MAX_OPERATIONS=500`("bounded local demo, not a financial limit")과 journal·receipt·`state_digest` 위생이 용량·실패 규칙의 선례다. `capital/ports.py`의 `StoragePort`("load and save one local workspace envelope")가 단일 envelope 제약의 근거이다.
+`docs/CAPITAL_REQUIREMENTS_KO.md`의 청사진 매핑은 원 요청·관측·금전 의무·실행 분리와 금융 근거의 기준시점/범위를 요구한다. 오버레이의 `sim_day`·이자 메모 원장·결정 기록은 그 "관측·기준시점" 계층의 로컬 구현체이며, 금전 의무나 실행을 대표하지 않는다. `docs/SEAMS.md`가 고정한 바대로 `StoragePort`의 upstream 목표는 `k-stage5-durable-tx`이고 CAP-11은 `NOT_BOUND`로 남는다 — 본 결정의 envelope v2는 그 계약의 채택이 아니라 로컬 seam 안의 진화다. `docs/INTEGRATION.md`의 `terms` 스냅샷(`{status, reason, terms_version}`)·`capacity`·`workspace status` 표면이 본 결정의 상태를 읽는 소비자다. `docs/VALIDATION.md`는 이미 replay·capacity·malformed JSON 벡터를 다루므로 본 결정은 그 검증 틀의 연장이다. `capital/service.py`의 `MAX_OPERATIONS=500`("bounded local demo, not a financial limit")과 journal·receipt·`state_digest` 위생이 용량·실패 규칙의 선례다. `capital/ports.py`의 `StoragePort`("load and save one local workspace envelope")가 단일 envelope 제약의 근거이다. 현행 v1 envelope의 필드 형태(`format` = `KIX_CAPITAL_LOCAL_WORKSPACE_V1`, `envelope_version` 필드 자체가 없음)는 `capital/store.py`의 로더가 강제하는 사실이며, §3.3의 판별 규칙은 그 사실에 정확히 맞춘다.
 
 ## 3. 항목별 결정
 
@@ -44,9 +44,9 @@
 로드 순서를 다음으로 고정한다:
 
 1. `verify_document` checksum 검증(기존 동일).
-2. `envelope_version` 검사(§3.3).
+2. envelope 판별 — legacy-v1 또는 v2 결정(§3.3의 판별자).
 3. command journal을 기존 pinned FSM 경로로 순서 재생 — op id dedup·영수증 재구성은 현행 규칙 그대로.
-4. overlay journal을 `after_journal_index` 오름차순으로 deterministic fold. `overlay_id` 중복은 멱등 무시( operation id dedup과 동일 철학).
+4. overlay journal을 `after_journal_index` 오름차순으로 deterministic fold. `overlay_id` 중복은 멱등 무시(operation id dedup과 동일 철학).
 5. fold 결과의 digest와 persisted `overlay_state.digest` 비교.
 
 **실패 규칙.** checksum·스키마·digest 불일치, 존재하지 않는 `after_journal_index` 참조, 필수 필드 누락, 미지원 `overlay_schema` → **fail closed**: envelope 전체를 거부하고 `workspace_status`를 실패 라벨로 보고한다. 부분 overlay로 계속 진행, fold 결과로 자동 덮어쓰기(자기수복), commands만 살리고 overlay를 버리는 경로는 모두 금지다 — terms_version 바인딩이 유실된 채 재생되면 무단 rate가 적용될 수 있다. 재생성은 명시적 새 workspace에서만 허용한다.
@@ -55,9 +55,18 @@
 
 ### 3.3 `workspace_envelope_version` — ADOPTED: envelope_version 2 / overlay_schema 1
 
-- `envelope_version: 2`는 envelope 최상위 필드, `overlay_schema: 1`은 `overlay` 섹션 내부 필드다. checksum 알고리즘과 vendor 바이트는 변경 없다.
-- **v1 로드 규칙(승격).** v1 envelope는 `overlay` 섹션이 없다. 부재는 오류가 아니라 "빈 overlay"로 간주해 정상 로드한다: `sim_day=0`에서 시작하고 terms 미적용 상태(`NOT_BOUND`)로 fold하며, **다음 save에서 v2로 기록**(in-place 승격). v1의 기존 필드·순서·receipt는 재작성·재서명하지 않고 보존한다.
-- **실패 규칙(fail closed).** `envelope_version` 미존재·0·음수·현행 초과(>2) → 거부. `overlay` 섹션이 존재하나 unreadable(JSON parse 실패, `overlay_schema` 미지원, entry 스키마 위반, digest 불일치) → **envelope 전체 거부**. overlay만 폐기하고 진행하는 것은 §3.2와 동일 이유로 금지다.
+**필드 분리.** `format`은 문서 **유형 태그**로 계속 `KIX_CAPITAL_LOCAL_WORKSPACE_V1` 값을 유지한다(기존 로더·테스트가 이 값을 검사하므로 바꾸지 않는다). 스키마 진화는 새 최상위 필드 `envelope_version`이 담당하고, overlay 내부 진화는 `overlay` 섹션 안의 `overlay_schema`가 담당한다. checksum 알고리즘과 vendor 바이트는 변경 없다.
+
+**버전 판별자(모호성 제거).** 로드 시점의 분기는 정확히 다음이다:
+
+- `format == "KIX_CAPITAL_LOCAL_WORKSPACE_V1"` **이고** `envelope_version` 키가 **존재하지 않음** → **legacy v1**. 현행 v1 파일은 `envelope_version` 필드를 아예 갖지 않으므로(정확히 `format`, `payload`, `payload_sha256`, `saved_by_instance`, `saved_at` 다섯 키), 부재 그 자체가 v1 판별자다.
+- `envelope_version`이 존재하고 정수 `2` → **v2**. `overlay` 섹션을 반드시 요구한다(비어 있는 저널이라도 섹션 자체는 있어야 한다). v2에서 `overlay` 부재는 스키마 위반으로 거부 — v2 기록자는 항상 섹션을 쓰므로 부재는 손상이다.
+- `envelope_version`이 존재하나 `2`가 아닌 모든 값(`1`을 포함한 정수, `0`, 음수, 비정수, 문자열, `null`) → **거부**. 명시적 `1` 스탬프는 존재하지 않는다 — v1은 부재로만 표현된다.
+- `format`이 알려지지 않은 값 → 거부(기존 strict 로드와 동일).
+
+**v1 로드 규칙(승격).** legacy v1은 `overlay` 섹션이 없다. 부재는 오류가 아니라 "빈 overlay"로 간주해 정상 로드한다: `sim_day=0`에서 시작하고 terms 미적용 상태(`NOT_BOUND`)로 fold하며, **다음 save에서 `envelope_version: 2` + `overlay` 섹션으로 기록**(in-place 승격). v1의 `payload`(command journal·receipt·fixture)는 재작성·재서명하지 않고 보존한다; envelope 포장 필드(`payload_sha256`, `saved_by_instance`, `saved_at`)는 그 save에서 자연히 갱신된다.
+
+**실패 규칙(fail closed).** 위 판별자에서 어느 분기에도 맞지 않는 envelope는 거부한다. `overlay` 섹션이 존재하나 unreadable(JSON parse 실패, `overlay_schema` 미지원, entry 스키마 위반, digest 불일치) → **envelope 전체 거부**. overlay만 폐기하고 진행하는 것은 §3.2와 동일 이유로 금지다.
 
 ### 3.4 `overlay_capacity_bounds` — ADOPTED: demo bound set
 
@@ -78,8 +87,8 @@
 {"schema":"capital-decision-v1","decision_id":"overlay-state-decision","decided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","provisional":true,
   "entries":{
     "overlay_storage_shape":{"status":"ADOPTED","value":{"mode":"SINGLE_ENVELOPE_TWO_JOURNALS","overlay_sections":["clock","interest_ledger","recovery_ledger","decision_records","agent_proposals"],"materialized_state":"CACHE_OF_FOLD","authoritative":"overlay_journal_fold","derived_only":false,"second_file":false,"entry_fields":["overlay_id","after_journal_index","sim_day","kind","payload"]},"provided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","cap_rows":["CAP-11"],"rationale":"sim_day ticks, terms_version bindings and agent proposal intake are not derivable from the command journal, so overlay needs its own persisted journal; FileWorkspace checksum+rename atomicity is single-document, so the journal lives inside the one envelope; materialized state stays a verification cache with the fold as authority.","provisional":true,"basis":"PRODUCT_DECISION"},
-    "overlay_replay_rule":{"status":"ADOPTED","value":{"order":["verify_checksum","check_envelope_version","replay_command_journal","fold_overlay_journal_by_after_journal_index","compare_fold_digest_to_persisted"],"idempotency":"overlay_id dedup","dangling_journal_ref":"FAIL_CLOSED","mismatch_or_unreadable":"FAIL_CLOSED_NO_REPAIR_NO_PARTIAL_OVERLAY","digest_export_and_clock_authority":"overlay-digest-export-decision"},"provided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","cap_rows":["CAP-11"],"rationale":"Mirrors the existing command-journal replay hygiene (dedup, state_digest integrity) and prevents a lost terms_version binding from silently applying unauthorized rates; self-repair by rewriting is rejected because it erases the audit trail.","provisional":true,"basis":"PRODUCT_DECISION"},
-    "workspace_envelope_version":{"status":"ADOPTED","value":{"envelope_version":2,"overlay_schema":1,"v1_load":"ACCEPT_AS_EMPTY_OVERLAY_AND_PROMOTE_ON_NEXT_SAVE","v1_field_preservation":"no rewrite or resign","version_absent_or_gt_supported":"REJECT","unreadable_overlay_section":"REJECT_WHOLE_ENVELOPE","checksum_algorithm":"UNCHANGED"},"provided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","cap_rows":["CAP-11"],"rationale":"A single top-level version bump keeps v1 files loadable without migration tooling while an inner overlay_schema lets the overlay evolve independently; rejecting the whole envelope on a broken overlay preserves the binding integrity that a partial load would silently lose.","provisional":true,"basis":"PRODUCT_DECISION"},
+    "overlay_replay_rule":{"status":"ADOPTED","value":{"order":["verify_checksum","classify_envelope_version","replay_command_journal","fold_overlay_journal_by_after_journal_index","compare_fold_digest_to_persisted"],"idempotency":"overlay_id dedup","dangling_journal_ref":"FAIL_CLOSED","mismatch_or_unreadable":"FAIL_CLOSED_NO_REPAIR_NO_PARTIAL_OVERLAY","digest_export_and_clock_authority":"overlay-digest-export-decision"},"provided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","cap_rows":["CAP-11"],"rationale":"Mirrors the existing command-journal replay hygiene (dedup, state_digest integrity) and prevents a lost terms_version binding from silently applying unauthorized rates; self-repair by rewriting is rejected because it erases the audit trail.","provisional":true,"basis":"PRODUCT_DECISION"},
+    "workspace_envelope_version":{"status":"ADOPTED","value":{"envelope_version":2,"overlay_schema":1,"format_field":"UNCHANGED_TYPE_TAG_KIX_CAPITAL_LOCAL_WORKSPACE_V1","legacy_v1_discriminator":"format==KIX_CAPITAL_LOCAL_WORKSPACE_V1 AND envelope_version key absent","v1_load":"ACCEPT_AS_EMPTY_OVERLAY_AND_PROMOTE_ON_NEXT_SAVE","v1_field_preservation":"payload contents untouched; envelope wrapper fields refresh on save","envelope_version_present_not_2_or_non_integer":"REJECT","envelope_version_1_explicit":"REJECT_NO_EXPLICIT_V1_STAMP","v2_overlay_section_absent":"REJECT_SCHEMA_VIOLATION","unreadable_overlay_section":"REJECT_WHOLE_ENVELOPE","unknown_format":"REJECT","checksum_algorithm":"UNCHANGED"},"provided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","cap_rows":["CAP-11"],"rationale":"Existing v1 envelopes carry no envelope_version key, so absence is the explicit legacy discriminator and promotion is a save-time rewrite, not a load-time rejection; keeping format as an unchanged document-type tag avoids touching loader magic while envelope_version carries schema evolution; rejecting the whole envelope on a broken overlay preserves binding integrity a partial load would silently lose.","provisional":true,"basis":"PRODUCT_DECISION"},
     "overlay_capacity_bounds":{"status":"ADOPTED","value":{"OVERLAY_MAX_ENTRIES":2000,"OVERLAY_ENTRY_MAX_BYTES":4096,"SIM_DAY_MAX":3650,"AGENT_PROPOSALS_MAX":500,"DECISION_RECORDS_MAX":64,"ENVELOPE_MAX_BYTES":4194304,"overflow":"CAPACITY_EXCEEDED_FAIL_CLOSED_NO_WRITE_STATE_DIGEST_UNCHANGED","exposed_in":"GET /api/state capacity block","label":"DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY"},"provided_by":"GLM-5.3 xhigh → swe-2 → Fable 5.1, delegated by JunTae 2026-10-08 (tertiary 10-14 18:15)","date":"2026-10-14","cap_rows":["CAP-11"],"rationale":"Extends the MAX_OPERATIONS=500 bounded-demo posture to the overlay with headroom (~4 overlay events per op, 10-year logical clock, 4 MiB atomic-rename envelope); overflow fails closed with no journal write, matching existing command hygiene.","provisional":true,"basis":"PRODUCT_DECISION"}
   }}
 ```
@@ -87,7 +96,7 @@
 ## 5. 수용 기준 매핑
 
 - `docs/decisions/CAPITAL_OVERLAY_STATE.md` + capital-decision-v1 블록이 네 항목을 모두 ADOPTED로 커버 → §4 블록.
-- v1 파일의 v2 하의 로드 규칙 → §3.3 "v1 로드 규칙(승격)".
+- v1 파일의 v2 하의 로드 규칙 → §3.3 "버전 판별자" + "v1 로드 규칙(승격)": `envelope_version` 부재가 legacy v1 판별자이므로 승격 경로가 거부 규칙과 모순되지 않는다.
 - unreadable overlay 섹션의 fail-closed → §3.2 실패 규칙 + §3.3 `REJECT_WHOLE_ENVELOPE`.
 - diff는 본 문서 한 파일; `capital/`·`tests/`·vendor 무수정.
 
@@ -95,12 +104,13 @@
 
 - materialized `overlay_state` 캐시와 fold의 drift 가능성 — digest 비교로 탐지하되 자기수복은 금지했으므로 운영 복구 절차가 별도 필요하다.
 - v1→v2 승격 도중 크래시 창 — rename 원자성이 커버한다고 가정하지만 마이그레이션 벡터가 없으면 미검증이다.
+- `format` 태그를 `..._V1`로 유지한 채 `envelope_version: 2`를 쓰는 조합은 표면상 어색하다 — 문서 유형과 스키마 버전의 분리를 주석·테스트로 명시해야 한다.
 - 4 MiB/2000 entries 상한이 장기 시뮬레이션 데모를 자를 수 있다 — 상한 상향은 후속 결정 사안.
 - CAP-11은 여전히 `NOT_BOUND`; 본 결정은 stage5 내구 트랜잭션·exactly-once를 주장하지 않는다.
 
 ## 7. 후속 작업
 
-- `persistence-port` 노드: envelope v2/`overlay_schema` 1을 `FileWorkspace` 어댑터에 구현하고 `tests/storage_conformance.py`에 v1→v2 승격·unreadable overlay·overflow·digest-mismatch 벡터 추가.
+- `persistence-port` 노드: envelope v2/`overlay_schema` 1과 §3.3 판별자를 `FileWorkspace` 어댑터에 구현하고 `tests/storage_conformance.py`에 v1→v2 승격·명시 `envelope_version: 1` 거부·v2 무overlay 거부·unreadable overlay·overflow·digest-mismatch 벡터 추가.
 - `terms-overlay`: §3.1 스키마로 `interest_ledger`·`decision_records` 기록(`CAPITAL-TERMS-V1` 참조, 숫자 재명시 금지).
 - `overlay-digest-export-decision`: `sim_day` 경제적 권위와 overlay digest의 export/서명 경계 확정.
 - `decision_ledger.py` 인덱스에 본 노드 등록 확인.
