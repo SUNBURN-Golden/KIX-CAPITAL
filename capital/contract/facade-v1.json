@@ -551,6 +551,38 @@
     },
     {
       "method": "GET",
+      "path": "/api/terms/{advance_id}/setoff",
+      "operationId": "local_terms_setoff",
+      "dispatch": "/api/terms",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/terms_setoff"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "UNKNOWN_ADVANCE",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id",
+        "as_of_day",
+        "draw_day",
+        "expected_settlement_cash_day"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/policy",
       "operationId": "local_policy",
       "dispatch": "/api/policy",
@@ -6060,6 +6092,589 @@
           ]
         }
       }
+    },
+    "setoff_unbound_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "setoff_na_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_APPLICABLE"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "setoff_waterfall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "applied",
+        "steps",
+        "loss_bearer_v1"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "applied": {
+          "const": false
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "loss_bearer_v1": {
+          "type": "string"
+        }
+      }
+    },
+    "setoff_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payee",
+        "class",
+        "class_id",
+        "beneficiary_mapped",
+        "counted",
+        "face",
+        "distributed",
+        "cancelled_unpaid",
+        "recovery_due",
+        "outstanding",
+        "eligible_krw"
+      ],
+      "properties": {
+        "payee": {
+          "type": "string"
+        },
+        "class": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "class_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "beneficiary_mapped": {
+          "type": "boolean"
+        },
+        "counted": {
+          "type": "boolean"
+        },
+        "face": {
+          "type": "integer"
+        },
+        "distributed": {
+          "type": "integer"
+        },
+        "cancelled_unpaid": {
+          "type": "integer"
+        },
+        "recovery_due": {
+          "type": "integer"
+        },
+        "outstanding": {
+          "type": "integer"
+        },
+        "eligible_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "setoff_settlement_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "claim_id",
+        "gate",
+        "policy_version",
+        "policy_digest",
+        "beneficiary_role",
+        "beneficiary_payees",
+        "counterparty_class",
+        "counterparty_class_id",
+        "gross",
+        "confirmed_cash",
+        "distributed_cash",
+        "undistributed_cash",
+        "recovery_due",
+        "refund_face",
+        "refund_outstanding",
+        "fixture_reclassified",
+        "distribution_order",
+        "lines",
+        "recovery_due_excluded"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "beneficiary_role": {
+          "type": "string"
+        },
+        "beneficiary_payees": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "counterparty_class": {
+          "type": "integer"
+        },
+        "counterparty_class_id": {
+          "const": "COUNTERPARTY_PROCEEDS"
+        },
+        "gross": {
+          "type": "integer"
+        },
+        "confirmed_cash": {
+          "type": "integer"
+        },
+        "distributed_cash": {
+          "type": "integer"
+        },
+        "undistributed_cash": {
+          "type": "integer"
+        },
+        "recovery_due": {
+          "type": "integer"
+        },
+        "refund_face": {
+          "type": "integer"
+        },
+        "refund_outstanding": {
+          "type": "integer"
+        },
+        "fixture_reclassified": {
+          "type": "boolean"
+        },
+        "distribution_order": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/setoff_line"
+          }
+        },
+        "recovery_due_excluded": {
+          "const": true
+        }
+      }
+    },
+    "setoff_quote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "outstanding_exposure",
+        "allocated_krw",
+        "recovery_due_krw",
+        "base_krw",
+        "base_reason",
+        "setoff_amount",
+        "capped_by",
+        "route"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "outstanding_exposure": {
+          "type": "integer"
+        },
+        "allocated_krw": {
+          "type": "integer"
+        },
+        "recovery_due_krw": {
+          "type": "integer"
+        },
+        "base_krw": {
+          "type": "integer"
+        },
+        "base_reason": {
+          "enum": [
+            "ALLOCATION_OBSERVED",
+            "ALLOCATION_NOT_OBSERVED",
+            "ALLOCATED_CASH_UNDER_RECOVERY"
+          ]
+        },
+        "setoff_amount": {
+          "type": "integer"
+        },
+        "capped_by": {
+          "enum": [
+            "EXPOSURE",
+            "ALLOCATED_CASH"
+          ]
+        },
+        "route": {
+          "enum": [
+            "FSM_REPAY",
+            "OVERLAY_RECOVERY_LEDGER",
+            "NOT_APPLICABLE"
+          ]
+        }
+      }
+    },
+    "setoff_execution_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/terms_execution_echo"
+        }
+      ]
+    },
+    "setoff_waterfall_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/setoff_waterfall"
+        }
+      ]
+    },
+    "setoff_view_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/setoff_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/setoff_na_section"
+        },
+        {
+          "$ref": "#/definitions/setoff_settlement_view"
+        }
+      ]
+    },
+    "setoff_quote_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/setoff_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/setoff_na_section"
+        },
+        {
+          "$ref": "#/definitions/setoff_quote"
+        }
+      ]
+    },
+    "setoff_split_section": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/setoff_unbound_section"
+        },
+        {
+          "$ref": "#/definitions/setoff_na_section"
+        },
+        {
+          "$ref": "#/definitions/allocation_split"
+        }
+      ]
+    },
+    "terms_setoff_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "advance_id",
+        "proposal_only",
+        "applied",
+        "execution_authority",
+        "tier",
+        "principal",
+        "collateral_execution",
+        "recovery_waterfall",
+        "settlement_view",
+        "setoff",
+        "interest",
+        "allocation",
+        "fsm_repay",
+        "close_ready",
+        "post_default"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "proposal_only": {
+          "const": true
+        },
+        "applied": {
+          "const": false
+        },
+        "execution_authority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "principal": {
+          "type": "integer"
+        },
+        "collateral_execution": {
+          "$ref": "#/definitions/setoff_execution_section"
+        },
+        "recovery_waterfall": {
+          "$ref": "#/definitions/setoff_waterfall_section"
+        },
+        "settlement_view": {
+          "$ref": "#/definitions/setoff_view_section"
+        },
+        "setoff": {
+          "$ref": "#/definitions/setoff_quote_section"
+        },
+        "interest": {
+          "$ref": "#/definitions/allocation_interest_section"
+        },
+        "allocation": {
+          "$ref": "#/definitions/setoff_split_section"
+        },
+        "fsm_repay": {
+          "$ref": "#/definitions/fsm_repay_hint"
+        },
+        "close_ready": {
+          "type": "boolean"
+        },
+        "post_default": {
+          "const": "OVERLAY_RECOVERY_LEDGER_NOT_IN_SCOPE"
+        }
+      }
+    },
+    "terms_setoff_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "advance_id",
+        "proposal_only",
+        "applied",
+        "execution_authority",
+        "collateral_execution",
+        "recovery_waterfall",
+        "settlement_view",
+        "setoff",
+        "interest",
+        "allocation",
+        "fsm_repay",
+        "close_ready",
+        "post_default"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "const": "terms not bound"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "proposal_only": {
+          "const": true
+        },
+        "applied": {
+          "const": false
+        },
+        "execution_authority": {
+          "type": "null"
+        },
+        "collateral_execution": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "recovery_waterfall": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "settlement_view": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "setoff": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "interest": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "allocation": {
+          "$ref": "#/definitions/terms_unbound_section"
+        },
+        "fsm_repay": {
+          "type": "null"
+        },
+        "close_ready": {
+          "const": false
+        },
+        "post_default": {
+          "const": "OVERLAY_RECOVERY_LEDGER_NOT_IN_SCOPE"
+        }
+      }
+    },
+    "terms_setoff": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_setoff_evaluated"
+        },
+        {
+          "$ref": "#/definitions/terms_setoff_unbound"
+        }
+      ]
     },
     "journal_section": {
       "type": "object",

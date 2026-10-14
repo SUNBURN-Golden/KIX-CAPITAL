@@ -79,7 +79,7 @@ class SeamRegistryTests(unittest.TestCase):
     def test_every_protocol_has_a_non_adopted_row(self):
         names = protocol_names()
         self.assertEqual(names, [
-            'AuthorizerPort', 'ProducerPort', 'ProjectionPort', 'SettlementPolicyPort',
+            'AuthorizerPort', 'ProducerPort', 'ProjectionPort', 'SetoffQuotePort', 'SettlementPolicyPort',
             'SignaturePort', 'StoragePort', 'TermsPolicyPort', 'UnderwritingPort',
         ])
         rows = assert_registry(SEAMS.read_text(encoding='utf-8'), names)
@@ -94,6 +94,8 @@ class SeamRegistryTests(unittest.TestCase):
         self.assertIn('LocalRoleAuthorizer', by_port['AuthorizerPort']['Local implementation'])
         self.assertIn('UnsignedSigner', by_port['SignaturePort']['Local implementation'])
         self.assertIn('DecisionNoteSettlementPolicy', by_port['SettlementPolicyPort']['Local implementation'])
+        self.assertIn('DecisionNoteSetoff', by_port['SetoffQuotePort']['Local implementation'])
+        self.assertEqual(by_port['SetoffQuotePort']['Status'], 'NOT_BOUND')
         self.assertEqual(by_port['SettlementPolicyPort']['Status'], 'NOT_BOUND')
         self.assertEqual(by_port['SettlementPolicyPort']['Upstream receipt'], 'NONE')
         self.assertIn('capital-local-facade/1', by_port['ProducerPort']['Upstream contract'])
@@ -142,6 +144,7 @@ class SeamRegistryTests(unittest.TestCase):
         self.assertIsInstance(service.terms, ports.TermsPolicyPort)
         self.assertIsInstance(service.policy, ports.SettlementPolicyPort)
         self.assertIsInstance(service.underwriting, ports.UnderwritingPort)
+        self.assertIsInstance(service.setoff, ports.SetoffQuotePort)
 
     def test_readiness_quotes_the_local_contract_and_stays_not_bound(self):
         ready = CapitalService().readiness()

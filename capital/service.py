@@ -28,6 +28,7 @@ from capital.policy import (
 )
 from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
 from capital.statement import build_statement
+from capital.setoff import DecisionNoteSetoff
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
@@ -100,7 +101,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, observability=None, decisions=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -114,6 +115,7 @@ class CapitalService:
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
+        self.setoff = setoff if setoff is not None else DecisionNoteSetoff(self.terms, self.policy)
         self.decision_index = decisions if decisions is not None else DecisionIndex()
         self.agent_lane = AgentLane(self.terms)
         self.observability = observability or Observability()
@@ -411,6 +413,32 @@ class CapitalService:
                 body = self.terms.allocation(
                     case, claim, draw_day=draw_day, as_of_day=as_of_day,
                     expected_settlement_cash_day=expected_settlement_cash_day, gate=gate, cash=cash)
+                body = dict(body)
+                body['advance_id'] = advance_id
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def case_setoff(self, advance_id, instance_id, *, draw_day, as_of_day, expected_settlement_cash_day=None):
+        """Read-only set-off proposal quote on the bound settlement view. A proposal only; nothing is posted."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if advance_id not in self.case_fixtures:
+                raise ApiError('UNKNOWN_ADVANCE', 404)
+            self._require_day(draw_day)
+            self._require_day(as_of_day)
+            if expected_settlement_cash_day is not None:
+                self._require_day(expected_settlement_cash_day)
+            frozen = self._frozen()
+            try:
+                case = self.machine.view(advance_id)
+                claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
+                gate = self._case_gate(advance_id, case)
+                body = self.setoff.proposal(
+                    case, claim, draw_day=draw_day, as_of_day=as_of_day,
+                    expected_settlement_cash_day=expected_settlement_cash_day, gate=gate)
                 body = dict(body)
                 body['advance_id'] = advance_id
                 return self._terms_envelope(body)

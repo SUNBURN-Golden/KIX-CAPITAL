@@ -78,13 +78,17 @@ def _nonempty_str(value):
     return type(value) is str and bool(value.strip())
 
 
-def _classes_for_prefix(table, prefix):
+def _rows_for_prefix(table, prefix):
     found = []
     for row in table:
         for kind in row['payee_kinds']:
             if kind.startswith(prefix):
-                found.append(row['class'])
+                found.append(row)
     return found
+
+
+def _classes_for_prefix(table, prefix):
+    return [row['class'] for row in _rows_for_prefix(table, prefix)]
 
 
 def _table_ok(table):
@@ -361,6 +365,24 @@ class DecisionNoteSettlementPolicy:
         if order != self._expected:
             return {**base, 'outcome': 'NOT_BOUND', 'reason': POLICY_INCONSISTENT, 'order': None}
         return {**base, 'outcome': 'DECIDED', 'reason': None, 'order': order}
+
+    def payee_classes(self, claim_policy) -> dict:
+        """Class row of each payee in one claim policy. Same outcome and reason as allocation(); no amounts."""
+        applied = self.allocation(claim_policy)
+        base = {key: applied[key] for key in (
+            'label', 'policy_version', 'alloc_version', 'policy_digest', 'outcome', 'reason')}
+        if applied['outcome'] != 'DECIDED':
+            return {**base, 'classes': None}
+        classes = {}
+        pairs = (
+            (claim_policy['residual_payee'], _RESIDUAL_KIND_PREFIX),
+            (claim_policy['fee_payee'], _FEE_KIND_PREFIX),
+        )
+        for payee, prefix in pairs:
+            row = _rows_for_prefix(self._table, prefix)[0]
+            row_id = row.get('id')
+            classes[payee] = {'class': row['class'], 'id': row_id if _nonempty_str(row_id) else None}
+        return {**base, 'classes': classes}
 
     def unsupported(self) -> list:
         return [dict(row) for row in self._unsupported]
