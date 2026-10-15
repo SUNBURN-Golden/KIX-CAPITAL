@@ -5,8 +5,9 @@ const {test, expect} = require('@playwright/test');
 
 const OUT = path.join('test-results', 'acceptance');
 const VIEWS = [
-  ['portfolio', '#workspace .table-wrap'],
+  ['portfolio', '#workspace > .table-wrap'],
   ['case', '#detail'],
+  ['case-setoff', '#case-setoff'],
   ['case-underwrite', '#case-underwrite'],
   ['candidate-underwrite', '#underwrite'],
   ['projection', '#projection'],
@@ -130,12 +131,14 @@ test('seeded demo screenshots cover the book and each role', async ({page}) => {
   await expect(page.locator('#cases tr')).toHaveCount(6);
   await expect(page.locator('#case-title')).toHaveText('sim-closed');
   await expect(page.locator('#phase')).toContainText('CLOSED');
-  await expect(page.locator('#workspace .table-wrap')).toContainText('종결');
-  await expect(page.locator('#workspace .table-wrap')).toContainText('미이행');
-  await expect(page.locator('#workspace .table-wrap')).toContainText('거절');
-  await expect(page.locator('#workspace .table-wrap')).toContainText('취소');
-  await expect(page.locator('#workspace .table-wrap')).toContainText('UNBOUND');
-  await expect(page.locator('#workspace .table-wrap')).toContainText('BOUND');
+  await expect(page.locator('#workspace > .table-wrap')).toContainText('종결');
+  await expect(page.locator('#workspace > .table-wrap')).toContainText('미이행');
+  await expect(page.locator('#workspace > .table-wrap')).toContainText('거절');
+  await expect(page.locator('#workspace > .table-wrap')).toContainText('취소');
+  await expect(page.locator('#workspace > .table-wrap')).toContainText('UNBOUND');
+  await expect(page.locator('#workspace > .table-wrap')).toContainText('BOUND');
+  await expect(page.locator('#case-setoff-label')).toHaveText('simulated overlay — not vendor FSM arithmetic, not an offer');
+  await expect(page.locator('#case-setoff-summary')).toContainText('ALLOCATION_NOT_OBSERVED');
   await expect(page.locator('#projection-body')).toBeVisible();
   await expect(page.locator('#projection-debit')).not.toHaveText('0');
   await expect(page.locator('#statement-body')).toBeVisible();

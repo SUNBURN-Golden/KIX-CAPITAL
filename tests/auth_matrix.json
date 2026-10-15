@@ -132,7 +132,8 @@
       "probes": [
         "/api/terms",
         "/api/terms/sim-mtx?instance_id=@instance&draw_day=0&as_of_day=1",
-        "/api/terms/sim-mtx/allocation?instance_id=@instance&as_of_day=1&cash=1"
+        "/api/terms/sim-mtx/allocation?instance_id=@instance&as_of_day=1&cash=1",
+        "/api/terms/sim-mtx/setoff?instance_id=@instance&as_of_day=1"
       ]
     },
     {
