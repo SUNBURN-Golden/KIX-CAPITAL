@@ -149,7 +149,7 @@ def query_cash(query):
     return int(values[0])
 
 
-def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, producer=None, event_log=None, decisions=None):
+def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=None, policy=None, underwriting=None, *, setoff=None, producer=None, event_log=None, decisions=None):
     authorizer = authorizer or LocalRoleAuthorizer()
     observability = Observability(event_log, routes=route_labels())
     storage = None
@@ -161,7 +161,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
     try:
         service = CapitalService(
             storage, authorizer=authorizer, signer=signer, terms=terms, policy=policy,
-            underwriting=underwriting, producer=producer, observability=observability, decisions=decisions)
+            underwriting=underwriting, setoff=setoff, producer=producer, observability=observability, decisions=decisions)
     except Exception:
         observability.close()
         if storage is not None:
@@ -265,6 +265,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_terms(self, route, principal):
             if route.path == '/api/terms':
                 return self.reply(200, service.terms_status())
+            if route.path.endswith('/setoff'):
+                advance_id = route.path[len('/api/terms/'):-len('/setoff')].rstrip('/')
+                instance = parse_qs(route.query).get('instance_id', [''])[0]
+                draw_day = query_day(route.query, 'draw_day', False)
+                as_of_day = query_day(route.query, 'as_of_day', True)
+                expected = query_day(route.query, 'expected_settlement_cash_day', False)
+                return self.reply(200, service.case_setoff(
+                    advance_id, instance, draw_day=draw_day or 0, as_of_day=as_of_day,
+                    expected_settlement_cash_day=expected))
             if route.path.endswith('/allocation'):
                 advance_id = route.path[len('/api/terms/'):-len('/allocation')].rstrip('/')
                 instance = parse_qs(route.query).get('instance_id', [''])[0]

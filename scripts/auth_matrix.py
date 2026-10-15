@@ -65,6 +65,7 @@ GET_PROBES = {
         '/api/terms',
         f'/api/terms/{ADVANCE}?instance_id={INSTANCE}&draw_day=0&as_of_day=1',
         f'/api/terms/{ADVANCE}/allocation?instance_id={INSTANCE}&as_of_day=1&cash=1',
+        f'/api/terms/{ADVANCE}/setoff?instance_id={INSTANCE}&as_of_day=1',
     ],
     '/api/policy': ['/api/policy', '/api/policy/simulation'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],

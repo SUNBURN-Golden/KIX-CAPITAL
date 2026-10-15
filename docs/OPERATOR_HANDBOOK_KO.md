@@ -363,3 +363,11 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 `python3 scripts/finance_vectors.py --check`는 메모리에서 다시 만들어 파일과 비교하고, 다르거나 파일이 없으면 1로 끝난다. 통과는 고정된 로컬 코드가 아직 이 바이트를 만든다는 말뿐이다. 투영, 계정과목, 회계 정책을 바꾸지 않는다. 원본 산출물이 바뀌어 검사가 실패하면 `--write`로 다시 쓴다. 파일은 `semantic_conformance` false, `funds_executed` false, `upstream_nodes_completed` 빈 목록을 스스로 적는다. SEMANTIC_CONFORMANCE가 아니고 어떤 업스트림 노드도 끝내지 않으며 회계·정산 정책을 채택하지 않는다. 후보가 이 벡터를 쓰려면 그 후보 자신의 업스트림 완료 증거가 있어야 한다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:setoff-proposal-quote -->
+
+### setoff-proposal-quote
+
+`GET /api/terms/{advance_id}/setoff`는 읽기 전용 상계·회수 제안 견적이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 ADOPTED `collateral_execution` 1차 단계(`SETOFF_AGAINST_BENEFICIARY_SETTLEMENT_DISTRIBUTION`)를 그 advance가 결합한 불변 정산 조회에 적용한다. 수익자 매핑 수취인 줄 가운데 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 CAPITAL-ALLOC-V1 클래스 표에서 상대방 수익(COUNTERPARTY_PROCEEDS) 클래스인 줄만 세고, `setoff_amount`는 `min(outstanding_exposure, 그 줄들의 배정 현금 − recovery_due)`다. 회수 의무 아래의 현금은 세지 않고 배정이 없으면 `ALLOCATION_NOT_OBSERVED`로 0을 보고하며 현금을 지어내지 않는다. `allocation` 절은 노트의 `repayment_allocation_order`(DEFAULT_INTEREST → INTEREST → PRINCIPAL)로 나누고 `fsm_repay`는 원금 몫만 들거나 null이다. `route`는 DRAWN이면 `FSM_REPAY`, DEFAULTED이면 `OVERLAY_RECOVERY_LEDGER`, 그 외는 `NOT_APPLICABLE`이고 `post_default`는 `OVERLAY_RECOVERY_LEDGER_NOT_IN_SCOPE`다. 집행 권한은 노트의 사람 2인(`HUMAN_OPERATOR_TWO_PERSON; AI proposes only`)에 머물고 채택된 1차 단계가 상계가 아니거나 권한이 사람이 아니면 견적은 숫자를 내지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. 노트가 없거나 필요한 항목이 ADOPTED가 아니면 숫자 없이 `terms not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. `proposal_only`는 true이고 `applied`는 false이며 receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이것은 제안일 뿐이며 집행이 아니고 청약이 아니고 고정 FSM을 부르지 않는다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
