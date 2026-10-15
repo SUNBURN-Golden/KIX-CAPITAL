@@ -158,14 +158,27 @@ def verify_path(path, key_file=None):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=(
-        'Recheck a Capital export manifest offline. '
+        'Recheck a Capital export manifest offline, or audit an opt-in '
+        'LOCAL_FILE_WORKSPACE directory without a server. '
         'A DEV_ONLY HMAC key is integrity only, not authentication, and is not printed. '
         'This is not stage7 authenticated export.'
     ))
-    parser.add_argument('file', help='Manifest JSON written by GET /api/export/manifest')
+    parser.add_argument('file', nargs='?', help='Manifest JSON written by GET /api/export/manifest')
     parser.add_argument('--key-file', default=None, help='DEV_ONLY HMAC key. Required for a signed manifest. Not a credential.')
+    parser.add_argument('--workspace', default=None,
+                        help='Audit DIR/workspace.json read-only. No lock, no write, no repair. Not stage5 durability evidence.')
     args = parser.parse_args(argv)
-    report = verify_path(args.file, args.key_file)
+    if args.workspace is not None:
+        if args.file is not None:
+            parser.error('file and --workspace are mutually exclusive')
+        if args.key_file is not None:
+            parser.error('--key-file does not apply to --workspace')
+        from capital.audit import audit_workspace
+        report = audit_workspace(args.workspace)
+    else:
+        if args.file is None:
+            parser.error('file or --workspace is required')
+        report = verify_path(args.file, args.key_file)
     sys.stdout.write(json.dumps(report, sort_keys=True, separators=(',', ':')) + '\n')
     return 0 if report['ok'] else 1
 

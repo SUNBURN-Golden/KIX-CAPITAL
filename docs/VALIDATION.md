@@ -589,3 +589,23 @@ Commands actually run, in order:
 - `git diff --name-only -- capital/vendor docs/decisions .aiops`: no output.
 
 No `DECISION_REQUIRED.md` was written: limits still come from the ADOPTED `CAPITAL-TERMS-V1` note, product subject identifiers stay an unrestricted fixture registry (`subjects: null`), and no credential, provider, real-grant, persistence or upstream change was needed.
+
+## workspace-offline-audit
+
+`python3 -m capital.verify --workspace DIR` audits `DIR/workspace.json` without a server. `capital/audit.py` reads the bytes once (`read_bytes` only: no flock, no mkdir, no write, no repair) and runs a staged pipeline: `workspace_file`, `strict_json`, `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay` into a scratch `CreditMachine`, `state_digest`, `service_restore` through the same `verify_document`/`_validated_restore` path over an in-memory document port whose `save()` raises, `receipt_journal_fingerprints` (recomputed per journal entry; REJECTED and reconcile receipts keep shape and uniqueness checks because their args are not persisted), and `recon` — the same six `build_reconciliation` checks as `GET /api/reconciliation`, embedded verbatim. The first failing check supplies the reason (`WORKSPACE_UNREADABLE`, or `RECON_MISMATCH` when the intact envelope disagrees with the reconciliation); exit 0/1, 2 on CLI misuse. `capital/verify.py` keeps the manifest positional and adds `--workspace` (mutually exclusive, no `--key-file`). `scripts/workspace_vectors.py --write/--check` owns the pinned corpus `tests/vectors/workspace/` (`clean`, `truncated`, `payload-byte`, `digest`, `duplicate-key`, `stale-digest`), seeded with fixed instance `workspace-vectors` and pinned `saved_at` (a top-level field `payload_sha256` does not cover). `tests/test_workspace_audit.py` covers the seeded all-MATCHED audit, audit under a live `FileWorkspace` lock and a live HTTP server, no-write/no-repair, missing/empty/non-directory dirs, a `RECON_MISMATCH` on an intact envelope with a tampered receipt result, and CLI misuse; `tests/test_workspace_vectors.py` pins each vector's failing check, byte-level tamper facts, and regeneration/drift behavior. Docs updated: README, INTEGRATION.md, OPERATOR_HANDBOOK_KO.md. No route, permission, or workspace-format change; CAP-11 stays `NOT_BOUND`.
+
+Commands actually run, in order:
+
+- `python3 scripts/seed_demo.py --workspace /tmp/ws-audit-smoke && python3 -m capital.verify --workspace /tmp/ws-audit-smoke`: exit 0, all ten checks `MATCHED`, `state_digest=a8609033…ef45` equals `tests/golden/demo.json`, `recon.status` `MATCHED` with all six `CHECK_IDS`.
+- `python3 -m capital.verify --workspace` on each committed vector copied to a scratch dir: `clean` exit 0; `truncated`/`duplicate-key` exit 1 `strict_json`; `payload-byte`/`digest` exit 1 `payload_sha256`; `stale-digest` exit 1 `state_digest`; all `reason` `WORKSPACE_UNREADABLE`. A missing dir exits 1 `workspace_file`; no args exits 2. An ad-hoc tamper of `receipts.op-closed-offer.result.credit.amount` with a recomputed `payload_sha256` exits 1 `RECON_MISMATCH` at `recon` (`projection_totals_vs_case_views` names the drift); an unhashable journal `idempotency_key` exits 1 `journal_replay`. Neither traceback nor repair occurs.
+- `python3 scripts/workspace_vectors.py --write` then `--check`: wrote 6 files, `workspace vectors ok: 6 files match`.
+- `python3 -m unittest tests.test_workspace_audit tests.test_workspace_vectors -v`: exit 0, **17 passed**.
+- `python3 -m unittest discover -s tests -v`: exit 0, **445 passed** in 69.6s on the final tree (428 before this node plus 17 new).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/manifest_vectors.py --check` (13 files match), `python3 scripts/finance_vectors.py --check` (86477 bytes), `python3 scripts/not_bound_checklist.py --check`, `python3 scripts/auth_matrix.py --check`, `python3 scripts/decision_ledger.py`: all exit 0.
+- `python3 scripts/seed_demo.py`: exit 0, golden unchanged.
+- `npm ci --offline --ignore-scripts`: exit 0, 3 packages (local cache only). `npm run test:browser`: exit 0, **48 passed** (1.5m). Playwright's own loopback servers stopped; no `capital.server` remains.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions tests/golden`: no output.
+
+No `DECISION_REQUIRED.md` was written: the auditor adds no money, credential, provider, production, format, or financial-terms decision; the recon checks are reused, not re-implemented.
