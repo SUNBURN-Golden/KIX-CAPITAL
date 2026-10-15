@@ -12,7 +12,8 @@ from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
-    AGENT_PROPOSE, AGENT_QUERY, DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
+    AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
+    DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
     ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
 from capital.observability import Observability
@@ -748,6 +749,36 @@ class CapitalService:
             frozen = self._machine_frozen()
             try:
                 return self._agent_call(lambda: self.agent_lane.propose_action(body))
+            finally:
+                self._machine_same(frozen)
+
+    def agent_query_subject(self, body, role=DEFAULT_ROLE):
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, AGENT_QUERY_SUBJECT)
+            frozen = self._machine_frozen()
+            try:
+                return self._agent_call(lambda: self.agent_lane.query_subject(body))
+            finally:
+                self._machine_same(frozen)
+
+    def agent_withdraw_proposal(self, body, role=DEFAULT_ROLE):
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, AGENT_WITHDRAW)
+            frozen = self._machine_frozen()
+            try:
+                return self._agent_call(lambda: self.agent_lane.withdraw_proposal(body))
+            finally:
+                self._machine_same(frozen)
+
+    def agent_propose_grant_change(self, body, role=DEFAULT_ROLE):
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, AGENT_PROPOSE_CHANGE)
+            frozen = self._machine_frozen()
+            try:
+                return self._agent_call(lambda: self.agent_lane.propose_grant_change(body))
             finally:
                 self._machine_same(frozen)
 

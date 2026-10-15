@@ -1,6 +1,9 @@
 """Simulated AgentGrant fixture. Not the upstream mock and not an ActionPermit.
 
-Grant rows are process-local fixtures. Money limits come from the terms note
+The lane covers the pinned draft's full tool allowlist: `query_grant`,
+`query_subject`, `propose_action`, `withdraw_proposal`, and
+`propose_grant_change`; `execute` is the always-refused name only. Grant rows
+are process-local fixtures. Money limits come from the terms note
 (`underwriting_depth` caps). The logical period and the draft input ceiling
 are fixture labels, not a product term or a product count. Proposals stay in
 this process and are not written to the workspace. EXECUTE cannot be turned
@@ -62,7 +65,12 @@ FALSE_FLAGS = (
 )
 
 _QUERY_KEYS = frozenset({'grant_id', 'generation', 'now'})
+_SUBJECT_KEYS = frozenset({'grant_id', 'generation', 'now', 'surface'})
 _PROPOSE_KEYS = frozenset({'grant_id', 'generation', 'now', 'proposal_id', 'surface', 'amount', 'kind'})
+_WITHDRAW_KEYS = frozenset({'grant_id', 'generation', 'now', 'proposal_id'})
+_CHANGE_KEYS = frozenset({'grant_id', 'generation', 'now', 'proposal_id', 'requested'})
+_MEMO_KEYS = frozenset({'authority', 'scope', 'limits', 'period', 'note'})
+_AUTHORITY_LEVELS = frozenset({'QUERY', 'PROPOSE'})
 
 
 class AgentLaneError(Exception):
@@ -130,6 +138,25 @@ class AgentLane:
         view['grant'] = self._grant_view(grant)
         return view
 
+    def query_subject(self, body):
+        """Membership view only. `subjects` echoes the fixture registry: None is unrestricted."""
+        parsed = self._parse_subject(body)
+        grant = self._current(parsed, 'QUERY')
+        if parsed['surface'] not in grant['scope']['surfaces']:
+            raise AgentLaneError('SCOPE_VIOLATION')
+        subjects = grant['scope']['subjects']
+        if subjects is not None and parsed['subject'] is not None \
+                and parsed['subject'] not in subjects:
+            raise AgentLaneError('SCOPE_VIOLATION')
+        view = self._envelope(parsed['now'], False)
+        view['match'] = {
+            'surface': parsed['surface'],
+            'subject': parsed['subject'],
+            'in_scope': True,
+        }
+        view['subjects'] = None if subjects is None else list(subjects)
+        return view
+
     def propose_action(self, body):
         parsed = self._parse_propose(body)
         if parsed['kind'] == 'EXECUTE':
@@ -168,6 +195,64 @@ class AgentLane:
         self.proposals[parsed['proposal_id']] = row
         view = self._envelope(parsed['now'], False)
         view['proposal'] = self._proposal_view(row)
+        return view
+
+    def withdraw_proposal(self, body):
+        """Move a pending proposal to WITHDRAWN. The period window is not enforced."""
+        parsed = self._parse_proposal_ref(body, _WITHDRAW_KEYS)
+        grant = self._current(parsed, 'PROPOSE', window=False)
+        row = self.proposals.get(parsed['proposal_id'])
+        if row is None:
+            raise AgentLaneError('UNKNOWN_PROPOSAL')
+        if row['grant_id'] != grant['grant_id']:
+            raise AgentLaneError('PROPOSAL_BINDING_CONFLICT')
+        if row['phase'] == 'WITHDRAWN':
+            view = self._envelope(parsed['now'], True)
+            view['proposal'] = self._memo_view(row, 'withdraw_proposal')
+            return view
+        if row['phase'] != 'HUMAN_PENDING':
+            raise AgentLaneError('PROPOSAL_BINDING_CONFLICT')
+        row['phase'] = 'WITHDRAWN'
+        view = self._envelope(parsed['now'], False)
+        view['proposal'] = self._memo_view(row, 'withdraw_proposal')
+        return view
+
+    def propose_grant_change(self, body):
+        """Store a HUMAN_PENDING grant-change memo. The grant body never changes."""
+        parsed = self._parse_proposal_ref(body, _CHANGE_KEYS)
+        requested = self._parse_requested(body['requested'])
+        binding = _canonical({
+            'proposal_id': parsed['proposal_id'],
+            'grant_id': parsed['grant_id'],
+            'tool': 'propose_grant_change',
+            'requested': requested,
+        })
+        existing = self.proposals.get(parsed['proposal_id'])
+        if existing is not None:
+            if existing['binding'] != binding:
+                raise AgentLaneError('PROPOSAL_BINDING_CONFLICT')
+            view = self._envelope(parsed['now'], True)
+            view['proposal'] = self._memo_view(existing, 'propose_grant_change')
+            return view
+        grant = self._current(parsed, 'PROPOSE')
+        self._require_room(grant, 0)
+        row = {
+            'binding': binding,
+            'proposal_id': parsed['proposal_id'],
+            'grant_id': grant['grant_id'],
+            'generation': grant['generation'],
+            'tool': 'propose_grant_change',
+            'surface': None,
+            'subject': None,
+            'amount': None,
+            'kind': 'GRANT_CHANGE',
+            'memo': requested,
+            'phase': 'HUMAN_PENDING',
+            'effects_executed': False,
+        }
+        self.proposals[parsed['proposal_id']] = row
+        view = self._envelope(parsed['now'], False)
+        view['proposal'] = self._memo_view(row, 'propose_grant_change')
         return view
 
     def refuse_execute(self):
@@ -250,6 +335,54 @@ class AgentLane:
             raise AgentLaneError('INVALID_PERIOD')
         return {'grant_id': body['grant_id'], 'generation': body['generation'], 'now': body['now']}
 
+    def _parse_subject(self, body):
+        if type(body) is not dict or set(body) not in {_SUBJECT_KEYS, _SUBJECT_KEYS | {'subject'}}:
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        parsed = self._parse_call(
+            {'grant_id': body['grant_id'], 'generation': body['generation'], 'now': body['now']},
+            _QUERY_KEYS,
+        )
+        if not ident(body['surface']):
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        subject = body['subject'] if 'subject' in body else None
+        if subject is not None and not ident(subject):
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        parsed.update(surface=body['surface'], subject=subject)
+        return parsed
+
+    def _parse_proposal_ref(self, body, keys):
+        if type(body) is not dict or set(body) != keys:
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        parsed = self._parse_call(
+            {'grant_id': body['grant_id'], 'generation': body['generation'], 'now': body['now']},
+            _QUERY_KEYS,
+        )
+        if not ident(body['proposal_id']):
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        parsed['proposal_id'] = body['proposal_id']
+        return parsed
+
+    def _parse_requested(self, requested):
+        """Grant-change memo: keys only from the draft's list; the rest is opaque."""
+        if type(requested) is not dict or not requested or set(requested) - _MEMO_KEYS:
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        if 'note' in requested and not ident(requested['note']):
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        if 'authority' in requested:
+            authority = requested['authority']
+            if type(authority) is not list or not authority \
+                    or any(type(item) is not str for item in authority):
+                raise AgentLaneError('INVALID_ARGUMENTS')
+            if 'EXECUTE' in authority:
+                raise AgentLaneError('EXECUTE_AUTHORITY_DISABLED')
+            if set(authority) - _AUTHORITY_LEVELS:
+                raise AgentLaneError('INVALID_ARGUMENTS')
+        try:
+            _canonical(requested)
+        except ValueError:
+            raise AgentLaneError('INVALID_ARGUMENTS')
+        return requested
+
     def _parse_propose(self, body):
         if type(body) is not dict or set(body) not in {_PROPOSE_KEYS, _PROPOSE_KEYS | {'subject'}}:
             raise AgentLaneError('INVALID_ARGUMENTS')
@@ -270,7 +403,7 @@ class AgentLane:
         )
         return parsed
 
-    def _current(self, parsed, level):
+    def _current(self, parsed, level, window=True):
         grants = self._grants()
         if grants is None:
             raise AgentLaneError('NOT_BOUND')
@@ -285,10 +418,11 @@ class AgentLane:
             raise AgentLaneError('GRANT_NOT_CURRENT')
         now = parsed['now']
         period = grant['period']
-        if now < period['not_before']:
-            raise AgentLaneError('GRANT_NOT_CURRENT')
-        if now > period['not_after']:
-            raise AgentLaneError('GRANT_EXPIRED')
+        if window:
+            if now < period['not_before']:
+                raise AgentLaneError('GRANT_NOT_CURRENT')
+            if now > period['not_after']:
+                raise AgentLaneError('GRANT_EXPIRED')
         if level not in grant['authority']:
             raise AgentLaneError('TOOL_NOT_ALLOWED')
         if grant['agent_id'] != AGENT_ID:
@@ -302,7 +436,7 @@ class AgentLane:
             if row['grant_id'] != grant_id or row['phase'] != 'HUMAN_PENDING':
                 continue
             count += 1
-            amount += row['amount']
+            amount += row['amount'] if row['amount'] is not None else 0
         return amount, count
 
     def _require_room(self, grant, amount):
@@ -368,7 +502,7 @@ class AgentLane:
             'grant_id': row['grant_id'],
             'generation': row['generation'],
             'tool': 'propose_action',
-            'phase': 'HUMAN_PENDING',
+            'phase': row['phase'],
             'surface': row['surface'],
             'subject': row['subject'],
             'amount': row['amount'],
@@ -376,4 +510,22 @@ class AgentLane:
             'effects_executed': False,
             'decision': None,
             'two_person_required': self._two_person(row['amount']),
+        }
+
+    def _memo_view(self, row, tool):
+        amount = row['amount']
+        return {
+            'proposal_id': row['proposal_id'],
+            'grant_id': row['grant_id'],
+            'generation': row['generation'],
+            'tool': tool,
+            'phase': row['phase'],
+            'surface': row['surface'],
+            'subject': row['subject'],
+            'amount': amount,
+            'kind': row['kind'],
+            'memo': row.get('memo'),
+            'effects_executed': False,
+            'decision': None,
+            'two_person_required': None if amount is None else self._two_person(amount),
         }

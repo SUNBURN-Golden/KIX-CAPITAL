@@ -170,7 +170,7 @@ class ShapeTests(unittest.TestCase):
 
     def test_agent_lane_is_reachable_only_by_agent(self):
         lane = [cell for cell in self.table['cells'] if cell['route'].startswith('/api/agent/')]
-        self.assertEqual(len(lane), 3 * len(CALLERS))
+        self.assertEqual(len(lane), 6 * len(CALLERS))
         for cell in lane:
             self.assertEqual(cell['outcome'] == 'ALLOW', cell['caller'] == 'agent', cell)
         for cell in self.table['cells']:
@@ -473,9 +473,10 @@ class LiveMatrixTests(LiveBase):
                     swept += 1
         self.assertGreaterEqual(swept, len(self.table['cells']))
         after = self.writes()
-        # Exactly the pinned writes: the organizer reconcile receipt and the agent proposal.
+        # Exactly the pinned writes: the organizer reconcile receipt and the agent proposals
+        # (sim-matrix is proposed and later withdrawn in place; sim-matrix-change is a memo).
         self.assertEqual(after['receipts'], before['receipts'] + 1)
-        self.assertEqual(after['proposals'], before['proposals'] + 1)
+        self.assertEqual(after['proposals'], before['proposals'] + 2)
         self.assertEqual(after['digest'], before['digest'])
         self.assertIn('sim-mtx-reconcile', self.service.receipts)
         self.assertIn('sim-matrix', self.service.agent_lane.proposals)
@@ -483,28 +484,53 @@ class LiveMatrixTests(LiveBase):
     def test_agent_lane_posts_stay_proposal_only(self):
         before = self.writes()
         agent = self.token_headers('agent')
-        propose = {**self.routes[('POST', '/api/agent/propose_action')]['body'], 'proposal_id': 'sim-matrix-lane'}
-        for path in ('/api/agent/query_grant', '/api/agent/propose_action', '/api/agent/execute'):
+        bodies = {
+            '/api/agent/propose_action': {
+                **self.routes[('POST', '/api/agent/propose_action')]['body'],
+                'proposal_id': 'sim-matrix-lane'},
+            '/api/agent/withdraw_proposal': {
+                **self.routes[('POST', '/api/agent/withdraw_proposal')]['body'],
+                'proposal_id': 'sim-matrix-lane'},
+            '/api/agent/propose_grant_change': {
+                **self.routes[('POST', '/api/agent/propose_grant_change')]['body'],
+                'proposal_id': 'sim-matrix-lane-change'},
+        }
+        paths = (
+            '/api/agent/query_grant', '/api/agent/query_subject', '/api/agent/propose_action',
+            '/api/agent/withdraw_proposal', '/api/agent/propose_grant_change', '/api/agent/execute')
+        for path in paths:
             row = self.routes[('POST', path)]
-            status, _kind, raw = self.send('POST', path, agent, propose if path.endswith('propose_action') else row['body'])
+            status, _kind, raw = self.send('POST', path, agent, bodies.get(path, row['body']))
             body = json.loads(raw)
             if path == '/api/agent/execute':
                 self.assertEqual((status, body['error']), (403, 'EXECUTE_AUTHORITY_DISABLED'))
             else:
                 self.assertEqual(status, 200, raw)
                 self.assertNotIn('error', body)
-        status, _kind, raw = self.send('POST', '/api/agent/propose_action', agent, propose)
-        proposal = json.loads(raw)['proposal']
-        self.assertEqual(proposal['phase'], 'HUMAN_PENDING')
+        # The withdrawn proposal replays as a duplicate that reports its stored phase.
+        status, _kind, raw = self.send('POST', '/api/agent/propose_action', agent, bodies['/api/agent/propose_action'])
+        body = json.loads(raw)
+        self.assertEqual(status, 200, raw)
+        self.assertIs(body['duplicate'], True)
+        proposal = body['proposal']
+        self.assertEqual(proposal['phase'], 'WITHDRAWN')
         self.assertIs(proposal['effects_executed'], False)
+        change = self.service.agent_lane.proposals['sim-matrix-lane-change']
+        self.assertEqual((change['kind'], change['phase']), ('GRANT_CHANGE', 'HUMAN_PENDING'))
+        self.assertIs(change['effects_executed'], False)
+        self.assertIsNone(change['amount'])
         for role in ('organizer', 'auditor', 'observer'):
-            for path in ('/api/agent/query_grant', '/api/agent/propose_action', '/api/agent/execute'):
-                status, _kind, raw = self.send('POST', path, self.token_headers(role), self.routes[('POST', path)]['body'])
-                self.assertEqual((status, json.loads(raw)['error']), (403, 'ROLE_FORBIDDEN'), (role, path))
+            for path in paths:
+                row = self.routes[('POST', path)]
+                status, _kind, raw = self.send(
+                    'POST', path, self.token_headers(role), bodies.get(path, row['body']))
+                body = json.loads(raw)
+                self.assertEqual((status, body['error'], body['permission']),
+                                 (403, 'ROLE_FORBIDDEN', row['permission']), (role, path))
         after = self.writes()
         self.assertEqual(after['receipts'], before['receipts'])
         self.assertEqual(after['digest'], before['digest'])
-        self.assertEqual(after['proposals'], before['proposals'] + 1)
+        self.assertEqual(after['proposals'], before['proposals'] + 2)
 
     def test_command_cells(self):
         commands = self.table['command_permissions']

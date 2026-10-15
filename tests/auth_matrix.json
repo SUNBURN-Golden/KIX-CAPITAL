@@ -58,7 +58,10 @@
     ],
     "agent": [
       "agent:query_grant",
-      "agent:propose_action"
+      "agent:query_subject",
+      "agent:propose_action",
+      "agent:withdraw_proposal",
+      "agent:propose_grant_change"
     ]
   },
   "routes": [
@@ -270,6 +273,18 @@
     },
     {
       "method": "POST",
+      "route": "/api/agent/query_subject",
+      "permission": "agent:query_subject",
+      "body": {
+        "grant_id": "sim-grant-agent",
+        "generation": 2,
+        "now": 1,
+        "surface": "capital:offer",
+        "subject": "sim-matrix"
+      }
+    },
+    {
+      "method": "POST",
       "route": "/api/agent/propose_action",
       "permission": "agent:propose_action",
       "body": {
@@ -280,6 +295,31 @@
         "surface": "capital:offer",
         "amount": 100,
         "kind": "PROPOSE"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/withdraw_proposal",
+      "permission": "agent:withdraw_proposal",
+      "body": {
+        "grant_id": "sim-grant-agent",
+        "generation": 2,
+        "now": 10,
+        "proposal_id": "sim-matrix"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_grant_change",
+      "permission": "agent:propose_grant_change",
+      "body": {
+        "grant_id": "sim-grant-agent",
+        "generation": 2,
+        "now": 10,
+        "proposal_id": "sim-matrix-change",
+        "requested": {
+          "note": "sim-matrix-note"
+        }
       }
     },
     {
@@ -1327,6 +1367,61 @@
     },
     {
       "method": "POST",
+      "route": "/api/agent/query_subject",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:query_subject",
+        "role": "organizer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_subject",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:query_subject",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_subject",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:query_subject",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_subject",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_subject",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
       "route": "/api/agent/propose_action",
       "caller": "organizer",
       "outcome": "DENY",
@@ -1373,6 +1468,116 @@
     {
       "method": "POST",
       "route": "/api/agent/propose_action",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/withdraw_proposal",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:withdraw_proposal",
+        "role": "organizer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/withdraw_proposal",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:withdraw_proposal",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/withdraw_proposal",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:withdraw_proposal",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/withdraw_proposal",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/withdraw_proposal",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_grant_change",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_grant_change",
+        "role": "organizer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_grant_change",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_grant_change",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_grant_change",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "agent:propose_grant_change",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_grant_change",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/propose_grant_change",
       "caller": "no-token",
       "outcome": "DENY",
       "expect": {
@@ -2456,6 +2661,56 @@
     {
       "name": "GET on a POST-only route",
       "method": "GET",
+      "path": "/api/agent/query_subject",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_subject",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_subject",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_subject",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_subject",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
       "path": "/api/agent/propose_action",
       "token": "organizer",
       "expect": {
@@ -2497,6 +2752,106 @@
       "name": "GET on a POST-only route",
       "method": "GET",
       "path": "/api/agent/propose_action",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/withdraw_proposal",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/withdraw_proposal",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/withdraw_proposal",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/withdraw_proposal",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/withdraw_proposal",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_grant_change",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_grant_change",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_grant_change",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_grant_change",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/propose_grant_change",
       "token": "none",
       "expect": {
         "status": 404,

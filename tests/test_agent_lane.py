@@ -286,6 +286,117 @@ class AgentLaneTests(unittest.TestCase):
         self.assertEqual(set(document['payload']), {'receipts', 'journal', 'case_fixtures', 'state_digest'})
         self.assertNotIn('proposals', document['payload'])
 
+    def test_query_subject_checks_membership_and_writes_nothing(self):
+        digest_before = self.service.machine.state_digest()
+        view = self.service.agent_query_subject(_call(surface='capital:draw'), role='agent')
+        self.assertEqual(view['match'], {'surface': 'capital:draw', 'subject': None, 'in_scope': True})
+        self.assertIs(view['subjects'], None)
+        self.assertIs(view['duplicate'], False)
+        with_subject = self.service.agent_query_subject(
+            _call(surface='capital:offer', subject='sim-case'), role='agent')
+        self.assertIs(with_subject['match']['in_scope'], True)
+        bad_surface = self.raises(lambda: self.service.agent_query_subject(
+            _call(surface='capital:nope'), role='agent'))
+        self.assertEqual((bad_surface.code, bad_surface.status), ('SCOPE_VIOLATION', 400))
+        expired = self.raises(lambda: self.service.agent_query_subject(
+            _call(surface='capital:draw', now=PERIOD_NOT_AFTER + 1), role='agent'))
+        self.assertEqual(expired.code, 'GRANT_EXPIRED')
+        bad_args = self.raises(lambda: self.service.agent_query_subject(_call(), role='agent'))
+        self.assertEqual(bad_args.code, 'INVALID_ARGUMENTS')
+        denied = self.raises(lambda: self.service.agent_query_subject(
+            _call(surface='capital:draw'), role='organizer'))
+        self.assertEqual(denied.detail['permission'], 'agent:query_subject')
+        self.assertEqual(self.lane.proposals, {})
+        self.assertEqual(len(self.service.receipts), 0)
+        self.assertEqual(self.service.machine.state_digest(), digest_before)
+
+    def test_withdraw_proposal_moves_pending_to_withdrawn(self):
+        self.propose(proposal_id='sim-wd', amount=PER_ACTION // 2)
+        self.assertEqual(self.lane._charged(ACTIVE_GRANT_ID), (PER_ACTION // 2, 1))
+        view = self.service.agent_withdraw_proposal(_call(now=30, proposal_id='sim-wd'), role='agent')
+        self.assertIs(view['duplicate'], False)
+        self.assertEqual(view['proposal']['phase'], 'WITHDRAWN')
+        self.assertEqual(view['proposal']['tool'], 'withdraw_proposal')
+        self.assertIs(view['proposal']['effects_executed'], False)
+        self.assertIs(view['proposal']['decision'], None)
+        self.assertEqual(self.lane._charged(ACTIVE_GRANT_ID), (0, 0))
+        again = self.service.agent_withdraw_proposal(_call(now=31, proposal_id='sim-wd'), role='agent')
+        self.assertIs(again['duplicate'], True)
+        self.assertEqual(again['proposal']['phase'], 'WITHDRAWN')
+        # The period window does not refuse withdrawal: an expired `now` still collects a pending memo.
+        self.propose(proposal_id='sim-wd-expired', amount=10)
+        expired = self.service.agent_withdraw_proposal(
+            _call(now=PERIOD_NOT_AFTER + 1, proposal_id='sim-wd-expired'), role='agent')
+        self.assertEqual(expired['proposal']['phase'], 'WITHDRAWN')
+        unknown = self.raises(lambda: self.service.agent_withdraw_proposal(
+            _call(proposal_id='sim-none'), role='agent'))
+        self.assertEqual((unknown.code, unknown.status), ('UNKNOWN_PROPOSAL', 404))
+        revoked = self.raises(lambda: self.service.agent_withdraw_proposal(
+            _call(grant_id=REVOKED_GRANT_ID, generation=REVOKED_GENERATION, proposal_id='sim-wd'),
+            role='agent'))
+        self.assertEqual((revoked.code, revoked.status), ('GRANT_REVOKED', 403))
+        denied = self.raises(lambda: self.service.agent_withdraw_proposal(
+            _call(proposal_id='sim-wd'), role='observer'))
+        self.assertEqual(denied.detail['permission'], 'agent:withdraw_proposal')
+        # A withdrawn proposal can no longer be cited by a human command.
+        self.propose(proposal_id='sim-wd-cite', surface='capital:offer', amount=100)
+        self.service.agent_withdraw_proposal(_call(proposal_id='sim-wd-cite'), role='agent')
+        cited = self.raises(lambda: self.service.execute({
+            'instance_id': self.service.instance_id, 'operation_id': 'sim-wd-cite-op',
+            'op': 'offer', 'advance_id': 'sim-wd-cite',
+            'args': {'fixture_id': 'sim-committed', 'amount': 100},
+            'proposal_id': 'sim-wd-cite'}))
+        self.assertEqual((cited.code, cited.status), ('PROPOSAL_BINDING_CONFLICT', 409))
+        grant = self.service.agent_query(_call(), role='agent')['grant']
+        self.assertEqual(grant['authority'], ['PROPOSE', 'QUERY'])
+        self.assertEqual(grant['generation'], ACTIVE_GENERATION)
+        self.assertEqual(len(self.service.receipts), 0)
+
+    def test_propose_grant_change_stores_a_memo_and_never_mutates_the_grant(self):
+        before = self.service.agent_query(_call(), role='agent')['grant']
+        view = self.service.agent_propose_grant_change(
+            _call(proposal_id='sim-change', requested={'authority': ['QUERY'], 'note': 'sim-note'}),
+            role='agent')
+        self.assertIs(view['duplicate'], False)
+        proposal = view['proposal']
+        self.assertEqual(proposal['tool'], 'propose_grant_change')
+        self.assertEqual(proposal['phase'], 'HUMAN_PENDING')
+        self.assertIs(proposal['effects_executed'], False)
+        self.assertIs(proposal['amount'], None)
+        self.assertIs(proposal['surface'], None)
+        self.assertIs(proposal['two_person_required'], None)
+        self.assertEqual(proposal['memo'], {'authority': ['QUERY'], 'note': 'sim-note'})
+        self.assertEqual(self.service.agent_query(_call(), role='agent')['grant'], before)
+        self.assertEqual(self.lane._charged(ACTIVE_GRANT_ID), (0, 1))
+        again = self.service.agent_propose_grant_change(
+            _call(proposal_id='sim-change', requested={'authority': ['QUERY'], 'note': 'sim-note'}),
+            role='agent')
+        self.assertIs(again['duplicate'], True)
+        conflict = self.raises(lambda: self.service.agent_propose_grant_change(
+            _call(proposal_id='sim-change', requested={'note': 'other'}), role='agent'))
+        self.assertEqual((conflict.code, conflict.status), ('PROPOSAL_BINDING_CONFLICT', 409))
+        execute = self.raises(lambda: self.service.agent_propose_grant_change(
+            _call(proposal_id='sim-change-exec', requested={'authority': ['EXECUTE']}), role='agent'))
+        self.assertEqual((execute.code, execute.status), ('EXECUTE_AUTHORITY_DISABLED', 403))
+        self.assertNotIn('sim-change-exec', self.lane.proposals)
+        bad = self.raises(lambda: self.service.agent_propose_grant_change(
+            _call(proposal_id='sim-change-bad', requested={'widen': True}), role='agent'))
+        self.assertEqual((bad.code, bad.status), ('INVALID_ARGUMENTS', 400))
+        denied = self.raises(lambda: self.service.agent_propose_grant_change(
+            _call(proposal_id='sim-change-role', requested={'note': 'x'}), role='auditor'))
+        self.assertEqual(denied.detail['permission'], 'agent:propose_grant_change')
+        # A grant-change memo has no surface and cannot be cited by a command.
+        cited = self.raises(lambda: self.service.execute({
+            'instance_id': self.service.instance_id, 'operation_id': 'sim-change-cite-op',
+            'op': 'offer', 'advance_id': 'sim-change-cite',
+            'args': {'fixture_id': 'sim-committed', 'amount': 100},
+            'proposal_id': 'sim-change'}))
+        self.assertEqual((cited.code, cited.status), ('PROPOSAL_BINDING_CONFLICT', 409))
+        early = self.raises(lambda: self.service.agent_propose_grant_change(
+            _call(now=0, proposal_id='sim-change-early', requested={'note': 'x'}), role='agent'))
+        self.assertEqual(early.code, 'GRANT_NOT_CURRENT')
+        self.assertEqual(len(self.service.receipts), 0)
+
     def test_a_new_process_does_not_keep_the_proposal_register(self):
         self.propose(proposal_id='sim-restart', surface='capital:approve', amount=10)
         fresh = CapitalService()
@@ -331,7 +442,11 @@ class AgentLaneTests(unittest.TestCase):
             {'const': False})
         self.assertEqual(
             doc['definitions']['agent_proposal_view']['properties']['phase'],
-            {'const': 'HUMAN_PENDING'})
+            {'enum': ['HUMAN_PENDING', 'WITHDRAWN']})
+        self.assertEqual(
+            doc['definitions']['agent_memo_view']['properties']['effects_executed'],
+            {'const': False})
+        self.assertIs(doc['definitions']['agent_memo_view']['properties']['decision']['const'], None)
         self.assertIs(doc['definitions']['agent_proposal_view']['properties']['decision']['const'], None)
         report = source_integrity(VENDOR, vendor_manifest())
         self.assertIs(report['all_matched'], True)
@@ -437,7 +552,10 @@ class AgentHttpTests(unittest.TestCase):
             self.assertEqual(payload['role'], 'agent')
         for path, permission in (
             ('/api/agent/query_grant', 'agent:query_grant'),
+            ('/api/agent/query_subject', 'agent:query_subject'),
             ('/api/agent/propose_action', 'agent:propose_action'),
+            ('/api/agent/withdraw_proposal', 'agent:withdraw_proposal'),
+            ('/api/agent/propose_grant_change', 'agent:propose_grant_change'),
             ('/api/agent/execute', 'agent:propose_action'),
         ):
             status, payload = self.request('POST', path, {'ignored': True}, organizer)
@@ -469,6 +587,73 @@ class AgentHttpTests(unittest.TestCase):
         status, refused = self.request('POST', '/api/agent/propose_action', kind, token)
         self.assertEqual((status, refused['error']), (403, 'EXECUTE_AUTHORITY_DISABLED'))
         self.assertNotIn('sim-http-exec', after.agent_lane.proposals)
+
+    def test_agent_tools_cover_the_draft_allowlist(self):
+        token = self.agent_token()
+        service = self.server.service
+        subject = _call(surface='capital:draw')
+        validate(subject, self.doc['definitions']['agent_subject_request'], self.doc)
+        status, view = self.request('POST', '/api/agent/query_subject', subject, token)
+        self.assertEqual(status, 200, view)
+        validate(view, self.doc['definitions']['agent_subject_response'], self.doc)
+        self.assertEqual(view['match'], {'surface': 'capital:draw', 'subject': None, 'in_scope': True})
+        self.assertIs(view['subjects'], None)
+        status, proposed = self.request(
+            'POST', '/api/agent/propose_action',
+            _propose(proposal_id='sim-http-wd', surface='capital:offer', amount=100), token)
+        self.assertEqual(status, 200, proposed)
+        withdraw = _call(proposal_id='sim-http-wd')
+        validate(withdraw, self.doc['definitions']['agent_withdraw_request'], self.doc)
+        status, view = self.request('POST', '/api/agent/withdraw_proposal', withdraw, token)
+        self.assertEqual(status, 200, view)
+        validate(view, self.doc['definitions']['agent_withdraw_response'], self.doc)
+        self.assertEqual(view['proposal']['phase'], 'WITHDRAWN')
+        self.assertIs(view['proposal']['effects_executed'], False)
+        status, again = self.request('POST', '/api/agent/withdraw_proposal', withdraw, token)
+        self.assertEqual(status, 200, again)
+        self.assertIs(again['duplicate'], True)
+        self.assertEqual(again['proposal']['phase'], 'WITHDRAWN')
+        change = _call(proposal_id='sim-http-change', requested={'note': 'sim-http-note'})
+        validate(change, self.doc['definitions']['agent_grant_change_request'], self.doc)
+        status, view = self.request('POST', '/api/agent/propose_grant_change', change, token)
+        self.assertEqual(status, 200, view)
+        validate(view, self.doc['definitions']['agent_grant_change_response'], self.doc)
+        self.assertEqual(view['proposal']['phase'], 'HUMAN_PENDING')
+        self.assertEqual(view['proposal']['memo'], {'note': 'sim-http-note'})
+        self.assertIs(view['proposal']['amount'], None)
+        status, grant = self.request('POST', '/api/agent/query_grant', _call(), token)
+        self.assertEqual(grant['grant']['authority'], ['PROPOSE', 'QUERY'])
+        self.assertEqual(grant['grant']['generation'], ACTIVE_GENERATION)
+        status, refused = self.request(
+            'POST', '/api/agent/propose_grant_change',
+            _call(proposal_id='sim-http-change-exec', requested={'authority': ['EXECUTE']}), token)
+        self.assertEqual((status, refused['error']), (403, 'EXECUTE_AUTHORITY_DISABLED'))
+        self.assertNotIn('sim-http-change-exec', service.agent_lane.proposals)
+        denied = (
+            ('/api/agent/query_subject', 'agent:query_subject', subject),
+            ('/api/agent/withdraw_proposal', 'agent:withdraw_proposal', withdraw),
+            ('/api/agent/propose_grant_change', 'agent:propose_grant_change', change),
+        )
+        organizer, _state = self.organizer_token()
+        tokens = {'organizer': organizer}
+        for role in ('auditor', 'observer'):
+            status, opened = self.request('POST', '/api/session', {'role': role}, organizer)
+            self.assertEqual(status, 200, opened)
+            tokens[role] = opened['local_token']
+        for role in ('organizer', 'auditor', 'observer'):
+            for path, permission, payload in denied:
+                status, reply = self.request('POST', path, payload, tokens[role])
+                self.assertEqual((status, reply['error'], reply['permission']),
+                                 (403, 'ROLE_FORBIDDEN', permission), (role, path))
+        for path, _permission, payload in denied:
+            status, reply = self.request('POST', path, payload)
+            self.assertEqual((status, reply['error']), (403, 'LOCAL_TOKEN_REQUIRED'), path)
+        digest_before = service.machine.state_digest()
+        proposals_before = len(service.agent_lane.proposals)
+        status, executed = self.request('POST', '/api/agent/execute', {'kind': 'EXECUTE'}, token)
+        self.assertEqual((status, executed['error']), (403, 'EXECUTE_AUTHORITY_DISABLED'))
+        self.assertEqual(service.machine.state_digest(), digest_before)
+        self.assertEqual(len(service.agent_lane.proposals), proposals_before)
 
 
 if __name__ == '__main__':

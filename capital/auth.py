@@ -20,8 +20,11 @@ PROVENANCE = 'SYNTHETIC_LOCAL_ROLE'
 COMMAND_SUBMIT = 'command:submit'
 SESSION_BIND = 'session:bind'
 AGENT_QUERY = 'agent:query_grant'
+AGENT_QUERY_SUBJECT = 'agent:query_subject'
 AGENT_PROPOSE = 'agent:propose_action'
-AGENT_PERMISSIONS = (AGENT_QUERY, AGENT_PROPOSE)
+AGENT_WITHDRAW = 'agent:withdraw_proposal'
+AGENT_PROPOSE_CHANGE = 'agent:propose_grant_change'
+AGENT_PERMISSIONS = (AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_PROPOSE, AGENT_WITHDRAW, AGENT_PROPOSE_CHANGE)
 
 # Keep this tuple aligned with CapitalService.OPS. The test locks the sets together.
 OP_ORDER = (

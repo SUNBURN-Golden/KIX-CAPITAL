@@ -11,7 +11,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from capital import __version__
 from capital.auth import (
-    AGENT_PROPOSE, AGENT_QUERY, COMMAND_SUBMIT, DEFAULT_ROLE, PROVENANCE, ROLES,
+    AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
+    COMMAND_SUBMIT, DEFAULT_ROLE, PROVENANCE, ROLES,
     SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
@@ -47,7 +48,10 @@ POST_DISPATCH = (
     ('/api/commands', COMMAND_SUBMIT),
     ('/api/session', SESSION_BIND),
     ('/api/agent/query_grant', AGENT_QUERY),
+    ('/api/agent/query_subject', AGENT_QUERY_SUBJECT),
     ('/api/agent/propose_action', AGENT_PROPOSE),
+    ('/api/agent/withdraw_proposal', AGENT_WITHDRAW),
+    ('/api/agent/propose_grant_change', AGENT_PROPOSE_CHANGE),
     ('/api/agent/execute', AGENT_PROPOSE),
 )
 ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'),
@@ -440,8 +444,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                     self.reply(200, service.execute(body, role=principal.role))
                 elif path == '/api/agent/query_grant':
                     self.reply(200, service.agent_query(body, role=principal.role))
+                elif path == '/api/agent/query_subject':
+                    self.reply(200, service.agent_query_subject(body, role=principal.role))
                 elif path == '/api/agent/propose_action':
                     self.reply(200, service.agent_propose(body, role=principal.role))
+                elif path == '/api/agent/withdraw_proposal':
+                    self.reply(200, service.agent_withdraw_proposal(body, role=principal.role))
+                elif path == '/api/agent/propose_grant_change':
+                    self.reply(200, service.agent_propose_grant_change(body, role=principal.role))
                 elif path == '/api/agent/execute':
                     self.reply(200, service.agent_execute(body, role=principal.role))
                 else:

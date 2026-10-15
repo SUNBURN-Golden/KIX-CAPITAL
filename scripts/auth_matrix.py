@@ -89,9 +89,22 @@ POST_BODIES = {
     '/api/agent/query_grant': {
         'grant_id': ACTIVE_GRANT_ID, 'generation': ACTIVE_GENERATION, 'now': 1,
     },
+    '/api/agent/query_subject': {
+        'grant_id': ACTIVE_GRANT_ID, 'generation': ACTIVE_GENERATION, 'now': 1,
+        'surface': 'capital:offer', 'subject': 'sim-matrix',
+    },
     '/api/agent/propose_action': {
         'grant_id': ACTIVE_GRANT_ID, 'generation': ACTIVE_GENERATION, 'now': 10,
         'proposal_id': 'sim-matrix', 'surface': 'capital:offer', 'amount': 100, 'kind': 'PROPOSE',
+    },
+    # sim-matrix is proposed by the propose_action cell earlier in table order.
+    '/api/agent/withdraw_proposal': {
+        'grant_id': ACTIVE_GRANT_ID, 'generation': ACTIVE_GENERATION, 'now': 10,
+        'proposal_id': 'sim-matrix',
+    },
+    '/api/agent/propose_grant_change': {
+        'grant_id': ACTIVE_GRANT_ID, 'generation': ACTIVE_GENERATION, 'now': 10,
+        'proposal_id': 'sim-matrix-change', 'requested': {'note': 'sim-matrix-note'},
     },
     '/api/agent/execute': {'kind': 'EXECUTE'},
 }
