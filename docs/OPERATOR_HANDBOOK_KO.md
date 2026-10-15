@@ -18,6 +18,7 @@
 | `UNKNOWN` | 그 operation의 최초 결과를 이 프로세스가 갖고 있지 않음. 재시도 허가가 아니다. |
 | `LOCAL_FILE_WORKSPACE` | 개발용 JSON 파일. stage5 내구 거래가 아니다. |
 | `SYNTHETIC_UNADOPTED` | 로컬 복식 투영 후보. `fin-ledger-contract` 채택이 아니다. |
+| `SYNTHETIC_FIXTURE_PROFILE` | 결정된 합성 fixture 프로필(`CAPITAL-DEMO-BOOK-V1`)의 대형 액면·수익자 role. 실제 익스포저·매출·법적 당사자가 아니다. |
 | `DEV_ONLY` | 옵트인 HMAC. 무결성만이고 인증·외부 키가 아니다. |
 
 잠정 조건 오버레이는 이 트리의 읽기 전용 조회다. 결정 노트의 상태 줄은 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).** 이다. 값은 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md` (`CAPITAL-TERMS-V1`)에서만 읽는다. 청약·실자금·벤더 FSM 산술이 아니다. zipapp은 `docs/`를 담지 않으므로 그 실행의 조건은 `terms not bound`다.

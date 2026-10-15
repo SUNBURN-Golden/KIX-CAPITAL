@@ -111,7 +111,7 @@ class DomainTests(unittest.TestCase):
 
     def test_read_copies_and_bounded_capacity(self):
         snapshot=self.service.snapshot();snapshot['fixtures'].clear()
-        self.assertEqual(len(self.service.fixtures.rows),3)
+        self.assertEqual(len(self.service.fixtures.rows),13)
         for i in range(MAX_OPERATIONS):self.command('approve',key=str(i))
         with self.assertRaisesRegex(ApiError,'SIMULATION_CAPACITY'):self.command('approve',key='overflow')
         self.assertTrue(self.command('approve',key='0')['transport_duplicate'])

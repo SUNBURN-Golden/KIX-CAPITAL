@@ -45,8 +45,9 @@ class ProjectionTests(unittest.TestCase):
             ProjectionPort().project([], [])
 
     def test_balanced_every_step_and_totals_equal_fixture_faces(self):
-        faces = sum(row['claim']['gross'] for row in self.service.fixtures.rows.values())
-        obligation_faces = sum(line['face'] for row in self.service.fixtures.rows.values() for line in row['claim']['obligations'])
+        projection_rows = {key: self.service.fixtures.rows[key] for key in self.service.fixtures.projection_ids}
+        faces = sum(row['claim']['gross'] for row in projection_rows.values())
+        obligation_faces = sum(line['face'] for row in projection_rows.values() for line in row['claim']['obligations'])
         self.assertEqual(faces, 300_000)
         self.assertEqual(obligation_faces, faces)
         self.ready()
@@ -94,7 +95,7 @@ class ProjectionTests(unittest.TestCase):
         self.ready()
         self.command('draw')
         journal = self.service.machine.export_journal()
-        evidence = [self.service.fixtures.view(key) for key in sorted(self.service.fixtures.rows)]
+        evidence = [self.service.fixtures.view(key) for key in sorted(self.service.fixtures.projection_ids)]
         raw_journal, raw_evidence = copy.deepcopy(journal), copy.deepcopy(evidence)
         before = self.picture()
         first = self.service.projection(None)
@@ -207,8 +208,9 @@ class ProjectionTests(unittest.TestCase):
 
     def assert_claims_match_fixtures(self, body):
         projected = {row['claim_id']: row for row in body['read_model']['claims']}
-        self.assertEqual(set(projected), set(self.service.fixtures.rows))
-        for key, source in self.service.fixtures.rows.items():
+        self.assertEqual(set(projected), set(self.service.fixtures.projection_ids))
+        for key in self.service.fixtures.projection_ids:
+            source = self.service.fixtures.rows[key]
             claim = source['claim']
             row = projected[key]
             self.assertEqual(row['phase'], source['phase'])
