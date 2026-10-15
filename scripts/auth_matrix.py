@@ -68,7 +68,7 @@ GET_PROBES = {
         f'/api/terms/{ADVANCE}/allocation?instance_id={INSTANCE}&as_of_day=1&cash=1',
         f'/api/terms/{ADVANCE}/setoff?instance_id={INSTANCE}&as_of_day=1',
     ],
-    '/api/policy': ['/api/policy', '/api/policy/simulation'],
+    '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/operations/': [f'/api/operations/{OFFER_OPERATION}?instance_id={INSTANCE}'],

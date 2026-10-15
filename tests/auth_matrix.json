@@ -148,7 +148,8 @@
       "permission": "projection:read",
       "probes": [
         "/api/policy",
-        "/api/policy/simulation"
+        "/api/policy/simulation",
+        "/api/policy/shadow"
       ]
     },
     {
