@@ -72,6 +72,7 @@ python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_c
 python3 scripts/manifest_vectors.py --check
 python3 scripts/workspace_vectors.py --check
 python3 scripts/finance_vectors.py --check
+python3 scripts/docs_surface.py --check
 npm ci
 npx playwright install chromium
 npm run test:browser
