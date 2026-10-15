@@ -28,7 +28,7 @@ Protocol 읽기 기준은 둘이며 범위가 다르다. (1) **`7481b0e16ce9b903
 
 | ID | 청사진 요구 | 현재 제품·검증 | 상태 / 다음 선행 |
 |---|---|---|---|
-| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 읽기 전용 조건 오버레이, 읽기 전용 상환 배분 견적(`GET /api/terms/{id}/allocation`)과 U1–U6 인수 기록(`GET /api/underwrite/{id}`, `SIMULATED_UNDERWRITING_RECORD`) | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 조회만 |
+| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 읽기 전용 조건 오버레이, 읽기 전용 상환 배분 견적(`GET /api/terms/{id}/allocation`), 읽기 전용 포트폴리오 조건 롤업(`GET /api/terms/portfolio`)과 U1–U6 인수 기록(`GET /api/underwrite/{id}`, `SIMULATED_UNDERWRITING_RECORD`) | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 조회만 |
 | CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 일회용 장부의 잠정 배정 순서 비교 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정은 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 고정 FSM이 표현하지 못해 계산하지 않음; V2 §7 |
 | CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 UNSUPPORTED_BY_PINNED_FSM |
 | CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사, 읽기 전용 완전성·차입기초·준비금 표시 | SIMULATED; [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) **PROVISIONAL (CAPITAL-TERMS-V1)**. 집행·심사 규칙은 applied false. 청약·upstream 채택 아님. 로컬 조회만 |

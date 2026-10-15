@@ -10,7 +10,7 @@
 
 | ID | 요구 | 소유 노드 / 결정 노트 | 상태 | 근거 |
 |---|---|---|---|---|
-| CAP-01 | 대여·선지급 전 기간 | docs/decisions/CAPITAL_FINANCIAL_TERMS.md | SIMULATED | 로컬 F04 여정은 합성이다. 읽기 전용 오버레이가 docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1, PROVISIONAL PRODUCT DECISION)를 표시한다. 청약이 아니고 upstream 채택이 아니다. |
+| CAP-01 | 대여·선지급 전 기간 | docs/decisions/CAPITAL_FINANCIAL_TERMS.md | SIMULATED | 로컬 F04 여정은 합성이다. 읽기 전용 오버레이가 docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1, PROVISIONAL PRODUCT DECISION)를 표시하고, `GET /api/terms/portfolio`는 모든 노출의 만기·이자·총비용 상한 검사를 같은 노트 값으로 읽는다. 청약이 아니고 upstream 채택이 아니다. |
 | CAP-02 | 수익참여·배분 | docs/decisions/CAPITAL_SETTLEMENT_POLICY.md | DECISION_REQUIRED | 잠정 노트 `settlement-policy-decision`의 `revenue_participation`이다. 제품에 적용되지 않았고 준비도 그룹은 DECISION_REQUIRED다. 배정 순서만 일회용 장부에서 비교하며 수익 참여 산술은 UNSUPPORTED_BY_PINNED_FSM이다. 이 표가 비율·상한·회수 순서를 정하지 않는다. |
 | CAP-03 | 정산채권 양도·매입 | docs/decisions/CAPITAL_SETTLEMENT_POLICY.md | DECISION_REQUIRED | 잠정 노트 `settlement-policy-decision`의 `claim_purchase`다. 제품에 적용되지 않았고 준비도 그룹은 DECISION_REQUIRED다. 채권 매입 산술은 UNSUPPORTED_BY_PINNED_FSM이며 계산하지 않는다. 이 표가 배정량·보유자·대가·우선순위를 정하지 않는다. |
 | CAP-04 | 담보·준비금 | docs/decisions/CAPITAL_FINANCIAL_TERMS.md | SIMULATED | 공유 액면 예약은 로컬 합성이다. 담보 완전성·차입기초·준비금 표시는 읽기 전용 오버레이이며 docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1, PROVISIONAL PRODUCT DECISION)를 인용한다. 집행은 applied false다. |

@@ -333,6 +333,9 @@ class TermsPolicyPort(Protocol):
     def allocation(self, case, claim, *, draw_day, as_of_day, expected_settlement_cash_day, gate, cash) -> dict:
         """Hypothetical repayment allocation quote for one case. Not a posting."""
 
+    def portfolio(self, subjects, *, draw_day, draw_day_source, as_of_day, expected_settlement_cash_day) -> dict:
+        """One simulated rollup row per case, totals, and the note cap citation."""
+
 
 class DecisionNoteTermsPolicy:
     """Load one capital-decision-v1 note. Unsupported tokens stay NOT_BOUND."""
@@ -488,19 +491,12 @@ class DecisionNoteTermsPolicy:
         default_exact = Fraction(principal * default_days * default_bps, denominator)
         return contract_bps, contract_exact, default_exact
 
-    def _accrual(self, principal, draw_day, as_of_day, tier, schedule):
-        if not self._ready('interest_rate', 'fees', 'term'):
-            return _unbound_section()
-        if tier is None or schedule.get('status') != 'BOUND' or principal is None:
-            return _not_applicable_section()
+    def _cost_cap(self, tier, term_days):
+        """Annualized all-in bps and the note cap check. Fees come from the note."""
         interest = self._value('interest_rate')
         fees = self._value('fees')
         day_count = _day_count(interest['day_count'])
-        contractual_days, default_days = self._day_split(draw_day, as_of_day, schedule['term_days'])
-        contract_bps, contract_exact, default_exact = self._interest_exacts(
-            principal, contractual_days, default_days, tier)
-        exact = contract_exact + default_exact
-        annual = contract_bps + interest['default_interest_add_bps_annual']
+        annual = tier['all_in_bps_annual'] + interest['default_interest_add_bps_annual']
         for key in _ANNUAL_FEE_KEYS:
             annual += fees[key]
         one_time = 0
@@ -508,9 +504,22 @@ class DecisionNoteTermsPolicy:
             one_time += fees[key]
         if type(fees.get('late_fee')) is int:
             one_time += fees['late_fee']
-        term_days = schedule['term_days']
+        annualized = annual + Fraction(one_time * day_count, term_days)
         cap = interest['all_in_cost_cap_bps_annual']
         cap_ok = annual * term_days + one_time * day_count <= cap * term_days
+        return annualized, cap_ok
+
+    def _accrual(self, principal, draw_day, as_of_day, tier, schedule):
+        if not self._ready('interest_rate', 'fees', 'term'):
+            return _unbound_section()
+        if tier is None or schedule.get('status') != 'BOUND' or principal is None:
+            return _not_applicable_section()
+        fees = self._value('fees')
+        contractual_days, default_days = self._day_split(draw_day, as_of_day, schedule['term_days'])
+        contract_bps, contract_exact, default_exact = self._interest_exacts(
+            principal, contractual_days, default_days, tier)
+        exact = contract_exact + default_exact
+        _annualized, cap_ok = self._cost_cap(tier, schedule['term_days'])
         return {
             'status': 'BOUND',
             'exact': f'{exact.numerator}/{exact.denominator}',
@@ -819,4 +828,120 @@ class DecisionNoteTermsPolicy:
             'allocation': split,
             'fsm_repay': fsm_repay,
             'close_ready': close_ready,
+        }
+
+    def _unbound_portfolio(self):
+        return {
+            'label': OVERLAY_LABEL,
+            'mode': 'SIMULATED_OVERLAY',
+            'terms_version': self.version,
+            'provisional': True,
+            'status': 'NOT_BOUND',
+            'reason': TERMS_NOT_BOUND,
+        }
+
+    def _cap_section(self):
+        interest = self._value('interest_rate')
+        fees = self._value('fees')
+        if interest is None or fees is None:
+            return _unbound_section()
+        return {
+            'status': 'BOUND',
+            'all_in_cost_cap_bps_annual': interest['all_in_cost_cap_bps_annual'],
+            'fees_policy': fees['policy'],
+            'fee_schedule_version': fees.get('fee_schedule_version'),
+        }
+
+    def _portfolio_row(self, subject, draw_day, draw_day_source, as_of_day, expected_settlement_cash_day):
+        case = subject.get('case')
+        phase = case.get('phase') if type(case) is dict else None
+        if not self._ready('interest_rate', 'fees', 'term'):
+            return {'status': 'NOT_BOUND', 'reason': TERMS_NOT_BOUND,
+                    'advance_id': subject.get('advance_id'), 'phase': phase}
+        claim = subject.get('claim')
+        tier = self._tier(case, claim, subject.get('gate')) if type(case) is dict and type(claim) is dict else None
+        principal = self._principal(case) if type(case) is dict else None
+        if tier is None or principal is None:
+            return {'status': 'NOT_APPLICABLE', 'reason': TIER_NOT_APPLICABLE,
+                    'advance_id': subject.get('advance_id'), 'phase': phase}
+        term_days, source = self._term_days(draw_day, expected_settlement_cash_day)
+        maturity = draw_day + term_days
+        contractual_days, default_days = self._day_split(draw_day, as_of_day, term_days)
+        _bps, contract_exact, default_exact = self._interest_exacts(
+            principal, contractual_days, default_days, tier)
+        exact = contract_exact + default_exact
+        annualized, cap_ok = self._cost_cap(tier, term_days)
+        return {
+            'status': 'BOUND',
+            'advance_id': subject.get('advance_id'),
+            'phase': phase,
+            'tier': tier['id'].split('_', 1)[0],
+            'principal': principal,
+            'draw_day': draw_day,
+            'draw_day_source': draw_day_source,
+            'term_days': term_days,
+            'term_source': source,
+            'maturity_day': maturity,
+            'days_past_maturity': max(0, as_of_day - maturity),
+            'contractual_days': contractual_days,
+            'default_days': default_days,
+            'contract_exact': f'{contract_exact.numerator}/{contract_exact.denominator}',
+            'contract_interest_krw': contract_exact.numerator // contract_exact.denominator,
+            'default_exact': f'{default_exact.numerator}/{default_exact.denominator}',
+            'default_interest_krw': default_exact.numerator // default_exact.denominator,
+            'exact': f'{exact.numerator}/{exact.denominator}',
+            'interest_krw': exact.numerator // exact.denominator,
+            'annualized_all_in_bps': f'{annualized.numerator}/{annualized.denominator}',
+            'cap_check': 'PASS' if cap_ok else 'FAIL',
+        }
+
+    def _portfolio_totals(self, rows):
+        contract_exact = Fraction(0)
+        default_exact = Fraction(0)
+        evaluated = 0
+        cap_check = 'NOT_APPLICABLE'
+        for row in rows:
+            if row.get('status') != 'BOUND':
+                continue
+            evaluated += 1
+            contract_exact += Fraction(row['contract_exact'])
+            default_exact += Fraction(row['default_exact'])
+            if row['cap_check'] == 'FAIL':
+                cap_check = 'FAIL'
+        if evaluated and cap_check != 'FAIL':
+            cap_check = 'PASS'
+        exact = contract_exact + default_exact
+        return {
+            'advances': len(rows),
+            'evaluated': evaluated,
+            'contract_exact': f'{contract_exact.numerator}/{contract_exact.denominator}',
+            'contract_interest_krw': contract_exact.numerator // contract_exact.denominator,
+            'default_exact': f'{default_exact.numerator}/{default_exact.denominator}',
+            'default_interest_krw': default_exact.numerator // default_exact.denominator,
+            'exact': f'{exact.numerator}/{exact.denominator}',
+            'interest_krw': exact.numerator // exact.denominator,
+            'cap_check': cap_check,
+        }
+
+    def portfolio(self, subjects, *, draw_day, draw_day_source, as_of_day, expected_settlement_cash_day) -> dict:
+        if self.top == 'NOT_BOUND' or type(subjects) is not list:
+            return self._unbound_portfolio()
+        rows = [
+            self._portfolio_row(subject if type(subject) is dict else {}, draw_day, draw_day_source,
+                                as_of_day, expected_settlement_cash_day)
+            for subject in subjects
+        ]
+        return {
+            'label': OVERLAY_LABEL,
+            'mode': 'SIMULATED_OVERLAY',
+            'terms_version': self.version,
+            'provisional': True,
+            'status': self.top,
+            'reason': self.reason,
+            'draw_day': draw_day,
+            'as_of_day': as_of_day,
+            'expected_settlement_cash_day': expected_settlement_cash_day,
+            'cap': self._cap_section(),
+            'rows': rows,
+            'totals': self._portfolio_totals(rows),
         }

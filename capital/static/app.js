@@ -158,7 +158,8 @@ async function refresh(){
  const diagnostics=await loadDiagnostics(next);
  const terms=await loadTerms(next);
  const policyView=await loadPolicy(next);
- state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ const portfolio=await loadPortfolio(next);
+ state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
@@ -259,6 +260,38 @@ function renderTerms(result){
  $('terms-label').textContent=terms.label;
  $('terms-status').textContent=terms.reason?`${terms.status} · ${terms.reason}`:terms.status;
  $('terms-version').textContent=terms.terms_version||'';
+}
+function portfolioQuery(next){
+ const params=new URLSearchParams({instance_id:next.instance_id,draw_day:$('terms-draw-day').value,as_of_day:$('terms-as-of-day').value});
+ const expected=$('terms-settlement-day').value;
+ if(expected!=='')params.set('expected_settlement_cash_day',expected);
+ return params;
+}
+async function loadPortfolio(next){
+ const decision=next.auth.permissions['projection:read'];
+ if(!decision?.allowed)return {error:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
+ try{
+  const body=await request(`/api/terms/portfolio?${portfolioQuery(next)}`);
+  if(body.label!==OVERLAY_LABEL||body.mode!=='SIMULATED_OVERLAY'||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.instance_id!==next.instance_id||body.observed_state_digest!==next.state_digest||body.provisional!==true)return {error:'포트폴리오 롤업 응답이 라벨 또는 절단면과 맞지 않습니다. 숫자를 청약으로 표시하지 않습니다.'};
+  return {portfolio:body};
+ }catch{return {error:'포트폴리오 롤업을 확인하지 못했습니다. 제안 상태는 유지합니다.'};}
+}
+function renderPortfolio(result){
+ const error=$('terms-portfolio-error'),rows=$('terms-portfolio-rows');
+ if(!result?.portfolio){error.hidden=false;error.textContent=result?.error||'롤업을 표시하지 않습니다.';$('terms-portfolio-label').textContent='';$('terms-portfolio-cap').textContent='';rows.replaceChildren();$('terms-portfolio-totals').textContent='';return;}
+ error.hidden=true;const body=result.portfolio;
+ $('terms-portfolio-label').textContent=body.reason?`${body.label} · ${body.status} · ${body.reason}`:`${body.label} · ${body.status}`;
+ if(body.status==='NOT_BOUND'){$('terms-portfolio-cap').textContent='';rows.replaceChildren();$('terms-portfolio-totals').textContent='';return;}
+ const cap=body.cap||{};
+ $('terms-portfolio-cap').textContent=cap.status==='BOUND'?`all_in_cost_cap_bps_annual ${cap.all_in_cost_cap_bps_annual} · ${cap.fees_policy} · ${cap.fee_schedule_version}`:'cap NOT_BOUND';
+ rows.replaceChildren(...(body.rows||[]).map(row=>{
+  const tr=document.createElement('tr');
+  if(row.status==='BOUND')for(const value of [row.advance_id,`${row.tier} · ${row.phase}`,`${row.maturity_day} · ${row.term_source}`,row.days_past_maturity,`${number(row.contract_interest_krw)} (${row.contract_exact})`,`${number(row.default_interest_krw)} (${row.default_exact})`,row.annualized_all_in_bps,row.cap_check])tr.append(textElement('td',value));
+  else{const cell=textElement('td',`${row.status} · ${row.reason}`);cell.colSpan=7;tr.append(textElement('td',row.advance_id),cell);}
+  return tr;
+ }));
+ const t=body.totals||{};
+ $('terms-portfolio-totals').textContent=`평가 ${t.evaluated}/${t.advances} · 계약 ${number(t.contract_interest_krw)} (${t.contract_exact}) · 연체 ${number(t.default_interest_krw)} (${t.default_exact}) · 합계 ${number(t.interest_krw)} (${t.exact}) · cap_check ${t.cap_check} · SIMULATED`;
 }
 async function loadCaseTerms(){
  const epoch=++termsEpoch;
@@ -655,7 +688,7 @@ $('reconcile-readonly').onclick=async()=>{
  }catch(error){$('reconciliation-result').textContent='';notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'재생 조회를 확인하지 못했습니다.',true);}
  finally{busy=false;fence();}
 };
-for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state){void loadCaseTerms();void loadCaseSetoff();}});
+for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state){void loadCaseTerms();void loadCaseSetoff();void loadPortfolio(state).then(renderPortfolio);}});
 $('underwrite-sim-day').addEventListener('change',()=>{if(state)void loadCaseUnderwrite();});
 for(const id of ['uw-fixture','uw-amount','uw-sim-day'])$(id).addEventListener('change',()=>{if(state)void loadCandidateUnderwrite();});
 try{const stored=sessionStorage.getItem(roleStorageKey);if(syntheticRoles.includes(stored))$('role').value=stored;}catch{}
