@@ -28,6 +28,7 @@ from capital.policy import (
     apply_order, probe_order_freeze,
 )
 from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
+from capital.shadow import DecisionNoteShadow, SHADOW_LABEL, SHADOW_MODE, SHADOW_PROVENANCE
 from capital.statement import build_statement
 from capital.setoff import DecisionNoteSetoff
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
@@ -102,7 +103,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None, shadow=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -117,6 +118,7 @@ class CapitalService:
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
         self.setoff = setoff if setoff is not None else DecisionNoteSetoff(self.terms, self.policy)
+        self.shadow = shadow if shadow is not None else DecisionNoteShadow()
         self.decision_index = decisions if decisions is not None else DecisionIndex()
         self.agent_lane = AgentLane(self.terms)
         self.observability = observability or Observability()
@@ -643,6 +645,132 @@ class CapitalService:
             frozen = self._frozen()
             try:
                 return self._policy_envelope(self._policy_body())
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def _shadow_claim_vector(self, claim):
+        """Frozen input vector from a pinned view() snapshot. No amounts invented."""
+        return {
+            'gross': claim['gross'],
+            'policy': {'residual_payee': claim['policy']['residual_payee'],
+                       'fee_payee': claim['policy']['fee_payee']},
+            'obligations': [
+                {'payee': row['payee'], 'face': row['face'], 'distributed': row['distributed'],
+                 'cancelled_unpaid': row['cancelled_unpaid'], 'outstanding': row['outstanding'],
+                 'recovery_due': row['recovery_due']}
+                for row in claim['obligations']],
+        }
+
+    def _shadow_refund_verdict(self):
+        """Per-class shadow of the pinned partial-after view's open refund face."""
+        if self.shadow.outcome != 'BOUND':
+            return self.shadow.deferred('refund_bearer', None)
+        claim = self.scenario_results['partial-after']['final']
+        vector = self._shadow_claim_vector(claim)
+        per_class = []
+        for row in self.shadow.refund_classes():
+            variants = [False, True] if row['working_assumption'] else [False]
+            for adjudicated in variants:
+                refund_id = 'shadow-sim-' + row['id'] + ('-adjudicated' if adjudicated else '')
+                result = self.shadow.refund({**vector, 'refunds': [{
+                    'refund_id': refund_id, 'amount': claim['refund_face'],
+                    'reason_class': row['id'], 'evidence_ref': 'SIMULATED',
+                    'adjudicated_platform_fault': adjudicated}]})
+                per_class.append(result)
+        verdict = {
+            'status': 'SHADOW_COMPUTED' if all(
+                item['status'] in ('SHADOW_COMPUTED', 'SHADOW_INPUT_UNKNOWN') for item in per_class)
+            else 'SHADOW_INCONSISTENT',
+            'detail': None,
+            'mode': SHADOW_MODE, 'label': SHADOW_LABEL, 'provenance': SHADOW_PROVENANCE,
+            'shadow_rules_version': self.shadow.status()['shadow_rules_version'],
+            'note_digest': self.shadow.note_digest,
+            'source': {'kind': 'PINNED_VIEW_SNAPSHOT', 'claim_id': claim['claim_id'],
+                       'scenario': 'partial-after'},
+            'per_class': per_class,
+        }
+        verdict.update({name: False for name in (
+            'applied_to_fsm', 'funds_executed', 'policy_adopted', 'bank_debit_observed',
+            'right_cancelled', 'external_return_closed', 'legal_debtor_bound',
+            'admission_granted', 'workspace_mutated')})
+        return verdict
+
+    def _shadow_resale_verdict(self):
+        """Shadow unwind of the note's synthetic worked resale example vectors."""
+        if self.shadow.outcome != 'BOUND':
+            return self.shadow.deferred('resale_prior_contract_cancel_burden', None)
+        claim = self.fixtures.view('sim-committed')['claim']
+        primary = self._shadow_claim_vector(claim)
+        triggers = []
+        for item in self.shadow.worked_resale_vectors():
+            vector = {**item['vector'], 'primary': primary}
+            result = self.shadow.resale(vector)
+            result['vector_id'] = item['id']
+            triggers.append(result)
+        status = 'SHADOW_COMPUTED' if triggers and all(
+            row['status'] == 'SHADOW_COMPUTED' for row in triggers) else 'SHADOW_INCONSISTENT'
+        verdict = {
+            'status': status, 'detail': None,
+            'mode': SHADOW_MODE, 'label': SHADOW_LABEL, 'provenance': SHADOW_PROVENANCE,
+            'shadow_rules_version': self.shadow.status()['shadow_rules_version'],
+            'note_digest': self.shadow.note_digest,
+            'source': {'kind': 'NOTE_SYNTHETIC_LITERALS',
+                       'note': 'docs/decisions/CAPITAL_SETTLEMENT_POLICY.md',
+                       'primary_claim_id': claim['claim_id']},
+            'triggers': triggers,
+        }
+        verdict.update({name: False for name in (
+            'applied_to_fsm', 'funds_executed', 'policy_adopted', 'bank_debit_observed',
+            'right_cancelled', 'external_return_closed', 'legal_debtor_bound',
+            'admission_granted', 'workspace_mutated')})
+        return verdict
+
+    _SHADOW_DEFERRED_DETAIL = (
+        'out of scope for this node: the decision keeps the parts needing a logical clock, '
+        'a slice registry or a multi-claim base deferred; this endpoint computes only the '
+        'refund-bearer classes and the resale unwind')
+
+    def _shadow_body(self):
+        """Side-by-side pinned and shadow verdicts for the unsupported items."""
+        items = []
+        for row in self.policy.unsupported():
+            name = row['item']
+            if name == 'refund_bearer':
+                verdict = self._shadow_refund_verdict()
+            elif name == 'resale_prior_contract_cancel_burden':
+                verdict = self._shadow_resale_verdict()
+            else:
+                verdict = self.shadow.deferred(name, self._SHADOW_DEFERRED_DETAIL)
+            items.append({'item': name, 'pinned': row, 'shadow': verdict})
+        bound = self.shadow.outcome == 'BOUND'
+        body = {
+            'label': SHADOW_LABEL,
+            'mode': SHADOW_MODE,
+            'provenance': SHADOW_PROVENANCE,
+            'provisional': True,
+            'shadow_rules_version': 'CAPITAL-SHADOW-V1',
+            'policy_version': self.shadow.policy_version,
+            'note_digest': self.shadow.note_digest,
+            'outcome': 'SHADOW_COMPUTED' if bound else 'SHADOW_NOT_BOUND',
+            'reason': None if bound else self.shadow.reason,
+            'items': items,
+            'applied_to_fsm': False,
+            'policy_adopted': False,
+            'bank_debit_observed': False,
+            'right_cancelled': False,
+            'external_return_closed': False,
+            'legal_debtor_bound': False,
+            'admission_granted': False,
+        }
+        return body
+
+    def policy_shadow(self):
+        """Shadow arithmetic on frozen input vectors. Nothing is applied."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                return self._policy_envelope(self._shadow_body())
             finally:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)

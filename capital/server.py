@@ -264,6 +264,8 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 return self.reply(200, service.policy_status())
             if route.path == '/api/policy/simulation':
                 return self.reply(200, service.policy_simulation())
+            if route.path == '/api/policy/shadow':
+                return self.reply(200, service.policy_shadow())
             raise ApiError('NOT_FOUND', 404)
 
         def _get_terms(self, route, principal):
