@@ -137,7 +137,14 @@ async function loadDiagnostics(next){
  else{try{const body=await request('/api/statement');statement=statementValid(body,next)?{statement:body}:{error:'명세서 응답이 현재 절단면 또는 NOT_BOUND 표기와 맞지 않습니다. 최초 판매와 리셀을 합산하지 않습니다.'};}catch{statement={error:'명세서를 확인하지 못했습니다. 제안 상태는 유지하며 금액을 표시하지 않습니다.'};}}
  return {recon,statement};
 }
-async function refresh(){
+let refreshInFlight=false,refreshDone=Promise.resolve();
+function refresh(){
+ refreshInFlight=true;
+ const task=(async()=>{try{await refreshCore();}finally{refreshInFlight=false;}})();
+ refreshDone=task.catch(()=>{});
+ return task;
+}
+async function refreshCore(){
  let next=await request('/api/state');
  validateState(next);
  if(!sessionToken)sessionToken=next.local_token;
@@ -275,6 +282,10 @@ async function loadPortfolio(next){
   if(body.label!==OVERLAY_LABEL||body.mode!=='SIMULATED_OVERLAY'||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.instance_id!==next.instance_id||body.observed_state_digest!==next.state_digest||body.provisional!==true)return {error:'포트폴리오 롤업 응답이 라벨 또는 절단면과 맞지 않습니다. 숫자를 청약으로 표시하지 않습니다.'};
   return {portfolio:body};
  }catch{return {error:'포트폴리오 롤업을 확인하지 못했습니다. 제안 상태는 유지합니다.'};}
+}
+async function reloadPortfolio(){
+ while(refreshInFlight)await refreshDone;
+ if(state)renderPortfolio(await loadPortfolio(state));
 }
 function renderPortfolio(result){
  const error=$('terms-portfolio-error'),rows=$('terms-portfolio-rows');
@@ -688,7 +699,7 @@ $('reconcile-readonly').onclick=async()=>{
  }catch(error){$('reconciliation-result').textContent='';notice(error.knownRejection?`요청 거절: ${errors[error.message]||error.message}`:'재생 조회를 확인하지 못했습니다.',true);}
  finally{busy=false;fence();}
 };
-for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state){void loadCaseTerms();void loadCaseSetoff();void loadPortfolio(state).then(renderPortfolio);}});
+for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state){void loadCaseTerms();void loadCaseSetoff();void reloadPortfolio();}});
 $('underwrite-sim-day').addEventListener('change',()=>{if(state)void loadCaseUnderwrite();});
 for(const id of ['uw-fixture','uw-amount','uw-sim-day'])$(id).addEventListener('change',()=>{if(state)void loadCandidateUnderwrite();});
 try{const stored=sessionStorage.getItem(roleStorageKey);if(syntheticRoles.includes(stored))$('role').value=stored;}catch{}
