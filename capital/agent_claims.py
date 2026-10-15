@@ -105,6 +105,16 @@ def _propose(proposal_id='sim-claim-proposal', surface='capital:draw',
     return body
 
 
+def _withdraw(proposal_id, **extra):
+    return _call(proposal_id=proposal_id, **extra)
+
+
+def _change(proposal_id='sim-claim-change', requested=None, **extra):
+    if requested is None:
+        requested = {'note': 'sim-claim-note'}
+    return _call(proposal_id=proposal_id, requested=requested, **extra)
+
+
 def _query(service=None, **extra):
     service = _service() if service is None else service
     return service.agent_query(_call(**extra), role='agent')
@@ -113,6 +123,34 @@ def _query(service=None, **extra):
 def _propose_view(service=None, **extra):
     service = _service() if service is None else service
     return service.agent_propose(_propose(**extra), role='agent')
+
+
+def _subject_view(service=None, **extra):
+    service = _service() if service is None else service
+    body = _call(surface='capital:draw')
+    body.update(extra)
+    return service.agent_query_subject(body, role='agent')
+
+
+def _change_view(service=None, **extra):
+    service = _service() if service is None else service
+    return service.agent_propose_grant_change(_change(**extra), role='agent')
+
+
+def _narrowed_authority(service, authority, call):
+    lane = service.agent_lane
+    real = lane._grants
+
+    def narrowed():
+        grants = real()
+        grants[ACTIVE_GRANT_ID]['authority'] = list(authority)
+        return grants
+
+    lane._grants = narrowed
+    try:
+        return _api_error(call)
+    finally:
+        lane._grants = real
 
 
 def _agent_flag(name):
@@ -314,6 +352,182 @@ def check_agent_propose_tool_not_allowed():
         lane._grants = real
 
 
+def check_agent_subject_match():
+    return _subject_view(subject='sim-case')['match']
+
+
+def check_agent_subject_no_subject():
+    return _subject_view()['match']
+
+
+def check_agent_subject_subjects():
+    return _subject_view()['subjects']
+
+
+def check_agent_subject_no_write():
+    service = _service()
+    service.agent_query_subject(_call(surface='capital:draw'), role='agent')
+    return {'receipts': len(service.receipts), 'proposals': len(service.agent_lane.proposals)}
+
+
+def check_agent_subject_scope_violation():
+    return _api_error(lambda: _subject_view(surface='capital:not-a-surface'))
+
+
+def check_agent_subject_tool_not_allowed():
+    service = _service()
+    return _narrowed_authority(
+        service, ['PROPOSE'],
+        lambda: service.agent_query_subject(_call(surface='capital:draw'), role='agent'))
+
+
+def check_agent_withdraw_phase():
+    service = _service()
+    service.agent_propose(_propose(proposal_id='sim-claim-wd'), role='agent')
+    view = service.agent_withdraw_proposal(_withdraw('sim-claim-wd'), role='agent')
+    return view['proposal']['phase']
+
+
+def check_agent_withdraw_effects_executed():
+    service = _service()
+    service.agent_propose(_propose(proposal_id='sim-claim-wd2'), role='agent')
+    view = service.agent_withdraw_proposal(_withdraw('sim-claim-wd2'), role='agent')
+    return view['proposal']['effects_executed']
+
+
+def check_agent_withdraw_duplicate():
+    service = _service()
+    service.agent_propose(_propose(proposal_id='sim-claim-wd3'), role='agent')
+    service.agent_withdraw_proposal(_withdraw('sim-claim-wd3'), role='agent')
+    again = service.agent_withdraw_proposal(_withdraw('sim-claim-wd3'), role='agent')
+    return {'duplicate': again['duplicate'], 'phase': again['proposal']['phase']}
+
+
+def check_agent_withdraw_expired():
+    service = _service()
+    service.agent_propose(_propose(proposal_id='sim-claim-wd4'), role='agent')
+    view = service.agent_withdraw_proposal(
+        _withdraw('sim-claim-wd4', now=PERIOD_NOT_AFTER + 1), role='agent')
+    return view['proposal']['phase']
+
+
+def check_agent_withdraw_releases():
+    service = _service()
+    service.agent_propose(_propose(proposal_id='sim-claim-wd5', amount=100), role='agent')
+    service.agent_withdraw_proposal(_withdraw('sim-claim-wd5'), role='agent')
+    return list(service.agent_lane._charged(ACTIVE_GRANT_ID))
+
+
+def check_agent_withdraw_unknown():
+    return _api_error(lambda: _service().agent_withdraw_proposal(
+        _withdraw('sim-claim-missing'), role='agent'))
+
+
+def check_agent_withdraw_revoked():
+    return _api_error(lambda: _service().agent_withdraw_proposal(
+        _withdraw('sim-claim-x', grant_id=REVOKED_GRANT_ID, generation=REVOKED_GENERATION),
+        role='agent'))
+
+
+def check_agent_withdraw_not_citable():
+    service = _service()
+    service.agent_propose(
+        _propose(proposal_id='sim-claim-wd6', surface='capital:offer', amount=100), role='agent')
+    service.agent_withdraw_proposal(_withdraw('sim-claim-wd6'), role='agent')
+    body = {
+        'instance_id': service.instance_id,
+        'operation_id': 'sim-claim-wd6-op',
+        'op': 'offer',
+        'advance_id': 'sim-claim-wd6',
+        'args': {'fixture_id': 'sim-committed', 'amount': 100},
+        'proposal_id': 'sim-claim-wd6',
+    }
+    return _api_error(lambda: service.execute(body))
+
+
+def check_agent_withdraw_tool_not_allowed():
+    service = _service()
+    return _narrowed_authority(
+        service, ['QUERY'],
+        lambda: service.agent_withdraw_proposal(_withdraw('sim-claim-w'), role='agent'))
+
+
+def check_agent_change_phase():
+    return _change_view()['proposal']['phase']
+
+
+def check_agent_change_tool():
+    return _change_view()['proposal']['tool']
+
+
+def check_agent_change_effects_executed():
+    return _change_view()['proposal']['effects_executed']
+
+
+def check_agent_change_memo():
+    return _change_view(requested={'authority': ['QUERY'], 'note': 'sim-claim-memo'})['proposal']['memo']
+
+
+def check_agent_change_amount():
+    return _change_view()['proposal']['amount']
+
+
+def check_agent_change_stored():
+    service = _service()
+    service.agent_propose_grant_change(_change(proposal_id='sim-claim-ch'), role='agent')
+    row = service.agent_lane.proposals['sim-claim-ch']
+    return {'phase': row['phase'], 'effects_executed': row['effects_executed'], 'kind': row['kind']}
+
+
+def check_agent_change_grant_unchanged():
+    service = _service()
+    before = service.agent_query(_call(), role='agent')['grant']
+    service.agent_propose_grant_change(
+        _change(proposal_id='sim-claim-ch2', requested={'authority': ['PROPOSE']}), role='agent')
+    return before == service.agent_query(_call(), role='agent')['grant']
+
+
+def check_agent_change_execute_authority():
+    service = _service()
+    error = _api_error(lambda: service.agent_propose_grant_change(
+        _change(proposal_id='sim-claim-ch3', requested={'authority': ['QUERY', 'EXECUTE']}),
+        role='agent'))
+    return {'error': error, 'proposals': len(service.agent_lane.proposals)}
+
+
+def check_agent_change_duplicate():
+    service = _service()
+    service.agent_propose_grant_change(_change(proposal_id='sim-claim-ch4'), role='agent')
+    again = service.agent_propose_grant_change(_change(proposal_id='sim-claim-ch4'), role='agent')
+    return again['duplicate']
+
+
+def check_agent_change_conflict():
+    service = _service()
+    service.agent_propose_grant_change(
+        _change(proposal_id='sim-claim-ch5', requested={'note': 'a'}), role='agent')
+    return _api_error(lambda: service.agent_propose_grant_change(
+        _change(proposal_id='sim-claim-ch5', requested={'note': 'b'}), role='agent'))
+
+
+def check_agent_change_count_only():
+    service = _service()
+    service.agent_propose_grant_change(_change(proposal_id='sim-claim-ch6'), role='agent')
+    return list(service.agent_lane._charged(ACTIVE_GRANT_ID))
+
+
+def check_agent_change_bad_memo():
+    return _api_error(lambda: _change_view(requested={'widen': True}))
+
+
+def check_agent_change_tool_not_allowed():
+    service = _service()
+    return _narrowed_authority(
+        service, ['QUERY'],
+        lambda: service.agent_propose_grant_change(
+            _change(proposal_id='sim-claim-ch7'), role='agent'))
+
+
 def check_agent_execute_refused():
     service = _service()
     return _api_error(lambda: service.agent_execute({'kind': 'EXECUTE'}, role='agent'))
@@ -472,6 +686,34 @@ CHECKS.update({
     'agent.propose.cumulative': check_agent_propose_cumulative,
     'agent.propose.execute_kind': check_agent_propose_execute_kind,
     'agent.propose.tool_not_allowed': check_agent_propose_tool_not_allowed,
+    'agent.subject.match': check_agent_subject_match,
+    'agent.subject.no_subject': check_agent_subject_no_subject,
+    'agent.subject.subjects': check_agent_subject_subjects,
+    'agent.subject.no_write': check_agent_subject_no_write,
+    'agent.subject.scope_violation': check_agent_subject_scope_violation,
+    'agent.subject.tool_not_allowed': check_agent_subject_tool_not_allowed,
+    'agent.withdraw.phase': check_agent_withdraw_phase,
+    'agent.withdraw.effects_executed': check_agent_withdraw_effects_executed,
+    'agent.withdraw.duplicate': check_agent_withdraw_duplicate,
+    'agent.withdraw.expired': check_agent_withdraw_expired,
+    'agent.withdraw.releases': check_agent_withdraw_releases,
+    'agent.withdraw.unknown': check_agent_withdraw_unknown,
+    'agent.withdraw.revoked': check_agent_withdraw_revoked,
+    'agent.withdraw.not_citable': check_agent_withdraw_not_citable,
+    'agent.withdraw.tool_not_allowed': check_agent_withdraw_tool_not_allowed,
+    'agent.change.phase': check_agent_change_phase,
+    'agent.change.tool': check_agent_change_tool,
+    'agent.change.effects_executed': check_agent_change_effects_executed,
+    'agent.change.memo': check_agent_change_memo,
+    'agent.change.amount': check_agent_change_amount,
+    'agent.change.stored': check_agent_change_stored,
+    'agent.change.grant_unchanged': check_agent_change_grant_unchanged,
+    'agent.change.execute_authority': check_agent_change_execute_authority,
+    'agent.change.duplicate': check_agent_change_duplicate,
+    'agent.change.conflict': check_agent_change_conflict,
+    'agent.change.count_only': check_agent_change_count_only,
+    'agent.change.bad_memo': check_agent_change_bad_memo,
+    'agent.change.tool_not_allowed': check_agent_change_tool_not_allowed,
     'agent.execute.refused': check_agent_execute_refused,
     'agent.execute.no_write': check_agent_execute_no_write,
     'agent.period.not_before': check_agent_period_not_before,

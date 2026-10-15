@@ -684,6 +684,286 @@
       "check_id": "agent.vendor.not_vendored",
       "needle": "reference/ai_delegation/ai_delegation_mock.py",
       "expected": false
+    },
+    {
+      "id": "agent-subject-match",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-13: query_subject confirms surface and optional subject membership only.",
+      "check_id": "agent.subject.match",
+      "needle": "소속만 확인",
+      "expected": {"surface": "capital:draw", "subject": "sim-case", "in_scope": true}
+    },
+    {
+      "id": "agent-subject-no-subject",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "With no subject passed the match reports membership for the surface alone (omitted subjects do not restrict).",
+      "check_id": "agent.subject.no_subject",
+      "needle": "subject를 제한하지 않는다",
+      "expected": {"surface": "capital:draw", "subject": null, "in_scope": true}
+    },
+    {
+      "id": "agent-subject-subjects",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The view echoes the fixture subject registry; null means the draft's unrestricted membership.",
+      "check_id": "agent.subject.subjects",
+      "needle": "subject를 제한하지 않는다",
+      "expected": null
+    },
+    {
+      "id": "agent-subject-no-write",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "query_subject is a QUERY read: no receipt is written and no proposal is stored.",
+      "check_id": "agent.subject.no_write",
+      "needle": "상태 불변",
+      "expected": {"receipts": 0, "proposals": 0}
+    },
+    {
+      "id": "agent-subject-scope-violation",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A surface outside the grant scope fails membership with SCOPE_VIOLATION.",
+      "check_id": "agent.subject.scope_violation",
+      "needle": "SCOPE_VIOLATION",
+      "expected": {"code": "SCOPE_VIOLATION", "status": 400}
+    },
+    {
+      "id": "agent-subject-tool-not-allowed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "3. 권한 수준",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-33: a grant narrowed to PROPOSE refuses the QUERY-level query_subject with TOOL_NOT_ALLOWED.",
+      "check_id": "agent.subject.tool_not_allowed",
+      "needle": "조회 도구는 `QUERY`",
+      "expected": {"code": "TOOL_NOT_ALLOWED", "status": 403}
+    },
+    {
+      "id": "agent-withdraw-phase",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "withdraw_proposal moves a stored pending proposal to WITHDRAWN.",
+      "check_id": "agent.withdraw.phase",
+      "needle": "WITHDRAWN",
+      "expected": "WITHDRAWN"
+    },
+    {
+      "id": "agent-withdraw-effects-executed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A withdrawn memo keeps effects_executed false; withdrawal never executes.",
+      "check_id": "agent.withdraw.effects_executed",
+      "needle": "effects_executed",
+      "expected": false
+    },
+    {
+      "id": "agent-withdraw-duplicate",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A second withdrawal is duplicate: true and the stored phase stays WITHDRAWN.",
+      "check_id": "agent.withdraw.duplicate",
+      "needle": "두 번째 철회는",
+      "expected": {"duplicate": true, "phase": "WITHDRAWN"}
+    },
+    {
+      "id": "agent-withdraw-expired",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The period window does not refuse withdraw_proposal; a pending proposal is collected after expiry.",
+      "check_id": "agent.withdraw.expired",
+      "needle": "도 거둘 수 있다",
+      "expected": "WITHDRAWN"
+    },
+    {
+      "id": "agent-withdraw-releases",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-16: a WITHDRAWN row releases its per-action and cumulative share; the charge returns to zero.",
+      "check_id": "agent.withdraw.releases",
+      "needle": "한도 몫을 되돌린다",
+      "expected": [0, 0]
+    },
+    {
+      "id": "agent-withdraw-unknown",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "8. 오류 코드와 항상 거짓인 플래그",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A proposal_id that is not stored is UNKNOWN_PROPOSAL.",
+      "check_id": "agent.withdraw.unknown",
+      "needle": "UNKNOWN_PROPOSAL",
+      "expected": {"code": "UNKNOWN_PROPOSAL", "status": 404}
+    },
+    {
+      "id": "agent-withdraw-revoked",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Withdrawing against an already-revoked grant is GRANT_REVOKED.",
+      "check_id": "agent.withdraw.revoked",
+      "needle": "GRANT_REVOKED",
+      "expected": {"code": "GRANT_REVOKED", "status": 403}
+    },
+    {
+      "id": "agent-withdraw-not-citable",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A WITHDRAWN row is no longer a pending memo, so a human command citing it is PROPOSAL_BINDING_CONFLICT.",
+      "check_id": "agent.withdraw.not_citable",
+      "needle": "PROPOSAL_BINDING_CONFLICT",
+      "expected": {"code": "PROPOSAL_BINDING_CONFLICT", "status": 409}
+    },
+    {
+      "id": "agent-withdraw-tool-not-allowed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "3. 권한 수준",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-33: a grant narrowed to QUERY refuses the PROPOSE-level withdraw_proposal with TOOL_NOT_ALLOWED.",
+      "check_id": "agent.withdraw.tool_not_allowed",
+      "needle": "제안 도구는 `PROPOSE`가 있어야 한다",
+      "expected": {"code": "TOOL_NOT_ALLOWED", "status": 403}
+    },
+    {
+      "id": "agent-change-phase",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "6. 술어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "propose_grant_change stores a pending memo (HUMAN_PENDING mirrors the draft's PROPOSED).",
+      "check_id": "agent.change.phase",
+      "needle": "PROPOSED",
+      "expected": "HUMAN_PENDING"
+    },
+    {
+      "id": "agent-change-tool",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The stored memo view names its tool propose_grant_change.",
+      "check_id": "agent.change.tool",
+      "needle": "propose_grant_change",
+      "expected": "propose_grant_change"
+    },
+    {
+      "id": "agent-change-effects-executed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The grant-change memo is a memo only; effects_executed is false.",
+      "check_id": "agent.change.effects_executed",
+      "needle": "effects_executed",
+      "expected": false
+    },
+    {
+      "id": "agent-change-memo",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The stored memo echoes the requested fields verbatim (authority and note here).",
+      "check_id": "agent.change.memo",
+      "needle": "note`만 담는 메모다",
+      "expected": {"authority": ["QUERY"], "note": "sim-claim-memo"}
+    },
+    {
+      "id": "agent-change-amount",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A grant-change memo carries no amount; the lane stores amount null.",
+      "check_id": "agent.change.amount",
+      "needle": "금액이 없고 건수만 쓴다",
+      "expected": null
+    },
+    {
+      "id": "agent-change-stored",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The stored row is a HUMAN_PENDING GRANT_CHANGE memo with effects_executed false.",
+      "check_id": "agent.change.stored",
+      "needle": "부여 본문은 그대로다",
+      "expected": {"phase": "HUMAN_PENDING", "effects_executed": false, "kind": "GRANT_CHANGE"}
+    },
+    {
+      "id": "agent-change-grant-unchanged",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-08: the memo is stored but the grant view (authority, scope, limits, period, generation) is unchanged.",
+      "check_id": "agent.change.grant_unchanged",
+      "needle": "메모만 남기고 부여 본문을 바꾸지 않는다",
+      "expected": true
+    },
+    {
+      "id": "agent-change-execute-authority",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "requested.authority containing EXECUTE is EXECUTE_AUTHORITY_DISABLED and stores no memo.",
+      "check_id": "agent.change.execute_authority",
+      "needle": "EXECUTE_AUTHORITY_DISABLED",
+      "expected": {"error": {"code": "EXECUTE_AUTHORITY_DISABLED", "status": 403}, "proposals": 0}
+    },
+    {
+      "id": "agent-change-duplicate",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-26: the same grant-change binding replays as duplicate: true.",
+      "check_id": "agent.change.duplicate",
+      "needle": "duplicate: true",
+      "expected": true
+    },
+    {
+      "id": "agent-change-conflict",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-26: a different memo under the same proposal_id is PROPOSAL_BINDING_CONFLICT.",
+      "check_id": "agent.change.conflict",
+      "needle": "PROPOSAL_BINDING_CONFLICT",
+      "expected": {"code": "PROPOSAL_BINDING_CONFLICT", "status": 409}
+    },
+    {
+      "id": "agent-change-count-only",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "7. 부여와 제안의 단계",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A grant-change memo charges count only: the cumulative amount stays zero.",
+      "check_id": "agent.change.count_only",
+      "needle": "건수만 쓴다",
+      "expected": [0, 1]
+    },
+    {
+      "id": "agent-change-bad-memo",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "5. 도구 허용 목록과 거부 목록",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "requested keys outside authority, scope, limits, period, note are INVALID_ARGUMENTS.",
+      "check_id": "agent.change.bad_memo",
+      "needle": "note`만 담는 메모다",
+      "expected": {"code": "INVALID_ARGUMENTS", "status": 400}
+    },
+    {
+      "id": "agent-change-tool-not-allowed",
+      "source_doc": "docs/contracts/AI_DELEGATION_AUTHORITY.md",
+      "section": "3. 권한 수준",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DLG-33: a grant narrowed to QUERY refuses the PROPOSE-level propose_grant_change with TOOL_NOT_ALLOWED.",
+      "check_id": "agent.change.tool_not_allowed",
+      "needle": "제안 도구는 `PROPOSE`가 있어야 한다",
+      "expected": {"code": "TOOL_NOT_ALLOWED", "status": 403}
     }
   ]
 }

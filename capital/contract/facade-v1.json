@@ -1154,6 +1154,45 @@
     },
     {
       "method": "POST",
+      "path": "/api/agent/query_subject",
+      "operationId": "local_agent_query_subject",
+      "dispatch": "/api/agent/query_subject",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/agent_subject_response"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "JSON_REQUIRED",
+        "INVALID_LENGTH",
+        "BODY_TOO_LARGE",
+        "INVALID_JSON",
+        "INVALID_ARGUMENTS",
+        "INVALID_PERIOD",
+        "NOT_BOUND",
+        "UNKNOWN_GRANT",
+        "GRANT_NOT_CURRENT",
+        "GRANT_REVOKED",
+        "GRANT_EXPIRED",
+        "TOOL_NOT_ALLOWED",
+        "SCOPE_VIOLATION",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "agent:query_subject",
+      "request": {
+        "$ref": "#/definitions/agent_subject_request"
+      }
+    },
+    {
+      "method": "POST",
       "path": "/api/agent/propose_action",
       "operationId": "local_agent_propose_action",
       "dispatch": "/api/agent/propose_action",
@@ -1195,6 +1234,86 @@
       "permission": "agent:propose_action",
       "request": {
         "$ref": "#/definitions/agent_propose_request"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/withdraw_proposal",
+      "operationId": "local_agent_withdraw_proposal",
+      "dispatch": "/api/agent/withdraw_proposal",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/agent_withdraw_response"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "JSON_REQUIRED",
+        "INVALID_LENGTH",
+        "BODY_TOO_LARGE",
+        "INVALID_JSON",
+        "INVALID_ARGUMENTS",
+        "INVALID_PERIOD",
+        "NOT_BOUND",
+        "UNKNOWN_GRANT",
+        "GRANT_NOT_CURRENT",
+        "GRANT_REVOKED",
+        "TOOL_NOT_ALLOWED",
+        "UNKNOWN_PROPOSAL",
+        "PROPOSAL_BINDING_CONFLICT",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "agent:withdraw_proposal",
+      "request": {
+        "$ref": "#/definitions/agent_withdraw_request"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/propose_grant_change",
+      "operationId": "local_agent_propose_grant_change",
+      "dispatch": "/api/agent/propose_grant_change",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/agent_grant_change_response"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "JSON_REQUIRED",
+        "INVALID_LENGTH",
+        "BODY_TOO_LARGE",
+        "INVALID_JSON",
+        "INVALID_ARGUMENTS",
+        "INVALID_PERIOD",
+        "NOT_BOUND",
+        "UNKNOWN_GRANT",
+        "GRANT_NOT_CURRENT",
+        "GRANT_REVOKED",
+        "GRANT_EXPIRED",
+        "TOOL_NOT_ALLOWED",
+        "EXECUTE_AUTHORITY_DISABLED",
+        "PROPOSAL_BINDING_CONFLICT",
+        "COUNT_EXCEEDED",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "agent:propose_grant_change",
+      "request": {
+        "$ref": "#/definitions/agent_grant_change_request"
       }
     },
     {
@@ -3653,7 +3772,10 @@
             "health:read",
             "session:bind",
             "agent:query_grant",
-            "agent:propose_action"
+            "agent:propose_action",
+            "agent:query_subject",
+            "agent:withdraw_proposal",
+            "agent:propose_grant_change"
           ],
           "properties": {
             "command:submit": {
@@ -3723,6 +3845,15 @@
               "$ref": "#/definitions/permission_decision"
             },
             "agent:propose_action": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "agent:query_subject": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "agent:withdraw_proposal": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "agent:propose_grant_change": {
               "$ref": "#/definitions/permission_decision"
             }
           }
@@ -8024,7 +8155,10 @@
           "const": "propose_action"
         },
         "phase": {
-          "const": "HUMAN_PENDING"
+          "enum": [
+            "HUMAN_PENDING",
+            "WITHDRAWN"
+          ]
         },
         "surface": {
           "enum": [
@@ -8365,6 +8499,583 @@
         },
         "subject": {
           "type": "string"
+        }
+      }
+    },
+    "agent_memo_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal_id",
+        "grant_id",
+        "generation",
+        "tool",
+        "phase",
+        "surface",
+        "subject",
+        "amount",
+        "kind",
+        "memo",
+        "effects_executed",
+        "decision",
+        "two_person_required"
+      ],
+      "properties": {
+        "proposal_id": {
+          "type": "string"
+        },
+        "grant_id": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer"
+        },
+        "tool": {
+          "enum": [
+            "withdraw_proposal",
+            "propose_grant_change"
+          ]
+        },
+        "phase": {
+          "enum": [
+            "HUMAN_PENDING",
+            "WITHDRAWN"
+          ]
+        },
+        "surface": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "amount": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "memo": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "effects_executed": {
+          "const": false
+        },
+        "decision": {
+          "const": null
+        },
+        "two_person_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "agent_subject_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provenance",
+        "lifecycle_authority",
+        "identity",
+        "authentication",
+        "idp",
+        "kyc",
+        "action_permit",
+        "upstream_receipt",
+        "workspace_mutated",
+        "duplicate",
+        "now",
+        "terms_version",
+        "limits_source",
+        "execution_enabled",
+        "issued",
+        "paid",
+        "signed",
+        "transferred",
+        "effects_executed",
+        "funds_executed",
+        "refund_executed",
+        "chain_grant_confirmed",
+        "revocation_cut_confirmed",
+        "durable",
+        "legal_authority",
+        "match",
+        "subjects"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SIMULATED_AGENT_GRANT"
+        },
+        "provenance": {
+          "const": "SIMULATED_AGENT_GRANT"
+        },
+        "lifecycle_authority": {
+          "const": "IN_MEMORY_FIXTURE"
+        },
+        "identity": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "idp": {
+          "const": "NOT_BOUND"
+        },
+        "kyc": {
+          "const": "NOT_BOUND"
+        },
+        "action_permit": {
+          "const": "NOT_BOUND"
+        },
+        "upstream_receipt": {
+          "const": "NONE"
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "duplicate": {
+          "type": "boolean"
+        },
+        "now": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limits_source": {
+          "const": "CAPITAL-TERMS-V1 underwriting_depth single_advance_cap_krw and beneficiary_aggregate_cap_krw"
+        },
+        "execution_enabled": {
+          "const": false
+        },
+        "issued": {
+          "const": false
+        },
+        "paid": {
+          "const": false
+        },
+        "signed": {
+          "const": false
+        },
+        "transferred": {
+          "const": false
+        },
+        "effects_executed": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "refund_executed": {
+          "const": false
+        },
+        "chain_grant_confirmed": {
+          "const": false
+        },
+        "revocation_cut_confirmed": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        },
+        "legal_authority": {
+          "const": false
+        },
+        "match": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "subject",
+            "in_scope"
+          ],
+          "properties": {
+            "surface": {
+              "type": "string"
+            },
+            "subject": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "in_scope": {
+              "const": true
+            }
+          }
+        },
+        "subjects": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "agent_withdraw_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provenance",
+        "lifecycle_authority",
+        "identity",
+        "authentication",
+        "idp",
+        "kyc",
+        "action_permit",
+        "upstream_receipt",
+        "workspace_mutated",
+        "duplicate",
+        "now",
+        "terms_version",
+        "limits_source",
+        "execution_enabled",
+        "issued",
+        "paid",
+        "signed",
+        "transferred",
+        "effects_executed",
+        "funds_executed",
+        "refund_executed",
+        "chain_grant_confirmed",
+        "revocation_cut_confirmed",
+        "durable",
+        "legal_authority",
+        "proposal"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SIMULATED_AGENT_GRANT"
+        },
+        "provenance": {
+          "const": "SIMULATED_AGENT_GRANT"
+        },
+        "lifecycle_authority": {
+          "const": "IN_MEMORY_FIXTURE"
+        },
+        "identity": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "idp": {
+          "const": "NOT_BOUND"
+        },
+        "kyc": {
+          "const": "NOT_BOUND"
+        },
+        "action_permit": {
+          "const": "NOT_BOUND"
+        },
+        "upstream_receipt": {
+          "const": "NONE"
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "duplicate": {
+          "type": "boolean"
+        },
+        "now": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limits_source": {
+          "const": "CAPITAL-TERMS-V1 underwriting_depth single_advance_cap_krw and beneficiary_aggregate_cap_krw"
+        },
+        "execution_enabled": {
+          "const": false
+        },
+        "issued": {
+          "const": false
+        },
+        "paid": {
+          "const": false
+        },
+        "signed": {
+          "const": false
+        },
+        "transferred": {
+          "const": false
+        },
+        "effects_executed": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "refund_executed": {
+          "const": false
+        },
+        "chain_grant_confirmed": {
+          "const": false
+        },
+        "revocation_cut_confirmed": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        },
+        "legal_authority": {
+          "const": false
+        },
+        "proposal": {
+          "$ref": "#/definitions/agent_memo_view"
+        }
+      }
+    },
+    "agent_grant_change_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provenance",
+        "lifecycle_authority",
+        "identity",
+        "authentication",
+        "idp",
+        "kyc",
+        "action_permit",
+        "upstream_receipt",
+        "workspace_mutated",
+        "duplicate",
+        "now",
+        "terms_version",
+        "limits_source",
+        "execution_enabled",
+        "issued",
+        "paid",
+        "signed",
+        "transferred",
+        "effects_executed",
+        "funds_executed",
+        "refund_executed",
+        "chain_grant_confirmed",
+        "revocation_cut_confirmed",
+        "durable",
+        "legal_authority",
+        "proposal"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SIMULATED_AGENT_GRANT"
+        },
+        "provenance": {
+          "const": "SIMULATED_AGENT_GRANT"
+        },
+        "lifecycle_authority": {
+          "const": "IN_MEMORY_FIXTURE"
+        },
+        "identity": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "idp": {
+          "const": "NOT_BOUND"
+        },
+        "kyc": {
+          "const": "NOT_BOUND"
+        },
+        "action_permit": {
+          "const": "NOT_BOUND"
+        },
+        "upstream_receipt": {
+          "const": "NONE"
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "duplicate": {
+          "type": "boolean"
+        },
+        "now": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limits_source": {
+          "const": "CAPITAL-TERMS-V1 underwriting_depth single_advance_cap_krw and beneficiary_aggregate_cap_krw"
+        },
+        "execution_enabled": {
+          "const": false
+        },
+        "issued": {
+          "const": false
+        },
+        "paid": {
+          "const": false
+        },
+        "signed": {
+          "const": false
+        },
+        "transferred": {
+          "const": false
+        },
+        "effects_executed": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "refund_executed": {
+          "const": false
+        },
+        "chain_grant_confirmed": {
+          "const": false
+        },
+        "revocation_cut_confirmed": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        },
+        "legal_authority": {
+          "const": false
+        },
+        "proposal": {
+          "$ref": "#/definitions/agent_memo_view"
+        }
+      }
+    },
+    "agent_subject_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grant_id",
+        "generation",
+        "now",
+        "surface"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer"
+        },
+        "now": {
+          "type": "integer"
+        },
+        "surface": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        }
+      }
+    },
+    "agent_withdraw_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grant_id",
+        "generation",
+        "now",
+        "proposal_id"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer"
+        },
+        "now": {
+          "type": "integer"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      }
+    },
+    "agent_change_memo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scope": {},
+        "limits": {},
+        "period": {},
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "agent_grant_change_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grant_id",
+        "generation",
+        "now",
+        "proposal_id",
+        "requested"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer"
+        },
+        "now": {
+          "type": "integer"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "requested": {
+          "$ref": "#/definitions/agent_change_memo"
         }
       }
     },

@@ -35,7 +35,10 @@ ACCEPTANCE_IDS = {
 }
 CHECK_PREFIXES = (
     'agent.query.',
+    'agent.subject.',
     'agent.propose.',
+    'agent.withdraw.',
+    'agent.change.',
     'agent.execute.',
     'agent.cite.',
     'agent.flag.',
