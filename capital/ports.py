@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from capital.policy import SettlementPolicyPort
+from capital.shadow import ShadowPolicyPort
 from capital.setoff import SetoffQuotePort
 from capital.terms import TermsPolicyPort
 from capital.underwriting import UnderwritingPort

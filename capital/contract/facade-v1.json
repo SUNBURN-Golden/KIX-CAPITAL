@@ -660,6 +660,29 @@
     },
     {
       "method": "GET",
+      "path": "/api/policy/shadow",
+      "operationId": "local_policy_shadow",
+      "dispatch": "/api/policy",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/policy_shadow"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/preview/{advance_id}",
       "operationId": "local_preview",
       "dispatch": "/api/preview/",
@@ -2511,6 +2534,199 @@
           "$ref": "#/definitions/terms_allocation_unbound"
         }
       ]
+    },
+    "shadow_status": {
+      "enum": ["SHADOW_COMPUTED", "SHADOW_DEFERRED", "SHADOW_NOT_BOUND", "SHADOW_INPUT_UNKNOWN", "SHADOW_INCONSISTENT"]
+    },
+    "shadow_reconciliation": {
+      "enum": ["MATCHES_PINNED_FSM", "DIVERGES_PINNED_FSM_BY_DESIGN", "NOT_COMPARABLE"]
+    },
+    "shadow_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["payee", "shadow_reversal", "shadow_cancelled_unpaid", "shadow_recovery_due"],
+      "properties": {
+        "payee": {"type": "string"},
+        "shadow_reversal": {"type": "integer"},
+        "shadow_cancelled_unpaid": {"type": "integer"},
+        "shadow_recovery_due": {"type": "integer"}
+      }
+    },
+    "shadow_resale_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "shadow_reversal"],
+      "properties": {
+        "line": {"type": "string"},
+        "shadow_reversal": {"type": "integer"}
+      }
+    },
+    "shadow_recovery_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "shadow_recovery_due"],
+      "properties": {
+        "line": {"type": "string"},
+        "shadow_recovery_due": {"type": "integer"}
+      }
+    },
+    "shadow_false_flags": {
+      "applied_to_fsm": {"const": false},
+      "funds_executed": {"const": false},
+      "policy_adopted": {"const": false},
+      "bank_debit_observed": {"const": false},
+      "right_cancelled": {"const": false},
+      "external_return_closed": {"const": false},
+      "legal_debtor_bound": {"const": false},
+      "admission_granted": {"const": false},
+      "workspace_mutated": {"const": false}
+    },
+    "shadow_refund_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refund_id", "reason_class", "adjudicated_platform_fault", "status", "detail", "routed_to", "shadow_refund_amount", "lines", "shadow_platform_pool_obligation", "shadow_carry", "working_assumption", "auto_reclassified", "reconciliation"],
+      "properties": {
+        "refund_id": {"type": "string"},
+        "reason_class": {"type": "string"},
+        "adjudicated_platform_fault": {"type": "boolean"},
+        "status": {"$ref": "#/definitions/shadow_status"},
+        "detail": {"type": ["string", "null"]},
+        "routed_to": {"type": ["string", "null"]},
+        "shadow_refund_amount": {"type": "integer"},
+        "lines": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_line"}}]},
+        "shadow_platform_pool_obligation": {"type": ["integer", "null"]},
+        "shadow_carry": {"type": ["integer", "null"]},
+        "working_assumption": {"type": "boolean"},
+        "auto_reclassified": {"const": false},
+        "reconciliation": {"anyOf": [{"$ref": "#/definitions/shadow_reconciliation"}, {"type": "null"}]}
+      }
+    },
+    "shadow_cumulative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shadow_cumulative_refund", "shadow_platform_pool_obligation", "auto_reclassified", "lines", "reconciliation"],
+      "properties": {
+        "shadow_cumulative_refund": {"type": "integer"},
+        "shadow_platform_pool_obligation": {"type": "integer"},
+        "auto_reclassified": {"const": false},
+        "lines": {"type": "array", "items": {"$ref": "#/definitions/shadow_line"}},
+        "reconciliation": {"$ref": "#/definitions/shadow_reconciliation"}
+      }
+    },
+    "shadow_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "detail", "mode", "label", "provenance", "shadow_rules_version", "note_digest", "input_digest", "result_digest", "applied_to_fsm", "funds_executed", "policy_adopted", "bank_debit_observed", "right_cancelled", "external_return_closed", "legal_debtor_bound", "admission_granted", "workspace_mutated"],
+      "properties": {
+        "status": {"$ref": "#/definitions/shadow_status"},
+        "detail": {"type": ["string", "null"]},
+        "mode": {"const": "SHADOW_NOT_APPLIED"},
+        "label": {"const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"},
+        "provenance": {"const": "SHADOW_ARITHMETIC_ONLY"},
+        "shadow_rules_version": {"type": ["string", "null"]},
+        "note_digest": {"type": ["string", "null"]},
+        "input_digest": {"type": "string"},
+        "result_digest": {"type": "string"},
+        "refunds": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_refund_entry"}}]},
+        "cumulative": {"anyOf": [{"$ref": "#/definitions/shadow_cumulative"}, {"type": "null"}]},
+        "trigger": {"type": "string"},
+        "vector_id": {"type": "string"},
+        "missing_inputs": {"type": "array", "items": {"type": "string"}},
+        "shadow_holder_entitlement": {"type": ["integer", "null"]},
+        "shadow_holder_market_risk": {"type": ["integer", "null"]},
+        "shadow_seller_receives": {"type": ["integer", "null"]},
+        "shadow_seller_kept": {"type": ["integer", "null"]},
+        "shadow_primary_refund_by_line": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_line"}}]},
+        "shadow_resale_line_reversal": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_resale_line"}}]},
+        "shadow_recovery_due": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_recovery_line"}}]},
+        "reconciliation": {"anyOf": [{"$ref": "#/definitions/shadow_reconciliation"}, {"type": "null"}]},
+        "primary_refund_reconciliation": {"anyOf": [{"$ref": "#/definitions/shadow_reconciliation"}, {"type": "null"}]},
+        "applied_to_fsm": {"const": false},
+        "funds_executed": {"const": false},
+        "policy_adopted": {"const": false},
+        "bank_debit_observed": {"const": false},
+        "right_cancelled": {"const": false},
+        "external_return_closed": {"const": false},
+        "legal_debtor_bound": {"const": false},
+        "admission_granted": {"const": false},
+        "workspace_mutated": {"const": false}
+      }
+    },
+    "shadow_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "detail", "mode", "label", "provenance", "shadow_rules_version", "note_digest", "applied_to_fsm", "funds_executed", "policy_adopted", "bank_debit_observed", "right_cancelled", "external_return_closed", "legal_debtor_bound", "admission_granted", "workspace_mutated"],
+      "properties": {
+        "status": {"$ref": "#/definitions/shadow_status"},
+        "detail": {"type": ["string", "null"]},
+        "mode": {"const": "SHADOW_NOT_APPLIED"},
+        "label": {"const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"},
+        "provenance": {"const": "SHADOW_ARITHMETIC_ONLY"},
+        "shadow_rules_version": {"type": ["string", "null"]},
+        "note_digest": {"type": ["string", "null"]},
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": {"type": "string"},
+            "claim_id": {"type": "string"},
+            "scenario": {"type": "string"},
+            "note": {"type": "string"},
+            "primary_claim_id": {"type": "string"}
+          }
+        },
+        "per_class": {"type": "array", "items": {"$ref": "#/definitions/shadow_result"}},
+        "triggers": {"type": "array", "items": {"$ref": "#/definitions/shadow_result"}},
+        "applied_to_fsm": {"const": false},
+        "funds_executed": {"const": false},
+        "policy_adopted": {"const": false},
+        "bank_debit_observed": {"const": false},
+        "right_cancelled": {"const": false},
+        "external_return_closed": {"const": false},
+        "legal_debtor_bound": {"const": false},
+        "admission_granted": {"const": false},
+        "workspace_mutated": {"const": false}
+      }
+    },
+    "shadow_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item", "pinned", "shadow"],
+      "properties": {
+        "item": {"type": "string"},
+        "pinned": {"$ref": "#/definitions/policy_unsupported_item"},
+        "shadow": {"$ref": "#/definitions/shadow_verdict"}
+      }
+    },
+    "policy_shadow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "mode", "provenance", "provisional", "shadow_rules_version", "policy_version", "note_digest", "outcome", "reason", "items", "applied_to_fsm", "funds_executed", "policy_adopted", "bank_debit_observed", "right_cancelled", "external_return_closed", "legal_debtor_bound", "admission_granted", "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest"],
+      "properties": {
+        "label": {"const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"},
+        "mode": {"const": "SHADOW_NOT_APPLIED"},
+        "provenance": {"const": "SHADOW_ARITHMETIC_ONLY"},
+        "provisional": {"const": true},
+        "shadow_rules_version": {"type": ["string", "null"]},
+        "policy_version": {"type": ["string", "null"]},
+        "note_digest": {"type": ["string", "null"]},
+        "outcome": {"$ref": "#/definitions/shadow_status"},
+        "reason": {"type": ["string", "null"]},
+        "items": {"type": "array", "items": {"$ref": "#/definitions/shadow_item"}},
+        "applied_to_fsm": {"const": false},
+        "funds_executed": {"const": false},
+        "policy_adopted": {"const": false},
+        "bank_debit_observed": {"const": false},
+        "right_cancelled": {"const": false},
+        "external_return_closed": {"const": false},
+        "legal_debtor_bound": {"const": false},
+        "admission_granted": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"}
+      }
     },
     "policy_status": {
       "type": "object",

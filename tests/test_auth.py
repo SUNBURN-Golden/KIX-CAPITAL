@@ -36,6 +36,7 @@ class MatrixTests(unittest.TestCase):
             '/api/terms/sim-a': 'projection:read',
             '/api/policy': 'projection:read',
             '/api/policy/simulation': 'projection:read',
+            '/api/policy/shadow': 'projection:read',
             '/api/preview/sim-a': 'projection:read',
             '/api/underwrite/sim-a': 'projection:read',
             '/api/operations/op-1': 'receipt:read',
@@ -457,20 +458,20 @@ class HttpAuthTests(unittest.TestCase):
         operation = f"/api/operations/auth-offer?instance_id={instance}"
         for role in (None, 'organizer', 'auditor'):
             headers = {'X-Capital-Token': self.token_for(role)} if role else {}
-            for path in ('/api/state', '/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', preview, underwrite, operation):
+            for path in ('/api/state', '/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, operation):
                 status, raw = self.request('GET', path, headers=headers)
                 self.assertEqual(status, 200, (role, path, raw[:200]))
         observer = {'X-Capital-Token': self.token_for('observer')}
         for path in ('/api/state', operation):
             status, raw = self.request('GET', path, headers=observer)
             self.assertEqual(status, 200, (path, raw[:200]))
-        for path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', preview, underwrite, '/api/export', '/api/reconciliation', '/api/statement'):
+        for path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, '/api/export', '/api/reconciliation', '/api/statement'):
             status, raw = self.request('GET', path, headers=observer)
             payload = json.loads(raw)
             self.assertEqual(status, 403, (path, payload))
             self.assertEqual(payload['error'], 'ROLE_FORBIDDEN')
             self.assertEqual(payload['role'], 'observer')
-            if path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', preview, underwrite):
+            if path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite):
                 self.assertEqual(payload['permission'], 'projection:read')
             if path == '/api/statement':
                 self.assertEqual(payload['permission'], 'statement:read')
