@@ -446,6 +446,35 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def terms_portfolio(self, instance_id, *, draw_day=None, as_of_day, expected_settlement_cash_day=None):
+        """Read-only simulated rollup across every case. Days are hypothetical query inputs."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if draw_day is None:
+                draw_day, draw_day_source = 0, 'DEFAULT'
+            else:
+                self._require_day(draw_day)
+                draw_day_source = 'QUERY_PARAMETER'
+            self._require_day(as_of_day)
+            if expected_settlement_cash_day is not None:
+                self._require_day(expected_settlement_cash_day)
+            frozen = self._frozen()
+            try:
+                subjects = []
+                for advance_id in sorted(self.case_fixtures):
+                    case = self.machine.view(advance_id)
+                    claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
+                    subjects.append({'advance_id': advance_id, 'case': case, 'claim': claim,
+                                     'gate': self._case_gate(advance_id, case)})
+                body = self.terms.portfolio(
+                    subjects, draw_day=draw_day, draw_day_source=draw_day_source,
+                    as_of_day=as_of_day, expected_settlement_cash_day=expected_settlement_cash_day)
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def _underwrite_subject(self, advance_id, fixture_id, case, fixture_view, amount, candidate):
         """Caller holds the lock. Collects the read inputs the rule record needs."""
         claim = fixture_view['claim']

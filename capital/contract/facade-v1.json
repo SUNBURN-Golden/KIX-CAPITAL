@@ -486,6 +486,37 @@
     },
     {
       "method": "GET",
+      "path": "/api/terms/portfolio",
+      "operationId": "local_terms_portfolio",
+      "dispatch": "/api/terms",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/terms_portfolio"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id",
+        "as_of_day",
+        "draw_day",
+        "expected_settlement_cash_day"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/terms/{advance_id}",
       "operationId": "local_terms_case",
       "dispatch": "/api/terms",
@@ -6673,6 +6704,391 @@
         },
         {
           "$ref": "#/definitions/terms_setoff_unbound"
+        }
+      ]
+    },
+    "terms_portfolio_row_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "advance_id",
+        "phase",
+        "tier",
+        "principal",
+        "draw_day",
+        "draw_day_source",
+        "term_days",
+        "term_source",
+        "maturity_day",
+        "days_past_maturity",
+        "contractual_days",
+        "default_days",
+        "contract_exact",
+        "contract_interest_krw",
+        "default_exact",
+        "default_interest_krw",
+        "exact",
+        "interest_krw",
+        "annualized_all_in_bps",
+        "cap_check"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2"
+          ]
+        },
+        "principal": {
+          "type": "integer"
+        },
+        "draw_day": {
+          "type": "integer"
+        },
+        "draw_day_source": {
+          "enum": [
+            "QUERY_PARAMETER",
+            "DEFAULT"
+          ]
+        },
+        "term_days": {
+          "type": "integer"
+        },
+        "term_source": {
+          "enum": [
+            "standard",
+            "settlement_linked"
+          ]
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "days_past_maturity": {
+          "type": "integer"
+        },
+        "contractual_days": {
+          "type": "integer"
+        },
+        "default_days": {
+          "type": "integer"
+        },
+        "contract_exact": {
+          "type": "string"
+        },
+        "contract_interest_krw": {
+          "type": "integer"
+        },
+        "default_exact": {
+          "type": "string"
+        },
+        "default_interest_krw": {
+          "type": "integer"
+        },
+        "exact": {
+          "type": "string"
+        },
+        "interest_krw": {
+          "type": "integer"
+        },
+        "annualized_all_in_bps": {
+          "type": "string"
+        },
+        "cap_check": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      }
+    },
+    "terms_portfolio_row_skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "advance_id",
+        "phase"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "NOT_APPLICABLE",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "terms_portfolio_row": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_portfolio_row_evaluated"
+        },
+        {
+          "$ref": "#/definitions/terms_portfolio_row_skipped"
+        }
+      ]
+    },
+    "terms_portfolio_cap_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "all_in_cost_cap_bps_annual",
+        "fees_policy",
+        "fee_schedule_version"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "all_in_cost_cap_bps_annual": {
+          "type": "integer"
+        },
+        "fees_policy": {
+          "type": "string"
+        },
+        "fee_schedule_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "terms_portfolio_cap": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_portfolio_cap_bound"
+        },
+        {
+          "$ref": "#/definitions/terms_unbound_section"
+        }
+      ]
+    },
+    "terms_portfolio_totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advances",
+        "evaluated",
+        "contract_exact",
+        "contract_interest_krw",
+        "default_exact",
+        "default_interest_krw",
+        "exact",
+        "interest_krw",
+        "cap_check"
+      ],
+      "properties": {
+        "advances": {
+          "type": "integer"
+        },
+        "evaluated": {
+          "type": "integer"
+        },
+        "contract_exact": {
+          "type": "string"
+        },
+        "contract_interest_krw": {
+          "type": "integer"
+        },
+        "default_exact": {
+          "type": "string"
+        },
+        "default_interest_krw": {
+          "type": "integer"
+        },
+        "exact": {
+          "type": "string"
+        },
+        "interest_krw": {
+          "type": "integer"
+        },
+        "cap_check": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_APPLICABLE"
+          ]
+        }
+      }
+    },
+    "terms_portfolio_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "draw_day",
+        "as_of_day",
+        "expected_settlement_cash_day",
+        "cap",
+        "rows",
+        "totals"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "draw_day": {
+          "type": "integer"
+        },
+        "as_of_day": {
+          "type": "integer"
+        },
+        "expected_settlement_cash_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cap": {
+          "$ref": "#/definitions/terms_portfolio_cap"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/terms_portfolio_row"
+          }
+        },
+        "totals": {
+          "$ref": "#/definitions/terms_portfolio_totals"
+        }
+      }
+    },
+    "terms_portfolio_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "const": "terms not bound"
+        }
+      }
+    },
+    "terms_portfolio": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_portfolio_bound"
+        },
+        {
+          "$ref": "#/definitions/terms_portfolio_unbound"
         }
       ]
     },
