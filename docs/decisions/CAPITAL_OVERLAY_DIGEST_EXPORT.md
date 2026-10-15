@@ -227,7 +227,8 @@
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
-  }
+  },
+  "status": "PROVISIONAL_PRODUCT_DECISION"
 }
 ```
 
