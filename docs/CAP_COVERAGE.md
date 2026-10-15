@@ -30,3 +30,7 @@
 | CAP-18 | 선택적 토큰 담보·보상 | `TL` | NOT_AUTHORIZED | upstream, not adopted. coin lock 결정이 없고 토큰 호출 코드가 없다. |
 | CAP-19 | AI 운영·권한·최소공개 | `CAPITAL-AUTH-BOUNDARY` | NOT_BOUND | 로컬 합성 역할과 SIMULATED QUERY/PROPOSE 픽스처가 있다. 제안은 HUMAN_PENDING이고 effects_executed는 false다. IdP·KYC·AgentGrant/ActionPermit은 upstream, not adopted. |
 | CAP-20 | 접근성·통합 수용 | `acceptance-suite` | SIMULATED | 자동 검증만이다. 브라우저 여정은 `journeys-portfolio`에도 있다. 사람 수용은 PENDING이고 실서비스 출시는 승인되지 않았다. |
+| CAP-21 | 섀도 정책 (SHADOW_NOT_APPLIED 해소) | docs/decisions/CAPITAL_SHADOW_POLICY.md | SIMULATED | 잠정 제품 결정 `shadow-policy-decision`. 시뮬레이션·비교 라벨만; 실정산 FSM을 바꾸지 않는다. |
+| CAP-22 | 데모 북 프로필 | docs/decisions/CAPITAL_DEMO_BOOK.md | SIMULATED | 잠정 제품 결정 `demo-book-profile-decision`. 합성 fixture face·payee·tier; 실자금 아님. |
+| CAP-23 | 아티팩트 결정노트 번들 | docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md | SIMULATED | 잠정 제품 결정 `artifact-docs-bundling-decision`. zipapp/노트 번들 범위; production NOT_AUTHORIZED. |
+| CAP-24 | 오버레이 상태 저장 | docs/decisions/CAPITAL_OVERLAY_STATE.md | SIMULATED | 잠정 제품 결정 `overlay-state-decision`. 로컬 JSON 오버레이 저장·리플레이·용량; stage5 durable 아님. |
