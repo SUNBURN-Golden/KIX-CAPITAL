@@ -33,8 +33,14 @@ EXPORT_NOTE = 'CAPITAL_OVERLAY_DIGEST_EXPORT.md'
 KIND_TERMS = 'terms_binding'
 KIND_CLOCK = 'clock'
 KIND_INTEREST = 'interest_posting'
+KIND_MARGIN_CALL = 'margin_call'
+KIND_MARGIN_CURE = 'margin_cure'
+KIND_MARGIN_ACCELERATION = 'margin_acceleration'
+KIND_DEFAULT_PROPOSAL = 'default_eligible_proposal'
+MARGIN_KINDS = (KIND_MARGIN_CALL, KIND_MARGIN_CURE, KIND_MARGIN_ACCELERATION, KIND_DEFAULT_PROPOSAL)
 # entry kind -> the section of the decided storage shape it belongs to
-SECTION_OF = {KIND_CLOCK: 'clock', KIND_INTEREST: 'interest_ledger', KIND_TERMS: 'decision_records'}
+SECTION_OF = {KIND_CLOCK: 'clock', KIND_INTEREST: 'interest_ledger', KIND_TERMS: 'decision_records',
+              **{kind: 'decision_records' for kind in MARGIN_KINDS}}
 SECTIONS = ('clock', 'interest_ledger', 'recovery_ledger', 'decision_records', 'agent_proposals')
 ENTRY_KEYS = frozenset({'overlay_id', 'after_journal_index', 'sim_day', 'kind', 'payload'})
 BOUND_NAMES = ('OVERLAY_MAX_ENTRIES', 'OVERLAY_ENTRY_MAX_BYTES', 'SIM_DAY_MAX',
@@ -49,6 +55,24 @@ _PAYLOAD_TYPES = {
         'contract_bps': int, 'default_bps': int, 'terms_version': str,
         'cumulative_contract_exact': str, 'cumulative_default_exact': str,
         'posted_contract_krw': int, 'posted_default_krw': int,
+    },
+    KIND_MARGIN_CALL: {
+        'advance_id': str, 'tier': str, 'outstanding_krw': int, 'eligible_face_krw': int,
+        'advance_rate_bps': int, 'base_krw': int, 'cure_window_days': int, 'cure_deadline': int,
+        'cure_option': str, 'maturity_day': int, 'terms_version': str,
+    },
+    KIND_MARGIN_CURE: {
+        'advance_id': str, 'outstanding_krw': int, 'eligible_face_krw': int, 'base_krw': int,
+        'cure_deadline': int, 'cure_option': str, 'terms_version': str,
+    },
+    KIND_MARGIN_ACCELERATION: {
+        'advance_id': str, 'outstanding_krw': int, 'eligible_face_krw': int, 'base_krw': int,
+        'cure_deadline': int, 'maturity_before': int, 'maturity_after': int, 'grace_days': int,
+        'default_eligible_day': int, 'terms_version': str,
+    },
+    KIND_DEFAULT_PROPOSAL: {
+        'advance_id': str, 'proposal_kind': str, 'authority': str, 'default_eligible_day': int,
+        'outstanding_krw': int, 'terms_version': str,
     },
 }
 _EXACT = re.compile(r'\A(0|[1-9][0-9]*)/([1-9][0-9]*)\Z')
@@ -219,7 +243,91 @@ def _fold_interest(state, entry):
         'posted_default_krw': payload['posted_default_krw']})
 
 
-_FOLDERS = {KIND_TERMS: _fold_terms, KIND_CLOCK: _fold_clock, KIND_INTEREST: _fold_interest}
+def _margin_record(state, entry, *, expect):
+    """The folded record of the entry's advance, after the checks every margin entry shares."""
+    payload = entry['payload']
+    binding = state['terms_binding']
+    if binding is None or payload['terms_version'] != binding['terms_version']:
+        raise OverlayError('margin entry without matching terms binding')
+    if entry['sim_day'] != state['sim_day']:
+        raise OverlayError('margin entry day')
+    record = state.get('margin', {}).get('advances', {}).get(payload['advance_id'])
+    status = None if record is None else record['status']
+    if status not in expect:
+        raise OverlayError('margin entry out of order')
+    return record
+
+
+def _margin_event(state, entry, name, fields):
+    payload = entry['payload']
+    state['sections']['decision_records'].append({
+        'overlay_id': entry['overlay_id'], 'record': name, 'advance_id': payload['advance_id'],
+        'sim_day': entry['sim_day'], **{key: payload[key] for key in fields}})
+
+
+def _margin_set(state, advance_id, record):
+    state.setdefault('margin', {'advances': {}})['advances'][advance_id] = record
+
+
+def _fold_margin_call(state, entry):
+    payload = entry['payload']
+    _margin_record(state, entry, expect=(None, 'CURED'))
+    if payload['outstanding_krw'] <= payload['base_krw'] or payload['cure_window_days'] < 1:
+        raise OverlayError('margin call without a breach')
+    if payload['cure_deadline'] != entry['sim_day'] + payload['cure_window_days']:
+        raise OverlayError('cure deadline')
+    _margin_set(state, payload['advance_id'], {
+        'status': 'CALLED', 'call_day': entry['sim_day'], 'cure_deadline': payload['cure_deadline'],
+        'maturity_day': payload['maturity_day'], 'default_eligible_day': None, 'proposal_day': None,
+        'calls': 1 + state.get('margin', {}).get('advances', {}).get(payload['advance_id'], {}).get('calls', 0)})
+    _margin_event(state, entry, 'MARGIN_CALL', ('outstanding_krw', 'base_krw', 'cure_deadline'))
+
+
+def _fold_margin_cure(state, entry):
+    payload = entry['payload']
+    record = _margin_record(state, entry, expect=('CALLED',))
+    if entry['sim_day'] > record['cure_deadline'] or payload['cure_deadline'] != record['cure_deadline']:
+        raise OverlayError('cure after the deadline')
+    if payload['outstanding_krw'] > payload['base_krw']:
+        raise OverlayError('cure without being back within the base')
+    _margin_set(state, payload['advance_id'], {**record, 'status': 'CURED'})
+    _margin_event(state, entry, 'MARGIN_CURE', ('outstanding_krw', 'base_krw', 'cure_option'))
+
+
+def _fold_margin_acceleration(state, entry):
+    payload = entry['payload']
+    record = _margin_record(state, entry, expect=('CALLED',))
+    if entry['sim_day'] <= record['cure_deadline'] or payload['cure_deadline'] != record['cure_deadline']:
+        raise OverlayError('acceleration before the cure deadline')
+    if payload['outstanding_krw'] <= payload['base_krw']:
+        raise OverlayError('acceleration without a breach')
+    if (payload['maturity_before'] != record['maturity_day']
+            or payload['maturity_after'] != min(record['maturity_day'], record['cure_deadline'])
+            or payload['default_eligible_day'] != payload['maturity_after'] + payload['grace_days'] + 1):
+        raise OverlayError('acceleration figures')
+    _margin_set(state, payload['advance_id'], {
+        **record, 'status': 'ACCELERATED', 'maturity_day': payload['maturity_after'],
+        'default_eligible_day': payload['default_eligible_day']})
+    _margin_event(state, entry, 'MARGIN_ACCELERATION',
+                  ('outstanding_krw', 'maturity_before', 'maturity_after', 'default_eligible_day'))
+
+
+def _fold_default_proposal(state, entry):
+    payload = entry['payload']
+    record = _margin_record(state, entry, expect=('ACCELERATED',))
+    if record['proposal_day'] is not None:
+        raise OverlayError('proposal already recorded')
+    if (entry['sim_day'] < record['default_eligible_day'] or payload['default_eligible_day'] != record['default_eligible_day']
+            or payload['proposal_kind'] != 'DEFAULT_ELIGIBLE'):
+        raise OverlayError('proposal before default eligibility')
+    _margin_set(state, payload['advance_id'], {**record, 'proposal_day': entry['sim_day']})
+    _margin_event(state, entry, 'DEFAULT_ELIGIBLE_PROPOSAL',
+                  ('proposal_kind', 'authority', 'default_eligible_day', 'outstanding_krw'))
+
+
+_FOLDERS = {KIND_TERMS: _fold_terms, KIND_CLOCK: _fold_clock, KIND_INTEREST: _fold_interest,
+            KIND_MARGIN_CALL: _fold_margin_call, KIND_MARGIN_CURE: _fold_margin_cure,
+            KIND_MARGIN_ACCELERATION: _fold_margin_acceleration, KIND_DEFAULT_PROPOSAL: _fold_default_proposal}
 
 
 def fold(entries, journal_length=None):
@@ -339,16 +447,20 @@ def accrual_postings(state, to_day, subjects):
     return out
 
 
-def advance_entries(operation_id, state, journal_length, *, to_day, reason, binding, subjects):
+def advance_entries(operation_id, state, journal_length, *, to_day, reason, binding, subjects,
+                    margin_before=(), margin_after=()):
     """The entries one advance_day command appends, in order. Pure; nothing is stored here.
 
     `binding` is {'terms_version', 'status'} and is recorded only when no binding exists yet.
+    `margin_before` (cures dated at the folded day) precede the clock entry; `margin_after`
+    (calls, accelerations, proposals dated at the target day) come last.
     """
     from_day = state['sim_day']
     entries = []
     if state['terms_binding'] is None:
         entries.append({'overlay_id': f'{operation_id}:terms', 'after_journal_index': journal_length,
                         'sim_day': from_day, 'kind': KIND_TERMS, 'payload': dict(binding)})
+    entries.extend(margin_before)
     entries.append({'overlay_id': operation_id, 'after_journal_index': journal_length,
                     'sim_day': to_day, 'kind': KIND_CLOCK,
                     'payload': {'from_sim_day': from_day, 'to_sim_day': to_day, 'reason': reason,
@@ -357,6 +469,7 @@ def advance_entries(operation_id, state, journal_length, *, to_day, reason, bind
         entries.append({'overlay_id': f"{operation_id}:interest:{posting['advance_id']}",
                         'after_journal_index': journal_length, 'sim_day': to_day,
                         'kind': KIND_INTEREST, 'payload': posting})
+    entries.extend(margin_after)
     return entries
 
 

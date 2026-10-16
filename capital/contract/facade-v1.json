@@ -9802,6 +9802,182 @@
         },
         "close_ready": {
           "type": "boolean"
+        },
+        "margin": {
+          "$ref": "#/definitions/overlay_row_margin"
+        }
+      }
+    },
+    "overlay_row_margin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "checked",
+        "triggered",
+        "state",
+        "interest_rebased"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "triggered": {
+          "type": "boolean"
+        },
+        "state": {
+          "enum": [
+            "FIXTURE_LIMIT",
+            "WITHIN_BASE",
+            "BREACH_AWAITING_TICK",
+            "CALLED",
+            "CURED",
+            "ACCELERATED",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "interest_rebased": {
+          "const": false
+        },
+        "eligible_face_krw": {
+          "type": "integer"
+        },
+        "advance_rate_bps": {
+          "type": "integer"
+        },
+        "base_krw": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "headroom_krw": {
+          "type": "integer"
+        },
+        "cure_deadline": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "effective_maturity_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "default_eligible_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "overlay_margin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "source",
+        "status",
+        "reason",
+        "checked",
+        "triggered",
+        "limit",
+        "cure_window_days",
+        "cure_options",
+        "interest_rebased",
+        "events",
+        "proposals",
+        "f04_default_called",
+        "proposal_only"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "READ_ONLY_FIXTURE",
+            "SIMULATED_DISPOSABLE_BOOK"
+          ]
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "triggered": {
+          "type": "boolean"
+        },
+        "limit": {
+          "enum": [
+            "FIXTURE_VIEWS_IMMUTABLE",
+            null
+          ]
+        },
+        "cure_window_days": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cure_options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "option",
+              "status"
+            ],
+            "properties": {
+              "option": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "AVAILABLE",
+                  "NOT_BOUND"
+                ]
+              }
+            }
+          }
+        },
+        "interest_rebased": {
+          "const": false
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "proposals": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "f04_default_called": {
+          "const": false
+        },
+        "proposal_only": {
+          "const": true
         }
       }
     },
@@ -9985,6 +10161,9 @@
         },
         "terms_binding_matches": {
           "type": "boolean"
+        },
+        "margin": {
+          "$ref": "#/definitions/overlay_margin"
         },
         "operation": {
           "anyOf": [

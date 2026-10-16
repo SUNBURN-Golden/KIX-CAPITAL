@@ -873,6 +873,46 @@ class DecisionNoteTermsPolicy:
             'writeoff_day': schedule['writeoff_day'],
         }
 
+    def margin_terms(self, case, claim, *, gate, draw_day, refund_after_draw=False):
+        """Per-advance constants of the margin rules, or None (NOT_BOUND).
+
+        The tier is the one the advance was priced in at draw. The F04 snapshot does not keep the
+        draw-time refund, so `refund_after_draw` (a settlement source whose views change) reads
+        the refund as post-draw: the tier is matched on the frozen draw gate with no refund. An
+        immutable source has the same refund now as at draw and matches exactly.
+
+        None unless `additional_margin`, `term` and `default_loss_treatment` are ADOPTED, a tier
+        matches the draw receipt gate, and the note carries an integer cure window of at least one
+        day, an ordered cure list and an integer grace. Nothing is defaulted.
+        """
+        if not self._ready('additional_margin', 'term', 'default_loss_treatment'):
+            return None
+        if type(case) is not dict or type(claim) is not dict:
+            return None
+        tier = self._tier(case, {**claim, 'refund_face': 0} if refund_after_draw else claim, gate)
+        if tier is None:
+            return None
+        margin, term = self._value('additional_margin'), self._value('term')
+        rate = margin['advance_rate_bps_by_tier'].get(tier['id'])
+        payees = margin['beneficiary_payee_map'].get(case.get('beneficiary_role'))
+        window, options = margin.get('cure_window_days'), margin.get('cure_options_ordered')
+        grace = term.get('grace_days_after_maturity')
+        if (not _nonneg_int(rate) or payees is None or not _nonneg_int(window) or window < 1
+                or type(options) is not list or not options or any(not _nonempty_str(item) for item in options)
+                or not _nonneg_int(grace) or not _nonneg_int(draw_day)):
+            return None
+        return {
+            'tier': tier['id'].split('_', 1)[0],
+            'tier_id': tier['id'],
+            'advance_rate_bps': rate,
+            'payees': list(payees),
+            'cure_window_days': window,
+            'cure_options': list(options),
+            'grace_days': grace,
+            'maturity_day': self._schedule(draw_day, None)['maturity_day'],
+            'terms_version': self.version,
+        }
+
     def allocate(self, outstanding, *, interest_due, default_interest_due, cash):
         """Allocation proposal over posted dues in the note's repayment order. Not a posting."""
         section = {'status': 'BOUND', 'interest_due_krw': interest_due,

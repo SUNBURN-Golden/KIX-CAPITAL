@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import overlay
+from capital import margin, overlay
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1153,6 +1153,19 @@ class CapitalService:
                              'draw_day': draw_day, 'principal': case['outstanding_exposure']})
         return subjects
 
+    def _margin_subjects(self, drawn):
+        """Drawn advances that carry margin terms; the rest are NOT_BOUND for the margin rules."""
+        provider = getattr(self.terms, 'margin_terms', None)
+        if not callable(provider):
+            return []
+        out = []
+        for subject in drawn:
+            terms = provider(subject['case'], subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'],
+                             refund_after_draw=margin.views_mutable(self.fixtures))
+            if terms is not None:
+                out.append({**subject, 'margin': terms})
+        return out
+
     def _overlay_volatile(self, value, top=True):
         """Volatile keys would be stripped from digests, leaving data uncovered. instance_id is the one
         top-level session key the command body must carry; it is never written into an entry."""
@@ -1239,15 +1252,28 @@ class CapitalService:
             journal = self.machine.export_journal()
             frozen = self._machine_frozen()
             subjects = []
-            for subject in self._overlay_subjects(self.overlay_entries):
+            drawn = self._overlay_subjects(self.overlay_entries)
+            for subject in drawn:
                 terms = self.terms.ledger_terms(subject['case'], subject['claim'],
                                                 gate=subject['gate'], draw_day=subject['draw_day'])
                 if terms is not None:
                     subjects.append({**subject, 'terms': terms})
+            binding = {'terms_version': status['terms_version'], 'status': status['status']}
+            # Margin rules journal only against a source whose settlement views can change
+            # (a disposable book). Immutable workspace fixtures are reported, never journaled.
+            margin_subjects = self._margin_subjects(drawn) if margin.views_mutable(self.fixtures) else []
+            cures = margin.plan_cures(state, margin_subjects, operation_id=operation_id,
+                                      journal_length=len(journal), day=from_day)
             new = overlay.advance_entries(
                 operation_id, state, len(journal), to_day=to_day, reason=reason,
-                binding={'terms_version': status['terms_version'], 'status': status['status']},
-                subjects=subjects)
+                binding=binding, subjects=subjects, margin_before=cures)
+            if margin_subjects:
+                try:
+                    stepped = overlay.fold(self.overlay_entries + new, len(journal))
+                except ValueError:
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+                new += margin.plan_rules(stepped, margin_subjects, operation_id=operation_id,
+                                         journal_length=len(journal), day=to_day)
             payload = {'receipts': self.receipts, 'journal': journal,
                        'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
             self._overlay_check_capacity(self.overlay_entries, new, to_day, payload)
@@ -1334,8 +1360,19 @@ class CapitalService:
                     body['terms_binding_matches'] = (
                         state['terms_binding'] is None
                         or state['terms_binding']['terms_version'] == status['terms_version'])
-                    body['advances'] = [self._overlay_row(subject, state, status)
-                                        for subject in self._overlay_subjects(self.overlay_entries)]
+                    drawn = self._overlay_subjects(self.overlay_entries)
+                    body['advances'] = [self._overlay_row(subject, state, status) for subject in drawn]
+                    margin_subjects = self._margin_subjects(drawn)
+                    mutable = margin.views_mutable(self.fixtures)
+                    by_id = margin.row_blocks(state, margin_subjects, mutable=mutable)
+                    body['margin'] = margin.status_block(
+                        state, by_id, mutable=mutable, bound=True,
+                        cure_terms=margin_subjects[0]['margin'] if margin_subjects else None)
+                    for item in body['advances']:
+                        item['margin'] = by_id.get(item['advance_id']) or margin.unbound_row(item['advance_id'])
+                else:
+                    body['margin'] = margin.status_block(
+                        state, {}, mutable=margin.views_mutable(self.fixtures), bound=False)
                 if operation_id is not None:
                     receipt = overlay.operation_receipt(self.overlay_entries, operation_id)
                     body['operation'] = receipt if receipt is not None else {
