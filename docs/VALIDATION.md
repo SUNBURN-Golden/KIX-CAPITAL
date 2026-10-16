@@ -628,3 +628,20 @@ Commands actually run:
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, golden unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed** (1.6m); no server left running.
 - `git diff --name-only -- capital/vendor .aiops .github docs/decisions tests/golden`: no output.
+
+## t05-t06-sim-journeys
+
+`scripts/sim_journeys.py` runs the named SIMULATED journeys `T05-sim` (35 steps, in-process server on a disposable `ScenarioReplaySource` book) and `T06-sim` (33 steps, `--workspace` subprocess killed with SIGKILL and restarted) over the loopback API, with fixed operation ids and seed `CAPITAL-SIM-JOURNEYS-V1`. Digests are pinned in `tests/golden/journey_t05_sim.json` and `tests/golden/journey_t06_sim.json`; a mismatch or a missing pin exits 1 unless `--update-golden` is passed. `scripts/acceptance.py` gained the ninth stage `integrated-journeys`, and its evidence now carries top-level `integrated: false` and `qualification.claimed: false`. The refund in T05-sim is replayed on the disposable book out of band (`SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT`) because Capital has no settlement-event route. These journeys are Q0-named synthetic variants. They are not integrated acceptance, not T01–T06 qualification, and not human acceptance; no `ACCEPTANCE_KO.md` checkbox was touched. No file under `capital/`, `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited, and no test was weakened.
+
+Commands actually run:
+
+- `python3 scripts/sim_journeys.py --update-golden`, then `python3 scripts/sim_journeys.py` twice: exit 0, `sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33`, same digests each run.
+- `python3 -m unittest tests.test_sim_journeys tests.test_acceptance -v`: exit 0, **32 passed**.
+- `python3 -m unittest discover -s tests -v`: exit 0, **587 passed** (99.3s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check` (9 stages), `not_bound_checklist`, `auth_matrix`, `manifest_vectors`, `finance_vectors`, `workspace_vectors` with `--check`: exit 0. `python3 scripts/seed_demo.py`: exit 0, golden unchanged.
+- `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed** (1.8m).
+- `python3 scripts/acceptance.py`: exit 0, evidence `ok` true; unit 587, storage-conformance 7, pinned-vendor 7, upstream-claims 181, browser 48, packaged-smoke 8, seeded-demo 1, integrated-journeys 2 (T05-sim 35 steps, T06-sim 33 steps, both `SIMULATED`).
+- `git diff --name-only -- capital .aiops .github docs/decisions tests/golden/demo.json`: no output. No `capital.server` process of this run remained.
+
