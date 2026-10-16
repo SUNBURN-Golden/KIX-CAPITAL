@@ -76,6 +76,7 @@ ROUTE_NEEDLES = {
         '`GET /api/terms/{advance_id}/setoff',
         '`GET /api/terms/portfolio',
     ),
+    ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
     ('GET', '/api/policy'): (
         '`GET /api/policy` and `GET /api/policy/simulation`',
         '`GET /api/policy/shadow`',),
@@ -90,6 +91,7 @@ ROUTE_NEEDLES = {
     ('GET', '/api/health'): ('- `GET /api/health`:',),
     ('POST', '/api/commands'): ('- `POST /api/commands`:',),
     ('POST', '/api/session'): ('- `POST /api/session`:',),
+    ('POST', '/api/overlay/commands'): ('- `POST /api/overlay/commands`:',),
     ('POST', '/api/agent/query_grant'): ('`POST /api/agent/query_grant`',),
     ('POST', '/api/agent/query_subject'): ('`POST /api/agent/query_subject`',),
     ('POST', '/api/agent/propose_action'): ('`POST /api/agent/propose_action`',),

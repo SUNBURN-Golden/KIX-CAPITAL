@@ -25,7 +25,10 @@ class StoragePort(Protocol):
         """Return a verified envelope, or None when nothing has been saved."""
 
     def save(self, document):
-        """Persist the payload. The local file adapter checksums and renames."""
+        """Persist the payload. The local file adapter checksums and renames.
+
+        The service passes `overlay=<section>` as a keyword only when the overlay journal is
+        non-empty; an adapter without that parameter still serves an empty overlay."""
 
     def close(self):
         """Release a process lock. In-memory storage does nothing."""

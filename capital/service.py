@@ -10,15 +10,16 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
+from capital import overlay
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
-    DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
+    DEFAULT_ROLE, OP_PERMISSIONS, OVERLAY_COMMAND, PROVENANCE as ROLE_PROVENANCE,
     ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
 from capital.observability import Observability
 from capital.decisions import DecisionIndex
-from capital.export import UnsignedSigner, build_manifest, manifest_status
+from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manifest_status
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
 from capital.protocol import VENDOR
@@ -35,9 +36,14 @@ from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
-from capital.store import InMemoryStorage, WorkspaceError, verify_document
+from capital.store import InMemoryStorage, WorkspaceError, overlay_section, verify_document
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
+OVERLAY_LABEL = 'SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry'
+CAPACITY_LABEL = 'DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY'
+_REASON_MAX = 120  # a reason is a short note; the entry byte bound still applies
+_OVERLAY_TERMS = ('interest_rate', 'term', 'default_loss_treatment')
+_OVERLAY_ID = re.compile(r'[a-zA-Z0-9-]{1,80}\Z')
 MAX_OPERATIONS = 500  # bounded local demo, not a financial limit
 OPS = {
     'offer': {'fixture_id', 'amount'}, 'approve': set(),
@@ -103,7 +109,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None, shadow=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None, shadow=None, overlay_bounds=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -125,6 +131,8 @@ class CapitalService:
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
+        self.overlay_entries = []
+        self.overlay_bounds = overlay_bounds if overlay_bounds is not None else overlay.load_bounds()
         self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
         self._load_workspace()
@@ -157,8 +165,9 @@ class CapitalService:
             self.producer.reset()
             self.receipts = {}
             self.case_fixtures = {}
+            self.overlay_entries = []
             return
-        restored, self.receipts, self.case_fixtures = installed
+        restored, self.receipts, self.case_fixtures, self.overlay_entries = installed
         previous = self.producer
         self.producer = restored
         if previous is not restored:
@@ -197,11 +206,22 @@ class CapitalService:
                     raise WorkspaceError('WORKSPACE_UNREADABLE')
             labeled = self._label_restored_receipts(receipts)
             mapping_copy = copy.deepcopy(mapping)
+            entries = self._restore_overlay(document, len(journal))
         except Exception:
             if restored is not None and restored is not self.producer:
                 _release_producer(restored)
             raise
-        return restored, labeled, mapping_copy
+        return restored, labeled, mapping_copy, entries
+
+    def _restore_overlay(self, document, journal_length):
+        """FOLD_THEN_VERIFY. A legacy v1 record is an empty overlay; a broken section is fatal, never repaired."""
+        section = overlay_section(document)
+        if section is None:
+            return []
+        try:
+            return overlay.restore(section, journal_length)
+        except (ValueError, KeyError, TypeError, ArithmeticError) as exc:
+            raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
 
     def _label_restored_receipts(self, receipts):
         """Keep a stored role. A pre-label workspace file loads as UNLABELED and is not rewritten here."""
@@ -231,10 +251,15 @@ class CapitalService:
             if type(receipt.get('instance_id')) is not str:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
 
-    def _persist(self):
-        self.storage.save({
+    def _persist(self, entries=None):
+        entries = self.overlay_entries if entries is None else entries
+        payload = {
             'receipts': self.receipts, 'journal': self.machine.export_journal(),
-            'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()})
+            'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
+        if entries:
+            self.storage.save(payload, overlay=overlay.build_section(entries))
+        else:
+            self.storage.save(payload)
 
     def snapshot(self, role=None):
         with self.lock:
@@ -1093,6 +1118,233 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    # ------------------------------------------------------------ overlay ledger
+
+    def _overlay_terms(self):
+        """The terms status when the ledger can accrue from it, else None (NOT_BOUND)."""
+        status = self.terms.status()
+        items = status.get('items') or {}
+        usable = (status.get('status') in ('BOUND', 'PARTIAL') and type(status.get('terms_version')) is str
+                  and callable(getattr(self.terms, 'ledger_terms', None))
+                  and all(items.get(name) == 'ADOPTED' for name in _OVERLAY_TERMS)
+                  and self.overlay_bounds is not None)
+        return status if usable else None
+
+    def _overlay_not_bound(self, reason=TERMS_NOT_BOUND):
+        return ApiError('NOT_BOUND', 400, {'reason': reason})
+
+    def _overlay_subjects(self, entries):
+        """One subject per drawn advance. Tier comes from the accepted draw receipt's gate."""
+        draws = {}
+        for index, row in enumerate(self.machine.export_journal()):
+            if row['op'] == 'draw':
+                draws[row['advance_id']] = (index, row['idempotency_key'])
+        subjects = []
+        for advance_id in sorted(draws):
+            index, key = draws[advance_id]
+            case = self.machine.view(advance_id)
+            try:
+                gate = self.receipts[key]['receipt']['result']['credit']['settlement_gate']
+            except (KeyError, TypeError):
+                raise self._overlay_not_bound('draw receipt gate not found')
+            claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
+            draw_day = overlay.draw_day_for(entries, index)
+            subjects.append({'advance_id': advance_id, 'case': case, 'claim': claim, 'gate': gate,
+                             'draw_day': draw_day, 'principal': case['outstanding_exposure']})
+        return subjects
+
+    def _overlay_volatile(self, value, top=True):
+        """Volatile keys would be stripped from digests, leaving data uncovered. instance_id is the one
+        top-level session key the command body must carry; it is never written into an entry."""
+        if type(value) is dict:
+            for key, item in value.items():
+                if key in VOLATILE_KEYS and not (top and key == 'instance_id'):
+                    raise ApiError('OVERLAY_VOLATILE_KEY')
+                self._overlay_volatile(item, False)
+        elif type(value) is list:
+            for item in value:
+                self._overlay_volatile(item, False)
+
+    def _overlay_capacity(self, entries):
+        bounds = self.overlay_bounds
+        records = sum(1 for entry in entries if entry['kind'] == overlay.KIND_TERMS)
+        return {
+            'label': CAPACITY_LABEL,
+            'entries': {'current': len(entries), 'max': bounds['OVERLAY_MAX_ENTRIES']},
+            'entry_max_bytes': bounds['OVERLAY_ENTRY_MAX_BYTES'],
+            'sim_day_max': bounds['SIM_DAY_MAX'],
+            'max_step_days': bounds['max_step_days'],
+            'decision_records': {'current': records, 'max': bounds['DECISION_RECORDS_MAX']},
+            'agent_proposals': {'current': 0, 'max': bounds['AGENT_PROPOSALS_MAX']},
+            'envelope_max_bytes': bounds['ENVELOPE_MAX_BYTES'],
+        }
+
+    def _overlay_check_capacity(self, entries, new, to_day, payload):
+        bounds = self.overlay_bounds
+        if to_day > bounds['SIM_DAY_MAX']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'SIM_DAY_MAX'})
+        merged = entries + new
+        if len(merged) > bounds['OVERLAY_MAX_ENTRIES']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'OVERLAY_MAX_ENTRIES'})
+        if any(overlay.entry_size(entry) > bounds['OVERLAY_ENTRY_MAX_BYTES'] for entry in new):
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'OVERLAY_ENTRY_MAX_BYTES'})
+        if sum(1 for entry in merged if entry['kind'] == overlay.KIND_TERMS) > bounds['DECISION_RECORDS_MAX']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'DECISION_RECORDS_MAX'})
+        if overlay.section_size(payload, merged) > bounds['ENVELOPE_MAX_BYTES']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'ENVELOPE_MAX_BYTES'})
+
+    def overlay_command(self, body, role=DEFAULT_ROLE):
+        """advance_day: the only writer of sim_day. One atomic save; the F04 journal is never touched."""
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, OVERLAY_COMMAND)
+            if self.workspace_status != 'ACTIVE':
+                raise ApiError(self.workspace_status, 503)
+            if type(body) is not dict:
+                raise ApiError('INVALID_COMMAND')
+            self._overlay_volatile(body)
+            if set(body) != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
+                raise ApiError('INVALID_COMMAND')
+            if body['instance_id'] != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if body['op'] != overlay.COMMAND_OP:
+                raise ApiError('UNSUPPORTED_OPERATION')
+            operation_id = body['operation_id']
+            if type(operation_id) is not str or _OVERLAY_ID.match(operation_id) is None:
+                raise ApiError('INVALID_OPERATION_ID')
+            from_day, to_day, reason = body['from_sim_day'], body['to_sim_day'], body['reason']
+            self._require_day(from_day)
+            self._require_day(to_day)
+            if type(reason) is not str or not reason.strip() or len(reason) > _REASON_MAX:
+                raise ApiError('INVALID_ARGUMENTS')
+            prior = overlay.operation_receipt(self.overlay_entries, operation_id)
+            if prior is not None:
+                if (prior['from_sim_day'], prior['to_sim_day'], prior['reason']) != (from_day, to_day, reason):
+                    raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+                prior.update(self._overlay_receipt_common(principal), transport_duplicate=True)
+                return prior
+            status = self._overlay_terms()
+            if status is None:
+                raise self._overlay_not_bound()
+            state = overlay.fold(self.overlay_entries)
+            binding = state['terms_binding']
+            if binding is not None and binding['terms_version'] != status['terms_version']:
+                raise self._overlay_not_bound('terms version mismatch')
+            if from_day != state['sim_day']:
+                raise ApiError('SIM_CLOCK_STALE', 409, {'sim_day': state['sim_day']})
+            if to_day <= from_day:
+                raise ApiError('SIM_CLOCK_NOT_ADVANCING')
+            if to_day - from_day > self.overlay_bounds['max_step_days']:
+                raise ApiError('SIM_CLOCK_STEP')
+            journal = self.machine.export_journal()
+            frozen = self._machine_frozen()
+            subjects = []
+            for subject in self._overlay_subjects(self.overlay_entries):
+                terms = self.terms.ledger_terms(subject['case'], subject['claim'],
+                                                gate=subject['gate'], draw_day=subject['draw_day'])
+                if terms is not None:
+                    subjects.append({**subject, 'terms': terms})
+            new = overlay.advance_entries(
+                operation_id, state, len(journal), to_day=to_day, reason=reason,
+                binding={'terms_version': status['terms_version'], 'status': status['status']},
+                subjects=subjects)
+            payload = {'receipts': self.receipts, 'journal': journal,
+                       'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
+            self._overlay_check_capacity(self.overlay_entries, new, to_day, payload)
+            candidate = self.overlay_entries + new
+            try:
+                overlay.fold(candidate, len(journal))
+            except ValueError:
+                raise ApiError('READ_ONLY_INVARIANT', 500)
+            try:
+                self._persist(candidate)
+            except WorkspaceError as exc:
+                self.workspace_status = exc.code
+                raise ApiError(exc.code, 503)
+            self.overlay_entries = candidate
+            self._machine_same(frozen)
+            receipt = overlay.operation_receipt(candidate, operation_id)
+            receipt.update(self._overlay_receipt_common(principal), transport_duplicate=False,
+                           overlay_state_digest=overlay.state_digest(overlay.fold(candidate)))
+            return receipt
+
+    def _overlay_receipt_common(self, principal):
+        return {'label': OVERLAY_LABEL, 'instance_id': self.instance_id, 'clock_source': overlay.CLOCK_SOURCE,
+                'actor': overlay.ACTOR, 'role': principal.role, 'role_provenance': ROLE_PROVENANCE,
+                'funds_executed': False, 'f04_journal_written': False, 'economic_finality_claimed': False}
+
+    def _overlay_row(self, subject, state, status):
+        case, advance_id = subject['case'], subject['advance_id']
+        recorded = state['advances'].get(advance_id)
+        terms = (self.terms.ledger_terms(case, subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'])
+                 if status is not None else None)
+        interest = recorded['posted_contract_krw'] if recorded else 0
+        default = recorded['posted_default_krw'] if recorded else 0
+        outstanding = subject['principal']
+        row = {'advance_id': advance_id, 'phase': case['phase'], 'draw_day': subject['draw_day'],
+               'tier': 'NOT_APPLICABLE' if terms is None else terms['tier'],
+               'principal_outstanding_krw': outstanding,
+               'interest_due_krw': interest, 'default_interest_due_krw': default,
+               'accrued_through_sim_day': recorded['last_accrued_day'] if recorded else subject['draw_day']}
+        if recorded:
+            for bucket, key in (('contract', 'cumulative_contract_exact'), ('default', 'cumulative_default_exact')):
+                exact = overlay.parse_exact(recorded[key])
+                row[f'carried_remainder_{bucket}'] = overlay.exact_text(exact - overlay.floor(exact))
+            row['cumulative_exact_contract'] = recorded['cumulative_contract_exact']
+            row['cumulative_exact_default'] = recorded['cumulative_default_exact']
+        if terms is not None:
+            row.update(maturity_day=terms['maturity_day'], writeoff_day=terms['writeoff_day'],
+                       contract_bps=terms['contract_bps'], default_bps=terms['default_bps'])
+        split = None
+        if status is not None and callable(getattr(self.terms, 'allocate', None)):
+            split = self.terms.allocate(outstanding, interest_due=interest, default_interest_due=default,
+                                        cash=outstanding + interest + default)
+        row['allocation'] = split
+        fsm_repay = None
+        sequence = case.get('next_repayment_sequence')
+        if split and split.get('status') == 'BOUND' and case['phase'] == 'DRAWN' and split['to_principal'] > 0 \
+                and type(sequence) is int:
+            fsm_repay = {'amount': split['to_principal'], 'sequence': sequence, 'proposal_only': True}
+        row['fsm_repay'] = fsm_repay
+        row['close_ready'] = (case['phase'] == 'DRAWN' and outstanding == 0 and interest == 0 and default == 0)
+        return row
+
+    def overlay_state(self, operation_id=None):
+        """Read-only overlay quote. Nothing is accrued or written here."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                state = overlay.fold(self.overlay_entries)
+                status = self._overlay_terms()
+                body = {
+                    'label': OVERLAY_LABEL, 'mode': 'SIMULATED_OVERLAY', 'provisional': True,
+                    'clock_source': overlay.CLOCK_SOURCE, 'sim_day': state['sim_day'],
+                    'terms_version': self.terms.status()['terms_version'],
+                    'status': 'NOT_BOUND' if status is None else 'BOUND',
+                    'reason': TERMS_NOT_BOUND if status is None else None,
+                    'terms_binding': state['terms_binding'],
+                    'overlay_state_digest': overlay.state_digest(state),
+                    'entry_count': state['entry_count'],
+                    'interest_payments': 'NOT_RECORDED', 'export': 'NOT_INCLUDED',
+                    'f04_journal_written': False, 'workspace_status': self.workspace_status,
+                    'capacity': 'NOT_BOUND' if self.overlay_bounds is None else self._overlay_capacity(self.overlay_entries),
+                    'advances': [],
+                }
+                if status is not None:
+                    body['terms_binding_matches'] = (
+                        state['terms_binding'] is None
+                        or state['terms_binding']['terms_version'] == status['terms_version'])
+                    body['advances'] = [self._overlay_row(subject, state, status)
+                                        for subject in self._overlay_subjects(self.overlay_entries)]
+                if operation_id is not None:
+                    receipt = overlay.operation_receipt(self.overlay_entries, operation_id)
+                    body['operation'] = receipt if receipt is not None else {
+                        'outcome': 'UNKNOWN', 'operation_id': operation_id, 'retry_authorized': False}
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def _replay_journal(self):
         """Caller holds the service lock. Restores a scratch machine and does not write."""
         journal = self.producer.export_journal()
@@ -1111,6 +1363,7 @@ class CapitalService:
             len(self.receipts),
             self.machine.canonical_state(),
             digest(self.fixtures.rows),
+            json.dumps(self.overlay_entries, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode(),
         )
 
     def _same_frozen(self, frozen):

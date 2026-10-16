@@ -19,6 +19,7 @@ DEFAULT_ROLE = 'organizer'
 PROVENANCE = 'SYNTHETIC_LOCAL_ROLE'
 COMMAND_SUBMIT = 'command:submit'
 SESSION_BIND = 'session:bind'
+OVERLAY_COMMAND = 'overlay:command'
 AGENT_QUERY = 'agent:query_grant'
 AGENT_QUERY_SUBJECT = 'agent:query_subject'
 AGENT_PROPOSE = 'agent:propose_action'
@@ -43,15 +44,17 @@ READ_PERMISSIONS = (
 # with organizer and auditor.
 OBSERVER_READ = ('state:read', 'reference:read', 'receipt:read', 'health:read')
 ALL_PERMISSIONS = (
-    COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND, *AGENT_PERMISSIONS,
+    COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND, OVERLAY_COMMAND,
+    *AGENT_PERMISSIONS,
 )
 
 # Placeholder matrix, not an entitlement policy. Real role-to-person mapping stays NOT_BOUND.
 # session:bind only mints another synthetic loopback token. It is not a financial write.
+# overlay:command (advance_day) is organizer-only; auditor reads the overlay through projection:read.
 # The agent lane is a simulated fixture. It is not authority to run a command.
 _HUMAN_ORGANIZER = frozenset(
     permission for permission in (
-        COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND,
+        COMMAND_SUBMIT, *OP_PERMISSIONS.values(), *READ_PERMISSIONS, SESSION_BIND, OVERLAY_COMMAND,
     )
 )
 MATRIX = {
@@ -73,6 +76,7 @@ ROUTE_PERMISSIONS = (
     ('/api/evidence', 'projection:read', False),
     ('/api/projection', 'projection:read', False),
     ('/api/terms', 'projection:read', True),
+    ('/api/overlay', 'projection:read', False),
     ('/api/policy', 'projection:read', True),
     ('/api/preview/', 'projection:read', True),
     ('/api/underwrite/', 'projection:read', True),

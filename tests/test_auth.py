@@ -6,7 +6,7 @@ from email.message import Message
 
 from capital.auth import (
     AGENT_PERMISSIONS, ALL_PERMISSIONS, COMMAND_SUBMIT, DEFAULT_ROLE, MATRIX, OP_PERMISSIONS,
-    PROVENANCE, ROLES, ROUTE_PERMISSIONS, SESSION_BIND, AuthorizerPort, Decision,
+    OVERLAY_COMMAND, PROVENANCE, ROLES, ROUTE_PERMISSIONS, SESSION_BIND, AuthorizerPort, Decision,
     LocalRoleAuthorizer, Principal, require, route_permission,
 )
 from capital.server import GET_DISPATCH, POST_DISPATCH, make_server
@@ -34,6 +34,7 @@ class MatrixTests(unittest.TestCase):
             '/api/projection': 'projection:read',
             '/api/terms': 'projection:read',
             '/api/terms/sim-a': 'projection:read',
+            '/api/overlay': 'projection:read',
             '/api/policy': 'projection:read',
             '/api/policy/simulation': 'projection:read',
             '/api/policy/shadow': 'projection:read',
@@ -60,7 +61,7 @@ class MatrixTests(unittest.TestCase):
         )
         self.assertEqual(
             [path for path, _permission in POST_DISPATCH],
-            ['/api/commands', '/api/session', '/api/agent/query_grant',
+            ['/api/commands', '/api/session', '/api/overlay/commands', '/api/agent/query_grant',
              '/api/agent/query_subject', '/api/agent/propose_action',
              '/api/agent/withdraw_proposal', '/api/agent/propose_grant_change',
              '/api/agent/execute'],
@@ -80,12 +81,14 @@ class MatrixTests(unittest.TestCase):
                 permission not in agent_only, permission)
         for permission in ALL_PERMISSIONS:
             decision = authorizer.authorize(auditor, permission)
-            financial_write = permission == COMMAND_SUBMIT or permission.startswith('command:')
+            # overlay:command is a simulated clock write, organizer only like the financial writes.
+            financial_write = (permission == COMMAND_SUBMIT or permission.startswith('command:')
+                               or permission == OVERLAY_COMMAND)
             self.assertEqual(
                 decision.allowed, not financial_write and permission not in agent_only, permission)
         for permission in (
             'export:read', 'reconciliation:read', 'statement:read', 'projection:read',
-            'metrics:read', COMMAND_SUBMIT, 'command:draw', *AGENT_PERMISSIONS,
+            'metrics:read', COMMAND_SUBMIT, 'command:draw', OVERLAY_COMMAND, *AGENT_PERMISSIONS,
         ):
             self.assertFalse(authorizer.authorize(observer, permission).allowed, permission)
         for permission in ('state:read', 'reference:read', 'receipt:read', 'health:read', SESSION_BIND):
