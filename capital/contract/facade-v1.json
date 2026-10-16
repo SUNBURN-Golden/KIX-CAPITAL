@@ -456,7 +456,14 @@
       "dispatch": "/api/projection",
       "kind": "api",
       "response": {
-        "$ref": "#/definitions/projection"
+        "anyOf": [
+          {
+            "$ref": "#/definitions/projection"
+          },
+          {
+            "$ref": "#/definitions/projection_coa_candidate"
+          }
+        ]
       },
       "errors": [
         "LOOPBACK_HOST_REQUIRED",
@@ -469,6 +476,7 @@
         "SESSION_REQUIRED",
         "ROLE_FORBIDDEN",
         "NOT_BOUND",
+        "ASSET_MISMATCH",
         "PROJECTION_INVARIANT",
         "READ_ONLY_INVARIANT"
       ],
@@ -859,7 +867,8 @@
       ],
       "permission": "reconciliation:read",
       "query": [
-        "operation_id"
+        "operation_id",
+        "mode"
       ]
     },
     {
@@ -4773,6 +4782,426 @@
         }
       }
     },
+    "coa_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account",
+        "side",
+        "amount"
+      ],
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "side": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "interest_kind": {
+          "type": "string",
+          "enum": [
+            "CONTRACT",
+            "DEFAULT"
+          ]
+        }
+      }
+    },
+    "coa_dimensions": {
+      "description": "Posting dimensions of the CAPITAL-COA-V1 candidate. Identities are dimensions, never part of the 4-digit account code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "advance_id",
+        "claim_id",
+        "sim_day",
+        "chart_version",
+        "terms_version"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "advance_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "chart_version": {
+          "type": "string"
+        },
+        "terms_version": {
+          "type": "string"
+        }
+      }
+    },
+    "coa_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "source",
+        "txn_id",
+        "dimensions",
+        "lines"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "EVIDENCE",
+            "JOURNAL",
+            "OVERLAY_INTEREST"
+          ]
+        },
+        "txn_id": {
+          "type": "string"
+        },
+        "dimensions": {
+          "$ref": "#/definitions/coa_dimensions"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/coa_line"
+          }
+        }
+      }
+    },
+    "coa_account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "class",
+        "normal",
+        "adopted_in_note",
+        "debit_total",
+        "credit_total",
+        "balance"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "class": {
+          "type": "string"
+        },
+        "normal": {
+          "type": "string",
+          "enum": [
+            "debit",
+            "credit"
+          ]
+        },
+        "adopted_in_note": {
+          "type": "boolean"
+        },
+        "debit_total": {
+          "type": "integer"
+        },
+        "credit_total": {
+          "type": "integer"
+        },
+        "balance": {
+          "type": "integer"
+        }
+      }
+    },
+    "coa_subledger_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "asset",
+        "advance_id",
+        "claim_id",
+        "debit_total",
+        "credit_total"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "asset": {
+          "type": "string"
+        },
+        "advance_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "debit_total": {
+          "type": "integer"
+        },
+        "credit_total": {
+          "type": "integer"
+        }
+      }
+    },
+    "coa_balance_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "sim_day",
+        "debit",
+        "credit",
+        "matched"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "debit": {
+          "type": "integer"
+        },
+        "credit": {
+          "type": "integer"
+        },
+        "matched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "coa_chart_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "class",
+        "normal",
+        "status",
+        "adopted_in_note"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "class": {
+          "type": "string"
+        },
+        "normal": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "adopted_in_note": {
+          "type": "boolean"
+        }
+      }
+    },
+    "projection_coa_candidate": {
+      "description": "Additive CAPITAL-COA-V1 candidate (SIMULATION_FIXED_V2) returned by GET /api/projection?mode=coa-candidate. SIMULATED and SYNTHETIC_UNADOPTED; the V1 projection response is unchanged.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "mode",
+        "chart",
+        "coa_version",
+        "accounting_policy",
+        "tax",
+        "legal",
+        "cut",
+        "source_commit",
+        "funds_executed",
+        "policy_adopted",
+        "workspace_mutated",
+        "operating_ledger",
+        "overlay_state_digest",
+        "sim_day",
+        "assets",
+        "entries",
+        "accounts",
+        "subledger",
+        "balance_groups",
+        "memo_balances",
+        "chart_status",
+        "conservation"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "LOCAL_PROJECTION_COA_CANDIDATE"
+        },
+        "chart": {
+          "const": "SIMULATION_FIXED_V2"
+        },
+        "coa_version": {
+          "const": "CAPITAL-COA-V1"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "tax": {
+          "const": "NOT_BOUND"
+        },
+        "legal": {
+          "const": "NOT_BOUND"
+        },
+        "cut": {
+          "type": "string"
+        },
+        "source_commit": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "operating_ledger": {
+          "const": "NOT_BOUND"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "assets": {
+          "$ref": "#/definitions/assets"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/coa_entry"
+          }
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/coa_account"
+          }
+        },
+        "subledger": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/coa_subledger_row"
+          }
+        },
+        "balance_groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/coa_balance_group"
+          }
+        },
+        "memo_balances": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "9150",
+            "9160"
+          ],
+          "properties": {
+            "9150": {
+              "type": "integer"
+            },
+            "9160": {
+              "type": "integer"
+            }
+          }
+        },
+        "chart_status": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/coa_chart_status"
+          }
+        },
+        "conservation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/conservation"
+          }
+        }
+      }
+    },
+    "coa_candidate_labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chart",
+        "coa_version",
+        "accounting_policy",
+        "tax",
+        "policy_adopted"
+      ],
+      "properties": {
+        "chart": {
+          "const": "SIMULATION_FIXED_V2"
+        },
+        "coa_version": {
+          "const": "CAPITAL-COA-V1"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "tax": {
+          "const": "NOT_BOUND"
+        },
+        "policy_adopted": {
+          "const": false
+        }
+      }
+    },
     "preview": {
       "type": "object",
       "additionalProperties": false,
@@ -5394,6 +5823,9 @@
         },
         "workspace_status": {
           "type": "string"
+        },
+        "coa_candidate": {
+          "$ref": "#/definitions/coa_candidate_labels"
         }
       }
     },

@@ -334,7 +334,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_reconciliation(self, route, principal):
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
             probe = values[0] if values and len(values) == 1 else None
-            return self.reply(200, service.reconciliation(probe))
+            return self.reply(200, service.reconciliation(probe, projection_mode(route.query)))
 
         def _get_statement(self, route, principal):
             return self.reply(200, service.statement())
