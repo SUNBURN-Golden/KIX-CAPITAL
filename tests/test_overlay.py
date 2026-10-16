@@ -384,7 +384,13 @@ class ClockTests(unittest.TestCase):
         tick(service, 'c-1', 0, 60)
         tick(service, 'c-2', 60, 75)
         self.assertEqual(f04_view(service), before)
-        self.assertEqual(seed.capture(service), golden)
+        # The risk pin reads the sim_day clock, so it alone moves with the tick; every other key is byte-equal.
+        moved = seed.capture(service)
+        self.assertEqual({key: value for key, value in moved.items() if key != 'risk'},
+                         {key: value for key, value in golden.items() if key != 'risk'})
+        self.assertEqual(moved['risk']['sim_day'], 75)
+        self.assertNotEqual(moved['risk']['risk_digest'], golden['risk']['risk_digest'])
+        self.assertEqual(moved['risk']['outstanding_krw'], golden['risk']['outstanding_krw'])
         self.assertEqual(service.export_manifest()['content_digest'], manifest_before)
         self.assertEqual(manifest_before, golden['content_digest'])
         self.assertEqual(service.snapshot()['state_digest'], golden['state_digest'])

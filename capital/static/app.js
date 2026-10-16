@@ -166,7 +166,8 @@ async function refreshCore(){
  const terms=await loadTerms(next);
  const policyView=await loadPolicy(next);
  const portfolio=await loadPortfolio(next);
- state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ const riskView=await loadRisk(next);
+ state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
@@ -303,6 +304,44 @@ function renderPortfolio(result){
  }));
  const t=body.totals||{};
  $('terms-portfolio-totals').textContent=`평가 ${t.evaluated}/${t.advances} · 계약 ${number(t.contract_interest_krw)} (${t.contract_exact}) · 연체 ${number(t.default_interest_krw)} (${t.default_exact}) · 합계 ${number(t.interest_krw)} (${t.exact}) · cap_check ${t.cap_check} · SIMULATED`;
+}
+const RISK_LABEL='SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy';
+async function loadRisk(next){
+ const decision=next.auth.permissions['projection:read'];
+ if(!decision?.allowed)return {error:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
+ try{
+  const body=await request('/api/risk');
+  if(body.label!==RISK_LABEL||body.mode!=='SIMULATED_RISK_ANALYTICS'||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||body.policy_adopted!==false||body.instance_id!==next.instance_id||body.observed_state_digest!==next.state_digest)return {error:'위험 분석 응답이 라벨 또는 절단면과 맞지 않습니다. 숫자를 표시하지 않습니다.'};
+  return {risk:body};
+ }catch{return {error:'위험 분석을 확인하지 못했습니다. 제안 상태는 유지합니다.'};}
+}
+function riskRows(id,rows){
+ $(id).replaceChildren(...rows.map(cells=>{const tr=document.createElement('tr');for(const value of cells)tr.append(textElement('td',value===null||value===undefined?'—':typeof value==='number'?number(value):String(value)));return tr;}));
+}
+function renderRisk(result){
+ const error=$('risk-error');
+ const ids=['risk-tier-rows','risk-maturity-rows','risk-aging-rows','risk-cap-rows','risk-reserve-rows','risk-stress-rows'];
+ const notes=['risk-label','risk-summary','risk-concentration','risk-reserve','risk-stress','risk-reconciliation'];
+ const clear=()=>{for(const id of ids)$(id).replaceChildren();for(const id of notes)$(id).textContent='';};
+ if(!result?.risk){error.hidden=false;error.textContent=result?.error||'위험 분석을 표시하지 않습니다.';clear();return;}
+ error.hidden=true;const body=result.risk;clear();
+ $('risk-label').textContent=body.reason?`${body.label} · ${body.status} · ${body.reason}`:`${body.label} · ${body.status} · sim_day ${body.sim_day} · ${body.terms_version} · ${body.accounting_policy}`;
+ if(body.status==='NOT_BOUND')return;
+ $('risk-summary').textContent=`미상환 ${number(body.totals.outstanding_krw)} KRW · 열린 노출 ${body.totals.advances_open}/${body.totals.advances_drawn} · digest ${body.risk_digest}`;
+ riskRows('risk-tier-rows',body.by_tier.map(r=>[r.tier,r.advances,r.outstanding_krw,r.share_permille]));
+ riskRows('risk-maturity-rows',body.maturity_buckets.rows.map(r=>[r.id,r.advances,r.outstanding_krw]));
+ riskRows('risk-aging-rows',body.overdue_aging.rows.map(r=>[r.id,r.advances,r.outstanding_krw]));
+ const c=body.concentration;
+ $('risk-concentration').textContent=`수익자 집중도 HHI ${c.hhi_permille===null?'—':c.hhi_permille}‰ · ${c.beneficiaries.map(b=>`${b.role} ${b.share_permille}‰`).join(' · ')||'수익자 없음'} · 한도 ${c.caps.status}`;
+ riskRows('risk-cap-rows',c.caps.rows.map(r=>[r.cap,r.cap_krw,r.used_krw,r.utilization_permille,r.remaining_krw,r.breached?'초과':'이내']));
+ const r=body.reserve;
+ $('risk-reserve').textContent=`${r.label} · 요구액 ${r.requirement_krw===null?'—':number(r.requirement_krw)} KRW · 미분류 ${r.unrated_outstanding_krw===null?'—':number(r.unrated_outstanding_krw)} KRW · 기장 안 함`;
+ riskRows('risk-reserve-rows',r.rows.map(x=>[x.bucket,x.bps,x.outstanding_krw,x.provision_krw]));
+ const s=body.stress;
+ $('risk-stress').textContent=`${s.label} · 충격 ${s.shocks_bps.join('/')} bps · 기준 마진콜 ${s.baseline.margin_call_count}건 · 평가 ${s.coverage.assessed}/${s.coverage.drawn_open_advances} · 단조 ${s.monotone?'예':'아니오'}`;
+ riskRows('risk-stress-rows',s.rows.map(x=>[x.shock_bps,x.shocked_eligible_face_krw,x.margin_call_count,x.called_outstanding_krw,x.shortfall_krw]));
+ const q=body.reconciliation;
+ $('risk-reconciliation').textContent=`대사 총계 ${number(q.total_krw)} · 등급 ${number(q.tier_sum)} · 만기 ${number(q.bucket_sum)} · 연체 ${number(q.aging_sum)} · 투영 ${number(q.projection_outstanding_krw)} · ${q.matched?'일치':'불일치'}`;
 }
 async function loadCaseTerms(){
  const epoch=++termsEpoch;

@@ -628,3 +628,21 @@ Commands actually run:
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, golden unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed** (1.6m); no server left running.
 - `git diff --name-only -- capital/vendor .aiops .github docs/decisions tests/golden`: no output.
+
+## portfolio-risk-analytics
+
+`capital/risk.py` is a read-only analytics model over the accepted journal, the overlay clock (`sim_day`) and `CAPITAL-TERMS-V1`; `GET /api/risk` (`projection:read`; observer and agent get 403) serves it and `CapitalService.risk()` checks that receipts, `state_digest`, overlay entries and the F04 state are byte-equal before and after. Everything is SIMULATED integer floor arithmetic: exposure by tier, maturity buckets (`0-30`, `31-60`, `61-90`, `>90` days to the standard maturity), overdue aging, beneficiary concentration (`hhi_permille` and U4 cap utilization in permille), the reserve requirement (per-advance `floor(outstanding * bps / 10000)` over the note's table; not an accounting policy, `applied` false) and the fixed refund shocks `[500, 1000, 2500, 5000]` bps of `eligible_face` (hypothetical; no margin call is recorded). The tier, maturity and aging sums equal the total, which equals the projection's advance outstanding. The seeded demo pins `risk` in `tests/golden/demo.json` (outstanding 45,000; reserve 30,750; HHI 1000; `risk_digest`), written only through `scripts/seed_demo.py --update-golden`. The risk pin depends on `sim_day`, so `test_overlay_commands_leave_f04_and_the_demo_golden_untouched` now compares every other golden key byte-for-byte after the clock ticks and asserts the `risk` pin moves with `sim_day`.
+
+Limits: the ledger knows only the 60-day standard term, so the `61-90` and `>90` maturity buckets stay empty on live data and are exercised by pure-function tests. Overdue aging reuses the same 30/60/90 edges as an analytics choice; the note defines no aging edges and no concentration bands. Maturity is not re-based on margin acceleration (`NOT_REBASED / DECISION_REQUIRED`, owner JunTae). Advances with no matching tier are reported as `NOT_APPLICABLE` and as unrated reserve, never guessed. The zipapp has no `docs/`, so `/api/risk` there is `NOT_BOUND`.
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_risk -v`: exit 0, **26 passed**.
+- `python3 scripts/seed_demo.py` before the pin: exit 1, drift on `$.risk` only; `--update-golden` then plain run: exit 0, `state_digest=a8609033…ef45` and `content_digest=2f71dab1…dca` unchanged; `git diff tests/golden/demo.json` adds the `risk` key only.
+- `python3 scripts/auth_matrix.py --write` and `python3 scripts/finance_vectors.py --write`, then `--check` on both: exit 0. The vector diff is the `facade_read_model` group only (26 routes, new digests).
+- `python3 -m unittest discover -s tests -v`: exit 0, **586 passed** (85.8s). The first run had one failure in `test_overlay` (the golden-after-ticks test above), fixed as described.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`, `manifest_vectors`, `finance_vectors`, `workspace_vectors`, `not_bound_checklist`, `auth_matrix` with `--check`: exit 0.
+- `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **51 passed** (2.0m), including `tests/browser/portfolio-risk.spec.cjs` (desktop 1280 and 375px, no horizontal overflow, no page or console errors, zero POSTs, observer reason, NOT_BOUND note); no server left running.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output.

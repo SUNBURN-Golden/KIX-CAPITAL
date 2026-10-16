@@ -245,7 +245,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/risk`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -382,6 +382,14 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 ### terms-portfolio-rollup
 
 `GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 노출 버킷·집중도 한도·준비금·환불 충격 스트레스는 범위 밖이다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:portfolio-risk-analytics -->
+
+### portfolio-risk-analytics
+
+`GET /api/risk`는 읽기 전용 포트폴리오 위험 분석이다. 라벨은 `SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy`이고 `mode`는 `SIMULATED_RISK_ANALYTICS`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 수락된 저널, 오버레이 시계 `sim_day`, `CAPITAL-TERMS-V1` 노트를 정수 나눗셈으로만 접으며 영수증·저널·오버레이 항목을 쓰지 않는다. 등급별 노출, 만기 버킷(표준 만기까지 남은 일수 0-30, 31-60, 61-90, >90; 만기일 당일과 연체 노출은 0-30), 연체 경과(`NOT_DUE`, 만기 후 1-30, 31-60, 61-90, >90일, `DEFAULTED`)의 합은 총 미상환과 같고 `reconciliation`이 로컬 투영의 advance 미상환과 맞춘다. 집중도는 수익자(`beneficiary_role`)별 정수 permille HHI와 `underwriting_depth` U4 세 한도(단일 건, 수익자 합계, 포트폴리오)에 대한 사용률(permille)이다. 준비금 요구액은 노트 `reserve.provision_bps_of_outstanding` 표(현재 150/500/2500/10000 bps)를 건별로 적용해 `floor(미상환 × bps / 10000)`을 더한 값이며 회계 정책이 아니고 `applied`는 false다. 스트레스는 마진 조건이 있는 `DRAWN` 건의 `eligible_face`를 고정 정수 충격 `[500, 1000, 2500, 5000]` bps만큼 줄여 다시 재고, 충격이 클수록 마진콜 건수는 줄지 않는다. 이 마진콜은 가정이며 오버레이에 기록되지 않는다. 장부가 알고 있는 만기는 표준 60일뿐이라 실제 데이터에서는 61-90, >90 버킷이 비어 있고 순수 함수 시험으로만 확인한다. 마진 가속 후의 만기 재기준(`NOT_REBASED / DECISION_REQUIRED`)은 반영하지 않는다. 노트가 없으면 `NOT_BOUND`이고 숫자가 없다. 브라우저 패널 `#risk`는 `textContent`만 쓴다. 확률 모형, 부동소수점, 외부 데이터, 회계 채택은 범위 밖이다.
 
 <!-- /handbook-section -->
 
