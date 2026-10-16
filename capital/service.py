@@ -1377,7 +1377,7 @@ class CapitalService:
                     'terms_binding': state['terms_binding'],
                     'overlay_state_digest': overlay.state_digest(state),
                     'entry_count': state['entry_count'],
-                    'interest_payments': 'NOT_RECORDED', 'export': 'NOT_INCLUDED',
+                    'interest_payments': 'NOT_RECORDED', 'export': 'INCLUDED_IN_MANIFEST_V3' if self.overlay_entries else 'ABSENT_WHEN_EMPTY',
                     'f04_journal_written': False, 'workspace_status': self.workspace_status,
                     'capacity': 'NOT_BOUND' if self.overlay_bounds is None else self._overlay_capacity(self.overlay_entries),
                     'advances': [],
@@ -1433,19 +1433,20 @@ class CapitalService:
         return self._frozen() == frozen
 
     def _subject_payload(self):
-        """Checksum-valid workspace payload when one exists; otherwise the live book."""
+        """Checksum-valid workspace payload and overlay section when they exist; otherwise the live book."""
         try:
             document = self.storage.load()
         except WorkspaceError as exc:
-            return None, exc.code
+            return None, exc.code, None
         if document is None:
             return {
                 'receipts': copy.deepcopy(self.receipts),
                 'journal': self.machine.export_journal(),
                 'case_fixtures': copy.deepcopy(dict(self.case_fixtures)),
                 'state_digest': self.machine.state_digest(),
-            }, None
-        return copy.deepcopy(document['payload']), None
+            }, None, overlay.build_section(copy.deepcopy(self.overlay_entries))
+        persisted = overlay_section(document)
+        return copy.deepcopy(document['payload']), None, copy.deepcopy(persisted)
 
     def reconciliation(self, probe_operation_id=None, mode=None):
         """Read-only exception report. No receipt is written and nothing is retried.
@@ -1458,7 +1459,7 @@ class CapitalService:
                 raise ApiError('NOT_BOUND', 400)
             frozen = self._frozen()
             try:
-                payload, unreadable = self._subject_payload()
+                payload, unreadable, persisted = self._subject_payload()
                 rows = copy.deepcopy(self.fixtures.rows)
                 return build_reconciliation(
                     payload=payload, unreadable=unreadable, fixture_rows=rows,
@@ -1467,7 +1468,8 @@ class CapitalService:
                     instance_id=self.instance_id, operation_capacity=MAX_OPERATIONS,
                     workspace_status=self.workspace_status,
                     coa_port=self.coa_projection if mode == coa.MODE else None,
-                    overlay_entries=copy.deepcopy(self.overlay_entries),
+                    overlay_entries=copy.deepcopy(self.overlay_entries) or None,
+                    overlay_persisted=persisted,
                 )
             finally:
                 if not self._same_frozen(frozen):
@@ -1508,7 +1510,7 @@ class CapitalService:
                     'durable': durable, 'funds_executed': False, 'note': note}
 
     def export_manifest(self):
-        """Read-only v2 manifest of hashed sections. No import, resume, or key material."""
+        """Read-only v2 (empty overlay) or v3 (non-empty overlay) manifest of hashed sections. No import, resume, or key material."""
         with self.lock:
             frozen = self._frozen()
             try:
@@ -1537,6 +1539,8 @@ class CapitalService:
                         'assets': declared_assets(),
                     },
                 }
+                if self.overlay_entries:
+                    sections['overlay'] = overlay.export_section(self.overlay_entries, len(journal))
                 status, reasons = manifest_status(reconciliation['status'], self.workspace_status)
                 return build_manifest(
                     sections=sections, instance_id=self.instance_id, signer=self.signer,

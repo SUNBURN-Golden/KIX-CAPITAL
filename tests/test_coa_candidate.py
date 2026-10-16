@@ -114,8 +114,12 @@ class V1UnchangedTests(unittest.TestCase):
         self.assertEqual(canonical_json(service.projection(None)), first)
 
     def test_v1_and_golden_files_are_untouched(self):
+        # Diff against main, not HEAD: files other nodes changed on main are not this node's edits.
+        probe = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT,
+                               capture_output=True, text=True)
+        base = 'origin/main' if probe.returncode == 0 else 'HEAD'
         status = subprocess.run(
-            ['git', 'diff', '--name-only', 'HEAD', '--', 'capital/projection.py', 'capital/ports.py', 'capital/overlay.py',
+            ['git', 'diff', '--name-only', base, '--', 'capital/projection.py', 'capital/ports.py', 'capital/overlay.py',
              'capital/export.py', 'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions'],
             cwd=ROOT, capture_output=True, text=True)
         if status.returncode != 0:
@@ -128,7 +132,8 @@ class V1UnchangedTests(unittest.TestCase):
         tick(service, 'c1', 0, 10)
         for mode in (None, 'simulation'):
             checks = [check['id'] for check in service.reconciliation(None, mode)['checks']]
-            self.assertEqual(tuple(checks), recon.CHECK_IDS)
+            # A non-empty overlay adds main's overlay fold check; the COA checks stay opt-in.
+            self.assertEqual(tuple(checks), recon.CHECK_IDS + (recon.OVERLAY_CHECK_ID,))
         self.assertNotIn('coa_candidate', service.reconciliation())
         self.assertEqual(len(recon.CHECK_IDS), 6)
 
@@ -383,7 +388,7 @@ class ReconciliationTests(unittest.TestCase):
     def test_both_new_checks_are_matched_on_a_clean_book(self):
         report = self.clean_book().reconciliation(None, 'coa-candidate')
         status = {check['id']: check['status'] for check in report['checks']}
-        self.assertEqual(tuple(status), recon.CHECK_IDS + recon.COA_CHECK_IDS)
+        self.assertEqual(tuple(status), recon.CHECK_IDS + (recon.OVERLAY_CHECK_ID,) + recon.COA_CHECK_IDS)
         self.assertEqual(status['coa_candidate_totals_vs_v1'], 'MATCHED')
         self.assertEqual(status['interest_ledger_vs_projection'], 'MATCHED')
         self.assertEqual(report['status'], 'MATCHED')
@@ -522,9 +527,9 @@ class HttpTests(unittest.TestCase):
         body = json.loads(raw)
         facade_schema.validate(body, self.route('/api/reconciliation')['response'], self.doc)
         self.assertEqual(body['status'], 'MATCHED')
-        self.assertEqual(len(body['checks']), 8)
         plain = json.loads(self.get('/api/reconciliation')[1])
-        self.assertEqual(len(plain['checks']), 6)
+        self.assertEqual(len(plain['checks']), 6 + (recon.OVERLAY_CHECK_ID in [c['id'] for c in plain['checks']]))
+        self.assertEqual(len(body['checks']), len(plain['checks']) + 2)
         self.assertNotIn('coa_candidate', plain)
         facade_schema.validate(plain, self.route('/api/reconciliation')['response'], self.doc)
 

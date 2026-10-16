@@ -24,6 +24,9 @@ from pathlib import Path
 from capital.store import canonical_bytes
 
 FORMAT = 'KIX_CAPITAL_EXPORT_MANIFEST_V2'
+# V3 is emitted only for a non-empty overlay journal (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
+FORMAT_V3 = 'KIX_CAPITAL_EXPORT_MANIFEST_V3'
+OVERLAY_SECTION = 'overlay'
 SECTION_IDS = (
     'journal',
     'receipts',
@@ -33,6 +36,7 @@ SECTION_IDS = (
     'fixtures',
     'source_pin',
 )
+SECTION_IDS_V3 = SECTION_IDS + (OVERLAY_SECTION,)
 PART_TAGS = {
     'journal': 'journalpart',
     'receipts': 'receiptspart',
@@ -41,6 +45,7 @@ PART_TAGS = {
     'statement': 'statementpart',
     'fixtures': 'fixturespart',
     'source_pin': 'sourcepinpart',
+    'overlay': 'overlaypart',
 }
 VOLATILE_KEYS = frozenset({
     'instance_id',
@@ -167,6 +172,15 @@ def retention_policy():
     return {name: {'owner': owner, 'status': status} for name, owner, status in RETENTION_SLOTS}
 
 
+def section_ids_for(fmt):
+    """Required section ids for a manifest format, or None for an unknown format."""
+    if fmt == FORMAT:
+        return SECTION_IDS
+    if fmt == FORMAT_V3:
+        return SECTION_IDS_V3
+    return None
+
+
 def _seal_section(name, body):
     if type(body) is not dict or 'part_tag' in body:
         raise ExportError('SECTION_BODY')
@@ -183,11 +197,13 @@ def build_manifest(*, sections, instance_id, signer, status, incomplete_reasons)
         raise ExportError('MANIFEST_STATUS')
     if status == 'INCOMPLETE' and not reasons:
         raise ExportError('MANIFEST_STATUS')
-    if set(sections) != set(SECTION_IDS):
+    fmt = FORMAT_V3 if OVERLAY_SECTION in sections else FORMAT
+    ids = section_ids_for(fmt)
+    if set(sections) != set(ids):
         raise ExportError('SECTION_SET')
-    sealed = {name: _seal_section(name, sections[name]) for name in SECTION_IDS}
+    sealed = {name: _seal_section(name, sections[name]) for name in ids}
     manifest = {
-        'format': FORMAT,
+        'format': fmt,
         'label': 'SIMULATED',
         'diagnostic': 'READ_ONLY',
         'status': status,
