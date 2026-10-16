@@ -35,7 +35,7 @@ async function ready(page,fixture){
 
 test('complete bound lifecycle, repayment and export',async({page})=>{
  await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
- await expect(page.locator('#evidence-rows tr')).toHaveCount(3);
+ await expect(page.locator('#evidence-rows tr')).toHaveCount(13);
  await expect(page.locator('#evidence-scope')).toContainText('NOT_BOUND');
  await expect(page.locator('#readiness-integrity')).toContainText('고정 hash가 모두 일치합니다');
  const offered=await offer(page,'sim-committed','60000',{navigate:false});
@@ -80,7 +80,7 @@ test('desktop overview screenshot and status separation',async({page})=>{
  await expect(page.locator('#capabilities')).toContainText('수익참여·채권 매입·담보 상품');await expect(page.locator('#readiness-integrity')).toContainText('NOT_BOUND');await page.screenshot({path:'test-results/capital-desktop.png',fullPage:true});
 });
 test('read-only evidence keeps missing financial facts distinct',async({page})=>{
- await page.goto('/');await expect(page.locator('#evidence-rows tr')).toHaveCount(3);await expect(page.locator('#evidence-scope')).toContainText('NOT_BOUND');const value=await(await page.request.get('/api/evidence')).json();expect(value.source_cut).toBeNull();expect(value.unavailable).toContain('actual_paid');expect(value.rows.find(r=>r.claim_id==='sim-refund').refund_outstanding).toBe(10000);
+ await page.goto('/');await expect(page.locator('#evidence-rows tr')).toHaveCount(13);await expect(page.locator('#evidence-scope')).toContainText('NOT_BOUND');const value=await(await page.request.get('/api/evidence')).json();expect(value.source_cut).toBeNull();expect(value.unavailable).toContain('actual_paid');expect(value.rows.find(r=>r.claim_id==='sim-refund').refund_outstanding).toBe(10000);
 });
 test('malformed accepted receipt stays UNKNOWN until verified original is read',async({page})=>{
  await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');

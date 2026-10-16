@@ -31,11 +31,11 @@
 
 | op | args |
 |---|---|
-| offer | fixture_id (`sim-committed`, `sim-pending`, `sim-refund`), amount (integer 1..10^12) |
+| offer | fixture_id (`sim-committed`, `sim-pending`, `sim-refund`, plus the ten `CAPITAL-DEMO-BOOK-V1` claims `demo-alpha-arena`, `demo-alpha-hall`, `demo-beta-festival`, `demo-beta-club`, `demo-gamma-tour`, `demo-gamma-annex`, `demo-delta-small`, `demo-delta-mid`, `demo-epsilon-refund`, `demo-epsilon-clean`), amount (integer 1..10^12) |
 | approve / reject / cancel / bind_settlement / draw / close / default / reconcile | empty object |
 | repay | amount, sequence (next positive integer) |
 
-API wraps the pinned FSM without inventing financial terms. `reject`, `cancel`, `default` use fixed synthetic reason labels. Offer role is fixed `fixture-organizer`. No caller-supplied settlement body, product terms, identities, credentials, filenames or URLs. The refund fixture is explicitly adverse: 10000 synthetic refund face with burden UNDEFINED; it is not a new executed refund policy.
+API wraps the pinned FSM without inventing financial terms. `reject`, `cancel`, `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map: `fixture-organizer` for fixture-v1, the `demo-org-*` synthetic role for each demo-book claim. No caller-supplied settlement body, product terms, identities, credentials, filenames or URLs. The refund fixture is explicitly adverse: 10000 synthetic refund face with burden UNDEFINED; it is not a new executed refund policy. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` only (T1 COMMITTED, T2 CAPTURED, `demo-epsilon-refund` with a 60,000,000 open refund face) so U4 single/beneficiary/portfolio caps bind on real `DECLINE` proposals; cap values stay cited from the terms note, never restated.
 
 Every bound draw reads the immutable settlement view and does not call settlement mutations. F04 also explicitly permits an unbound draw; it reports UNBOUND and does not claim a COMMITTED observation. UI's guided flow binds first. A process-wide lock serializes commands, snapshot and export in this single-process demo. First transport receipt is returned after later transitions too; GET state is current. Domain errors are stored as REJECTED. Schema/boundary errors reject before applying. Reconcile is read/replay and does not clear UNKNOWN.
 

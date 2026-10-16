@@ -623,13 +623,20 @@ class StatementVectorTests(unittest.TestCase):
         self.assertEqual(sorted({(row['claim_id'], row['reserved_open']) for row in reserved['rows']}),
                          [('sim-committed', 30000), ('sim-pending', 15000)])
         settlement = self.categories['settlement']
-        self.assertEqual((settlement['confirmed'], settlement['distributed']), (194000, 0))
+        self.assertEqual((settlement['confirmed'], settlement['distributed']), (12658694000, 0))
         self.assertEqual([(row['claim_id'], row['phase'], row['confirmed_cash']) for row in settlement['rows']], [
-            ('sim-committed', 'COMMITTED', 97000), ('sim-pending', 'CAPTURED', 0), ('sim-refund', 'COMMITTED', 97000)])
+            ('demo-alpha-arena', 'COMMITTED', 2910000000), ('demo-alpha-hall', 'COMMITTED', 1164000000),
+            ('demo-beta-club', 'CAPTURED', 0), ('demo-beta-festival', 'COMMITTED', 3880000000),
+            ('demo-delta-mid', 'CAPTURED', 0), ('demo-delta-small', 'COMMITTED', 48500000),
+            ('demo-epsilon-clean', 'COMMITTED', 1940000000), ('demo-epsilon-refund', 'COMMITTED', 388000000),
+            ('demo-gamma-annex', 'COMMITTED', 2328000000), ('demo-gamma-tour', 'CAPTURED', 0),
+            ('sim-committed', 'COMMITTED', 97000), ('sim-pending', 'CAPTURED', 0),
+            ('sim-refund', 'COMMITTED', 97000)])
         refund = self.categories['refund']
         self.assertEqual((refund['refund_face'], refund['refund_accepted'], refund['refund_outstanding']),
-                         (10000, 0, 10000))
-        self.assertEqual([row['claim_id'] for row in refund['rows'] if row['refund_face']], ['sim-refund'])
+                         (60010000, 0, 60010000))
+        self.assertEqual([row['claim_id'] for row in refund['rows'] if row['refund_face']],
+                         ['demo-epsilon-refund', 'sim-refund'])
 
     def test_one_preview_per_case_and_only_the_pending_settlement_would_reject(self):
         self.assertEqual([(row['advance_id'], row['outcome'], row['reason'], row['settlement_gate'])

@@ -225,7 +225,7 @@ def f04_command_outcomes(service, rows):
 def journal_projection_digests(service):
     journal = service.machine.export_journal()
     fixtures = FixtureViews()
-    evidence = [fixtures.view(key) for key in sorted(fixtures.rows)]
+    evidence = [fixtures.view(key) for key in sorted(fixtures.projection_ids)]
     port = SimulationProjection()
     prefixes = []
     projected = None

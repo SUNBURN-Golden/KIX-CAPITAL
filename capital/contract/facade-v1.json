@@ -4105,7 +4105,17 @@
       "required": [
         "sim-committed",
         "sim-pending",
-        "sim-refund"
+        "sim-refund",
+        "demo-alpha-arena",
+        "demo-alpha-hall",
+        "demo-beta-festival",
+        "demo-beta-club",
+        "demo-gamma-tour",
+        "demo-gamma-annex",
+        "demo-delta-small",
+        "demo-delta-mid",
+        "demo-epsilon-refund",
+        "demo-epsilon-clean"
       ],
       "properties": {
         "sim-committed": {
@@ -4115,6 +4125,36 @@
           "$ref": "#/definitions/settlement_view"
         },
         "sim-refund": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-alpha-arena": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-alpha-hall": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-beta-festival": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-beta-club": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-gamma-tour": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-gamma-annex": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-delta-small": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-delta-mid": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-epsilon-refund": {
+          "$ref": "#/definitions/settlement_view"
+        },
+        "demo-epsilon-clean": {
           "$ref": "#/definitions/settlement_view"
         }
       }
@@ -4263,6 +4303,7 @@
         "refund_bearer_policy",
         "recovery_due",
         "obligations",
+        "profile",
         "source_view_digest"
       ],
       "properties": {
@@ -4307,6 +4348,9 @@
           "items": {
             "$ref": "#/definitions/obligation"
           }
+        },
+        "profile": {
+          "type": "string"
         },
         "source_view_digest": {
           "type": "string"

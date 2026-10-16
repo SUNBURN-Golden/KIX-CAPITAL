@@ -272,10 +272,12 @@ class CapitalService:
                              'refund_bearer_policy': claim['refund_bearer_policy'],
                              'recovery_due': claim['recovery_due'],
                              'obligations': claim['obligations'],
+                             'profile': self.fixtures.profile(key),
                              'source_view_digest': digest(view)})
             return {'mode': 'READ_ONLY_FIXTURE', 'provenance': 'MOCK_SETTLEMENT_ONLY',
                     'instance_id': self.instance_id, 'source_commit': self.source['commit'],
-                    'source_scope': 'Three immutable synthetic settlement views; fixture-v1',
+                    'source_scope': ('13 immutable synthetic settlement views; fixture-v1 plus the '
+                                     'CAPITAL-DEMO-BOOK-V1 SYNTHETIC_FIXTURE_PROFILE claims'),
                     'source_cut': None, 'live_completeness': 'NOT_BOUND',
                     'unavailable': ['provider_authorized_amount', 'issued_rights_amount',
                                     'primary_sales', 'resale_sales', 'actual_paid',
@@ -481,7 +483,7 @@ class CapitalService:
     def _underwrite_subject(self, advance_id, fixture_id, case, fixture_view, amount, candidate):
         """Caller holds the lock. Collects the read inputs the rule record needs."""
         claim = fixture_view['claim']
-        beneficiary = 'fixture-organizer' if candidate else case['beneficiary_role']
+        beneficiary = self.fixtures.beneficiary(fixture_id) if candidate else case['beneficiary_role']
         beneficiary_outstanding = 0
         portfolio_outstanding = 0
         sibling_reserved = 0
@@ -818,7 +820,7 @@ class CapitalService:
             before_receipts = copy.deepcopy(self.receipts)
             before_rows = copy.deepcopy(self.fixtures.rows)
             journal = self.machine.export_journal()
-            evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.rows)]
+            evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.projection_ids)]
             cut = self.machine.state_digest()
             try:
                 projected = self.projection_port.project(journal, evidence)

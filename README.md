@@ -34,7 +34,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 
 ## 구현과 경계
 
-- Capital 전용 loopback API와 웹 화면, 포트폴리오, 세 가지 정산/환불 fixture.
+- Capital 전용 loopback API와 웹 화면, 포트폴리오, fixture-v1 세 건과 `CAPITAL-DEMO-BOOK-V1` 합성 북 10건(`SYNTHETIC_FIXTURE_PROFILE`, pinned `SettlementMachine` replay만으로 만든 대형 액면)의 정산/환불 fixture.
 - Protocol의 F04 상태기계를 정확한 소스 SHA 및 파일 hash에 고정한 로컬 참조 adapter. 산술·원본 FSM은 수정하지 않습니다.
 - 같은 operation의 최초 결과/충돌 검사, 공유 액면 경합, 부분 상환·미이행·종결, 재생 일치.
 - 응답 유실 시 UNKNOWN, 브라우저 새로고침 뒤 원 receipt 조회, 새 쓰기 차단. 자동 재시도 없음.
