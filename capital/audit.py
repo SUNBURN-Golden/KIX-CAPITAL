@@ -105,9 +105,9 @@ def _is_hex64(value):
 
 def _envelope_ok(document):
     """Same shape predicates as store.verify_document, without the checksum."""
-    if type(document) is not dict or set(document) != store.ENVELOPE_KEYS:
+    if store.envelope_kind(document) is None or type(document['payload']) is not dict:
         return False
-    if document['format'] != store.FORMAT or type(document['payload']) is not dict:
+    if document['format'] != store.FORMAT:
         return False
     writer, saved_at = document['saved_by_instance'], document['saved_at']
     if not _is_hex64(document['payload_sha256']):

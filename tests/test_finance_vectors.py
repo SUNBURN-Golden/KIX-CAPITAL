@@ -223,6 +223,7 @@ FACADE_READS = [
     ('/api/statement', ['statement']),
     ('/api/metrics', ['metrics']),
     ('/api/health', ['health']),
+    ('/api/overlay', ['overlay_state']),
 ]
 FACADE = ROOT / 'capital' / 'contract' / 'facade-v1.json'
 UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -733,15 +734,15 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_twenty_four_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 24)
+    def test_exactly_the_twenty_five_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 25)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 35)
-        self.assertEqual(len(left_out), 11)
+        self.assertEqual(len(self.contract['routes']), 37)
+        self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
         # A POST command path may share a path with a GET read; only the GET rows are kept.

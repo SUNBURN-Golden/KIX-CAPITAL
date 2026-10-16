@@ -1,0 +1,8 @@
+{
+  "export_manifest_v2_content_digest": "2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca",
+  "f04_state_digest": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45",
+  "label": "SIMULATED",
+  "note": "SIMULATED pin. Empty overlay is absent from every surface except the workspace envelope; the V2 manifest content_digest and the F04 state_digest equal tests/golden/demo.json.",
+  "overlay_schema": 1,
+  "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b"
+}

@@ -11,7 +11,12 @@ import os
 from pathlib import Path
 
 FORMAT = 'KIX_CAPITAL_LOCAL_WORKSPACE_V1'
+# `format` stays the document-type tag. Schema evolution is `envelope_version`, which is
+# absent on a legacy v1 record and exactly 2 on a v2 record (docs/decisions/CAPITAL_OVERLAY_STATE.md).
 ENVELOPE_KEYS = frozenset({'format', 'payload', 'payload_sha256', 'saved_by_instance', 'saved_at'})
+ENVELOPE_KEYS_V2 = ENVELOPE_KEYS | {'envelope_version', 'overlay'}
+ENVELOPE_VERSION = 2
+OVERLAY_SECTION_KEYS = frozenset({'overlay_schema', 'journal', 'overlay_state', 'section_sha256'})
 FILE_NAME = 'workspace.json'
 LOCK_NAME = 'workspace.json.lock'
 
@@ -47,20 +52,69 @@ def _checksum(payload):
     return hashlib.sha256(canonical_bytes(payload)).hexdigest()
 
 
-def envelope(writer_instance, payload):
+def section_checksum(section):
+    """SHA256 over the canonical overlay section minus `section_sha256` itself."""
+    return hashlib.sha256(canonical_bytes({key: value for key, value in section.items()
+                                           if key != 'section_sha256'})).hexdigest()
+
+
+def envelope(writer_instance, payload, overlay=None):
+    """Always a v2 record. `overlay=None` writes the empty overlay section."""
     if type(writer_instance) is not str or not writer_instance or len(writer_instance) > 80:
         raise WorkspaceError('WORKSPACE_WRITE_FAILED')
     if type(payload) is not dict:
         raise WorkspaceError('WORKSPACE_WRITE_FAILED')
+    if overlay is None:
+        # Lazy: overlay imports canonical_bytes from this module.
+        from capital import overlay as overlay_module
+        overlay = overlay_module.empty_section()
+    if type(overlay) is not dict or set(overlay) != OVERLAY_SECTION_KEYS:
+        raise WorkspaceError('WORKSPACE_WRITE_FAILED')
     body = copy.deepcopy(payload)
-    return {'format': FORMAT, 'payload': body, 'payload_sha256': _checksum(body),
+    return {'format': FORMAT, 'envelope_version': ENVELOPE_VERSION, 'payload': body,
+            'payload_sha256': _checksum(body), 'overlay': copy.deepcopy(overlay),
             'saved_by_instance': writer_instance,
             'saved_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
 
 
+def envelope_kind(document):
+    """1 for a legacy record, 2 for a v2 record, None for anything else.
+
+    Legacy is `envelope_version` ABSENT with the v1 key set. A present value that is
+    not the integer 2 (1, True, "2", null, ...) is never legacy.
+    """
+    if type(document) is not dict or document.get('format') != FORMAT:
+        return None
+    if 'envelope_version' not in document:
+        return 1 if set(document) == ENVELOPE_KEYS else None
+    version = document['envelope_version']
+    if type(version) is int and version == ENVELOPE_VERSION and set(document) == ENVELOPE_KEYS_V2:
+        return ENVELOPE_VERSION
+    return None
+
+
+def overlay_section(document):
+    """The checksum-verified overlay section of a v2 record, or None for a legacy record."""
+    return document['overlay'] if envelope_kind(document) == ENVELOPE_VERSION else None
+
+
+def _verify_section(section):
+    if type(section) is not dict or set(section) != OVERLAY_SECTION_KEYS:
+        raise WorkspaceError('WORKSPACE_UNREADABLE')
+    schema, digest = section['overlay_schema'], section['section_sha256']
+    if type(schema) is not int or schema != 1 or type(section['journal']) is not list:
+        raise WorkspaceError('WORKSPACE_UNREADABLE')
+    if type(section['overlay_state']) is not dict:
+        raise WorkspaceError('WORKSPACE_UNREADABLE')
+    if type(digest) is not str or len(digest) != 64 or any(char not in '0123456789abcdef' for char in digest):
+        raise WorkspaceError('WORKSPACE_UNREADABLE')
+    if not hmac.compare_digest(section_checksum(section), digest):
+        raise WorkspaceError('WORKSPACE_UNREADABLE')
+
+
 def verify_document(document):
-    """Checksum and envelope shape only. Service restore owns journal semantics."""
-    if type(document) is not dict or set(document) != ENVELOPE_KEYS or document['format'] != FORMAT:
+    """Checksum and envelope shape only. Service restore owns journal and overlay semantics."""
+    if envelope_kind(document) is None:
         raise WorkspaceError('WORKSPACE_UNREADABLE')
     payload, digest = document['payload'], document['payload_sha256']
     writer, saved_at = document['saved_by_instance'], document['saved_at']
@@ -73,6 +127,8 @@ def verify_document(document):
     actual = _checksum(payload)
     if not hmac.compare_digest(actual, digest):
         raise WorkspaceError('WORKSPACE_UNREADABLE')
+    if envelope_kind(document) == ENVELOPE_VERSION:
+        _verify_section(document['overlay'])
     return document
 
 
@@ -85,7 +141,7 @@ class StoragePort:
     def load(self):
         raise NotImplementedError
 
-    def save(self, document):
+    def save(self, document, overlay=None):
         raise NotImplementedError
 
     def close(self):
@@ -111,8 +167,8 @@ class InMemoryStorage(StoragePort):
             return None
         return verify_document(copy.deepcopy(self._document))
 
-    def save(self, document):
-        self._document = envelope(self.writer_instance, document)
+    def save(self, document, overlay=None):
+        self._document = envelope(self.writer_instance, document, overlay)
 
 
 class UnavailableWorkspace(StoragePort):
@@ -127,7 +183,7 @@ class UnavailableWorkspace(StoragePort):
     def load(self):
         raise WorkspaceError(self.code)
 
-    def save(self, document):
+    def save(self, document, overlay=None):
         raise WorkspaceError(self.code)
 
 
@@ -193,8 +249,8 @@ class FileWorkspace(StoragePort):
             raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
         return verify_document(document)
 
-    def save(self, document):
-        body = canonical_bytes(envelope(self.writer_instance, document))
+    def save(self, document, overlay=None):
+        body = canonical_bytes(envelope(self.writer_instance, document, overlay))
         self._atomic_write(body)
 
     def close(self):

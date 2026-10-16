@@ -258,6 +258,22 @@
     {
       "code": "TOOL_NOT_ALLOWED",
       "status": 403
+    },
+    {
+      "code": "SIM_CLOCK_STALE",
+      "status": 409
+    },
+{
+      "code": "SIM_CLOCK_NOT_ADVANCING",
+      "status": 400
+    },
+{
+      "code": "SIM_CLOCK_STEP",
+      "status": 400
+    },
+{
+      "code": "OVERLAY_VOLATILE_KEY",
+      "status": 400
     }
   ],
   "commands": {
@@ -1135,6 +1151,75 @@
       "permission": "session:bind",
       "request": {
         "$ref": "#/definitions/session_request"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/overlay",
+      "operationId": "local_overlay",
+      "dispatch": "/api/overlay",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/overlay_state"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "operationId": "local_overlay_command",
+      "dispatch": "/api/overlay/commands",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/overlay_command_receipt"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "JSON_REQUIRED",
+        "INVALID_LENGTH",
+        "BODY_TOO_LARGE",
+        "INVALID_JSON",
+        "INVALID_COMMAND",
+        "SESSION_CHANGED",
+        "UNSUPPORTED_OPERATION",
+        "INVALID_OPERATION_ID",
+        "INVALID_ARGUMENTS",
+        "IDEMPOTENCY_CONFLICT",
+        "NOT_BOUND",
+        "SIM_CLOCK_STALE",
+        "SIM_CLOCK_NOT_ADVANCING",
+        "SIM_CLOCK_STEP",
+        "OVERLAY_VOLATILE_KEY",
+        "SIMULATION_CAPACITY",
+        "READ_ONLY_INVARIANT",
+        "WORKSPACE_UNREADABLE",
+        "WORKSPACE_LOCKED",
+        "WORKSPACE_WRITE_FAILED"
+      ],
+      "permission": "overlay:command",
+      "request": {
+        "$ref": "#/definitions/overlay_command_request"
       }
     },
     {
@@ -3987,6 +4072,7 @@
             "metrics:read",
             "health:read",
             "session:bind",
+            "overlay:command",
             "agent:query_grant",
             "agent:propose_action",
             "agent:query_subject",
@@ -4055,6 +4141,9 @@
               "$ref": "#/definitions/permission_decision"
             },
             "session:bind": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "overlay:command": {
               "$ref": "#/definitions/permission_decision"
             },
             "agent:query_grant": {
@@ -9475,6 +9564,543 @@
         "uptime_seconds": {"type": "integer"},
         "workspace_status": {"type": "string"},
         "mode": {"const": "LOCAL_OBSERVABILITY"}
+      }
+    },
+    "overlay_command_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "from_sim_day",
+        "to_sim_day",
+        "reason"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "advance_day"
+        },
+        "from_sim_day": {
+          "type": "integer"
+        },
+        "to_sim_day": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_binding": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terms_version",
+            "status",
+            "sim_day"
+          ],
+          "properties": {
+            "terms_version": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "BOUND",
+                "PARTIAL"
+              ]
+            },
+            "sim_day": {
+              "type": "integer"
+            }
+          }
+        }
+      ]
+    },
+    "overlay_capacity_bucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current",
+        "max"
+      ],
+      "properties": {
+        "current": {
+          "type": "integer"
+        },
+        "max": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_capacity": {
+      "anyOf": [
+        {
+          "const": "NOT_BOUND"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "entries",
+            "entry_max_bytes",
+            "sim_day_max",
+            "max_step_days",
+            "decision_records",
+            "agent_proposals",
+            "envelope_max_bytes"
+          ],
+          "properties": {
+            "label": {
+              "const": "DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY"
+            },
+            "entries": {
+              "$ref": "#/definitions/overlay_capacity_bucket"
+            },
+            "entry_max_bytes": {
+              "type": "integer"
+            },
+            "sim_day_max": {
+              "type": "integer"
+            },
+            "max_step_days": {
+              "type": "integer"
+            },
+            "decision_records": {
+              "$ref": "#/definitions/overlay_capacity_bucket"
+            },
+            "agent_proposals": {
+              "$ref": "#/definitions/overlay_capacity_bucket"
+            },
+            "envelope_max_bytes": {
+              "type": "integer"
+            }
+          }
+        }
+      ]
+    },
+    "overlay_fsm_repay": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount",
+            "sequence",
+            "proposal_only"
+          ],
+          "properties": {
+            "amount": {
+              "type": "integer"
+            },
+            "sequence": {
+              "type": "integer"
+            },
+            "proposal_only": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "overlay_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "phase",
+        "draw_day",
+        "tier",
+        "principal_outstanding_krw",
+        "interest_due_krw",
+        "default_interest_due_krw",
+        "accrued_through_sim_day",
+        "allocation",
+        "fsm_repay",
+        "close_ready"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "draw_day": {
+          "type": "integer"
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "principal_outstanding_krw": {
+          "type": "integer"
+        },
+        "interest_due_krw": {
+          "type": "integer"
+        },
+        "default_interest_due_krw": {
+          "type": "integer"
+        },
+        "accrued_through_sim_day": {
+          "type": "integer"
+        },
+        "carried_remainder_contract": {
+          "type": "string"
+        },
+        "carried_remainder_default": {
+          "type": "string"
+        },
+        "cumulative_exact_contract": {
+          "type": "string"
+        },
+        "cumulative_exact_default": {
+          "type": "string"
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "writeoff_day": {
+          "type": "integer"
+        },
+        "contract_bps": {
+          "type": "integer"
+        },
+        "default_bps": {
+          "type": "integer"
+        },
+        "allocation": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/allocation_split_section"
+            }
+          ]
+        },
+        "fsm_repay": {
+          "$ref": "#/definitions/overlay_fsm_repay"
+        },
+        "close_ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "overlay_posting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "posted_contract_krw",
+        "posted_default_krw"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "posted_contract_krw": {
+          "type": "integer"
+        },
+        "posted_default_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_recorded_operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "from_sim_day",
+        "to_sim_day",
+        "reason",
+        "sim_day",
+        "terms_bound_by_this_command",
+        "postings"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "advance_day"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "from_sim_day": {
+          "type": "integer"
+        },
+        "to_sim_day": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_bound_by_this_command": {
+          "type": "boolean"
+        },
+        "postings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_posting"
+          }
+        }
+      }
+    },
+    "overlay_unknown_operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "operation_id",
+        "retry_authorized"
+      ],
+      "properties": {
+        "outcome": {
+          "const": "UNKNOWN"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "retry_authorized": {
+          "const": false
+        }
+      }
+    },
+    "overlay_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "clock_source",
+        "sim_day",
+        "terms_version",
+        "status",
+        "reason",
+        "terms_binding",
+        "overlay_state_digest",
+        "entry_count",
+        "interest_payments",
+        "export",
+        "workspace_status",
+        "f04_journal_written",
+        "capacity",
+        "advances",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "provisional": {
+          "const": true
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "terms_binding": {
+          "$ref": "#/definitions/overlay_binding"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        },
+        "entry_count": {
+          "type": "integer"
+        },
+        "interest_payments": {
+          "const": "NOT_RECORDED"
+        },
+        "export": {
+          "const": "NOT_INCLUDED"
+        },
+        "workspace_status": {
+          "type": "string"
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "capacity": {
+          "$ref": "#/definitions/overlay_capacity"
+        },
+        "advances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_row"
+          }
+        },
+        "terms_binding_matches": {
+          "type": "boolean"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/overlay_recorded_operation"
+            },
+            {
+              "$ref": "#/definitions/overlay_unknown_operation"
+            }
+          ]
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_command_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "from_sim_day",
+        "to_sim_day",
+        "reason",
+        "sim_day",
+        "terms_bound_by_this_command",
+        "postings",
+        "label",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "f04_journal_written",
+        "economic_finality_claimed",
+        "transport_duplicate"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "advance_day"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "from_sim_day": {
+          "type": "integer"
+        },
+        "to_sim_day": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_bound_by_this_command": {
+          "type": "boolean"
+        },
+        "postings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_posting"
+          }
+        },
+        "label": {
+          "const": "SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        }
       }
     }
   }
