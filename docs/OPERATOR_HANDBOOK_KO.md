@@ -71,9 +71,9 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시 | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
-| auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
-| observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
+| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진 명령(`POST /api/overlay/commands`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
+| observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
 
 거절 코드는 `403 ROLE_FORBIDDEN`이다. 거절된 명령은 operation 수와 저널을 바꾸지 않는다. 실제 IdP·AgentGrant/ActionPermit은 `NOT_BOUND`다. `agent` 레인은 그 계약을 대신하지 않는 `SIMULATED` 픽스처다. 제안 등록부는 프로세스 메모리이고 workspace payload에 넣지 않는다.
@@ -404,5 +404,47 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 검사는 순서대로 `workspace_file`, `strict_json`(절단·BOM/NUL·NaN·중복 키), `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay`(스크래치 기계로 재생), `state_digest`, `service_restore`(서버가 쓰는 `verify_document`/`_validated_restore` 경로 그대로), `receipt_journal_fingerprints`(저널 항목마다 지문 재계산; REJECTED와 reconcile receipt는 args가 저장되지 않아 모양과 유일성만 본다), `recon`(`GET /api/reconciliation`과 같은 여섯 검사를 그대로 싣는다)다. 첫 어긋남이 이유를 정한다: `WORKSPACE_UNREADABLE`이거나, 봉투는 온전한데 대사 검사가 어긋나면 `RECON_MISMATCH`다. 종료 코드는 `ok`면 0, 첫 불일치면 1, 인자 오용이면 2다. 파일을 고치거나 교체하지 않고 가져오기·재개 경로도 없다.
 
 고정 변조 코퍼스는 `tests/vectors/workspace/` 아래 여섯 파일이다: `clean.json`, 중간에서 잘린 `truncated.json`, payload 한 바이트를 뒤집은 `payload-byte.json`, `payload_sha256`의 16진 한 글자를 뒤집은 `digest.json`, 최상위 `format` 키를 하나 더 넣은 `duplicate-key.json`, `state_digest`만 바꾸고 `payload_sha256`은 다시 계산한 `stale-digest.json`. `python3 scripts/workspace_vectors.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다. 이것은 로컬 진단이지 stage5 내구 거래 증거가 아니고 CAP-11은 `NOT_BOUND`다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:shadow-refund-resale -->
+
+### shadow-refund-resale
+
+`GET /api/policy/shadow`는 환불 부담자(RC1–RC4. RC5는 재판매로 간다)와 재판매 되감기(RU1–RU3)를 `CAPITAL-SHADOW-V1` 노트로 산수만 해 보여 주는 읽기 경로다. 권한은 `projection:read`이고 observer는 `403 ROLE_FORBIDDEN`을 받는다. 모드는 `SHADOW_NOT_APPLIED`이고 라벨은 "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"다. 항목마다 고정 FSM의 `UNSUPPORTED_BY_PINNED_FSM` 판정과 그림자 판정이 나란히 나온다.
+
+그림자 판정은 `SHADOW_COMPUTED`, `SHADOW_DEFERRED`, `SHADOW_NOT_BOUND`, `SHADOW_INPUT_UNKNOWN`, `SHADOW_INCONSISTENT` 중 하나다. 수익 참여, 청구권 매입, 잔여·지연 현금은 계산하지 않고 `SHADOW_DEFERRED`로 남는다. `applied_to_fsm`, `funds_executed`, `policy_adopted`를 포함한 상수 false 플래그가 붙는다. 고정 FSM은 호출하지 않고 `state_digest`도 바뀌지 않는다. 노트가 없거나 깨졌거나 `.pyz`로 실행하면 `SHADOW_NOT_BOUND`다. 이것은 `SIMULATED` 산수이지 집행된 분배가 아니다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:caps-binding-fixtures -->
+
+### caps-binding-fixtures
+
+데모 장부 `CAPITAL-DEMO-BOOK-V1`(라벨 `SYNTHETIC_FIXTURE_PROFILE`)은 합성 청구 열 건과 수혜자 다섯을 fixture-v1 세 뷰에 더한다. 고정 `SettlementMachine` 호출로만 재생한다. `demo-epsilon-refund`가 열린 환불 면을 묶기 때문에 `GET /api/underwrite`가 실제 `DECLINE` 기록을 낼 수 있다. 청구 면가는 결정 노트 `docs/decisions/CAPITAL_DEMO_BOOK.md`에 있고 이 문서는 숫자를 옮겨 적지 않는다.
+
+U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `single_advance_cap_krw`, `beneficiary_aggregate_cap_krw`, `portfolio_cap_krw`이고 값은 실행 때 `CAPITAL-TERMS-V1`에서 읽는다. V1 투영과 `state_digest`는 그대로이고 `content_digest`만 움직였다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:sim-clock-ledger -->
+
+### sim-clock-ledger
+
+`sim_day`를 쓰는 길은 `POST /api/overlay/commands`의 `op: advance_day` 하나다. 권한은 `overlay:command`이고 organizer만 쓴다. auditor, observer, agent는 `403 ROLE_FORBIDDEN`이다. `from_sim_day`를 `to_sim_day`로 바꾸는 compare-and-set이다. `from_sim_day`가 접힌 `sim_day`와 다르면 `409 SIM_CLOCK_STALE`이니 `GET /api/overlay`를 다시 읽고 그 `sim_day`로 보낸다. 되감기나 제자리는 `400 SIM_CLOCK_NOT_ADVANCING`, 결정 노트의 `max_step_days`를 넘기면 `400 SIM_CLOCK_STEP`, 용량 한도를 넘기면 `409 SIMULATION_CAPACITY`다. 시계 원천은 `SIM_LOGICAL_CLOCK`이고 벽시계를 쓰지 않는다.
+
+응답을 잃었으면 `GET /api/overlay?operation_id=…`로 조회한다. 기록된 receipt를 돌려주거나 `{outcome: UNKNOWN, retry_authorized: false}`를 돌려준다. `UNKNOWN`은 재시도 허락이 아니다. 같은 본문을 다시 보내면 저장된 receipt가 `transport_duplicate: true`로 돌아오고, 같은 id에 다른 본문은 `409 IDEMPOTENCY_CONFLICT`다.
+
+오버레이가 읽히지 않으면 `WORKSPACE_UNREADABLE`이다. 항목을 고쳐 다시 서명했거나, digest가 낡았거나, 매달린 항목이 있거나, `overlay_schema`가 1이 아니거나, 섹션 키가 더 있거나, v2 봉투에 `overlay`가 없거나, `envelope_version`이 틀린 경우다. 봉투 전체를 거절하고 수리도 부분 오버레이도 없으며 파일을 빈 것으로 바꾸지 않는다. `POST /api/overlay/commands`와 `POST /api/commands`는 503이다. `GET /api/overlay`는 읽히고 `workspace_status`를 보고한다. 이때 메모리의 오버레이는 비어 있어 `sim_day` 0과 `entry_count` 0이 진짜 빈 오버레이라는 뜻이 아니므로 `workspace_status`를 먼저 본다. `python3 -m capital.verify --workspace DIR`도 `WORKSPACE_UNREADABLE`을 보고한다. F04 저널, `state_digest`, receipt는 바뀌지 않는다. 이자는 `SIMULATED` 메모이고 `funds_executed`는 false다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:margin-cure-default -->
+
+### margin-cure-default
+
+`advance_day`마다 `additional_margin` 규칙을 평가하고 같은 원자 저장 안에 `margin_call`, `margin_cure`, `margin_acceleration`, `default_eligible_proposal` 항목을 쓴다. `GET /api/overlay`에는 최상위와 행마다 `margin` 블록이 붙는다.
+
+workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 이자와 상각은 다시 기준을 잡지 않으며(`interest_rebased` false, `NOT_REBASED / DECISION_REQUIRED`) 재산정은 재무 조건 소유자가 정한다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
 
 <!-- /handbook-section -->
