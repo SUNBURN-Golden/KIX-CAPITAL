@@ -11,6 +11,7 @@ import hashlib
 import json
 
 from capital.projection import ProjectionError
+from capital import overlay as overlay_ledger
 from capital.protocol import CreditError, CreditMachine
 
 
@@ -91,7 +92,7 @@ def _credit(stored):
 
 def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, settlement_source,
                          projection_port, probe_operation_id, instance_id, operation_capacity,
-                         workspace_status):
+                         workspace_status, overlay_entries=None, overlay_persisted=None):
     """Fold copies. `settlement_source.view` is read while replaying a scratch machine."""
     gaps = not_bound_gaps()
     if unreadable:
@@ -154,13 +155,38 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         _check('projection_totals_vs_case_views', projection_ok, 'projection_or_receipt_amount'),
         _check('fixtures_digest', fixtures_ok, 'fixture_face'),
     ]
+    overlay_digest = None
+    if overlay_entries:
+        # Conditional on a non-empty overlay (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
+        overlay_ok, overlay_digest, overlay_detail = overlay_fold_check(
+            overlay_entries, overlay_persisted, len(journal))
+        checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
     unknown = _unknowns(receipts, journal, probe_operation_id)
     status = 'MATCHED' if all(row['status'] == 'MATCHED' for row in checks) else 'RECON_MISMATCH'
-    return _envelope(
+    report = _envelope(
         instance_id=instance_id, status=status, replay_matched=replay_ok, entry_count=len(journal),
         cut=state_digest, fixtures_digest=fixtures_digest, operation_capacity=operation_capacity,
         checks=checks, unknown=unknown, workspace_status=workspace_status, gaps=gaps,
     )
+    if overlay_entries:
+        report['scope']['overlay_state_digest'] = overlay_digest
+    return report
+
+
+OVERLAY_CHECK_ID = 'overlay_fold_digest_equals_persisted'
+
+
+def overlay_fold_check(entries, persisted, journal_length):
+    """(matched, folded digest or None, detail): fold the entries, compare to the persisted digest."""
+    try:
+        state = overlay_ledger.fold(entries, journal_length)
+    except overlay_ledger.OverlayError:
+        return False, None, 'overlay_fold'
+    folded = overlay_ledger.state_digest(state)
+    cached = persisted.get('overlay_state') if type(persisted) is dict else None
+    if type(cached) is not dict or cached.get('digest') != folded:
+        return False, folded, 'overlay_digest_differs'
+    return True, folded, None
 
 
 def _envelope(*, instance_id, status, replay_matched, entry_count, cut, fixtures_digest,

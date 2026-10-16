@@ -380,13 +380,19 @@ class ClockTests(unittest.TestCase):
         golden = json.loads((GOLDEN_DIR / 'demo.json').read_text(encoding='utf-8'))
         self.assertEqual(seed.capture(service), golden)
         before = f04_view(service)
-        manifest_before = service.export_manifest()['content_digest']
+        manifest_before = service.export_manifest()
+        self.assertEqual(manifest_before['format'], 'KIX_CAPITAL_EXPORT_MANIFEST_V2')
+        self.assertNotIn('overlay', manifest_before['sections'])
         tick(service, 'c-1', 0, 60)
         tick(service, 'c-2', 60, 75)
         self.assertEqual(f04_view(service), before)
-        self.assertEqual(seed.capture(service), golden)
-        self.assertEqual(service.export_manifest()['content_digest'], manifest_before)
-        self.assertEqual(manifest_before, golden['content_digest'])
+        self.assertEqual(manifest_before['content_digest'], golden['content_digest'])
+        # A non-empty overlay moves the manifest to V3 (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2);
+        # the F04 state digest and the V2 golden itself are untouched.
+        manifest_after = service.export_manifest()
+        self.assertEqual(manifest_after['format'], 'KIX_CAPITAL_EXPORT_MANIFEST_V3')
+        self.assertIn('overlay', manifest_after['sections'])
+        self.assertNotEqual(manifest_after['content_digest'], golden['content_digest'])
         self.assertEqual(service.snapshot()['state_digest'], golden['state_digest'])
         self.assertNotIn('overlay', service.snapshot())
 
@@ -857,8 +863,12 @@ class GoldenTests(unittest.TestCase):
         run(service, 'repay', 'sim-unbound', 'demo-repay-1', amount=5000, sequence=1)
         tick(service, 'demo-advance-2', 60, 75)
         state = overlay.fold(service.overlay_entries, len(service.machine.export_journal()))
+        manifest = service.export_manifest()
         return {
             'label': 'SIMULATED', 'overlay_schema': 1,
+            'decision_note': 'docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4 (overlay-digest-export-decision), node audit60-fix2',
+            'export_manifest_v3_format': manifest['format'],
+            'export_manifest_v3_content_digest': manifest['content_digest'],
             'scenario': 'terms binding -> advance_day 0->60 -> repay sim-unbound 5000 -> advance_day 60->75',
             'sim_day': state['sim_day'], 'entry_count': state['entry_count'],
             'overlay_state_digest': overlay.state_digest(state),

@@ -5222,6 +5222,46 @@
         }
       }
     },
+    "reconciliation_scope": {
+      "description": "scope plus overlay_state_digest, present only when the overlay journal is non-empty (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cut",
+        "state_digest",
+        "fixtures_digest",
+        "operation_capacity",
+        "capacity_bound",
+        "source_cut",
+        "completeness"
+      ],
+      "properties": {
+        "cut": {
+          "type": "string"
+        },
+        "state_digest": {
+          "type": "string"
+        },
+        "fixtures_digest": {
+          "type": "string"
+        },
+        "operation_capacity": {
+          "type": "integer"
+        },
+        "capacity_bound": {
+          "type": "integer"
+        },
+        "source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "completeness": {
+          "const": "NOT_BOUND"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        }
+      }
+    },
     "recon_check": {
       "type": "object",
       "additionalProperties": false,
@@ -5351,7 +5391,7 @@
           "type": "integer"
         },
         "scope": {
-          "$ref": "#/definitions/scope"
+          "$ref": "#/definitions/reconciliation_scope"
         },
         "checks": {
           "type": "array",
@@ -7808,6 +7848,23 @@
               "$ref": "#/definitions/source_section"
             }
           }
+        },
+        "overlay": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "body"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "body": {
+              "$ref": "#/definitions/overlay_export_section",
+              "partTag": "overlaypart"
+            }
+          }
         }
       }
     },
@@ -7952,7 +8009,7 @@
       ],
       "properties": {
         "format": {
-          "const": "KIX_CAPITAL_EXPORT_MANIFEST_V2"
+          "enum": ["KIX_CAPITAL_EXPORT_MANIFEST_V2", "KIX_CAPITAL_EXPORT_MANIFEST_V3"]
         },
         "label": {
           "const": "SIMULATED"
@@ -9598,6 +9655,56 @@
         }
       }
     },
+    "overlay_export_section": {
+      "description": "V3 overlay section body: a pure function of the overlay journal (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2). The journal entries and folded state are loose objects here; their shape is enforced by the overlay fold.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "overlay_schema",
+        "sim_day",
+        "clock_source",
+        "terms_binding",
+        "entry_count",
+        "journal",
+        "state",
+        "overlay_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "overlay_schema": {
+          "const": 1
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "terms_binding": {
+          "$ref": "#/definitions/overlay_binding"
+        },
+        "entry_count": {
+          "type": "integer"
+        },
+        "journal": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "state": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        }
+      }
+    },
     "overlay_binding": {
       "anyOf": [
         {
@@ -10142,7 +10249,7 @@
           "const": "NOT_RECORDED"
         },
         "export": {
-          "const": "NOT_INCLUDED"
+          "enum": ["INCLUDED_IN_MANIFEST_V3", "ABSENT_WHEN_EMPTY"]
         },
         "workspace_status": {
           "type": "string"

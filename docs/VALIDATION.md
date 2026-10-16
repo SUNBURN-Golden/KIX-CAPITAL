@@ -628,3 +628,17 @@ Commands actually run:
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, golden unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed** (1.6m); no server left running.
 - `git diff --name-only -- capital/vendor .aiops .github docs/decisions tests/golden`: no output.
+
+## audit60-fix2
+
+Implements `docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md` 3.2 and 3.4. A non-empty overlay journal makes `GET /api/export/manifest` emit `KIX_CAPITAL_EXPORT_MANIFEST_V3` with an `overlay` section (`overlaypart`); an empty overlay stays byte-identical V2 (`content_digest` equals `tests/golden/demo.json`). `GET /api/reconciliation` gains `overlay_fold_digest_equals_persisted` and `scope.overlay_state_digest` only for a non-empty overlay. `capital.verify` accepts V2 and V3 and rejects V3-without-overlay and V2-with-overlay as `SECTION_SET`. `GET /api/overlay` `export` is `INCLUDED_IN_MANIFEST_V3` or `ABSENT_WHEN_EMPTY`. `tests/golden/overlay_demo.json` pins the V3 `content_digest` (written by hand from a verified run, identical across two processes). Facade schema, `app.js` `manifestValid` and `finance_vectors.json` were updated for the new shapes. Out of scope: stage7 signing, `demo.json`, `audit.py` (still six checks).
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_overlay_export -v`: exit 0, **14 passed**.
+- `python3 -m unittest discover -s tests -v`: exit 0, **574 passed**. The first runs failed in the facade schema and in `test_overlay_commands_leave_f04_and_the_demo_golden_untouched`, which asserted the old no-V3 behaviour; the test was rewritten, not removed.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, passed.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0. `manifest_vectors`, `workspace_vectors`, `docs_surface`, `not_bound_checklist`, `auth_matrix` with `--check`, and `decision_ledger.py`: exit 0.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `demo.json` unchanged.
+- `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed**; no server left running.

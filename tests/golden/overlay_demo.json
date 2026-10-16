@@ -1,5 +1,8 @@
 {
+  "decision_note": "docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4 (overlay-digest-export-decision), node audit60-fix2",
   "entry_count": 7,
+  "export_manifest_v3_content_digest": "bd992375bf4c856bd042905ec467e68b21c415a9f25e06527ac0cf36d05639ff",
+  "export_manifest_v3_format": "KIX_CAPITAL_EXPORT_MANIFEST_V3",
   "interest_krw": {
     "sim-defaulted": {
       "contract": 345,
