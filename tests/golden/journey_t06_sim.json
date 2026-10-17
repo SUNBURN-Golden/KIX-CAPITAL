@@ -1,5 +1,5 @@
 {
-  "digest": "77e7db16b2fa9e127d25b0c937f121a11d80388e8706794e0d28135a2c8f2ef2",
+  "digest": "614f735a7411b2b0bb8374c4ab67a8ab5f900941236610b9f0be9679014f0efb",
   "funds_executed": false,
   "integrated": false,
   "journey": "T06-sim",
@@ -457,7 +457,7 @@
         ]
       ],
       "facts": {
-        "checks": 6
+        "checks": 7
       },
       "kind": "HTTP",
       "n": 29,

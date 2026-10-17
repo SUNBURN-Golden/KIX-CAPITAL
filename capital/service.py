@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import margin, overlay
+from capital import coa, margin, overlay
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -109,7 +109,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None, shadow=None, overlay_bounds=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, coa_projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None, shadow=None, overlay_bounds=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -120,6 +120,7 @@ class CapitalService:
         # object; the command path below does not call CreditMachine directly.
         self.producer = producer if producer is not None else PinnedFsmProducer()
         self.projection_port = projection if projection is not None else SimulationProjection()
+        self.coa_projection = coa_projection if coa_projection is not None else coa.CoaCandidateProjection()
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
@@ -839,6 +840,8 @@ class CapitalService:
     def projection(self, mode=None):
         """Fold copies of the accepted journal and fixture views. Nothing is cached or written."""
         with self.lock:
+            if mode == coa.MODE:
+                return self._projection_coa()
             if mode not in (None, 'simulation'):
                 raise ApiError('NOT_BOUND', 400)
             before_canon = self.machine.canonical_state()
@@ -862,6 +865,29 @@ class CapitalService:
                     'policy_adopted': False, 'workspace_mutated': False, 'operating_ledger': 'NOT_BOUND',
                     'entries': projected['entries'], 'accounts': projected['accounts'],
                     'read_model': projected['read_model'], 'conservation': projected['conservation']}
+
+    def _projection_coa(self):
+        """Additive CAPITAL-COA-V1 candidate. Folds copies; V1 output and state are untouched."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                journal = self.machine.export_journal()
+                evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.projection_ids)]
+                cut = self.machine.state_digest()
+                try:
+                    projected = self.coa_projection.project(
+                        journal, evidence, overlay_entries=copy.deepcopy(self.overlay_entries))
+                except ProjectionError as exc:
+                    raise ApiError(exc.code, 500) from exc
+                return {'instance_id': self.instance_id, 'mode': 'LOCAL_PROJECTION_COA_CANDIDATE',
+                        'chart': coa.CHART_VERSION, 'coa_version': coa.COA_VERSION,
+                        'accounting_policy': 'SYNTHETIC_UNADOPTED', 'tax': 'NOT_BOUND', 'legal': 'NOT_BOUND',
+                        'cut': cut, 'source_commit': self.source['commit'], 'funds_executed': False,
+                        'policy_adopted': False, 'workspace_mutated': False, 'operating_ledger': 'NOT_BOUND',
+                        **projected}
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('PROJECTION_INVARIANT', 500)
 
     def preview_draw(self, advance_id, instance_id):
         with self.lock:
@@ -1351,7 +1377,7 @@ class CapitalService:
                     'terms_binding': state['terms_binding'],
                     'overlay_state_digest': overlay.state_digest(state),
                     'entry_count': state['entry_count'],
-                    'interest_payments': 'NOT_RECORDED', 'export': 'NOT_INCLUDED',
+                    'interest_payments': 'NOT_RECORDED', 'export': 'INCLUDED_IN_MANIFEST_V3' if self.overlay_entries else 'ABSENT_WHEN_EMPTY',
                     'f04_journal_written': False, 'workspace_status': self.workspace_status,
                     'capacity': 'NOT_BOUND' if self.overlay_bounds is None else self._overlay_capacity(self.overlay_entries),
                     'advances': [],
@@ -1407,26 +1433,33 @@ class CapitalService:
         return self._frozen() == frozen
 
     def _subject_payload(self):
-        """Checksum-valid workspace payload when one exists; otherwise the live book."""
+        """Checksum-valid workspace payload and overlay section when they exist; otherwise the live book."""
         try:
             document = self.storage.load()
         except WorkspaceError as exc:
-            return None, exc.code
+            return None, exc.code, None
         if document is None:
             return {
                 'receipts': copy.deepcopy(self.receipts),
                 'journal': self.machine.export_journal(),
                 'case_fixtures': copy.deepcopy(dict(self.case_fixtures)),
                 'state_digest': self.machine.state_digest(),
-            }, None
-        return copy.deepcopy(document['payload']), None
+            }, None, overlay.build_section(copy.deepcopy(self.overlay_entries))
+        persisted = overlay_section(document)
+        return copy.deepcopy(document['payload']), None, copy.deepcopy(persisted)
 
-    def reconciliation(self, probe_operation_id=None):
-        """Read-only exception report. No receipt is written and nothing is retried."""
+    def reconciliation(self, probe_operation_id=None, mode=None):
+        """Read-only exception report. No receipt is written and nothing is retried.
+
+        mode=coa-candidate appends the two COA candidate checks; the default report and the
+        manifest are unchanged.
+        """
         with self.lock:
+            if mode not in (None, 'simulation', coa.MODE):
+                raise ApiError('NOT_BOUND', 400)
             frozen = self._frozen()
             try:
-                payload, unreadable = self._subject_payload()
+                payload, unreadable, persisted = self._subject_payload()
                 rows = copy.deepcopy(self.fixtures.rows)
                 return build_reconciliation(
                     payload=payload, unreadable=unreadable, fixture_rows=rows,
@@ -1434,6 +1467,9 @@ class CapitalService:
                     projection_port=self.projection_port, probe_operation_id=probe_operation_id,
                     instance_id=self.instance_id, operation_capacity=MAX_OPERATIONS,
                     workspace_status=self.workspace_status,
+                    coa_port=self.coa_projection if mode == coa.MODE else None,
+                    overlay_entries=copy.deepcopy(self.overlay_entries) or None,
+                    overlay_persisted=persisted,
                 )
             finally:
                 if not self._same_frozen(frozen):
@@ -1474,7 +1510,7 @@ class CapitalService:
                     'durable': durable, 'funds_executed': False, 'note': note}
 
     def export_manifest(self):
-        """Read-only v2 manifest of hashed sections. No import, resume, or key material."""
+        """Read-only v2 (empty overlay) or v3 (non-empty overlay) manifest of hashed sections. No import, resume, or key material."""
         with self.lock:
             frozen = self._frozen()
             try:
@@ -1503,6 +1539,8 @@ class CapitalService:
                         'assets': declared_assets(),
                     },
                 }
+                if self.overlay_entries:
+                    sections['overlay'] = overlay.export_section(self.overlay_entries, len(journal))
                 status, reasons = manifest_status(reconciliation['status'], self.workspace_status)
                 return build_manifest(
                     sections=sections, instance_id=self.instance_id, signer=self.signer,
