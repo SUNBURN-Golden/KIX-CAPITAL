@@ -14,8 +14,10 @@ ScenarioReplaySource below, which replays F01-F03 scenario steps on its own book
 All arithmetic is integer. Every integer literal is 0, 1 or 2; the rate, the cure window and
 the grace come from the decision note through `terms.margin_terms`.
 
-Accrual is not re-based: interest and write-off keep the standard maturity until the
-financial-terms owner decides (NOT_REBASED / DECISION_REQUIRED, see `interest_rebased`).
+Accrual is not re-based yet: interest and write-off keep the standard maturity. The rebase
+is decided PROVISIONAL (docs/decisions/CAPITAL_DEFAULT_RECOVERY.md,
+`acceleration_interest_rebase`) but not implemented; node `overlay-recovery-writeoff` owns it.
+`interest_rebased` stays False until then.
 """
 from __future__ import annotations
 
