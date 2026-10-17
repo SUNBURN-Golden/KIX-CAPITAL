@@ -407,6 +407,18 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:event-log-summary -->
+
+### event-log-summary
+
+`python3 -m capital.events FILE --summary`는 `--event-log FILE`이 남긴 JSONL 파일 하나를 서버 없이 읽는 오프라인 요약 도구다. 출력은 한 줄 JSON이고 `mode`는 `OFFLINE_EVENT_LOG_SUMMARY`, `label`은 `SIMULATED`, `diagnostic`은 `LOCAL_ONLY`다. 줄마다 정확히 다섯 필드(`time`, `route`, `status`, `code`, `operation_id`) 모양을 검사한다. `time`은 작성자가 쓰는 `YYYY-MM-DDTHH:MM:SS.ffffffZ` 여섯 자리 마이크로초 고정 형식이어야 하고 달·날짜도 실제여야 한다(13월, 2월 30일 거절). `route`는 비지 않은 ASCII 문자열이면 족하고 등록된 경로 집합 검사는 하지 않는다. 다른 빌드가 남긴 로그도 요약되어야 하기 때문이다. `status`는 0..599 정수(불린·문자열 거절)이고, `code`는 `null`이거나 대문자 토큰 모양, `operation_id`는 `null`이거나 영숫자·하이픈 1..80자다.
+
+보고서는 `by_route`, `by_status`, `by_status_class`(2xx/4xx/5xx, 분류 안 되는 상태는 `other`), `by_code`, `without_code`, `events`, `first_time`, `last_time`을 낸다. HTTP 200 거절 receipt의 `code`는 null이므로 도메인 거절 코드는 `by_code`에 없고 `GET /api/metrics`의 `counters.rejections`에만 있다. `event_log.dropped`와 `event_log.errors`는 프로세스 카운터라 파일에서 관측되지 않는다. 보고서는 그 두 칸을 null로 찍고 `dropped_errors`를 `NOT_OBSERVABLE_OFFLINE`로 표시하며 metrics를 가리킨다. 0을 지어내어 실제 숫자처럼 보고하지 않는다.
+
+어긋난 줄(잘못된 JSON, 중복 키, 여분·누락·이름이 다른 필드, 배열이나 문자열 줄, 빈 줄, 비ASCII 바이트, BOM, NUL, 모양이 틀린 값)을 만나면 그 줄의 1부터 세는 번호와 이유를 stderr에 찍고 1로 끝난다. 읽을 수 없는 경로는 `EVENT_LOG_UNREADABLE`로 1, 인자 오용은 2다. 빈 파일은 0건으로 요약하고 0으로 끝난다. 파일을 한 개만 바이트로 읽고, 아무것도 쓰지 않으며, 잠금도 열지 않는다. 이벤트 로그 형식·크기 한도·서버 동작은 바꾸지 않았다. 이 도구는 exporter도 tracing도 감사·금융 증거도 아니다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:shadow-refund-resale -->
 
 ### shadow-refund-resale
