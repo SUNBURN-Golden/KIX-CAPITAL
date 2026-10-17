@@ -68,7 +68,8 @@ GET_PROBES = {
         f'/api/terms/{ADVANCE}/allocation?instance_id={INSTANCE}&as_of_day=1&cash=1',
         f'/api/terms/{ADVANCE}/setoff?instance_id={INSTANCE}&as_of_day=1',
     ],
-    '/api/policy': ['/api/policy', '/api/policy/simulation'],
+    '/api/overlay': ['/api/overlay'],
+    '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/operations/': [f'/api/operations/{OFFER_OPERATION}?instance_id={INSTANCE}'],
@@ -86,6 +87,11 @@ POST_BODIES = {
         'advance_id': ADVANCE, 'args': {},
     },
     '/api/session': {'role': 'auditor'},
+    # Organizer-only. One advance of the simulated clock leaves the F04 digest alone.
+    '/api/overlay/commands': {
+        'instance_id': INSTANCE, 'operation_id': 'sim-mtx-advance', 'op': 'advance_day',
+        'from_sim_day': 0, 'to_sim_day': 1, 'reason': 'auth matrix probe',
+    },
     '/api/agent/query_grant': {
         'grant_id': ACTIVE_GRANT_ID, 'generation': ACTIVE_GENERATION, 'now': 1,
     },

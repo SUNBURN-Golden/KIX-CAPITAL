@@ -15,6 +15,7 @@ from capital.store import FileWorkspace, InMemoryStorage
 
 ROOT = Path(__file__).resolve().parents[1]
 SEAMS = ROOT / 'docs' / 'SEAMS.md'
+INTEGRATION = ROOT / 'docs' / 'INTEGRATION.md'
 RECEIPT = re.compile(r'(?:[0-9a-f]{7,64}|https://github\.com/\S+)')
 EMPTY_RECEIPT = {'', 'NONE', 'NOT_BOUND', 'DECISION_REQUIRED', '—', '-', 'N/A'}
 
@@ -76,11 +77,20 @@ def _receipt(value):
 
 
 class SeamRegistryTests(unittest.TestCase):
+    def test_integration_names_every_port_and_service_kwarg(self):
+        text = INTEGRATION.read_text(encoding='utf-8')
+        for name in protocol_names():
+            self.assertIn(f'`{name}`', text)
+        for name in inspect.signature(CapitalService.__init__).parameters:
+            if name != 'self':
+                self.assertIn(f'`{name}`', text)
+        self.assertIn('`DecisionNoteShadow`', text)
+
     def test_every_protocol_has_a_non_adopted_row(self):
         names = protocol_names()
         self.assertEqual(names, [
             'AuthorizerPort', 'ProducerPort', 'ProjectionPort', 'SetoffQuotePort', 'SettlementPolicyPort',
-            'SignaturePort', 'StoragePort', 'TermsPolicyPort', 'UnderwritingPort',
+            'ShadowPolicyPort', 'SignaturePort', 'StoragePort', 'TermsPolicyPort', 'UnderwritingPort',
         ])
         rows = assert_registry(SEAMS.read_text(encoding='utf-8'), names)
         for row in rows:
@@ -145,6 +155,7 @@ class SeamRegistryTests(unittest.TestCase):
         self.assertIsInstance(service.policy, ports.SettlementPolicyPort)
         self.assertIsInstance(service.underwriting, ports.UnderwritingPort)
         self.assertIsInstance(service.setoff, ports.SetoffQuotePort)
+        self.assertIsInstance(service.shadow, ports.ShadowPolicyPort)
 
     def test_readiness_quotes_the_local_contract_and_stays_not_bound(self):
         ready = CapitalService().readiness()

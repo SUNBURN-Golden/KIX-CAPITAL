@@ -94,7 +94,7 @@
 
 ### 3.7 additional_margin (CAP-04)
 
-- **값.** 선지급률 T1 8,500 bps(85 %), T2 5,000 bps(50 %). 차입기초 `eligible_face` = 수익자에게 귀속되는 정산 의무 줄(`payee ∈ beneficiary_payee_map[beneficiary_role]`)의 `outstanding` 합 − 열린 환불 액면. fixture 매핑 `{"fixture-organizer": ["organizer"]}`. 초기 현금 마진 0 bps(haircut이 마진). 재평가는 모든 오버레이 명령과 매 `sim_day` 틱에 현재 `settlement_source.view`로 한다(FSM 액면 스냅샷은 계약대로 동결). 마진콜 = `outstanding_exposure > floor(current_eligible_face × advance_rate_bps / 10000)`. 치유 5일, 치유 수단 순서: 부분 상환 → 추가 채권 담보(미래 `cr-02`) → 현금 마진 예치(미래, 분리 보관). 미치유 시 가속: 만기 := 치유 마감일, 이후 유예 뒤 부도 적격.
+- **값.** 선지급률 T1 8,500 bps(85 %), T2 5,000 bps(50 %). 차입기초 `eligible_face` = 수익자에게 귀속되는 정산 의무 줄(`payee ∈ beneficiary_payee_map[beneficiary_role]`)의 `outstanding` 합 − 열린 환불 액면. fixture 매핑은 기존 `{"fixture-organizer": ["organizer"]}`에 `CAPITAL-DEMO-BOOK-V1`([CAPITAL_DEMO_BOOK.md](CAPITAL_DEMO_BOOK.md) `beneficiary_payee_map` ADOPTED)의 합성 수익자를 더한다: `demo-org-{alpha,beta,gamma,delta,epsilon}`은 `organizer`에, `demo-venue-east`·`demo-agency-south`는 그림자 줄 전용 `venue`·`agency` 라벨에 매핑한다(pinned 청구에 그 줄이 없으면 `eligible_face` 기여는 0). 초기 현금 마진 0 bps(haircut이 마진). 재평가는 모든 오버레이 명령과 매 `sim_day` 틱에 현재 `settlement_source.view`로 한다(FSM 액면 스냅샷은 계약대로 동결). 마진콜 = `outstanding_exposure > floor(current_eligible_face × advance_rate_bps / 10000)`. 치유 5일, 치유 수단 순서: 부분 상환 → 추가 채권 담보(미래 `cr-02`) → 현금 마진 예치(미래, 분리 보관). 미치유 시 가속: 만기 := 치유 마감일, 이후 유예 뒤 부도 적격.
 - **근거.** F04 계약 §2는 "스냅샷 이후 정산 변화에 맞춘 한도 재산정"을 비워 뒀다. 이를 FSM 밖 재평가로 채워 FSM 동결 규칙을 건드리지 않는다. `FINANCE_COMPLETION_DESIGN_KO.md` §6의 "확인 현금·회수채권을 한도에 더하지 않는다"를 그대로 지킨다.
 - **대안.** 100 % 선지급(FSM 천장 그대로): 환불·차지백 역전에 무방비라 기각. 고정 70 %: 등급 차이를 못 살려 기각.
 - **정직한 한계.** Capital 6487a99의 fixture 정산 조회는 불변이므로 지금은 마진콜이 실제로 발화하지 않는다. 검사는 항상 평가되며 seam(`settlement_source.view`)은 이미 있다.
@@ -340,7 +340,17 @@
       "value": {
         "advance_rate_bps_by_tier": {"T1_COMMIT_OBSERVED": 8500, "T2_UNBOUND": 5000},
         "eligible_face": "sum of outstanding on settlement obligation lines whose payee maps to the beneficiary, minus open refund face",
-        "beneficiary_payee_map": {"fixture-organizer": ["organizer"]},
+        "beneficiary_payee_map": {
+          "fixture-organizer": ["organizer"],
+          "demo-org-alpha": ["organizer"],
+          "demo-org-beta": ["organizer"],
+          "demo-org-gamma": ["organizer"],
+          "demo-org-delta": ["organizer"],
+          "demo-org-epsilon": ["organizer"],
+          "demo-venue-east": ["venue"],
+          "demo-agency-south": ["agency"]
+        },
+        "beneficiary_payee_map_extends": "CAPITAL-DEMO-BOOK-V1 beneficiary_payee_map (docs/decisions/CAPITAL_DEMO_BOOK.md, ADOPTED); venue and agency stay shadow-only payee labels with zero pinned-line contribution",
         "excluded_from_base": ["confirmed_cash", "recovery_due", "platform fee lines", "lines of other payees"],
         "initial_cash_margin_bps": 0,
         "reevaluation": "ON_EVERY_OVERLAY_COMMAND_AND_SIM_DAY_TICK using current settlement_source.view; FSM face snapshot stays frozen",

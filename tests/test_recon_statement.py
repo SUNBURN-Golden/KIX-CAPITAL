@@ -176,7 +176,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(settlement['distributed'], sum(row['claim']['distributed_cash'] for row in fixtures.values()))
         self.assertEqual(refund['refund_face'], sum(row['claim']['refund_face'] for row in fixtures.values()))
         self.assertEqual(refund['refund_outstanding'], sum(row['claim']['refund_outstanding'] for row in fixtures.values()))
-        self.assertEqual(refund['refund_face'], 10_000)
+        self.assertEqual(refund['refund_face'], 60_010_000)
         self.assert_scope(report, self.service)
         self.assertFalse(report['funds_executed'])
         self.assertFalse(report['durable'])

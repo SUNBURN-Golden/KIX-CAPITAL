@@ -108,9 +108,13 @@ class DecisionRowsTests(unittest.TestCase):
 
     def test_the_four_decided_notes(self):
         rows = {row['decision_id']: row for row in self.service.decisions()['rows']}
-        self.assertEqual(set(rows), {
+        # 준태님 10-15 14:44: finalize parked product decisions (shadow/demo/artifact/overlay) — index grows.
+        self.assertTrue({
             'financial-terms-decision', 'settlement-policy-decision',
-            'upstream-binding-decision', 'accounts-tax-legal-decision'})
+            'upstream-binding-decision', 'accounts-tax-legal-decision'}.issubset(set(rows)))
+        self.assertTrue({
+            'shadow-policy-decision', 'demo-book-profile-decision',
+            'artifact-docs-bundling-decision', 'overlay-state-decision'}.issubset(set(rows)))
         for row in rows.values():
             self.assertEqual(row['status'], 'PROVISIONAL_PRODUCT_DECISION')
             self.assertIs(row['provisional'], True)
@@ -307,7 +311,7 @@ class DecisionsHttpTests(unittest.TestCase):
         code, organizer = self.request('GET', '/api/decisions')
         self.assertEqual(code, 200)
         self.assertEqual(organizer['status'], 'BOUND')
-        self.assertEqual(len(organizer['rows']), 4)
+        self.assertGreaterEqual(len(organizer['rows']), 8)
         for role in ('auditor', 'observer'):
             token = self.server.authorizer.bind_role(role)
             code, body = self.request('GET', '/api/decisions', token)

@@ -10,7 +10,9 @@ import copy
 import hashlib
 import json
 
+from capital import coa
 from capital.projection import ProjectionError
+from capital import overlay as overlay_ledger
 from capital.protocol import CreditError, CreditMachine
 
 
@@ -24,6 +26,13 @@ CHECK_IDS = (
     'case_fixture_map_vs_journal_offers',
     'projection_totals_vs_case_views',
     'fixtures_digest',
+)
+
+# Appended only when the caller asks for the COA candidate; CHECK_IDS stays the six checks the
+# default report, the manifest and the UI guard pin.
+COA_CHECK_IDS = (
+    'coa_candidate_totals_vs_v1',
+    'interest_ledger_vs_projection',
 )
 
 NOT_BOUND_GAPS = (
@@ -91,7 +100,7 @@ def _credit(stored):
 
 def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, settlement_source,
                          projection_port, probe_operation_id, instance_id, operation_capacity,
-                         workspace_status):
+                         workspace_status, coa_port=None, overlay_entries=None, overlay_persisted=None):
     """Fold copies. `settlement_source.view` is read while replaying a scratch machine."""
     gaps = not_bound_gaps()
     if unreadable:
@@ -107,7 +116,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         report = _envelope(
             instance_id=instance_id, status='RECON_MISMATCH', replay_matched=False, entry_count=0, cut=None,
             fixtures_digest=fixtures_digest, operation_capacity=operation_capacity,
-            checks=[_check(check_id, False, 'payload_shape') for check_id in CHECK_IDS],
+            checks=[_check(check_id, False, 'payload_shape') for check_id in _ids(coa_port)],
             unknown=[], workspace_status=workspace_status, gaps=gaps,
         )
         if type(probe_operation_id) is str:
@@ -127,7 +136,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
             instance_id=instance_id, status='RECON_MISMATCH', replay_matched=False, entry_count=0,
             cut=state_digest if type(state_digest) is str else None, fixtures_digest=fixtures_digest,
             operation_capacity=operation_capacity,
-            checks=[_check(check_id, False, 'payload_shape') for check_id in CHECK_IDS],
+            checks=[_check(check_id, False, 'payload_shape') for check_id in _ids(coa_port)],
             unknown=[], workspace_status=workspace_status,
         )
         if type(probe_operation_id) is str and (type(receipts) is not dict or probe_operation_id not in receipts):
@@ -154,13 +163,69 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         _check('projection_totals_vs_case_views', projection_ok, 'projection_or_receipt_amount'),
         _check('fixtures_digest', fixtures_ok, 'fixture_face'),
     ]
+    overlay_digest = None
+    if overlay_entries:
+        # Conditional on a non-empty overlay (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
+        overlay_ok, overlay_digest, overlay_detail = overlay_fold_check(
+            overlay_entries, overlay_persisted, len(journal))
+        checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
+    if coa_port is not None:
+        checks.extend(_coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
+                                  overlay_entries or []))
     unknown = _unknowns(receipts, journal, probe_operation_id)
     status = 'MATCHED' if all(row['status'] == 'MATCHED' for row in checks) else 'RECON_MISMATCH'
-    return _envelope(
+    report = _envelope(
         instance_id=instance_id, status=status, replay_matched=replay_ok, entry_count=len(journal),
         cut=state_digest, fixtures_digest=fixtures_digest, operation_capacity=operation_capacity,
         checks=checks, unknown=unknown, workspace_status=workspace_status, gaps=gaps,
     )
+    if overlay_entries:
+        report['scope']['overlay_state_digest'] = overlay_digest
+    if coa_port is not None:
+        report['coa_candidate'] = _coa_labels()
+    return report
+
+
+def _ids(coa_port):
+    return CHECK_IDS + COA_CHECK_IDS if coa_port is not None else CHECK_IDS
+
+
+def _coa_labels():
+    return {'chart': coa.CHART_VERSION, 'coa_version': coa.COA_VERSION, 'accounting_policy': 'SYNTHETIC_UNADOPTED',
+            'tax': 'NOT_BOUND', 'policy_adopted': False}
+
+
+def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error, overlay_entries):
+    """The two COA candidate checks. A failed projection is a mismatch, never a repair."""
+    if restore_error is not None:
+        return [_check(check_id, False, 'replay') for check_id in COA_CHECK_IDS]
+    evidence = [copy.deepcopy(fixture_rows[key]) for key in sorted(fixture_rows)]
+    try:
+        candidate = coa_port.project(copy.deepcopy(journal), evidence, overlay_entries=copy.deepcopy(overlay_entries))
+        base = projection_port.project(copy.deepcopy(journal), evidence)
+    except ProjectionError as exc:
+        return [_check(check_id, False, exc.code) for check_id in COA_CHECK_IDS]
+    return [
+        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base), 'coa_vs_v1_totals'),
+        _check('interest_ledger_vs_projection', coa.interest_matches_ledger(candidate, overlay_entries),
+               'interest_vs_overlay_fold'),
+    ]
+
+
+OVERLAY_CHECK_ID = 'overlay_fold_digest_equals_persisted'
+
+
+def overlay_fold_check(entries, persisted, journal_length):
+    """(matched, folded digest or None, detail): fold the entries, compare to the persisted digest."""
+    try:
+        state = overlay_ledger.fold(entries, journal_length)
+    except overlay_ledger.OverlayError:
+        return False, None, 'overlay_fold'
+    folded = overlay_ledger.state_digest(state)
+    cached = persisted.get('overlay_state') if type(persisted) is dict else None
+    if type(cached) is not dict or cached.get('digest') != folded:
+        return False, folded, 'overlay_digest_differs'
+    return True, folded, None
 
 
 def _envelope(*, instance_id, status, replay_matched, entry_count, cut, fixtures_digest,

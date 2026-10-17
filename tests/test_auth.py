@@ -6,7 +6,7 @@ from email.message import Message
 
 from capital.auth import (
     AGENT_PERMISSIONS, ALL_PERMISSIONS, COMMAND_SUBMIT, DEFAULT_ROLE, MATRIX, OP_PERMISSIONS,
-    PROVENANCE, ROLES, ROUTE_PERMISSIONS, SESSION_BIND, AuthorizerPort, Decision,
+    OVERLAY_COMMAND, PROVENANCE, ROLES, ROUTE_PERMISSIONS, SESSION_BIND, AuthorizerPort, Decision,
     LocalRoleAuthorizer, Principal, require, route_permission,
 )
 from capital.server import GET_DISPATCH, POST_DISPATCH, make_server
@@ -34,8 +34,10 @@ class MatrixTests(unittest.TestCase):
             '/api/projection': 'projection:read',
             '/api/terms': 'projection:read',
             '/api/terms/sim-a': 'projection:read',
+            '/api/overlay': 'projection:read',
             '/api/policy': 'projection:read',
             '/api/policy/simulation': 'projection:read',
+            '/api/policy/shadow': 'projection:read',
             '/api/preview/sim-a': 'projection:read',
             '/api/underwrite/sim-a': 'projection:read',
             '/api/operations/op-1': 'receipt:read',
@@ -59,7 +61,7 @@ class MatrixTests(unittest.TestCase):
         )
         self.assertEqual(
             [path for path, _permission in POST_DISPATCH],
-            ['/api/commands', '/api/session', '/api/agent/query_grant',
+            ['/api/commands', '/api/session', '/api/overlay/commands', '/api/agent/query_grant',
              '/api/agent/query_subject', '/api/agent/propose_action',
              '/api/agent/withdraw_proposal', '/api/agent/propose_grant_change',
              '/api/agent/execute'],
@@ -79,12 +81,14 @@ class MatrixTests(unittest.TestCase):
                 permission not in agent_only, permission)
         for permission in ALL_PERMISSIONS:
             decision = authorizer.authorize(auditor, permission)
-            financial_write = permission == COMMAND_SUBMIT or permission.startswith('command:')
+            # overlay:command is a simulated clock write, organizer only like the financial writes.
+            financial_write = (permission == COMMAND_SUBMIT or permission.startswith('command:')
+                               or permission == OVERLAY_COMMAND)
             self.assertEqual(
                 decision.allowed, not financial_write and permission not in agent_only, permission)
         for permission in (
             'export:read', 'reconciliation:read', 'statement:read', 'projection:read',
-            'metrics:read', COMMAND_SUBMIT, 'command:draw', *AGENT_PERMISSIONS,
+            'metrics:read', COMMAND_SUBMIT, 'command:draw', OVERLAY_COMMAND, *AGENT_PERMISSIONS,
         ):
             self.assertFalse(authorizer.authorize(observer, permission).allowed, permission)
         for permission in ('state:read', 'reference:read', 'receipt:read', 'health:read', SESSION_BIND):
@@ -457,20 +461,20 @@ class HttpAuthTests(unittest.TestCase):
         operation = f"/api/operations/auth-offer?instance_id={instance}"
         for role in (None, 'organizer', 'auditor'):
             headers = {'X-Capital-Token': self.token_for(role)} if role else {}
-            for path in ('/api/state', '/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', preview, underwrite, operation):
+            for path in ('/api/state', '/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, operation):
                 status, raw = self.request('GET', path, headers=headers)
                 self.assertEqual(status, 200, (role, path, raw[:200]))
         observer = {'X-Capital-Token': self.token_for('observer')}
         for path in ('/api/state', operation):
             status, raw = self.request('GET', path, headers=observer)
             self.assertEqual(status, 200, (path, raw[:200]))
-        for path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', preview, underwrite, '/api/export', '/api/reconciliation', '/api/statement'):
+        for path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, '/api/export', '/api/reconciliation', '/api/statement'):
             status, raw = self.request('GET', path, headers=observer)
             payload = json.loads(raw)
             self.assertEqual(status, 403, (path, payload))
             self.assertEqual(payload['error'], 'ROLE_FORBIDDEN')
             self.assertEqual(payload['role'], 'observer')
-            if path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', preview, underwrite):
+            if path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite):
                 self.assertEqual(payload['permission'], 'projection:read')
             if path == '/api/statement':
                 self.assertEqual(payload['permission'], 'statement:read')
