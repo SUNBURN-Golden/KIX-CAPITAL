@@ -205,7 +205,7 @@ FACADE_READS = [
     ('/api/readiness', ['readiness']),
     ('/api/decisions', ['decisions']),
     ('/api/evidence', ['evidence']),
-    ('/api/projection', ['projection']),
+    ('/api/projection', ['projection', 'projection_coa_candidate']),
     ('/api/terms', ['terms_status']),
     ('/api/terms/portfolio', ['terms_portfolio']),
     ('/api/terms/{advance_id}', ['terms_case']),

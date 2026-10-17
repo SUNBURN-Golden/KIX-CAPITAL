@@ -12,6 +12,7 @@ Every integer here is 0, 1 or 2; limits and rates come from the decision notes.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib.resources
 import re
@@ -368,6 +369,20 @@ def build_section(entries, state=None):
                'overlay_state': {'digest': state_digest(state), 'state': state}}
     section['section_sha256'] = section_checksum(section)
     return section
+
+
+def export_section(entries, journal_length=None):
+    """Body of the V3 manifest `overlay` section (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
+
+    A pure function of the overlay journal; the other seven sections never see it.
+    """
+    state = fold(entries, journal_length)
+    return {
+        'label': LABEL, 'overlay_schema': SCHEMA, 'sim_day': state['sim_day'],
+        'clock_source': CLOCK_SOURCE, 'terms_binding': copy.deepcopy(state['terms_binding']),
+        'entry_count': state['entry_count'], 'journal': copy.deepcopy(entries),
+        'state': copy.deepcopy(state), 'overlay_state_digest': state_digest(state),
+    }
 
 
 def empty_section():
