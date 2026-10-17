@@ -461,6 +461,42 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:audit70-fix1 -->
+
+### audit70-fix1
+
+`default-recovery-decision`(`docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`)과 `repayment-posting-decision`(`docs/decisions/CAPITAL_REPAYMENT_POSTING.md`)은 잠정 제품 결정(PROVISIONAL PRODUCT DECISION) 노트다. 시뮬레이션 전용이고 production은 `NOT_AUTHORIZED`이며 법무·회계 항목은 작업 가정이다.
+
+두 노트가 정한 것은 아직 구현되지 않았다. 운영자 화면에서는 계속 `interest_rebased` false, `interest_payments` `NOT_RECORDED`이고 `post_repayment` 명령도, 회수·상각 명령도 없다. 구현은 `overlay-recovery-writeoff`, `coa-payment-writeoff-postings`, `overlay-repayment-posting` 노드가 맡는다.
+
+이 절은 바로 위 `margin-cure-default` 절의 재기준 문장을 대체한다. 재기준은 잠정 결정됐지만 구현 전이다. 이율·일수·한도 같은 수치는 여기에 옮기지 않으며 `CAPITAL-TERMS-V1`에 둔다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:coa-candidate-projection -->
+
+### coa-candidate-projection
+
+`GET /api/projection?mode=coa-candidate`는 `projection:read`, `GET /api/reconciliation?mode=coa-candidate`는 `reconciliation:read` 권한이 필요하다. 두 경로 모두 organizer와 auditor만 읽고 observer와 agent는 `403 ROLE_FORBIDDEN`을 받는다. 읽기 전용이라 영수증, 저널, `state_digest`, `operation_count`는 바뀌지 않는다. `mode`를 생략하거나 `mode=simulation`이면 기존대로 `SIMULATION_FIXED_V1`(`LOCAL_PROJECTION_CANDIDATE`)이 나온다. 후보 모드는 `mode=LOCAL_PROJECTION_COA_CANDIDATE`, `chart=SIMULATION_FIXED_V2`, `coa_version=CAPITAL-COA-V1`을 돌려준다. 그 밖의 `mode`(`operating`, `ledger` 등)나 `mode` 키 중복은 `400 NOT_BOUND`다.
+
+후보 계정표는 `accounting_policy=SYNTHETIC_UNADOPTED`다. `tax`, `legal`, `operating_ledger`는 `NOT_BOUND`이고 `policy_adopted`, `funds_executed`, `workspace_mutated`는 false다. `fin-ledger-contract`나 수익 인식 정책을 채택한 것이 아니며 공식 원장도 아니다. 모든 계정 코드에는 `chart_status`(`NOT_RECORDED`, `DERIVED_MEMO` 등)가 붙고 조용히 빠지는 계정은 없다. 이자 납부는 `NOT_RECORDED`라서 1110 계정은 감소하지 않는다.
+
+`9790 MEMO_SUSPENDED_INTEREST_CONTRA`는 계정 노트에 없는(`adopted_in_note=false`) 후보 전용 메모 계정이다. 수락된 `default` 이후의 이자 발생은 수익 계정 4100/4110이 아니라 `9700` 차변 메모와 `9790` 대변 상대 메모로 기록된다. 자체 금액 가치는 없으며 유지·개명·삭제는 회계 담당자가 정한다. 대사 모드는 `coa_candidate_totals_vs_v1`, `interest_ledger_vs_projection` 검사와 `coa_candidate` 라벨 블록을 추가한다. 오버레이가 비어 있지 않으면 `overlay_fold_digest_equals_persisted`도 나온다(`audit60-fix2` 절 참고). 기본 대사 보고서와 매니페스트의 `reconciliation` 절에는 이 두 COA 검사가 없다. 세무 신고는 범위 밖이다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:audit60-fix2 -->
+
+### audit60-fix2
+
+오버레이 저널이 비어 있으면 내보내기는 `KIX_CAPITAL_EXPORT_MANIFEST_V2`이며 `tests/golden/demo.json`과 바이트가 같다. 첫 `advance_day` 이후 오버레이가 비어 있지 않으면 `KIX_CAPITAL_EXPORT_MANIFEST_V3`가 되어 기존 일곱 절에 `overlay` 절(파트 태그 `overlaypart`)이 더해진다. `GET /api/overlay`의 `export`는 `INCLUDED_IN_MANIFEST_V3` 또는 `ABSENT_WHEN_EMPTY`로 표시된다. 매니페스트 읽기는 `export:read`(organizer, auditor)가 필요하다. 서명 방식은 그대로이며 단일 `content_digest`를 서명한다. 인증된 내보내기가 아니다.
+
+`python3 -m capital.verify FILE`은 V2와 V3를 모두 받는다. V3에 `overlay`가 없거나 V2에 `overlay`가 있으면 `SECTION_SET`을, 그 밖의 절 구성 차이는 `MANIFEST_SHAPE`를 돌려준다. `overlay` 절의 바이트가 바뀌면 `SECTION_HASH_MISMATCH:overlay`다. 대사 검사 `overlay_fold_digest_equals_persisted`와 `scope.overlay_state_digest`는 오버레이가 비어 있지 않을 때만 나타나며, 불일치하면 매니페스트가 `INCOMPLETE`(`RECONCILIATION_NOT_CLEAN`)가 된다. 빈 오버레이는 기존 여섯 검사를 유지한다.
+
+`tests/golden/overlay_demo.json`은 `SIMULATED` 라벨, `overlay_schema` 1이며 `export_manifest_v3_content_digest`, `overlay_state_digest`, `entry_count`, `sim_day`, `interest_krw`, `scenario`를 고정한다. 시나리오는 고정된 F04 `repay` 명령을 쓴다. `tests/test_overlay.py`의 `GoldenTests`가 비교만 하며 재생성하지 않는다. `CAPITAL_REPAYMENT_POSTING.md`에 따라 재생성은 repayment-posting 노드만 한 번 할 수 있다. 운영자가 다이제스트 불일치를 보면 골든을 고칠 일이 아니라 드리프트로 취급한다. `demo.json`과 `overlay_empty.json`은 바이트가 그대로다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:t05-t06-sim-journeys -->
 
 ### t05-t06-sim-journeys
