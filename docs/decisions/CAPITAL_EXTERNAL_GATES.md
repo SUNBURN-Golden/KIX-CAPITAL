@@ -139,18 +139,39 @@
   },
   "entries": {
     "real_funds_pilot": {
-      "status": "NOT_AUTHORIZED",
+      "status": "NOT_ADOPTED",
       "value": null,
       "target": {
         "shape": "B2B only; organizer legal entity borrower; advance recovered by set-off against settlement distribution; operator-desk only with two-person rule; AI propose-only; no investors, no claim purchase, no token collateral",
         "caps": "owner-supplied and never above the simulated CAPITAL-TERMS-V1 ceilings; no number is set by this note",
-        "entry_criteria": ["G1 to G5 closed with real receipts", "bank and PG observation bound (CAP-14)", "provider merchant scope for resale and financial funds confirmed", "UNKNOWN never auto-retried; silence is not proof of non-use", "stop authority named", "f04-real-funds-lift-criteria user-merged and explicit JunTae approval"]
+        "entry_criteria": [
+          "G1 to G5 closed with real receipts",
+          "bank and PG observation bound (CAP-14)",
+          "provider merchant scope for resale and financial funds confirmed",
+          "UNKNOWN never auto-retried; silence is not proof of non-use",
+          "stop authority named",
+          "f04-real-funds-lift-criteria user-merged and explicit JunTae approval"
+        ]
       },
-      "blocked": ["any funds movement", "funds_executed true", "license_granted true", "regulated_product true"],
-      "pending_owner_action": ["open and decide f04-real-funds-lift-criteria", "designate funding source and bank account", "approve pilot caps and stop authority"],
+      "blocked": [
+        "any funds movement",
+        "funds_executed true",
+        "license_granted true",
+        "regulated_product true"
+      ],
+      "pending_owner_action": [
+        "open and decide f04-real-funds-lift-criteria",
+        "designate funding source and bank account",
+        "approve pilot caps and stop authority"
+      ],
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-10-17",
-      "cap_rows": ["CAP-11", "CAP-14", "CAP-19", "CAP-20"],
+      "cap_rows": [
+        "CAP-11",
+        "CAP-14",
+        "CAP-19",
+        "CAP-20"
+      ],
       "rationale": "Model 1 separates reservation, payment confirmation and chain issuance and the chain does not guarantee bank funds, so Capital cannot run real funds before external bank and PG observations are bound; upstream keeps real funds locked and the provider merchant scope for resale and financial funds is unconfirmed. The pilot shape and entry criteria are decided now; amounts, funding and go-live are owner actions.",
       "provisional": true,
       "basis": "PENDING_OWNER_ACTION",
@@ -158,17 +179,27 @@
     },
     "licensed_lender_entity": {
       "status": "UNDETERMINED",
-      "value": null,
       "target": {
         "route": "CAPITAL-LICENCE-ROUTE-V1: dedicated KIX Capital lending entity registered as money lender (primary); licensed partner lender with KIX Capital as platform and servicer (alternative)",
         "g2_selection_rule": "choose primary when KIX Capital must control pricing, two-person rule and recovery waterfall; choose alternative only if registration timeline or capital requirement blocks, accepting intermediary registration and partner or PG restrictions",
         "code_boundary": "Capital code is never the lender of record; no entity name is written into the repository until the entity exists"
       },
-      "blocked": ["license_granted true", "regulated_product true", "claim purchase (CAP-03 stays NOT_OFFERED)"],
-      "pending_owner_action": ["designate legal counsel", "commission G1 applicability opinion", "confirm G2 route", "form and register the entity or sign the partner agreement"],
-      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-17",
-      "cap_rows": ["CAP-03", "CAP-13", "CAP-15"],
+      "blocked": [
+        "license_granted true",
+        "regulated_product true",
+        "claim purchase (CAP-03 stays NOT_OFFERED)"
+      ],
+      "pending_owner_action": [
+        "designate legal counsel",
+        "commission G1 applicability opinion",
+        "confirm G2 route",
+        "form and register the entity or sign the partner agreement"
+      ],
+      "cap_rows": [
+        "CAP-03",
+        "CAP-13",
+        "CAP-15"
+      ],
       "rationale": "The route was decided in the accounts-tax-legal note and is reaffirmed with a selection rule, but entity formation, registration, capital and counsel are paid human acts and the legal applicability judgment is pending professional review.",
       "provisional": true,
       "basis": "PENDING_OWNER_ACTION",
@@ -176,24 +207,38 @@
     },
     "idp_kyc_vendor": {
       "status": "UNDETERMINED",
-      "value": null,
       "target": {
         "order": "after G2 because the KYC and AML duty-bearer is the lender entity",
-        "criteria": ["contract holder is the lender entity, not Capital code", "Capital receives attested facts only (kyc_status, verified_at, provider_ref), never raw personal data", "human principals via OIDC-style bearer verified for issuer, audience, expiry and kix_role, shared with Commerce and the gate", "deletion requests handled at the vendor", "client secrets and signing keys never in repository, notes, fixtures or logs", "agent lane stays propose-only regardless of IdP"],
+        "criteria": [
+          "contract holder is the lender entity, not Capital code",
+          "Capital receives attested facts only (kyc_status, verified_at, provider_ref), never raw personal data",
+          "human principals via OIDC-style bearer verified for issuer, audience, expiry and kix_role, shared with Commerce and the gate",
+          "deletion requests handled at the vendor",
+          "client secrets and signing keys never in repository, notes, fixtures or logs",
+          "agent lane stays propose-only regardless of IdP"
+        ],
         "vendor_name": "not chosen"
       },
-      "blocked": ["identity BOUND", "authentication BOUND", "kyc_executed true"],
-      "pending_owner_action": ["select vendor after G2", "sign contract and accept billing", "create test tenant and issue API keys held in the owner secret store"],
-      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-17",
-      "cap_rows": ["CAP-19"],
+      "blocked": [
+        "identity BOUND",
+        "authentication BOUND",
+        "kyc_executed true"
+      ],
+      "pending_owner_action": [
+        "select vendor after G2",
+        "sign contract and accept billing",
+        "create test tenant and issue API keys held in the owner secret store"
+      ],
+      "cap_rows": [
+        "CAP-19"
+      ],
       "rationale": "Selecting a vendor before the lender entity inverts the decision order recorded in the upstream-binding note; criteria and order are decided here while vendor choice, contract, billing and credentials require the owner.",
       "provisional": true,
       "basis": "PENDING_OWNER_ACTION",
       "consumer": "AuthorizerPort (NOT_BOUND)"
     },
     "public_endpoint_tls": {
-      "status": "NOT_AUTHORIZED",
+      "status": "NOT_ADOPTED",
       "value": null,
       "target": {
         "v1": "loopback 127.0.0.1 only; Capital terminates no TLS and holds no certificates or keys",
@@ -201,11 +246,23 @@
         "first_pilot": "operator-desk only, no public endpoint; public organizer self-service is post-pilot",
         "artifact": "capital-<version>.pyz stays LOCAL_SIMULATION_ARTIFACT, signed false, published false; public publication stays NOT_AUTHORIZED until the upstream owner grants a distribution licence because the artifact bundles vendored upstream bytes and upstream README grants none; DEV HMAC is never presented as a signature"
       },
-      "blocked": ["public deployment", "TLS termination in Capital", "artifact publication", "release signing"],
-      "pending_owner_action": ["domain, DNS, certificates, hosting account and billing", "licence decision for vendored upstream bytes", "release signing key creation"],
+      "blocked": [
+        "public deployment",
+        "TLS termination in Capital",
+        "artifact publication",
+        "release signing"
+      ],
+      "pending_owner_action": [
+        "domain, DNS, certificates, hosting account and billing",
+        "licence decision for vendored upstream bytes",
+        "release signing key creation"
+      ],
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-10-17",
-      "cap_rows": ["CAP-15", "CAP-20"],
+      "cap_rows": [
+        "CAP-15",
+        "CAP-20"
+      ],
       "rationale": "Local roles are self-selected and a tokenless request is organizer, so exposing the server before real authentication would make every caller an organizer; TLS and keys are secrets and deployment is spend, both owner actions.",
       "provisional": true,
       "basis": "PENDING_OWNER_ACTION",
@@ -213,17 +270,32 @@
     },
     "accounting_tax_signoff": {
       "status": "UNDETERMINED",
-      "value": null,
       "target": {
-        "package_scope": ["CAPITAL-COA-V1 and V1-to-COA mapping", "CAPITAL-REVREC-V1 including the 9700 suspension after default", "CAPITAL-TAX-V1 including the VAT-exempt financial service assumption, withholding_rate_bps and BTD memos", "CAPITAL-LICENCE-ROUTE-V1 applicability", "retention numbers"],
+        "package_scope": [
+          "CAPITAL-COA-V1 and V1-to-COA mapping",
+          "CAPITAL-REVREC-V1 including the 9700 suspension after default",
+          "CAPITAL-TAX-V1 including the VAT-exempt financial service assumption, withholding_rate_bps and BTD memos",
+          "CAPITAL-LICENCE-ROUTE-V1 applicability",
+          "retention numbers"
+        ],
         "record_format": "reviewer name and qualification, date, git blob SHA of each reviewed note, scope and outcome (APPROVED, APPROVED_WITH_CHANGES, REJECTED), stored as a pointer in a later decision note and never as a code constant; any edit to a reviewed blob voids the sign-off",
         "agent_output": "never counts as a sign-off"
       },
-      "blocked": ["accounting_policy other than SYNTHETIC_UNADOPTED", "tax or legal or operating_ledger BOUND", "labeling any output as a tax filing or financial statement"],
-      "pending_owner_action": ["designate accountant and tax adviser", "engage them and accept fees", "supply withholding_rate_bps"],
-      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-17",
-      "cap_rows": ["CAP-13", "CAP-14", "CAP-15"],
+      "blocked": [
+        "accounting_policy other than SYNTHETIC_UNADOPTED",
+        "tax or legal or operating_ledger BOUND",
+        "labeling any output as a tax filing or financial statement"
+      ],
+      "pending_owner_action": [
+        "designate accountant and tax adviser",
+        "engage them and accept fees",
+        "supply withholding_rate_bps"
+      ],
+      "cap_rows": [
+        "CAP-13",
+        "CAP-14",
+        "CAP-15"
+      ],
       "rationale": "The accounting, revenue and tax values are working assumptions that only a designated professional can sign; the scope and record format are decided here so a later sign-off is a pointer, not a redesign.",
       "provisional": true,
       "basis": "PENDING_OWNER_ACTION",
@@ -231,18 +303,31 @@
     },
     "retention_period": {
       "status": "UNDETERMINED",
-      "value": null,
       "target": {
-        "slots": ["legal_dispute_hold", "business_reconciliation", "retry_support", "memory_residency", "tax_accounting_records"],
+        "slots": [
+          "legal_dispute_hold",
+          "business_reconciliation",
+          "retry_support",
+          "memory_residency",
+          "tax_accounting_records"
+        ],
         "owners": "legal and privacy owner and tax and accounting owner designated by JunTae; Toss contract and technical for business_reconciliation; Astra for retry_support and memory_residency",
         "real_data_precondition": "no data originating from real funds, personal or financial, is stored until all five slots hold owner-supplied values and the legal and dispute hold slot is answered",
         "interim": "simulation keeps RETAIN_ALL_NO_AUTOMATIC_DELETION; MAX_OPERATIONS 500 is a demo bound; provider-published values such as a 15 day idempotency key are not retention periods"
       },
-      "blocked": ["any retention duration, bound or timer", "automatic deletion"],
-      "pending_owner_action": ["designate legal and privacy owner", "designate tax and accounting owner", "obtain Toss and Astra replies"],
-      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-17",
-      "cap_rows": ["CAP-14", "CAP-15"],
+      "blocked": [
+        "any retention duration, bound or timer",
+        "automatic deletion"
+      ],
+      "pending_owner_action": [
+        "designate legal and privacy owner",
+        "designate tax and accounting owner",
+        "obtain Toss and Astra replies"
+      ],
+      "cap_rows": [
+        "CAP-14",
+        "CAP-15"
+      ],
       "rationale": "Upstream R1 left retention values stopped and requires legal replies; this note adds only the owner map and a precondition that keeps real data out until the numbers exist.",
       "provisional": true,
       "basis": "PENDING_OWNER_ACTION",
@@ -268,12 +353,25 @@
           "manifest.bootstrap-1.json": "shape reference only, BOOTSTRAP",
           "PR 125 and PR 126": "identifier and scope references only"
         },
-        "findings": ["PR 130 merge commit SHA is unrecorded", "receipts were judged against the commits each earlier note recorded and were not re-verified at kix-protocol 9d0860c", "the upstream-binding note calling the agent lane ADOPTED and INTEGRATION.md calling AuthorizerPort NOT_BOUND are consistent under R1 and neither wording is changed"]
+        "findings": [
+          "PR 130 merge commit SHA is unrecorded",
+          "receipts were judged against the commits each earlier note recorded and were not re-verified at kix-protocol 9d0860c",
+          "the upstream-binding note calling the agent lane ADOPTED and INTEGRATION.md calling AuthorizerPort NOT_BOUND are consistent under R1 and neither wording is changed"
+        ]
       },
-      "blocked": ["marking any seam ADOPTED without adapter node, byte pin and receipt", "marking any upstream node complete"],
+      "blocked": [
+        "marking any seam ADOPTED without adapter node, byte pin and receipt",
+        "marking any upstream node complete"
+      ],
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-10-17",
-      "cap_rows": ["CAP-07", "CAP-11", "CAP-15", "CAP-16", "CAP-19"],
+      "cap_rows": [
+        "CAP-07",
+        "CAP-11",
+        "CAP-15",
+        "CAP-16",
+        "CAP-19"
+      ],
       "rationale": "Earlier notes already list the receipts they found; reviewing them against a single rule set, and recording the unrecorded PR 130 merge commit and the unverified base drift as findings, needs no spend or secret and keeps every adoption claim tied to a real receipt.",
       "provisional": true,
       "basis": "PRODUCT_DECISION",
