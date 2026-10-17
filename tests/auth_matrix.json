@@ -35,7 +35,8 @@
       "statement:read",
       "metrics:read",
       "health:read",
-      "session:bind"
+      "session:bind",
+      "overlay:command"
     ],
     "auditor": [
       "state:read",
@@ -142,13 +143,24 @@
     },
     {
       "method": "GET",
+      "route": "/api/overlay",
+      "children": false,
+      "handler": "_get_overlay",
+      "permission": "projection:read",
+      "probes": [
+        "/api/overlay"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/policy",
       "children": true,
       "handler": "_get_policy",
       "permission": "projection:read",
       "probes": [
         "/api/policy",
-        "/api/policy/simulation"
+        "/api/policy/simulation",
+        "/api/policy/shadow"
       ]
     },
     {
@@ -259,6 +271,19 @@
       "permission": "session:bind",
       "body": {
         "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/overlay/commands",
+      "permission": "overlay:command",
+      "body": {
+        "instance_id": "@instance",
+        "operation_id": "sim-mtx-advance",
+        "op": "advance_day",
+        "from_sim_day": 0,
+        "to_sim_day": 1,
+        "reason": "auth matrix probe"
       }
     },
     {
@@ -696,6 +721,57 @@
     {
       "method": "GET",
       "route": "/api/terms",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {
@@ -1303,6 +1379,61 @@
     {
       "method": "POST",
       "route": "/api/session",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "LOCAL_TOKEN_REQUIRED"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/overlay/commands",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/overlay/commands",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "overlay:command",
+        "role": "auditor"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/overlay/commands",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "overlay:command",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/overlay/commands",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "overlay:command",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/overlay/commands",
       "caller": "no-token",
       "outcome": "DENY",
       "expect": {
@@ -2602,6 +2733,56 @@
       "name": "GET on a POST-only route",
       "method": "GET",
       "path": "/api/session",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/overlay/commands",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/overlay/commands",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/overlay/commands",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/overlay/commands",
       "token": "none",
       "expect": {
         "status": 404,

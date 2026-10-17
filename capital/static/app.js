@@ -62,7 +62,7 @@ function renderProjection(result){
  $('projection-advances').replaceChildren(...advances.map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,row.beneficiary_role,number(row.amount),number(row.drawn),number(row.repaid),number(row.outstanding)])tr.append(textElement('td',value));return tr;}));
  $('projection-checks').textContent=projection.conservation.map(row=>`${row.predicate} · ${row.matched?'일치':'불일치'}`).join('\n');
 }
-function paintEvidence(evidence){$('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));$('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';$('evidence-json').textContent=JSON.stringify(evidence,null,2);}
+function paintEvidence(evidence){$('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));$('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 + CAPITAL-DEMO-BOOK-V1 합성 북 10건(SYNTHETIC_FIXTURE_PROFILE) · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';$('evidence-json').textContent=JSON.stringify(evidence,null,2);}
 function reconValid(data,next){
  if(!data||data.mode!=='READ_ONLY_RECONCILIATION'||data.funds_executed!==false||data.durable!==false||data.bank_reconciliation!=='NOT_BOUND'||data.workspace_mutated!==false)return false;
  if(data.label!=='SIMULATED'||data.diagnostic!=='LOCAL_ONLY'||data.provider_authenticated_completeness!=='NOT_BOUND'||data.source_cut!=='NOT_BOUND')return false;
@@ -652,12 +652,14 @@ function retentionValid(policy){
  });
 }
 function manifestValid(data,next){
- if(!data||data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V2'||data.funds_executed!==false||data.label!=='SIMULATED'||data.diagnostic!=='READ_ONLY')return false;
+ if(!data||(data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V2'&&data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V3')||data.funds_executed!==false||data.label!=='SIMULATED'||data.diagnostic!=='READ_ONLY')return false;
  if(data.stage7_authenticated_export!==false||data.authentication!=='NOT_BOUND'||data.external_key!=='NOT_BOUND'||!retentionValid(data.retention_policy))return false;
  if(data.cursor!==null||data.watermark!==null||data.source_cut!==null||data.timestamps!==null||data.instance_id!==next.instance_id)return false;
  if((data.status!=='COMPLETE'&&data.status!=='INCOMPLETE')||!Array.isArray(data.incomplete_reasons))return false;
  if((data.status==='COMPLETE')!==(data.incomplete_reasons.length===0))return false;
  const names=['journal','receipts','projection','reconciliation','statement','fixtures','source_pin'];
+ if(!data.sections||(data.format==='KIX_CAPITAL_EXPORT_MANIFEST_V3')!==Object.prototype.hasOwnProperty.call(data.sections,'overlay'))return false;
+ if(data.format==='KIX_CAPITAL_EXPORT_MANIFEST_V3')names.push('overlay');
  if(!data.sections||names.some(name=>!data.sections[name]||typeof data.sections[name].sha256!=='string'||data.sections[name].sha256.length!==64||!data.sections[name].body))return false;
  if(typeof data.content_digest!=='string'||data.content_digest.length!==64)return false;
  const signature=data.signature;

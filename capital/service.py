@@ -10,15 +10,16 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
+from capital import coa, margin, overlay
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
-    DEFAULT_ROLE, OP_PERMISSIONS, PROVENANCE as ROLE_PROVENANCE,
+    DEFAULT_ROLE, OP_PERMISSIONS, OVERLAY_COMMAND, PROVENANCE as ROLE_PROVENANCE,
     ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
 from capital.observability import Observability
 from capital.decisions import DecisionIndex
-from capital.export import UnsignedSigner, build_manifest, manifest_status
+from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manifest_status
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
 from capital.protocol import VENDOR
@@ -28,15 +29,21 @@ from capital.policy import (
     apply_order, probe_order_freeze,
 )
 from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
+from capital.shadow import DecisionNoteShadow, SHADOW_LABEL, SHADOW_MODE, SHADOW_PROVENANCE
 from capital.statement import build_statement
 from capital.setoff import DecisionNoteSetoff
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
-from capital.store import InMemoryStorage, WorkspaceError, verify_document
+from capital.store import InMemoryStorage, WorkspaceError, overlay_section, verify_document
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
+OVERLAY_LABEL = 'SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry'
+CAPACITY_LABEL = 'DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY'
+_REASON_MAX = 120  # a reason is a short note; the entry byte bound still applies
+_OVERLAY_TERMS = ('interest_rate', 'term', 'default_loss_treatment')
+_OVERLAY_ID = re.compile(r'[a-zA-Z0-9-]{1,80}\Z')
 MAX_OPERATIONS = 500  # bounded local demo, not a financial limit
 OPS = {
     'offer': {'fixture_id', 'amount'}, 'approve': set(),
@@ -102,7 +109,7 @@ class ApiError(Exception):
 
 
 class CapitalService:
-    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None):
+    def __init__(self, storage=None, authorizer=None, signer=None, *, projection=None, coa_projection=None, producer=None, terms=None, policy=None, underwriting=None, setoff=None, observability=None, decisions=None, shadow=None, overlay_bounds=None):
         self.lock = threading.RLock()
         self.authorizer = authorizer or LocalRoleAuthorizer()
         self.signer = signer if signer is not None else UnsignedSigner()
@@ -113,16 +120,20 @@ class CapitalService:
         # object; the command path below does not call CreditMachine directly.
         self.producer = producer if producer is not None else PinnedFsmProducer()
         self.projection_port = projection if projection is not None else SimulationProjection()
+        self.coa_projection = coa_projection if coa_projection is not None else coa.CoaCandidateProjection()
         self.terms = terms if terms is not None else DecisionNoteTermsPolicy()
         self.policy = policy if policy is not None else DecisionNoteSettlementPolicy()
         self.underwriting = underwriting if underwriting is not None else DecisionNoteUnderwriting(self.terms)
         self.setoff = setoff if setoff is not None else DecisionNoteSetoff(self.terms, self.policy)
+        self.shadow = shadow if shadow is not None else DecisionNoteShadow()
         self.decision_index = decisions if decisions is not None else DecisionIndex()
         self.agent_lane = AgentLane(self.terms)
         self.observability = observability or Observability()
         self.receipts = {}
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
+        self.overlay_entries = []
+        self.overlay_bounds = overlay_bounds if overlay_bounds is not None else overlay.load_bounds()
         self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
         self._load_workspace()
@@ -155,8 +166,9 @@ class CapitalService:
             self.producer.reset()
             self.receipts = {}
             self.case_fixtures = {}
+            self.overlay_entries = []
             return
-        restored, self.receipts, self.case_fixtures = installed
+        restored, self.receipts, self.case_fixtures, self.overlay_entries = installed
         previous = self.producer
         self.producer = restored
         if previous is not restored:
@@ -195,11 +207,22 @@ class CapitalService:
                     raise WorkspaceError('WORKSPACE_UNREADABLE')
             labeled = self._label_restored_receipts(receipts)
             mapping_copy = copy.deepcopy(mapping)
+            entries = self._restore_overlay(document, len(journal))
         except Exception:
             if restored is not None and restored is not self.producer:
                 _release_producer(restored)
             raise
-        return restored, labeled, mapping_copy
+        return restored, labeled, mapping_copy, entries
+
+    def _restore_overlay(self, document, journal_length):
+        """FOLD_THEN_VERIFY. A legacy v1 record is an empty overlay; a broken section is fatal, never repaired."""
+        section = overlay_section(document)
+        if section is None:
+            return []
+        try:
+            return overlay.restore(section, journal_length)
+        except (ValueError, KeyError, TypeError, ArithmeticError) as exc:
+            raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
 
     def _label_restored_receipts(self, receipts):
         """Keep a stored role. A pre-label workspace file loads as UNLABELED and is not rewritten here."""
@@ -229,10 +252,15 @@ class CapitalService:
             if type(receipt.get('instance_id')) is not str:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
 
-    def _persist(self):
-        self.storage.save({
+    def _persist(self, entries=None):
+        entries = self.overlay_entries if entries is None else entries
+        payload = {
             'receipts': self.receipts, 'journal': self.machine.export_journal(),
-            'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()})
+            'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
+        if entries:
+            self.storage.save(payload, overlay=overlay.build_section(entries))
+        else:
+            self.storage.save(payload)
 
     def snapshot(self, role=None):
         with self.lock:
@@ -270,10 +298,12 @@ class CapitalService:
                              'refund_bearer_policy': claim['refund_bearer_policy'],
                              'recovery_due': claim['recovery_due'],
                              'obligations': claim['obligations'],
+                             'profile': self.fixtures.profile(key),
                              'source_view_digest': digest(view)})
             return {'mode': 'READ_ONLY_FIXTURE', 'provenance': 'MOCK_SETTLEMENT_ONLY',
                     'instance_id': self.instance_id, 'source_commit': self.source['commit'],
-                    'source_scope': 'Three immutable synthetic settlement views; fixture-v1',
+                    'source_scope': ('13 immutable synthetic settlement views; fixture-v1 plus the '
+                                     'CAPITAL-DEMO-BOOK-V1 SYNTHETIC_FIXTURE_PROFILE claims'),
                     'source_cut': None, 'live_completeness': 'NOT_BOUND',
                     'unavailable': ['provider_authorized_amount', 'issued_rights_amount',
                                     'primary_sales', 'resale_sales', 'actual_paid',
@@ -479,7 +509,7 @@ class CapitalService:
     def _underwrite_subject(self, advance_id, fixture_id, case, fixture_view, amount, candidate):
         """Caller holds the lock. Collects the read inputs the rule record needs."""
         claim = fixture_view['claim']
-        beneficiary = 'fixture-organizer' if candidate else case['beneficiary_role']
+        beneficiary = self.fixtures.beneficiary(fixture_id) if candidate else case['beneficiary_role']
         beneficiary_outstanding = 0
         portfolio_outstanding = 0
         sibling_reserved = 0
@@ -647,6 +677,132 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def _shadow_claim_vector(self, claim):
+        """Frozen input vector from a pinned view() snapshot. No amounts invented."""
+        return {
+            'gross': claim['gross'],
+            'policy': {'residual_payee': claim['policy']['residual_payee'],
+                       'fee_payee': claim['policy']['fee_payee']},
+            'obligations': [
+                {'payee': row['payee'], 'face': row['face'], 'distributed': row['distributed'],
+                 'cancelled_unpaid': row['cancelled_unpaid'], 'outstanding': row['outstanding'],
+                 'recovery_due': row['recovery_due']}
+                for row in claim['obligations']],
+        }
+
+    def _shadow_refund_verdict(self):
+        """Per-class shadow of the pinned partial-after view's open refund face."""
+        if self.shadow.outcome != 'BOUND':
+            return self.shadow.deferred('refund_bearer', None)
+        claim = self.scenario_results['partial-after']['final']
+        vector = self._shadow_claim_vector(claim)
+        per_class = []
+        for row in self.shadow.refund_classes():
+            variants = [False, True] if row['working_assumption'] else [False]
+            for adjudicated in variants:
+                refund_id = 'shadow-sim-' + row['id'] + ('-adjudicated' if adjudicated else '')
+                result = self.shadow.refund({**vector, 'refunds': [{
+                    'refund_id': refund_id, 'amount': claim['refund_face'],
+                    'reason_class': row['id'], 'evidence_ref': 'SIMULATED',
+                    'adjudicated_platform_fault': adjudicated}]})
+                per_class.append(result)
+        verdict = {
+            'status': 'SHADOW_COMPUTED' if all(
+                item['status'] in ('SHADOW_COMPUTED', 'SHADOW_INPUT_UNKNOWN') for item in per_class)
+            else 'SHADOW_INCONSISTENT',
+            'detail': None,
+            'mode': SHADOW_MODE, 'label': SHADOW_LABEL, 'provenance': SHADOW_PROVENANCE,
+            'shadow_rules_version': self.shadow.status()['shadow_rules_version'],
+            'note_digest': self.shadow.note_digest,
+            'source': {'kind': 'PINNED_VIEW_SNAPSHOT', 'claim_id': claim['claim_id'],
+                       'scenario': 'partial-after'},
+            'per_class': per_class,
+        }
+        verdict.update({name: False for name in (
+            'applied_to_fsm', 'funds_executed', 'policy_adopted', 'bank_debit_observed',
+            'right_cancelled', 'external_return_closed', 'legal_debtor_bound',
+            'admission_granted', 'workspace_mutated')})
+        return verdict
+
+    def _shadow_resale_verdict(self):
+        """Shadow unwind of the note's synthetic worked resale example vectors."""
+        if self.shadow.outcome != 'BOUND':
+            return self.shadow.deferred('resale_prior_contract_cancel_burden', None)
+        claim = self.fixtures.view('sim-committed')['claim']
+        primary = self._shadow_claim_vector(claim)
+        triggers = []
+        for item in self.shadow.worked_resale_vectors():
+            vector = {**item['vector'], 'primary': primary}
+            result = self.shadow.resale(vector)
+            result['vector_id'] = item['id']
+            triggers.append(result)
+        status = 'SHADOW_COMPUTED' if triggers and all(
+            row['status'] == 'SHADOW_COMPUTED' for row in triggers) else 'SHADOW_INCONSISTENT'
+        verdict = {
+            'status': status, 'detail': None,
+            'mode': SHADOW_MODE, 'label': SHADOW_LABEL, 'provenance': SHADOW_PROVENANCE,
+            'shadow_rules_version': self.shadow.status()['shadow_rules_version'],
+            'note_digest': self.shadow.note_digest,
+            'source': {'kind': 'NOTE_SYNTHETIC_LITERALS',
+                       'note': 'docs/decisions/CAPITAL_SETTLEMENT_POLICY.md',
+                       'primary_claim_id': claim['claim_id']},
+            'triggers': triggers,
+        }
+        verdict.update({name: False for name in (
+            'applied_to_fsm', 'funds_executed', 'policy_adopted', 'bank_debit_observed',
+            'right_cancelled', 'external_return_closed', 'legal_debtor_bound',
+            'admission_granted', 'workspace_mutated')})
+        return verdict
+
+    _SHADOW_DEFERRED_DETAIL = (
+        'out of scope for this node: the decision keeps the parts needing a logical clock, '
+        'a slice registry or a multi-claim base deferred; this endpoint computes only the '
+        'refund-bearer classes and the resale unwind')
+
+    def _shadow_body(self):
+        """Side-by-side pinned and shadow verdicts for the unsupported items."""
+        items = []
+        for row in self.policy.unsupported():
+            name = row['item']
+            if name == 'refund_bearer':
+                verdict = self._shadow_refund_verdict()
+            elif name == 'resale_prior_contract_cancel_burden':
+                verdict = self._shadow_resale_verdict()
+            else:
+                verdict = self.shadow.deferred(name, self._SHADOW_DEFERRED_DETAIL)
+            items.append({'item': name, 'pinned': row, 'shadow': verdict})
+        bound = self.shadow.outcome == 'BOUND'
+        body = {
+            'label': SHADOW_LABEL,
+            'mode': SHADOW_MODE,
+            'provenance': SHADOW_PROVENANCE,
+            'provisional': True,
+            'shadow_rules_version': 'CAPITAL-SHADOW-V1',
+            'policy_version': self.shadow.policy_version,
+            'note_digest': self.shadow.note_digest,
+            'outcome': 'SHADOW_COMPUTED' if bound else 'SHADOW_NOT_BOUND',
+            'reason': None if bound else self.shadow.reason,
+            'items': items,
+            'applied_to_fsm': False,
+            'policy_adopted': False,
+            'bank_debit_observed': False,
+            'right_cancelled': False,
+            'external_return_closed': False,
+            'legal_debtor_bound': False,
+            'admission_granted': False,
+        }
+        return body
+
+    def policy_shadow(self):
+        """Shadow arithmetic on frozen input vectors. Nothing is applied."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                return self._policy_envelope(self._shadow_body())
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def decisions(self):
         """Read-only index of the decision notes. Does not touch receipts or the workspace FSM."""
         with self.lock:
@@ -684,13 +840,15 @@ class CapitalService:
     def projection(self, mode=None):
         """Fold copies of the accepted journal and fixture views. Nothing is cached or written."""
         with self.lock:
+            if mode == coa.MODE:
+                return self._projection_coa()
             if mode not in (None, 'simulation'):
                 raise ApiError('NOT_BOUND', 400)
             before_canon = self.machine.canonical_state()
             before_receipts = copy.deepcopy(self.receipts)
             before_rows = copy.deepcopy(self.fixtures.rows)
             journal = self.machine.export_journal()
-            evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.rows)]
+            evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.projection_ids)]
             cut = self.machine.state_digest()
             try:
                 projected = self.projection_port.project(journal, evidence)
@@ -707,6 +865,29 @@ class CapitalService:
                     'policy_adopted': False, 'workspace_mutated': False, 'operating_ledger': 'NOT_BOUND',
                     'entries': projected['entries'], 'accounts': projected['accounts'],
                     'read_model': projected['read_model'], 'conservation': projected['conservation']}
+
+    def _projection_coa(self):
+        """Additive CAPITAL-COA-V1 candidate. Folds copies; V1 output and state are untouched."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                journal = self.machine.export_journal()
+                evidence = [self.fixtures.view(key) for key in sorted(self.fixtures.projection_ids)]
+                cut = self.machine.state_digest()
+                try:
+                    projected = self.coa_projection.project(
+                        journal, evidence, overlay_entries=copy.deepcopy(self.overlay_entries))
+                except ProjectionError as exc:
+                    raise ApiError(exc.code, 500) from exc
+                return {'instance_id': self.instance_id, 'mode': 'LOCAL_PROJECTION_COA_CANDIDATE',
+                        'chart': coa.CHART_VERSION, 'coa_version': coa.COA_VERSION,
+                        'accounting_policy': 'SYNTHETIC_UNADOPTED', 'tax': 'NOT_BOUND', 'legal': 'NOT_BOUND',
+                        'cut': cut, 'source_commit': self.source['commit'], 'funds_executed': False,
+                        'policy_adopted': False, 'workspace_mutated': False, 'operating_ledger': 'NOT_BOUND',
+                        **projected}
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('PROJECTION_INVARIANT', 500)
 
     def preview_draw(self, advance_id, instance_id):
         with self.lock:
@@ -963,6 +1144,270 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    # ------------------------------------------------------------ overlay ledger
+
+    def _overlay_terms(self):
+        """The terms status when the ledger can accrue from it, else None (NOT_BOUND)."""
+        status = self.terms.status()
+        items = status.get('items') or {}
+        usable = (status.get('status') in ('BOUND', 'PARTIAL') and type(status.get('terms_version')) is str
+                  and callable(getattr(self.terms, 'ledger_terms', None))
+                  and all(items.get(name) == 'ADOPTED' for name in _OVERLAY_TERMS)
+                  and self.overlay_bounds is not None)
+        return status if usable else None
+
+    def _overlay_not_bound(self, reason=TERMS_NOT_BOUND):
+        return ApiError('NOT_BOUND', 400, {'reason': reason})
+
+    def _overlay_subjects(self, entries):
+        """One subject per drawn advance. Tier comes from the accepted draw receipt's gate."""
+        draws = {}
+        for index, row in enumerate(self.machine.export_journal()):
+            if row['op'] == 'draw':
+                draws[row['advance_id']] = (index, row['idempotency_key'])
+        subjects = []
+        for advance_id in sorted(draws):
+            index, key = draws[advance_id]
+            case = self.machine.view(advance_id)
+            try:
+                gate = self.receipts[key]['receipt']['result']['credit']['settlement_gate']
+            except (KeyError, TypeError):
+                raise self._overlay_not_bound('draw receipt gate not found')
+            claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
+            draw_day = overlay.draw_day_for(entries, index)
+            subjects.append({'advance_id': advance_id, 'case': case, 'claim': claim, 'gate': gate,
+                             'draw_day': draw_day, 'principal': case['outstanding_exposure']})
+        return subjects
+
+    def _margin_subjects(self, drawn):
+        """Drawn advances that carry margin terms; the rest are NOT_BOUND for the margin rules."""
+        provider = getattr(self.terms, 'margin_terms', None)
+        if not callable(provider):
+            return []
+        out = []
+        for subject in drawn:
+            terms = provider(subject['case'], subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'],
+                             refund_after_draw=margin.views_mutable(self.fixtures))
+            if terms is not None:
+                out.append({**subject, 'margin': terms})
+        return out
+
+    def _overlay_volatile(self, value, top=True):
+        """Volatile keys would be stripped from digests, leaving data uncovered. instance_id is the one
+        top-level session key the command body must carry; it is never written into an entry."""
+        if type(value) is dict:
+            for key, item in value.items():
+                if key in VOLATILE_KEYS and not (top and key == 'instance_id'):
+                    raise ApiError('OVERLAY_VOLATILE_KEY')
+                self._overlay_volatile(item, False)
+        elif type(value) is list:
+            for item in value:
+                self._overlay_volatile(item, False)
+
+    def _overlay_capacity(self, entries):
+        bounds = self.overlay_bounds
+        records = sum(1 for entry in entries if entry['kind'] == overlay.KIND_TERMS)
+        return {
+            'label': CAPACITY_LABEL,
+            'entries': {'current': len(entries), 'max': bounds['OVERLAY_MAX_ENTRIES']},
+            'entry_max_bytes': bounds['OVERLAY_ENTRY_MAX_BYTES'],
+            'sim_day_max': bounds['SIM_DAY_MAX'],
+            'max_step_days': bounds['max_step_days'],
+            'decision_records': {'current': records, 'max': bounds['DECISION_RECORDS_MAX']},
+            'agent_proposals': {'current': 0, 'max': bounds['AGENT_PROPOSALS_MAX']},
+            'envelope_max_bytes': bounds['ENVELOPE_MAX_BYTES'],
+        }
+
+    def _overlay_check_capacity(self, entries, new, to_day, payload):
+        bounds = self.overlay_bounds
+        if to_day > bounds['SIM_DAY_MAX']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'SIM_DAY_MAX'})
+        merged = entries + new
+        if len(merged) > bounds['OVERLAY_MAX_ENTRIES']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'OVERLAY_MAX_ENTRIES'})
+        if any(overlay.entry_size(entry) > bounds['OVERLAY_ENTRY_MAX_BYTES'] for entry in new):
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'OVERLAY_ENTRY_MAX_BYTES'})
+        if sum(1 for entry in merged if entry['kind'] == overlay.KIND_TERMS) > bounds['DECISION_RECORDS_MAX']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'DECISION_RECORDS_MAX'})
+        if overlay.section_size(payload, merged) > bounds['ENVELOPE_MAX_BYTES']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'ENVELOPE_MAX_BYTES'})
+
+    def overlay_command(self, body, role=DEFAULT_ROLE):
+        """advance_day: the only writer of sim_day. One atomic save; the F04 journal is never touched."""
+        with self.lock:
+            principal = Principal(role if type(role) is str else '')
+            require(self.authorizer, principal, OVERLAY_COMMAND)
+            if self.workspace_status != 'ACTIVE':
+                raise ApiError(self.workspace_status, 503)
+            if type(body) is not dict:
+                raise ApiError('INVALID_COMMAND')
+            self._overlay_volatile(body)
+            if set(body) != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
+                raise ApiError('INVALID_COMMAND')
+            if body['instance_id'] != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if body['op'] != overlay.COMMAND_OP:
+                raise ApiError('UNSUPPORTED_OPERATION')
+            operation_id = body['operation_id']
+            if type(operation_id) is not str or _OVERLAY_ID.match(operation_id) is None:
+                raise ApiError('INVALID_OPERATION_ID')
+            from_day, to_day, reason = body['from_sim_day'], body['to_sim_day'], body['reason']
+            self._require_day(from_day)
+            self._require_day(to_day)
+            if type(reason) is not str or not reason.strip() or len(reason) > _REASON_MAX:
+                raise ApiError('INVALID_ARGUMENTS')
+            prior = overlay.operation_receipt(self.overlay_entries, operation_id)
+            if prior is not None:
+                if (prior['from_sim_day'], prior['to_sim_day'], prior['reason']) != (from_day, to_day, reason):
+                    raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+                prior.update(self._overlay_receipt_common(principal), transport_duplicate=True)
+                return prior
+            status = self._overlay_terms()
+            if status is None:
+                raise self._overlay_not_bound()
+            state = overlay.fold(self.overlay_entries)
+            binding = state['terms_binding']
+            if binding is not None and binding['terms_version'] != status['terms_version']:
+                raise self._overlay_not_bound('terms version mismatch')
+            if from_day != state['sim_day']:
+                raise ApiError('SIM_CLOCK_STALE', 409, {'sim_day': state['sim_day']})
+            if to_day <= from_day:
+                raise ApiError('SIM_CLOCK_NOT_ADVANCING')
+            if to_day - from_day > self.overlay_bounds['max_step_days']:
+                raise ApiError('SIM_CLOCK_STEP')
+            journal = self.machine.export_journal()
+            frozen = self._machine_frozen()
+            subjects = []
+            drawn = self._overlay_subjects(self.overlay_entries)
+            for subject in drawn:
+                terms = self.terms.ledger_terms(subject['case'], subject['claim'],
+                                                gate=subject['gate'], draw_day=subject['draw_day'])
+                if terms is not None:
+                    subjects.append({**subject, 'terms': terms})
+            binding = {'terms_version': status['terms_version'], 'status': status['status']}
+            # Margin rules journal only against a source whose settlement views can change
+            # (a disposable book). Immutable workspace fixtures are reported, never journaled.
+            margin_subjects = self._margin_subjects(drawn) if margin.views_mutable(self.fixtures) else []
+            cures = margin.plan_cures(state, margin_subjects, operation_id=operation_id,
+                                      journal_length=len(journal), day=from_day)
+            new = overlay.advance_entries(
+                operation_id, state, len(journal), to_day=to_day, reason=reason,
+                binding=binding, subjects=subjects, margin_before=cures)
+            if margin_subjects:
+                try:
+                    stepped = overlay.fold(self.overlay_entries + new, len(journal))
+                except ValueError:
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+                new += margin.plan_rules(stepped, margin_subjects, operation_id=operation_id,
+                                         journal_length=len(journal), day=to_day)
+            payload = {'receipts': self.receipts, 'journal': journal,
+                       'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
+            self._overlay_check_capacity(self.overlay_entries, new, to_day, payload)
+            candidate = self.overlay_entries + new
+            try:
+                overlay.fold(candidate, len(journal))
+            except ValueError:
+                raise ApiError('READ_ONLY_INVARIANT', 500)
+            try:
+                self._persist(candidate)
+            except WorkspaceError as exc:
+                self.workspace_status = exc.code
+                raise ApiError(exc.code, 503)
+            self.overlay_entries = candidate
+            self._machine_same(frozen)
+            receipt = overlay.operation_receipt(candidate, operation_id)
+            receipt.update(self._overlay_receipt_common(principal), transport_duplicate=False,
+                           overlay_state_digest=overlay.state_digest(overlay.fold(candidate)))
+            return receipt
+
+    def _overlay_receipt_common(self, principal):
+        return {'label': OVERLAY_LABEL, 'instance_id': self.instance_id, 'clock_source': overlay.CLOCK_SOURCE,
+                'actor': overlay.ACTOR, 'role': principal.role, 'role_provenance': ROLE_PROVENANCE,
+                'funds_executed': False, 'f04_journal_written': False, 'economic_finality_claimed': False}
+
+    def _overlay_row(self, subject, state, status):
+        case, advance_id = subject['case'], subject['advance_id']
+        recorded = state['advances'].get(advance_id)
+        terms = (self.terms.ledger_terms(case, subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'])
+                 if status is not None else None)
+        interest = recorded['posted_contract_krw'] if recorded else 0
+        default = recorded['posted_default_krw'] if recorded else 0
+        outstanding = subject['principal']
+        row = {'advance_id': advance_id, 'phase': case['phase'], 'draw_day': subject['draw_day'],
+               'tier': 'NOT_APPLICABLE' if terms is None else terms['tier'],
+               'principal_outstanding_krw': outstanding,
+               'interest_due_krw': interest, 'default_interest_due_krw': default,
+               'accrued_through_sim_day': recorded['last_accrued_day'] if recorded else subject['draw_day']}
+        if recorded:
+            for bucket, key in (('contract', 'cumulative_contract_exact'), ('default', 'cumulative_default_exact')):
+                exact = overlay.parse_exact(recorded[key])
+                row[f'carried_remainder_{bucket}'] = overlay.exact_text(exact - overlay.floor(exact))
+            row['cumulative_exact_contract'] = recorded['cumulative_contract_exact']
+            row['cumulative_exact_default'] = recorded['cumulative_default_exact']
+        if terms is not None:
+            row.update(maturity_day=terms['maturity_day'], writeoff_day=terms['writeoff_day'],
+                       contract_bps=terms['contract_bps'], default_bps=terms['default_bps'])
+        split = None
+        if status is not None and callable(getattr(self.terms, 'allocate', None)):
+            split = self.terms.allocate(outstanding, interest_due=interest, default_interest_due=default,
+                                        cash=outstanding + interest + default)
+        row['allocation'] = split
+        fsm_repay = None
+        sequence = case.get('next_repayment_sequence')
+        if split and split.get('status') == 'BOUND' and case['phase'] == 'DRAWN' and split['to_principal'] > 0 \
+                and type(sequence) is int:
+            fsm_repay = {'amount': split['to_principal'], 'sequence': sequence, 'proposal_only': True}
+        row['fsm_repay'] = fsm_repay
+        row['close_ready'] = (case['phase'] == 'DRAWN' and outstanding == 0 and interest == 0 and default == 0)
+        return row
+
+    def overlay_state(self, operation_id=None):
+        """Read-only overlay quote. Nothing is accrued or written here."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                state = overlay.fold(self.overlay_entries)
+                status = self._overlay_terms()
+                body = {
+                    'label': OVERLAY_LABEL, 'mode': 'SIMULATED_OVERLAY', 'provisional': True,
+                    'clock_source': overlay.CLOCK_SOURCE, 'sim_day': state['sim_day'],
+                    'terms_version': self.terms.status()['terms_version'],
+                    'status': 'NOT_BOUND' if status is None else 'BOUND',
+                    'reason': TERMS_NOT_BOUND if status is None else None,
+                    'terms_binding': state['terms_binding'],
+                    'overlay_state_digest': overlay.state_digest(state),
+                    'entry_count': state['entry_count'],
+                    'interest_payments': 'NOT_RECORDED', 'export': 'INCLUDED_IN_MANIFEST_V3' if self.overlay_entries else 'ABSENT_WHEN_EMPTY',
+                    'f04_journal_written': False, 'workspace_status': self.workspace_status,
+                    'capacity': 'NOT_BOUND' if self.overlay_bounds is None else self._overlay_capacity(self.overlay_entries),
+                    'advances': [],
+                }
+                if status is not None:
+                    body['terms_binding_matches'] = (
+                        state['terms_binding'] is None
+                        or state['terms_binding']['terms_version'] == status['terms_version'])
+                    drawn = self._overlay_subjects(self.overlay_entries)
+                    body['advances'] = [self._overlay_row(subject, state, status) for subject in drawn]
+                    margin_subjects = self._margin_subjects(drawn)
+                    mutable = margin.views_mutable(self.fixtures)
+                    by_id = margin.row_blocks(state, margin_subjects, mutable=mutable)
+                    body['margin'] = margin.status_block(
+                        state, by_id, mutable=mutable, bound=True,
+                        cure_terms=margin_subjects[0]['margin'] if margin_subjects else None)
+                    for item in body['advances']:
+                        item['margin'] = by_id.get(item['advance_id']) or margin.unbound_row(item['advance_id'])
+                else:
+                    body['margin'] = margin.status_block(
+                        state, {}, mutable=margin.views_mutable(self.fixtures), bound=False)
+                if operation_id is not None:
+                    receipt = overlay.operation_receipt(self.overlay_entries, operation_id)
+                    body['operation'] = receipt if receipt is not None else {
+                        'outcome': 'UNKNOWN', 'operation_id': operation_id, 'retry_authorized': False}
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def _replay_journal(self):
         """Caller holds the service lock. Restores a scratch machine and does not write."""
         journal = self.producer.export_journal()
@@ -981,32 +1426,40 @@ class CapitalService:
             len(self.receipts),
             self.machine.canonical_state(),
             digest(self.fixtures.rows),
+            json.dumps(self.overlay_entries, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode(),
         )
 
     def _same_frozen(self, frozen):
         return self._frozen() == frozen
 
     def _subject_payload(self):
-        """Checksum-valid workspace payload when one exists; otherwise the live book."""
+        """Checksum-valid workspace payload and overlay section when they exist; otherwise the live book."""
         try:
             document = self.storage.load()
         except WorkspaceError as exc:
-            return None, exc.code
+            return None, exc.code, None
         if document is None:
             return {
                 'receipts': copy.deepcopy(self.receipts),
                 'journal': self.machine.export_journal(),
                 'case_fixtures': copy.deepcopy(dict(self.case_fixtures)),
                 'state_digest': self.machine.state_digest(),
-            }, None
-        return copy.deepcopy(document['payload']), None
+            }, None, overlay.build_section(copy.deepcopy(self.overlay_entries))
+        persisted = overlay_section(document)
+        return copy.deepcopy(document['payload']), None, copy.deepcopy(persisted)
 
-    def reconciliation(self, probe_operation_id=None):
-        """Read-only exception report. No receipt is written and nothing is retried."""
+    def reconciliation(self, probe_operation_id=None, mode=None):
+        """Read-only exception report. No receipt is written and nothing is retried.
+
+        mode=coa-candidate appends the two COA candidate checks; the default report and the
+        manifest are unchanged.
+        """
         with self.lock:
+            if mode not in (None, 'simulation', coa.MODE):
+                raise ApiError('NOT_BOUND', 400)
             frozen = self._frozen()
             try:
-                payload, unreadable = self._subject_payload()
+                payload, unreadable, persisted = self._subject_payload()
                 rows = copy.deepcopy(self.fixtures.rows)
                 return build_reconciliation(
                     payload=payload, unreadable=unreadable, fixture_rows=rows,
@@ -1014,6 +1467,9 @@ class CapitalService:
                     projection_port=self.projection_port, probe_operation_id=probe_operation_id,
                     instance_id=self.instance_id, operation_capacity=MAX_OPERATIONS,
                     workspace_status=self.workspace_status,
+                    coa_port=self.coa_projection if mode == coa.MODE else None,
+                    overlay_entries=copy.deepcopy(self.overlay_entries) or None,
+                    overlay_persisted=persisted,
                 )
             finally:
                 if not self._same_frozen(frozen):
@@ -1054,7 +1510,7 @@ class CapitalService:
                     'durable': durable, 'funds_executed': False, 'note': note}
 
     def export_manifest(self):
-        """Read-only v2 manifest of hashed sections. No import, resume, or key material."""
+        """Read-only v2 (empty overlay) or v3 (non-empty overlay) manifest of hashed sections. No import, resume, or key material."""
         with self.lock:
             frozen = self._frozen()
             try:
@@ -1083,6 +1539,8 @@ class CapitalService:
                         'assets': declared_assets(),
                     },
                 }
+                if self.overlay_entries:
+                    sections['overlay'] = overlay.export_section(self.overlay_entries, len(journal))
                 status, reasons = manifest_status(reconciliation['status'], self.workspace_status)
                 return build_manifest(
                     sections=sections, instance_id=self.instance_id, signer=self.signer,

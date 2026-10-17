@@ -205,7 +205,7 @@ FACADE_READS = [
     ('/api/readiness', ['readiness']),
     ('/api/decisions', ['decisions']),
     ('/api/evidence', ['evidence']),
-    ('/api/projection', ['projection']),
+    ('/api/projection', ['projection', 'projection_coa_candidate']),
     ('/api/terms', ['terms_status']),
     ('/api/terms/portfolio', ['terms_portfolio']),
     ('/api/terms/{advance_id}', ['terms_case']),
@@ -213,6 +213,7 @@ FACADE_READS = [
     ('/api/terms/{advance_id}/setoff', ['terms_setoff']),
     ('/api/policy', ['policy_status']),
     ('/api/policy/simulation', ['policy_simulation']),
+    ('/api/policy/shadow', ['policy_shadow']),
     ('/api/preview/{advance_id}', ['preview']),
     ('/api/underwrite/{advance_id}', ['underwrite']),
     ('/api/operations/{operation_id}', ['accepted_receipt', 'rejected_receipt', 'unknown_operation']),
@@ -222,6 +223,7 @@ FACADE_READS = [
     ('/api/statement', ['statement']),
     ('/api/metrics', ['metrics']),
     ('/api/health', ['health']),
+    ('/api/overlay', ['overlay_state']),
 ]
 FACADE = ROOT / 'capital' / 'contract' / 'facade-v1.json'
 UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -622,13 +624,20 @@ class StatementVectorTests(unittest.TestCase):
         self.assertEqual(sorted({(row['claim_id'], row['reserved_open']) for row in reserved['rows']}),
                          [('sim-committed', 30000), ('sim-pending', 15000)])
         settlement = self.categories['settlement']
-        self.assertEqual((settlement['confirmed'], settlement['distributed']), (194000, 0))
+        self.assertEqual((settlement['confirmed'], settlement['distributed']), (12658694000, 0))
         self.assertEqual([(row['claim_id'], row['phase'], row['confirmed_cash']) for row in settlement['rows']], [
-            ('sim-committed', 'COMMITTED', 97000), ('sim-pending', 'CAPTURED', 0), ('sim-refund', 'COMMITTED', 97000)])
+            ('demo-alpha-arena', 'COMMITTED', 2910000000), ('demo-alpha-hall', 'COMMITTED', 1164000000),
+            ('demo-beta-club', 'CAPTURED', 0), ('demo-beta-festival', 'COMMITTED', 3880000000),
+            ('demo-delta-mid', 'CAPTURED', 0), ('demo-delta-small', 'COMMITTED', 48500000),
+            ('demo-epsilon-clean', 'COMMITTED', 1940000000), ('demo-epsilon-refund', 'COMMITTED', 388000000),
+            ('demo-gamma-annex', 'COMMITTED', 2328000000), ('demo-gamma-tour', 'CAPTURED', 0),
+            ('sim-committed', 'COMMITTED', 97000), ('sim-pending', 'CAPTURED', 0),
+            ('sim-refund', 'COMMITTED', 97000)])
         refund = self.categories['refund']
         self.assertEqual((refund['refund_face'], refund['refund_accepted'], refund['refund_outstanding']),
-                         (10000, 0, 10000))
-        self.assertEqual([row['claim_id'] for row in refund['rows'] if row['refund_face']], ['sim-refund'])
+                         (60010000, 0, 60010000))
+        self.assertEqual([row['claim_id'] for row in refund['rows'] if row['refund_face']],
+                         ['demo-epsilon-refund', 'sim-refund'])
 
     def test_one_preview_per_case_and_only_the_pending_settlement_would_reject(self):
         self.assertEqual([(row['advance_id'], row['outcome'], row['reason'], row['settlement_gate'])
@@ -725,15 +734,15 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_twenty_three_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 23)
+    def test_exactly_the_twenty_five_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 25)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 34)
-        self.assertEqual(len(left_out), 11)
+        self.assertEqual(len(self.contract['routes']), 37)
+        self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
         # A POST command path may share a path with a GET read; only the GET rows are kept.

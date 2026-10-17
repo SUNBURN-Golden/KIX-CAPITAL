@@ -14,7 +14,8 @@ import sys
 from pathlib import Path
 
 from capital.export import (
-    FORMAT, SECTION_IDS, ExportError, content_digest, load_dev_key, sha256_hex,
+    FORMAT, FORMAT_V3, OVERLAY_SECTION, SECTION_IDS, ExportError, content_digest, load_dev_key,
+    section_ids_for, sha256_hex,
 )
 
 _HEX = frozenset('0123456789abcdef')
@@ -53,7 +54,7 @@ def _report(*, ok, reason, sections, digest_status, signature_status):
     return {
         'ok': ok,
         'reason': reason,
-        'format': FORMAT,
+        'format': FORMAT_V3 if OVERLAY_SECTION in sections else FORMAT,
         'sections': sections,
         'content_digest': digest_status,
         'signature': signature_status,
@@ -76,12 +77,18 @@ def verify_manifest(document, key=None, key_error=None):
     so a body change is not reported as a digest or signature failure.
     """
     pending = {name: 'NOT_CHECKED' for name in SECTION_IDS}
-    if type(document) is not dict or document.get('format') != FORMAT:
+    ids = section_ids_for(document.get('format')) if type(document) is dict else None
+    if ids is None:
         return _fail('MANIFEST_SHAPE', pending)
+    pending = {name: 'NOT_CHECKED' for name in ids}
     sections = document.get('sections')
-    if type(sections) is not dict or set(sections) != set(SECTION_IDS):
+    if type(sections) is not dict:
         return _fail('MANIFEST_SHAPE', pending)
-    for name in SECTION_IDS:
+    if set(sections) != set(ids):
+        # V3 without overlay, or V2 with overlay: the format and section set disagree.
+        reason = 'SECTION_SET' if set(sections) ^ set(ids) == {OVERLAY_SECTION} else 'MANIFEST_SHAPE'
+        return _fail(reason, pending)
+    for name in ids:
         section = sections.get(name)
         if type(section) is not dict or set(section) != {'sha256', 'body'}:
             pending[name] = 'SECTION_SHAPE'

@@ -232,5 +232,34 @@ class HandbookTests(unittest.TestCase):
                 self.assertIn(f"- [ ] {group['id']} ({group['status']};", rendered)
 
 
+    def test_role_table_names_the_overlay_surface(self):
+        text = (Path(__file__).resolve().parent.parent / 'docs' / 'OPERATOR_HANDBOOK_KO.md').read_text(encoding='utf-8')
+        start = text.index('## 역할')
+        table = text[start:text.index('\n## ', start + 1)]
+        rows = {line.split('|')[1].strip(): line.split('|') for line in table.splitlines() if line.startswith('| ')}
+        self.assertIn('overlay:command', rows['organizer'][2])
+        self.assertIn('POST /api/overlay/commands', rows['organizer'][2])
+        self.assertIn('GET /api/overlay', rows['auditor'][2])
+        self.assertIn('/api/overlay', rows['observer'][3])
+        self.assertNotIn('/api/overlay', rows['observer'][2])
+        self.assertNotIn('overlay:command', rows['auditor'][2] + rows['observer'][2])
+
+    def test_handbook_has_overlay_node_sections(self):
+        text = (Path(__file__).resolve().parent.parent / 'docs' / 'OPERATOR_HANDBOOK_KO.md').read_text(encoding='utf-8')
+        self.assertEqual(text.count('<!-- handbook-section:'), text.count('<!-- /handbook-section -->'))
+        needed = {
+            'shadow-refund-resale': ('SHADOW_NOT_APPLIED', 'SHADOW_DEFERRED'),
+            'caps-binding-fixtures': ('CAPITAL-DEMO-BOOK-V1', 'portfolio_cap_krw'),
+            'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),
+            'margin-cure-default': ('FIXTURE_VIEWS_IMMUTABLE', 'DEFAULT_ELIGIBLE', 'f04_default_called'),
+        }
+        for name, words in needed.items():
+            start = text.index(f'<!-- handbook-section:{name} -->')
+            body = text[start:text.index('<!-- /handbook-section -->', start)]
+            self.assertIn(f'### {name}', body)
+            for word in words:
+                self.assertIn(word, body)
+
+
 if __name__ == '__main__':
     unittest.main()

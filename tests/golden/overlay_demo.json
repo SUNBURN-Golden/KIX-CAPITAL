@@ -1,0 +1,21 @@
+{
+  "decision_note": "docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4 (overlay-digest-export-decision), node audit60-fix2",
+  "entry_count": 7,
+  "export_manifest_v3_content_digest": "bd992375bf4c856bd042905ec467e68b21c415a9f25e06527ac0cf36d05639ff",
+  "export_manifest_v3_format": "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+  "interest_krw": {
+    "sim-defaulted": {
+      "contract": 345,
+      "default": 123
+    },
+    "sim-unbound": {
+      "contract": 320,
+      "default": 65
+    }
+  },
+  "label": "SIMULATED",
+  "overlay_schema": 1,
+  "overlay_state_digest": "73f255996907e7bc662523ff8214c7942cd34a0f399c94097bd72496323c7367",
+  "scenario": "terms binding -> advance_day 0->60 -> repay sim-unbound 5000 -> advance_day 60->75",
+  "sim_day": 75
+}
