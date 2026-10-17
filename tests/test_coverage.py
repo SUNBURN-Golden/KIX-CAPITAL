@@ -154,6 +154,25 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(ready['upstream_nodes_completed'], [])
         self.assertEqual([cells[0] for cells, _line in table_rows(REQUIREMENTS.read_text(encoding='utf-8'))], CAP_IDS)
 
+    def test_decision_notes_are_cited_and_rebase_wording_retired(self):
+        text = COVERAGE.read_text(encoding='utf-8')
+        rows = {l.split('|')[1].strip(): l for l in text.splitlines() if l.startswith('| CAP-')}
+        recovery = 'docs/decisions/CAPITAL_DEFAULT_RECOVERY.md'
+        posting = 'docs/decisions/CAPITAL_REPAYMENT_POSTING.md'
+        for cap in ('CAP-01', 'CAP-04'):
+            self.assertIn(recovery, rows[cap])
+        for cap in ('CAP-01', 'CAP-11'):
+            self.assertIn(posting, rows[cap])
+        line9 = text.splitlines()[8]
+        self.assertIn(recovery, line9)
+        self.assertIn(posting, line9)
+        stale = re.compile(r'(rebase|re-based|재기준|리베이스).{0,160}(DECISION_REQUIRED|결정 대기)'
+                           r'|(DECISION_REQUIRED|결정 대기).{0,160}(rebase|re-based|재기준|리베이스)',
+                           re.IGNORECASE | re.DOTALL)
+        for rel in ('README.md', 'docs/INTEGRATION.md', 'docs/CAPITAL_REQUIREMENTS_KO.md'):
+            body = (ROOT / rel).read_text(encoding='utf-8')
+            self.assertIsNone(stale.search(body), rel)
+
     def test_missing_duplicate_and_flipped_status_fail(self):
         original = COVERAGE.read_text(encoding='utf-8')
         requirements = REQUIREMENTS.read_text(encoding='utf-8')
