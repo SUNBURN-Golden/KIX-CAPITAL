@@ -18,7 +18,8 @@ from pathlib import Path
 from capital.audit import CHECK_ORDER, audit_workspace
 from capital.recon import CHECK_IDS
 from capital.server import make_server
-from capital.store import FILE_NAME, FileWorkspace, WorkspaceError, canonical_bytes
+from capital.store import FILE_NAME, FileWorkspace, WorkspaceError, canonical_bytes, section_checksum
+from tests.test_overlay import seed, tick
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = ROOT / 'scripts' / 'seed_demo.py'
@@ -184,6 +185,86 @@ class AuditCliTests(unittest.TestCase):
         self.assertEqual(
             [row['status'] for row in report['recon']['checks']].count('RECON_MISMATCH'), 1)
         self.assertEqual(path.read_bytes(), damaged)
+
+
+def seed_overlay_workspace(directory):
+    port = seed.open_fresh(directory)
+    try:
+        tick(seed.build_service(port), 'audit-tick-1', 0, 60)
+    finally:
+        port.close()
+    return directory
+
+
+class AuditOverlayReconTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name) / 'ws'
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def live(self, *paths):
+        server = make_server(0, workspace=self.dir)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            bodies = []
+            for path in paths:
+                client = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=5)
+                client.request('GET', path)
+                response = client.getresponse()
+                self.assertEqual(response.status, 200)
+                bodies.append(json.loads(response.read().decode('utf-8')))
+                client.close()
+            return bodies
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(5)
+
+    def assert_parity(self, audit_recon, live):
+        self.assertEqual([c['id'] for c in audit_recon['checks']], [c['id'] for c in live['checks']])
+        self.assertEqual([c['status'] for c in audit_recon['checks']], [c['status'] for c in live['checks']])
+        for key in ('status', 'scope', 'checks', 'entry_count', 'state_digest'):
+            if key in live:
+                self.assertEqual(audit_recon[key], live[key], key)
+
+    def test_non_empty_overlay_recon_matches_live_get(self):
+        seed_overlay_workspace(self.dir)
+        before = snapshot(self.dir)
+        live, quote = self.live('/api/reconciliation', '/api/overlay')
+        report = audit_workspace(self.dir)
+        self.assertTrue(report['ok'])
+        recon = report['recon']
+        self.assertEqual(recon['status'], 'MATCHED')
+        ids = [c['id'] for c in recon['checks']]
+        self.assertEqual(ids, list(CHECK_IDS) + ['overlay_fold_digest_equals_persisted'])
+        self.assertEqual(ids, [c['id'] for c in live['checks']])
+        self.assertEqual(recon['scope']['overlay_state_digest'], quote['overlay_state_digest'])
+        self.assert_parity(recon, live)
+        self.assertEqual(snapshot(self.dir), before)
+
+    def test_empty_overlay_recon_is_unchanged_and_matches_live_get(self):
+        seed_workspace(self.dir)
+        (live,) = self.live('/api/reconciliation')
+        recon = audit_workspace(self.dir)['recon']
+        self.assertEqual([c['id'] for c in recon['checks']], list(CHECK_IDS))
+        self.assertNotIn('overlay_state_digest', recon['scope'])
+        self.assert_parity(recon, live)
+
+    def test_stale_overlay_digest_fails_at_service_restore_not_recon(self):
+        seed_overlay_workspace(self.dir)
+        path = self.dir / FILE_NAME
+        document = json.loads(path.read_text(encoding='utf-8'))
+        document['overlay']['overlay_state']['digest'] = '0' * 64
+        section = document['overlay']
+        section['section_sha256'] = section_checksum(section)
+        path.write_bytes(canonical_bytes(document))
+        report = audit_workspace(self.dir)
+        self.assertFalse(report['ok'])
+        self.assertEqual(report['failed_check'], 'service_restore')
+        self.assertIsNone(report['recon'])
 
 
 class AuditArgumentTests(unittest.TestCase):
