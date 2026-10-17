@@ -112,6 +112,7 @@ CAP 20개 중 `AVAILABLE_LOCAL`은 CAP-01, 04, 05, 06, 08, 09, 10, 14, 20이다.
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-10-17",
   "provisional": true,
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "entries": {
     "handbook_checklist_verdict": {
       "status": "ADOPTED",
