@@ -115,12 +115,15 @@ class V1UnchangedTests(unittest.TestCase):
 
     def test_v1_and_golden_files_are_untouched(self):
         # Diff against main, not HEAD: files other nodes changed on main are not this node's edits.
+        # overlay.py and overlay_demo.json belong to the overlay-repayment-posting node (repayment entry kind,
+        # one regeneration cited in CAPITAL_REPAYMENT_POSTING.md 3.9); demo.json and overlay_empty.json stay locked.
         probe = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT,
                                capture_output=True, text=True)
         base = 'origin/main' if probe.returncode == 0 else 'HEAD'
         status = subprocess.run(
-            ['git', 'diff', '--name-only', base, '--', 'capital/projection.py', 'capital/ports.py', 'capital/overlay.py',
-             'capital/export.py', 'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions'],
+            ['git', 'diff', '--name-only', base, '--', 'capital/projection.py', 'capital/ports.py',
+             'capital/export.py', 'tests/golden/demo.json', 'tests/golden/overlay_empty.json',
+             'capital/vendor', '.aiops', 'docs/decisions'],
             cwd=ROOT, capture_output=True, text=True)
         if status.returncode != 0:
             self.skipTest('git unavailable')

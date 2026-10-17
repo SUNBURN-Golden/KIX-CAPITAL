@@ -274,6 +274,26 @@
 {
       "code": "OVERLAY_VOLATILE_KEY",
       "status": 400
+    },
+{
+      "code": "REPAYMENT_AMOUNT",
+      "status": 400
+    },
+{
+      "code": "REPAYMENT_TERMS_NOT_BOUND",
+      "status": 409
+    },
+{
+      "code": "REPAYMENT_ADVANCE_STATE",
+      "status": 409
+    },
+{
+      "code": "REPAYMENT_PRODUCER_UNSUPPORTED",
+      "status": 409
+    },
+{
+      "code": "REPAYMENT_UNAPPLIED_CAP",
+      "status": 409
     }
   ],
   "commands": {
@@ -1220,6 +1240,14 @@
         "SIM_CLOCK_NOT_ADVANCING",
         "SIM_CLOCK_STEP",
         "OVERLAY_VOLATILE_KEY",
+        "UNKNOWN_ADVANCE",
+        "UNKNOWN_PROPOSAL",
+        "PROPOSAL_BINDING_CONFLICT",
+        "REPAYMENT_AMOUNT",
+        "REPAYMENT_TERMS_NOT_BOUND",
+        "REPAYMENT_ADVANCE_STATE",
+        "REPAYMENT_PRODUCER_UNSUPPORTED",
+        "REPAYMENT_UNAPPLIED_CAP",
         "SIMULATION_CAPACITY",
         "READ_ONLY_INVARIANT",
         "WORKSPACE_UNREADABLE",
@@ -4354,6 +4382,9 @@
         },
         "fixtures": {
           "$ref": "#/definitions/fixture_map"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
         },
         "state_digest": {
           "type": "string"
@@ -10055,7 +10086,7 @@
         "mode": {"const": "LOCAL_OBSERVABILITY"}
       }
     },
-    "overlay_command_request": {
+    "overlay_advance_request": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -10086,6 +10117,16 @@
           "type": "string"
         }
       }
+    },
+    "overlay_command_request": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/overlay_advance_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_repayment_request"
+        }
+      ]
     },
     "overlay_export_section": {
       "description": "V3 overlay section body: a pure function of the overlay journal (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2). The journal entries and folded state are loose objects here; their shape is enforced by the overlay fold.",
@@ -10268,6 +10309,9 @@
         "principal_outstanding_krw",
         "interest_due_krw",
         "default_interest_due_krw",
+        "interest_paid_krw",
+        "default_interest_paid_krw",
+        "unapplied_cash_krw",
         "accrued_through_sim_day",
         "allocation",
         "fsm_repay",
@@ -10298,6 +10342,18 @@
         },
         "default_interest_due_krw": {
           "type": "integer"
+        },
+        "interest_paid_krw": {
+          "type": "integer"
+        },
+        "default_interest_paid_krw": {
+          "type": "integer"
+        },
+        "unapplied_cash_krw": {
+          "type": "integer"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
         },
         "accrued_through_sim_day": {
           "type": "integer"
@@ -10520,6 +10576,386 @@
         }
       }
     },
+    "overlay_close_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "default_interest_due_krw",
+        "interest_due_krw",
+        "unapplied_cash_krw"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "CLEAR",
+            "INTEREST_DUE",
+            "UNAPPLIED_HELD"
+          ]
+        },
+        "default_interest_due_krw": {
+          "type": "integer"
+        },
+        "interest_due_krw": {
+          "type": "integer"
+        },
+        "unapplied_cash_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_interest_payments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "payments_recorded",
+        "paid_default_interest_krw",
+        "paid_interest_krw",
+        "default_interest_due_krw",
+        "interest_due_krw",
+        "unapplied_cash_krw",
+        "basis",
+        "amounts"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "RECORDED",
+            "NONE_YET",
+            "NOT_BOUND"
+          ]
+        },
+        "payments_recorded": {
+          "type": "integer"
+        },
+        "paid_default_interest_krw": {
+          "type": "integer"
+        },
+        "paid_interest_krw": {
+          "type": "integer"
+        },
+        "default_interest_due_krw": {
+          "type": "integer"
+        },
+        "interest_due_krw": {
+          "type": "integer"
+        },
+        "unapplied_cash_krw": {
+          "type": "integer"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "amounts": {
+          "const": "UNVERIFIED_ASSERTED"
+        }
+      }
+    },
+    "overlay_warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "advance_id",
+        "journal_index",
+        "amount_krw",
+        "attributed_sim_day"
+      ],
+      "properties": {
+        "code": {
+          "const": "UNPOSTED_F04_REPAY"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "journal_index": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "attributed_sim_day": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_repayment_split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default_interest_krw",
+        "interest_krw",
+        "principal_krw",
+        "unapplied_after_krw"
+      ],
+      "properties": {
+        "default_interest_krw": {
+          "type": "integer"
+        },
+        "interest_krw": {
+          "type": "integer"
+        },
+        "principal_krw": {
+          "type": "integer"
+        },
+        "unapplied_after_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_repayment_f04": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "receipt_ref"
+          ],
+          "properties": {
+            "operation_id": {
+              "type": "string"
+            },
+            "receipt_ref": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "overlay_repayment_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "advance_ref",
+        "at_sim_day",
+        "amount_krw"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_repayment"
+        },
+        "advance_ref": {
+          "type": "string"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_recorded_repayment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "advance_ref",
+        "at_sim_day",
+        "sim_day",
+        "amount_krw",
+        "unapplied_before_krw",
+        "entry_no",
+        "allocation",
+        "f04",
+        "unapplied_after_krw",
+        "close_gate",
+        "payment_basis",
+        "basis"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_repayment"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "advance_ref": {
+          "type": "string"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "unapplied_before_krw": {
+          "type": "integer"
+        },
+        "entry_no": {
+          "type": "integer"
+        },
+        "allocation": {
+          "$ref": "#/definitions/overlay_repayment_split"
+        },
+        "f04": {
+          "$ref": "#/definitions/overlay_repayment_f04"
+        },
+        "unapplied_after_krw": {
+          "type": "integer"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
+        },
+        "payment_basis": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_repayment_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "advance_ref",
+        "at_sim_day",
+        "sim_day",
+        "amount_krw",
+        "unapplied_before_krw",
+        "entry_no",
+        "allocation",
+        "f04",
+        "unapplied_after_krw",
+        "close_gate",
+        "payment_basis",
+        "basis",
+        "label",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate",
+        "f04_journal_written"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_repayment"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "advance_ref": {
+          "type": "string"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "unapplied_before_krw": {
+          "type": "integer"
+        },
+        "entry_no": {
+          "type": "integer"
+        },
+        "allocation": {
+          "$ref": "#/definitions/overlay_repayment_split"
+        },
+        "f04": {
+          "$ref": "#/definitions/overlay_repayment_f04"
+        },
+        "unapplied_after_krw": {
+          "type": "integer"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
+        },
+        "payment_basis": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "label": {
+          "const": "SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        },
+        "f04_journal_written": {
+          "type": "boolean"
+        }
+      }
+    },
     "overlay_posting": {
       "type": "object",
       "additionalProperties": false,
@@ -10540,7 +10976,7 @@
         }
       }
     },
-    "overlay_recorded_operation": {
+    "overlay_recorded_advance": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -10587,6 +11023,16 @@
         }
       }
     },
+    "overlay_recorded_operation": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/overlay_recorded_advance"
+        },
+        {
+          "$ref": "#/definitions/overlay_recorded_repayment"
+        }
+      ]
+    },
     "overlay_unknown_operation": {
       "type": "object",
       "additionalProperties": false,
@@ -10628,6 +11074,7 @@
         "f04_journal_written",
         "capacity",
         "advances",
+        "warnings",
         "funds_executed",
         "workspace_mutated",
         "write_authorized",
@@ -10678,7 +11125,16 @@
           "type": "integer"
         },
         "interest_payments": {
-          "const": "NOT_RECORDED"
+          "$ref": "#/definitions/overlay_interest_payments"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_warning"
+          }
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
         },
         "export": {
           "enum": ["INCLUDED_IN_MANIFEST_V3", "ABSENT_WHEN_EMPTY"]
@@ -10731,7 +11187,7 @@
         }
       }
     },
-    "overlay_command_receipt": {
+    "overlay_advance_receipt": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -10820,6 +11276,16 @@
           "type": "string"
         }
       }
+    },
+    "overlay_command_receipt": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/overlay_advance_receipt"
+        },
+        {
+          "$ref": "#/definitions/overlay_repayment_receipt"
+        }
+      ]
     }
   }
 }

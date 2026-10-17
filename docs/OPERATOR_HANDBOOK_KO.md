@@ -71,7 +71,7 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진 명령(`POST /api/overlay/commands`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
 | auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
 | observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
@@ -458,5 +458,19 @@ U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `sin
 `advance_day`마다 `additional_margin` 규칙을 평가하고 같은 원자 저장 안에 `margin_call`, `margin_cure`, `margin_acceleration`, `default_eligible_proposal` 항목을 쓴다. `GET /api/overlay`에는 최상위와 행마다 `margin` 블록이 붙는다.
 
 workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 이자와 상각은 다시 기준을 잡지 않으며(`interest_rebased` false, `NOT_REBASED / DECISION_REQUIRED`) 재산정은 재무 조건 소유자가 정한다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:overlay-repayment-posting -->
+
+### overlay-repayment-posting
+
+상환 기장은 `POST /api/overlay/commands`의 `op: post_repayment` 하나다. 권한은 `overlay:command`이고 organizer만 쓴다. auditor, observer, agent는 `403 ROLE_FORBIDDEN`이다. 본문은 `operation_id`, `advance_ref`, `at_sim_day`, `amount_krw`와 선택 `evidence_ref`(영문·숫자와 `._:-`만, 64자까지, 계좌·성명 금지)·`proposal_id`다. 분할, 시각, 납부자는 보내지 않는다. 모르는 키는 `400 INVALID_COMMAND`다. `at_sim_day`는 현재 `sim_day`와 같아야 하며 다르면 `409 SIM_CLOCK_STALE`이니 `GET /api/overlay`를 다시 읽는다. 첫 `advance_day`로 terms가 바인딩되기 전에는 `409 REPAYMENT_TERMS_NOT_BOUND`다.
+
+금액은 operator가 주장한 값(`UNVERIFIED_ASSERTED`)이지 은행 관측이 아니다. 서버가 `GET /api/terms/{advance_id}/allocation`과 같은 함수로 연체이자, 이자, 원금 순서로 나누고, 이자는 정확한 분자(분모 3,650,000)로 쌓아 1원 미만 이월을 잃지 않는다. 원금 몫이 있을 때만 같은 저장 안에서 핀 F04 `repay`를 발행하고 F04 id는 `rp-`로 시작한다. 이자만 있는 납부는 F04를 부르지 않는다. F04가 거절하면(`DEFAULTED`·`CLOSED` 포함) `409 REPAYMENT_ADVANCE_STATE`이고 쓰기는 없다. 이때 이자 몫만 낸다. 원금 몫이 있는데 producer가 in-process 핀이 아니면 `409 REPAYMENT_PRODUCER_UNSUPPORTED`다. 금액이 0이면 보류분이 있을 때만 허용하고 아니면 `400 REPAYMENT_AMOUNT`다.
+
+초과분은 광고별 `SIM_UNAPPLIED_MEMO`로 한도까지 보류하고(`409 REPAYMENT_UNAPPLIED_CAP`) 다음 기장 때 먼저 적용한다. 환급·지급 명령은 없다. 한도(`SIMULATION_CAPACITY`)는 결정 노트에서 읽는다. 같은 `operation_id`와 같은 본문은 저장된 receipt를 `transport_duplicate: true`로 돌려주고, 시계가 전진한 뒤에도 같다. 다른 본문은 `409 IDEMPOTENCY_CONFLICT`다. 응답을 잃으면 `GET /api/overlay?operation_id=…`로 조회하고 `UNKNOWN`은 재시도 허락이 아니다.
+
+`GET /api/overlay`의 `interest_payments`는 `RECORDED` 또는 `NONE_YET`이며 납입 금액과 남은 `interest_due_krw`를 보인다. `close_gate`(`CLEAR`, `INTEREST_DUE`, `UNAPPLIED_HELD`)는 경고일 뿐 F04 `close`를 막지 않는다. `UNPOSTED_F04_REPAY` 경고는 기장 없이 직접 낸 F04 repay이고 읽는 순간 계산하며 digest에 들어가지 않는다. 기장은 마진 cure·default 상태를 쓰지 않고 다음 `advance_day` fold가 읽을 뿐이며 보류 현금은 인정하지 않는다. 회수 폭포, 상각, 면제, 은행 관측, 실자금은 없다. 모든 값은 `SIMULATED`이고 `funds_executed`는 false다.
 
 <!-- /handbook-section -->
