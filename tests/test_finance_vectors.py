@@ -70,9 +70,8 @@ GROUP_CANDIDATE = {
     'statement_and_previews': 'fin-credit-exposure-reconciliation',
     'manifest_section_digests': 'fin-consistent-accounting-export',
     'facade_read_model': 'fin-catalogue-read-model',
+    'closeout_digest': 'fin-finance-closeout',
 }
-# The one candidate with no group: its named input is an untracked per-run file.
-NO_VECTORS = 'fin-finance-closeout'
 
 # Per scenario, per step: (op, outcome, error, duplicate,
 #   organizer (distributed, cancelled_unpaid, recovery_due, outstanding),
@@ -265,23 +264,19 @@ class ArtifactShapeTests(unittest.TestCase):
         supplied = {row['id']: row['vectors'] for row in self.artifact['candidates']}
         for name, candidate in GROUP_CANDIDATE.items():
             self.assertEqual(supplied[candidate], name)
-        self.assertEqual(sorted(key for key, value in supplied.items() if value is None), [NO_VECTORS])
-        self.assertEqual(sorted(set(ids) - set(GROUP_CANDIDATE.values())), [NO_VECTORS])
-        self.assertEqual(len(set(GROUP_CANDIDATE.values())), 7)
+        self.assertEqual([key for key, value in supplied.items() if value is None], [])
+        self.assertEqual(sorted(ids), sorted(GROUP_CANDIDATE.values()))
+        self.assertEqual(len(set(GROUP_CANDIDATE.values())), 8)
 
-    def test_only_the_closeout_candidate_is_null_and_it_says_why(self):
+    def test_all_eight_candidates_carry_vectors_and_none_has_a_reason(self):
         rows = {row['id']: row for row in self.artifact['candidates']}
-        self.assertEqual(sum(row['vectors'] is not None for row in rows.values()), 7)
+        self.assertEqual(sum(row['vectors'] is not None for row in rows.values()), 8)
         for name, row in rows.items():
             with self.subTest(candidate=name):
                 self.assertEqual(sorted(row), ['id', 'reason', 'vectors'])
-                if name == NO_VECTORS:
-                    self.assertIsNone(row['vectors'])
-                    self.assertIsInstance(row['reason'], str)
-                    self.assertIn('build/acceptance-evidence.json', row['reason'])
-                    self.assertIn('untracked', row['reason'])
-                else:
-                    self.assertIsNone(row['reason'])
+                self.assertIsNone(row['reason'])
+                self.assertIn(row['vectors'], GROUP_CANDIDATE)
+        self.assertEqual(rows['fin-finance-closeout']['vectors'], 'closeout_digest')
 
     def test_bytes_are_canonical_ascii_with_no_volatile_or_host_text(self):
         self.assertTrue(self.raw.endswith(b'\n') and not self.raw.endswith(b'\n\n'))
@@ -290,8 +285,14 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertEqual(again.encode('ascii'), self.raw)
         text = self.raw.decode('ascii')
         self.assertIsNone(UUID.search(text))
-        for fragment in ('/workspace', '/tmp/', '/home/', 'instance_id', 'workspace.json'):
+        for fragment in ('/workspace', '/tmp/', '/home/', 'workspace.json'):
             self.assertNotIn(fragment, text)
+        # The embedded closeout digest lists the keys it stripped as string values, so 'instance_id'
+        # may appear only there; as a key at any depth it never may.
+        listed = '"stripped_keys":' + json.dumps(self.artifact['groups']['closeout_digest']['stripped_keys'],
+                                                 separators=(',', ':'))
+        self.assertEqual(text.count(listed), 1)
+        self.assertNotIn('instance_id', text.replace(listed, ''))
 
     def test_docs_state_the_non_claim(self):
         text = VALIDATION.read_text(encoding='utf-8')
@@ -301,10 +302,12 @@ class ArtifactShapeTests(unittest.TestCase):
             self.assertIn(phrase, section)
         self.assertIn('not SEMANTIC_CONFORMANCE', script.__doc__)
         self.assertIn('completes no upstream node', script.__doc__)
-        # Seven of eight candidates have vectors; the section must not still call five of them null.
+        # All eight candidates have vectors; the section must not still call one of them null.
         self.assertNotIn('The other five candidates', section)
-        self.assertIn('Seven of the eight candidates now have vectors', section)
+        self.assertNotIn('Seven of the eight candidates now have vectors', section)
+        self.assertIn('All eight candidates now have vectors', section)
         self.assertIn('fin-finance-closeout', section)
+        self.assertIn('closeout_digest', section)
 
 
 class ScenarioVectorTests(unittest.TestCase):

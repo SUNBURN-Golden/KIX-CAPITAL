@@ -113,15 +113,38 @@ class V1UnchangedTests(unittest.TestCase):
         service.reconciliation(None, 'coa-candidate')
         self.assertEqual(canonical_json(service.projection(None)), first)
 
+    GUARDED = ('capital/projection.py', 'capital/ports.py', 'capital/overlay.py', 'capital/export.py',
+               'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions')
+
+    @staticmethod
+    def _git(*args):
+        return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True)
+
     def test_v1_and_golden_files_are_untouched(self):
-        # Diff against main, not HEAD: files other nodes changed on main are not this node's edits.
-        probe = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT,
-                               capture_output=True, text=True)
-        base = 'origin/main' if probe.returncode == 0 else 'HEAD'
-        status = subprocess.run(
-            ['git', 'diff', '--name-only', base, '--', 'capital/projection.py', 'capital/ports.py', 'capital/overlay.py',
-             'capital/export.py', 'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions'],
-            cwd=ROOT, capture_output=True, text=True)
+        # The guard is about the coa-candidate-projection change itself: the commit that introduced
+        # capital/coa.py must not have touched the V1 projection, the goldens, the vendor pin, .aiops or
+        # any decision note. It is compared with its own parent, so files other nodes changed on main are
+        # not this node's edits, and neither are the edits a later branch legitimately makes to these
+        # paths (a decision note, a golden regeneration). A checkout without that history (a shallow CI
+        # clone, or a branch where the file is not in HEAD yet) falls back to the working tree against
+        # HEAD, which is what the check amounted to before.
+        introduced = None
+        for ref in ('HEAD', 'MERGE_HEAD'):
+            if self._git('rev-parse', '--verify', '-q', ref).returncode != 0:
+                continue
+            found = self._git('log', '--diff-filter=A', '--format=%H', ref, '--', 'capital/coa.py')
+            if found.returncode == 0 and found.stdout.split():
+                introduced = found.stdout.split()[-1]
+                break
+        if introduced is not None and self._git('rev-parse', '--verify', '-q', introduced + '^').returncode == 0:
+            touched = self._git('diff', '--name-only', introduced + '^', introduced)
+            self.assertEqual(touched.returncode, 0, touched.stderr)
+            self.assertIn('capital/coa.py', touched.stdout.split())
+            guarded = self._git('diff', '--name-only', introduced + '^', introduced, '--', *self.GUARDED)
+            self.assertEqual(guarded.returncode, 0, guarded.stderr)
+            self.assertEqual(guarded.stdout.split(), [])
+            return
+        status = self._git('diff', '--name-only', 'HEAD', '--', *self.GUARDED)
         if status.returncode != 0:
             self.skipTest('git unavailable')
         self.assertEqual(status.stdout.split(), [])

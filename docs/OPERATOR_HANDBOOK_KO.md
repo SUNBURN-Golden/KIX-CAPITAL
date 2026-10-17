@@ -363,7 +363,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 | `manifest_section_digests` | `fin-consistent-accounting-export` | manifest v2 섹션 sha256과 `content_digest` |
 | `facade_read_model` | `fin-catalogue-read-model` | `capital/contract/facade-v1.json`의 모든 GET 경로 응답 정의 digest |
 
-`fin-finance-closeout`은 벡터가 없다. 그 입력인 `build/acceptance-evidence.json`은 실행마다 달라지고 커밋하지 않는 파일이라 고정할 바이트가 없다. 후보 색인의 그 행은 `vectors`가 null이고 이유를 적어 둔다.
+여덟 번째 그룹 `closeout_digest` → `fin-finance-closeout`은 커밋된 클로즈아웃 다이제스트 `tests/vectors/closeout_digest.json`을 그대로 내장한다. 그 원천 `build/acceptance-evidence.json`은 실행마다 달라지고 커밋하지 않는 파일이라 직접은 고정할 수 없고, 결정론적 부분집합만 다이제스트로 고정한다(아래 `closeout-evidence-vector` 절). 후보 색인은 여덟 행 모두 `vectors`가 null이 아니고 `reason`이 null이다.
 
 `python3 scripts/finance_vectors.py --check`는 메모리에서 다시 만들어 파일과 비교하고, 다르거나 파일이 없으면 1로 끝난다. 통과는 고정된 로컬 코드가 아직 이 바이트를 만든다는 말뿐이다. 투영, 계정과목, 회계 정책을 바꾸지 않는다. 원본 산출물이 바뀌어 검사가 실패하면 `--write`로 다시 쓴다. 파일은 `semantic_conformance` false, `funds_executed` false, `upstream_nodes_completed` 빈 목록을 스스로 적는다. SEMANTIC_CONFORMANCE가 아니고 어떤 업스트림 노드도 끝내지 않으며 회계·정산 정책을 채택하지 않는다. 후보가 이 벡터를 쓰려면 그 후보 자신의 업스트림 완료 증거가 있어야 한다. 병합은 JunTae가 한다.
 
@@ -494,5 +494,22 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 `python3 -m capital.verify FILE`은 V2와 V3를 모두 받는다. V3에 `overlay`가 없거나 V2에 `overlay`가 있으면 `SECTION_SET`을, 그 밖의 절 구성 차이는 `MANIFEST_SHAPE`를 돌려준다. `overlay` 절의 바이트가 바뀌면 `SECTION_HASH_MISMATCH:overlay`다. 대사 검사 `overlay_fold_digest_equals_persisted`와 `scope.overlay_state_digest`는 오버레이가 비어 있지 않을 때만 나타나며, 불일치하면 매니페스트가 `INCOMPLETE`(`RECONCILIATION_NOT_CLEAN`)가 된다. 빈 오버레이는 기존 여섯 검사를 유지한다.
 
 `tests/golden/overlay_demo.json`은 `SIMULATED` 라벨, `overlay_schema` 1이며 `export_manifest_v3_content_digest`, `overlay_state_digest`, `entry_count`, `sim_day`, `interest_krw`, `scenario`를 고정한다. 시나리오는 고정된 F04 `repay` 명령을 쓴다. `tests/test_overlay.py`의 `GoldenTests`가 비교만 하며 재생성하지 않는다. `CAPITAL_REPAYMENT_POSTING.md`에 따라 재생성은 repayment-posting 노드만 한 번 할 수 있다. 운영자가 다이제스트 불일치를 보면 골든을 고칠 일이 아니라 드리프트로 취급한다. `demo.json`과 `overlay_empty.json`은 바이트가 그대로다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:closeout-evidence-vector -->
+
+### closeout-evidence-vector
+
+`tests/vectors/closeout_digest.json`(형식 `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`)은 수용 사다리 evidence의 결정론적 다이제스트다. 단계마다 단계 id, 명령, `status`, 기대 종료 코드, `test_count`, 라벨 `SIMULATED`, `funds_executed` false를 싣고, seeded-demo `state_digest`·`content_digest`·`debit`·`credit`, vendor pin commit과 다섯 파일 `verified`, 패키지 `sha256`을 더한다. git `head_sha`, 도구 버전, 시각, instance id, 경로·호스트는 `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`가 정한 제거 키 목록대로 빠지고, 그 목록은 파일 안 `stripped_keys`에 적힌다. 그래서 같은 코드는 어느 기계에서나 같은 바이트를 낸다.
+
+명령은 세 가지다. 먼저 `python3 scripts/acceptance.py`로 새 evidence를 만든다.
+- `python3 scripts/closeout_digest.py --write`: evidence가 `ok:true`, `SIMULATED`, `funds_executed` false이고 여덟 단계가 모두 통과했을 때만 다시 쓴다. 아니면 1로 끝나고 파일을 건드리지 않는다. 손으로 고치지 않는다.
+- `python3 scripts/closeout_digest.py --check`: evidence 없이 깨끗한 체크아웃에서 돈다. 형식·바이트 형태·정직 라벨·제거 키 부재와 금융 벡터 팩 그룹 `closeout_digest`의 내장 사본이 다이제스트와 바이트 일치하는지 본다. 어긋나거나 파일이 없으면 1이다.
+- `python3 scripts/closeout_digest.py --check-evidence`: 새 evidence에서 다시 만들어 비교하고 첫 번째로 다른 JSON 경로를 말한다. 커버 면(단계 결과, 카운트, golden digest, 패키지 `sha256`, vendor pin)을 건드린 작업 뒤에 쓴다. 새 `head_sha`나 다른 도구 버전만 다르면 어긋남이 아니다.
+
+재생성 순서는 `acceptance.py`, `closeout_digest.py --write`, `finance_vectors.py --write`, 다시 `acceptance.py`이고 두 번째 evidence가 같은 다이제스트를 내야 한다. 수용 사다리에는 이 다이제스트용 단계를 더하지 않았다. evidence가 사다리를 설명하고 다이제스트는 그 아래쪽이라 사다리 안에 넣으면 자기참조가 되기 때문이다.
+
+다이제스트는 `SEMANTIC_CONFORMANCE`가 아니고 어떤 upstream 노드도 완료하지 않는다. `fin-finance-closeout`은 PENDING 후보로 남고 분모는 여덟이다. 이 저장소 도구가 스스로 낸 증거이지 독립 리뷰도 CI도 사람 수용도 아니다.
 
 <!-- /handbook-section -->
