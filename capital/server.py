@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlsplit
 from capital import __version__
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
-    COMMAND_SUBMIT, DEFAULT_ROLE, PROVENANCE, ROLES,
+    COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES,
     SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
@@ -33,6 +33,7 @@ GET_DISPATCH = (
     ('/api/evidence', False, 'evidence'),
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
+    ('/api/overlay', False, 'overlay'),
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
@@ -47,6 +48,7 @@ GET_DISPATCH = (
 POST_DISPATCH = (
     ('/api/commands', COMMAND_SUBMIT),
     ('/api/session', SESSION_BIND),
+    ('/api/overlay/commands', OVERLAY_COMMAND),
     ('/api/agent/query_grant', AGENT_QUERY),
     ('/api/agent/query_subject', AGENT_QUERY_SUBJECT),
     ('/api/agent/propose_action', AGENT_PROPOSE),
@@ -306,6 +308,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             return self.reply(200, service.case_terms(
                 advance_id, instance, draw_day, as_of_day, expected))
 
+        def _get_overlay(self, route, principal):
+            values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
+            lookup = values[0] if values and len(values) == 1 else None
+            return self.reply(200, service.overlay_state(lookup))
+
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
             return self.reply(200, service.preview_draw(route.path.rsplit('/', 1)[-1], instance))
@@ -327,7 +334,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_reconciliation(self, route, principal):
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
             probe = values[0] if values and len(values) == 1 else None
-            return self.reply(200, service.reconciliation(probe))
+            return self.reply(200, service.reconciliation(probe, projection_mode(route.query)))
 
         def _get_statement(self, route, principal):
             return self.reply(200, service.statement())
@@ -444,6 +451,10 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                     self.open_session(body)
                 elif path == '/api/commands':
                     self.reply(200, service.execute(body, role=principal.role))
+                elif path == '/api/overlay/commands':
+                    if type(body) is dict and type(body.get('operation_id')) is str:
+                        operation_id = body.get('operation_id')
+                    self.reply(200, service.overlay_command(body, role=principal.role))
                 elif path == '/api/agent/query_grant':
                     self.reply(200, service.agent_query(body, role=principal.role))
                 elif path == '/api/agent/query_subject':

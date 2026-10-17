@@ -213,6 +213,25 @@ class FacadeContractTests(unittest.TestCase):
             self.assertEqual(code, 200, path)
             schema_path = template.replace('{{', '{').replace('}}', '}')
             self.check(payload, self.route(method, schema_path)['response'])
+        overlay_command = self.route('POST', '/api/overlay/commands')
+        advance = {'instance_id': instance, 'operation_id': 'j-advance', 'op': 'advance_day',
+                   'from_sim_day': 0, 'to_sim_day': 3, 'reason': 'facade journey'}
+        self.check(advance, overlay_command['request'])
+        code, applied = self.request('POST', '/api/overlay/commands', advance, token)
+        self.assertEqual(code, 200, applied)
+        self.check(applied, overlay_command['response'])
+        code, again = self.request('POST', '/api/overlay/commands', advance, token)
+        self.check(again, overlay_command['response'])
+        self.assertTrue(again['transport_duplicate'])
+        code, quote = self.request('GET', '/api/overlay?operation_id=j-advance')
+        self.assertEqual(code, 200)
+        self.check(quote, self.route('GET', '/api/overlay')['response'])
+        code, unknown = self.request('GET', '/api/overlay?operation_id=j-never')
+        self.check(unknown, self.route('GET', '/api/overlay')['response'])
+        tainted_quote = json.loads(json.dumps(quote))
+        tainted_quote['advances'] = [{**quote['advances'][0], 'not_in_facade': 1}] if quote['advances'] else [{'x': 1}]
+        with self.assertRaises(SchemaError):
+            self.check(tainted_quote, self.route('GET', '/api/overlay')['response'])
         code, missing = self.request('GET', '/api/scenarios/not-a-scenario')
         self.assertEqual(code, 404)
         self.check(missing, self.doc['definitions']['error_envelope'])

@@ -66,6 +66,21 @@ def default_note_path():
     return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_FINANCIAL_TERMS.md'
 
 
+def read_decision_block(path):
+    """The single capital-decision-v1 block of a note, or None when absent or malformed."""
+    try:
+        path = Path(path)
+        if not path.is_file():
+            return None
+        text = path.read_text(encoding='utf-8')
+        blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
+    except (OSError, UnicodeError, ValueError, RecursionError):
+        return None
+    if len(blocks) != 1 or type(blocks[0]) is not dict or blocks[0].get('schema') != 'capital-decision-v1':
+        return None
+    return blocks[0]
+
+
 def _reject_duplicate_keys(pairs):
     obj = {}
     for key, value in pairs:
@@ -829,6 +844,80 @@ class DecisionNoteTermsPolicy:
             'fsm_repay': fsm_repay,
             'close_ready': close_ready,
         }
+
+    def ledger_terms(self, case, claim, *, gate, draw_day):
+        """Per-advance constants the overlay ledger stamps into an interest posting.
+
+        None when the schedule or interest items are not ADOPTED, or no tier matches the
+        draw receipt gate. Standard term only: no settlement date is known to the ledger.
+        """
+        if not self._ready('interest_rate', 'term', 'default_loss_treatment'):
+            return None
+        if type(case) is not dict or type(claim) is not dict:
+            return None
+        tier = self._tier(case, claim, gate)
+        if tier is None:
+            return None
+        interest = self._value('interest_rate')
+        schedule = self._schedule(draw_day, None)
+        contract_bps = tier['all_in_bps_annual']
+        return {
+            'tier': tier['id'].split('_', 1)[0],
+            'terms_version': self.version,
+            'contract_bps': contract_bps,
+            'default_bps': contract_bps + interest['default_interest_add_bps_annual'],
+            'denominator': BPS_SCALE * _day_count(interest['day_count']),
+            'min_interest_days': interest['min_interest_days'],
+            'term_days': schedule['term_days'],
+            'maturity_day': schedule['maturity_day'],
+            'writeoff_day': schedule['writeoff_day'],
+        }
+
+    def margin_terms(self, case, claim, *, gate, draw_day, refund_after_draw=False):
+        """Per-advance constants of the margin rules, or None (NOT_BOUND).
+
+        The tier is the one the advance was priced in at draw. The F04 snapshot does not keep the
+        draw-time refund, so `refund_after_draw` (a settlement source whose views change) reads
+        the refund as post-draw: the tier is matched on the frozen draw gate with no refund. An
+        immutable source has the same refund now as at draw and matches exactly.
+
+        None unless `additional_margin`, `term` and `default_loss_treatment` are ADOPTED, a tier
+        matches the draw receipt gate, and the note carries an integer cure window of at least one
+        day, an ordered cure list and an integer grace. Nothing is defaulted.
+        """
+        if not self._ready('additional_margin', 'term', 'default_loss_treatment'):
+            return None
+        if type(case) is not dict or type(claim) is not dict:
+            return None
+        tier = self._tier(case, {**claim, 'refund_face': 0} if refund_after_draw else claim, gate)
+        if tier is None:
+            return None
+        margin, term = self._value('additional_margin'), self._value('term')
+        rate = margin['advance_rate_bps_by_tier'].get(tier['id'])
+        payees = margin['beneficiary_payee_map'].get(case.get('beneficiary_role'))
+        window, options = margin.get('cure_window_days'), margin.get('cure_options_ordered')
+        grace = term.get('grace_days_after_maturity')
+        if (not _nonneg_int(rate) or payees is None or not _nonneg_int(window) or window < 1
+                or type(options) is not list or not options or any(not _nonempty_str(item) for item in options)
+                or not _nonneg_int(grace) or not _nonneg_int(draw_day)):
+            return None
+        return {
+            'tier': tier['id'].split('_', 1)[0],
+            'tier_id': tier['id'],
+            'advance_rate_bps': rate,
+            'payees': list(payees),
+            'cure_window_days': window,
+            'cure_options': list(options),
+            'grace_days': grace,
+            'maturity_day': self._schedule(draw_day, None)['maturity_day'],
+            'terms_version': self.version,
+        }
+
+    def allocate(self, outstanding, *, interest_due, default_interest_due, cash):
+        """Allocation proposal over posted dues in the note's repayment order. Not a posting."""
+        section = {'status': 'BOUND', 'interest_due_krw': interest_due,
+                   'default_interest_due_krw': default_interest_due}
+        return self._repay_allocation(outstanding, section, cash)
 
     def _unbound_portfolio(self):
         return {

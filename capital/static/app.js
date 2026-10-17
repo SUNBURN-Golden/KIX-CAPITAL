@@ -652,12 +652,14 @@ function retentionValid(policy){
  });
 }
 function manifestValid(data,next){
- if(!data||data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V2'||data.funds_executed!==false||data.label!=='SIMULATED'||data.diagnostic!=='READ_ONLY')return false;
+ if(!data||(data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V2'&&data.format!=='KIX_CAPITAL_EXPORT_MANIFEST_V3')||data.funds_executed!==false||data.label!=='SIMULATED'||data.diagnostic!=='READ_ONLY')return false;
  if(data.stage7_authenticated_export!==false||data.authentication!=='NOT_BOUND'||data.external_key!=='NOT_BOUND'||!retentionValid(data.retention_policy))return false;
  if(data.cursor!==null||data.watermark!==null||data.source_cut!==null||data.timestamps!==null||data.instance_id!==next.instance_id)return false;
  if((data.status!=='COMPLETE'&&data.status!=='INCOMPLETE')||!Array.isArray(data.incomplete_reasons))return false;
  if((data.status==='COMPLETE')!==(data.incomplete_reasons.length===0))return false;
  const names=['journal','receipts','projection','reconciliation','statement','fixtures','source_pin'];
+ if(!data.sections||(data.format==='KIX_CAPITAL_EXPORT_MANIFEST_V3')!==Object.prototype.hasOwnProperty.call(data.sections,'overlay'))return false;
+ if(data.format==='KIX_CAPITAL_EXPORT_MANIFEST_V3')names.push('overlay');
  if(!data.sections||names.some(name=>!data.sections[name]||typeof data.sections[name].sha256!=='string'||data.sections[name].sha256.length!==64||!data.sections[name].body))return false;
  if(typeof data.content_digest!=='string'||data.content_digest.length!==64)return false;
  const signature=data.signature;
