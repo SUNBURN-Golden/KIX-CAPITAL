@@ -252,6 +252,7 @@ class HandbookTests(unittest.TestCase):
             'caps-binding-fixtures': ('CAPITAL-DEMO-BOOK-V1', 'portfolio_cap_krw'),
             'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),
             'margin-cure-default': ('FIXTURE_VIEWS_IMMUTABLE', 'DEFAULT_ELIGIBLE', 'f04_default_called'),
+            'audit70-fix1': ('interest_rebased', 'overlay-recovery-writeoff', 'overlay-repayment-posting', 'CAPITAL_DEFAULT_RECOVERY.md', 'CAPITAL_REPAYMENT_POSTING.md'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')

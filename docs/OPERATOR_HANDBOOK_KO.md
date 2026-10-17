@@ -460,3 +460,15 @@ U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `sin
 workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 이자와 상각은 다시 기준을 잡지 않으며(`interest_rebased` false, `NOT_REBASED / DECISION_REQUIRED`) 재산정은 재무 조건 소유자가 정한다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:audit70-fix1 -->
+
+### audit70-fix1
+
+`default-recovery-decision`(`docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`)과 `repayment-posting-decision`(`docs/decisions/CAPITAL_REPAYMENT_POSTING.md`)은 잠정 제품 결정(PROVISIONAL PRODUCT DECISION) 노트다. 시뮬레이션 전용이고 production은 `NOT_AUTHORIZED`이며 법무·회계 항목은 작업 가정이다.
+
+두 노트가 정한 것은 아직 구현되지 않았다. 운영자 화면에서는 계속 `interest_rebased` false, `interest_payments` `NOT_RECORDED`이고 `post_repayment` 명령도, 회수·상각 명령도 없다. 구현은 `overlay-recovery-writeoff`, `coa-payment-writeoff-postings`, `overlay-repayment-posting` 노드가 맡는다.
+
+이 절은 바로 위 `margin-cure-default` 절의 재기준 문장을 대체한다. 재기준은 잠정 결정됐지만 구현 전이다. 이율·일수·한도 같은 수치는 여기에 옮기지 않으며 `CAPITAL-TERMS-V1`에 둔다.
+
+<!-- /handbook-section -->
