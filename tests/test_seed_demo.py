@@ -54,6 +54,10 @@ class SeedDemoTests(unittest.TestCase):
         self.assertEqual(body['projection_totals']['debit'], body['projection_totals']['credit'])
         self.assertEqual(body['cases'][4]['settlement_gate'], 'UNBOUND')
         self.assertEqual(body['cases'][5]['phase'], 'APPROVED')
+        self.assertEqual(body['risk'], {
+            'label': 'SIMULATED', 'sim_day': 0, 'outstanding_krw': body['projection_totals']['advance_outstanding'],
+            'reserve_requirement_krw': 30_750, 'hhi_permille': 1000, 'risk_digest': body['risk']['risk_digest']})
+        self.assertRegex(body['risk']['risk_digest'], r'[0-9a-f]{64}')
 
     def test_restored_workspace_keeps_the_golden_pin(self):
         with tempfile.TemporaryDirectory() as tmp:
