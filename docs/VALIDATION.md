@@ -726,3 +726,16 @@ Commands actually run after the second merge:
 - `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. Vendored file SHA256 values match `capital/vendor/manifest.json`.
 - `PLAYWRIGHT_BROWSERS_PATH=build/pw-browsers npm run test:browser`: exit 0, **51 passed** (1.7m), including the three `portfolio-risk.spec.cjs` cases; no server left running on 8765–8768.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+## operator-console-ux (operator desk)
+
+Browser-only change: `#desk` view in `capital/static` (sim_day control through `POST /api/overlay/commands`, per-case timeline merging the F04 journal and overlay entries, server-reasoned next actions, risk tiles). No server, contract, auth, golden or vendor change. The only client arithmetic is `to_sim_day = from_sim_day + N`.
+
+Commands actually run:
+
+- `python3 -m unittest discover -s tests -v`: exit 0, **657 passed** (99.9s), including the five `tests/test_operator_desk.py` source pins.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
+- `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.

@@ -504,3 +504,25 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 `tests/golden/overlay_demo.json`은 `SIMULATED` 라벨, `overlay_schema` 1이며 `export_manifest_v3_content_digest`, `overlay_state_digest`, `entry_count`, `sim_day`, `interest_krw`, `scenario`를 고정한다. 시나리오는 고정된 F04 `repay` 명령을 쓴다. `tests/test_overlay.py`의 `GoldenTests`가 비교만 하며 재생성하지 않는다. `CAPITAL_REPAYMENT_POSTING.md`에 따라 재생성은 repayment-posting 노드만 한 번 할 수 있다. 운영자가 다이제스트 불일치를 보면 골든을 고칠 일이 아니라 드리프트로 취급한다. `demo.json`과 `overlay_empty.json`은 바이트가 그대로다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:operator-console-ux -->
+
+### operator-console-ux
+
+운영 데스크는 `http://127.0.0.1:<port>/#desk`로 연다. 왼쪽 메뉴의 `10 운영 데스크`도 같은 주소다. 열면 다른 패널은 숨고, 다른 메뉴를 누르면 원래 화면으로 돌아간다. 서버 경로, 권한, 역할은 바뀌지 않았다. 화면은 계산하지 않고 서버가 준 숫자와 사유 문장을 그대로 보여 준다. 예외는 `to_sim_day = from_sim_day + 진행 일수`뿐이며, 이는 요청 형식이 요구하는 논리 시계 정수다. 단계 상한과 낡은 시계 판정은 서버가 한다.
+
+영역은 위에서 아래로 다섯이다.
+
+- **위험 요약 타일**: `GET /api/risk`의 미상환, 열린·기록된 노출, 준비금 요구액(기장 안 함), HHI, 마지막 충격 행의 부족액, sim_day. 조건이 `NOT_BOUND`이면 라벨과 사유만 나온다.
+- **sim_day 제어**: `진행 일수`를 넣고 `sim_day 진행`을 누르면 `POST /api/overlay/commands`(`advance_day`)를 한 번 보낸다. 같은 탭 간 쓰기 잠금(`kix-capital-writer`)과 대기 기록을 쓴다. 응답을 잃으면 `UNKNOWN`이며 자동 재시도하지 않는다. `원 요청 결과 조회`는 `GET /api/overlay?operation_id=`만 읽고, 서버에 반영돼 있을 때만 대기 기록을 지운다. `SIM_CLOCK_STALE`, `SIM_CLOCK_NOT_ADVANCING`, `SIM_CLOCK_STEP`, `SIMULATION_CAPACITY`는 서버 거절이다.
+- **다음 작업**: 선택한 사례에서 보낼 수 있는 F04 명령. 활성·비활성과 사유는 서버 값이다. 노출 기록은 `GET /api/preview`의 `WOULD_REJECT` 사유, 종결은 `close_ready`와 원금·이자 필드, 미이행 메모는 마진 `default_eligible` 제안과 `margin.state`, `margin.limit`, `default_eligible_day`, 권한은 역할 권한 사유다. 심사 기록(`GET /api/underwrite`)의 `DECLINE`은 승인 옆에 자문 문장으로만 나오고 승인을 막지 않는다. 비활성 항목은 `aria-disabled`이며 눌러도 명령을 보내지 않는다.
+- **조건 오버레이 원장**: `GET /api/overlay`의 `interest_due_krw`, `default_interest_due_krw`, `close_ready`.
+- **사례 타임라인**: 내보내기 매니페스트의 F04 저널과 오버레이 저널을 `after_journal_index` 기준으로 합친다. 같은 위치에서는 오버레이가 F04 행 앞에 온다. F04 행에는 sim_day를 만들어 붙이지 않는다. 시계와 조건 연결 행은 `오버레이 · 전역`으로 표시한다.
+
+역할별 모습은 다음과 같다. organizer는 전부 본다. auditor는 타일, 원장, 타임라인만 보고 명령 조작은 숨겨지며 사유가 한 줄 나온다. observer는 `projection:read` 사유가 담긴 금지 안내만 보고 데스크용 요청을 보내지 않는다.
+
+키보드만으로 쓰려면 Tab 순서가 `데스크 새로고침` → `사례` → `진행 일수` → `sim_day 진행` → 다음 작업 버튼 → 오버레이 원장 → 타임라인이다. 일수를 넣고 `sim_day 진행`에서 Enter 또는 Space를 누른다. 완료 후 초점은 `sim_day 진행`에 남는다. 375px 폭에서 가로 넘침이 없고, 표는 자체 영역 안에서만 가로로 스크롤된다.
+
+스크린샷은 `npm run test:browser` 실행이 `test-results/operator-desk/desktop/`와 `test-results/operator-desk/mobile/`에 `organizer.png`, `auditor.png`, `observer.png`로 저장한다(데스크톱 1280px, 모바일 375px). 합성 데모 작업공간(`scripts/seed_demo.py`)에서 찍은 `SIMULATED` 화면이며 실제 자금·승인 화면이 아니다. 저장소에 커밋하지 않는다.
+
+<!-- /handbook-section -->
