@@ -4,7 +4,7 @@ let state, selected, pending, repaymentDraftKey, sessionToken = null, busy = tru
 const number = value => new Intl.NumberFormat('ko-KR').format(value);
 const phaseNames = {OFFERED:'제안됨',APPROVED:'모의 승인',DRAWN:'노출 기록',CLOSED:'종결',DEFAULTED:'미이행 메모',REJECTED:'거절',CANCELLED:'취소'};
 const actionNames = {approve:'모의 승인',reject:'모의 거절',cancel:'제안 취소',bind_settlement:'정산 근거 연결',draw:'모의 노출 기록',close:'노출 종결',default:'미이행 메모',reconcile:'저널 재생 검증'};
-const errors = {SETTLEMENT_NOT_COMMITTED:'정산 근거가 COMMITTED가 아니므로 노출 기록을 보류했습니다.',ADVANCE_EXCEEDS_OPEN_FACE:'공유 청구의 미예약 액면을 초과했습니다.',REFUND_OBLIGATION_OPEN:'환불 부담이 미정인 청구는 제안할 수 없습니다.',REPAYMENT_EXCEEDS_OUTSTANDING:'남은 모의 노출보다 큰 금액입니다.',OUTSTANDING_REMAINS:'노출이 남아 있습니다. 상환 메모 후 종결할 수 있습니다.',REPAYMENT_ORDER:'다른 화면에서 상태가 변경되었습니다. 현재 순번을 확인하세요.',ROLE_FORBIDDEN:'이 합성 역할은 해당 작업을 할 수 없습니다.',ROLE_UNKNOWN:'알 수 없는 합성 역할입니다.',ROLE_MISMATCH:'요청 역할이 루프백 토큰에 묶인 역할과 다릅니다.',SESSION_REQUIRED:'이 합성 역할은 세션 토큰에 묶여 있지 않습니다.'};
+const errors = {SETTLEMENT_NOT_COMMITTED:'정산 근거가 COMMITTED가 아니므로 노출 기록을 보류했습니다.',ADVANCE_EXCEEDS_OPEN_FACE:'공유 청구의 미예약 액면을 초과했습니다.',REFUND_OBLIGATION_OPEN:'환불 부담이 미정인 청구는 제안할 수 없습니다.',REPAYMENT_EXCEEDS_OUTSTANDING:'남은 모의 노출보다 큰 금액입니다.',OUTSTANDING_REMAINS:'노출이 남아 있습니다. 상환 메모 후 종결할 수 있습니다.',REPAYMENT_ORDER:'다른 화면에서 상태가 변경되었습니다. 현재 순번을 확인하세요.',ROLE_FORBIDDEN:'이 합성 역할은 해당 작업을 할 수 없습니다.',ROLE_UNKNOWN:'알 수 없는 합성 역할입니다.',ROLE_MISMATCH:'요청 역할이 루프백 토큰에 묶인 역할과 다릅니다.',SESSION_REQUIRED:'이 합성 역할은 세션 토큰에 묶여 있지 않습니다.',SIM_CLOCK_STALE:'sim_day가 다른 곳에서 바뀌었습니다. 새로고침해 현재 sim_day를 확인하세요.',SIM_CLOCK_NOT_ADVANCING:'sim_day는 되돌리거나 같은 값으로 둘 수 없습니다.',SIM_CLOCK_STEP:'한 번에 진행할 수 있는 일수를 넘었습니다.',SIMULATION_CAPACITY:'시뮬레이션 용량 한도에 도달했습니다.'};
 const syntheticRoles = ['organizer','auditor','observer'];
 const roleStorageKey = 'kix-capital-role';
 function currentRole(){const value=$('role')?.value;return syntheticRoles.includes(value)?value:'organizer';}
@@ -32,7 +32,7 @@ function renderRoleBar(){
 }
 function fileWorkspaceActive(){return !!(state&&state.workspace&&state.workspace.kind==='LOCAL_FILE_WORKSPACE'&&state.workspace.status==='ACTIVE');}
 function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state.workspace.status!=='ACTIVE');}
-function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();}
+function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();deskFence();}
 async function request(path, options={}) {const headers=new Headers(options.headers||{});if(sessionToken&&!headers.has('X-Capital-Token'))headers.set('X-Capital-Token',sessionToken);const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
 function validateState(next){const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||next.auth.authentication!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role)||typeof next.local_token!=='string'||!next.local_token||!next.auth.permissions)throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');}
 async function bindSession(role){const opened=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})});if(opened.role!==role||opened.identity!=='NOT_BOUND'||opened.authentication!=='NOT_BOUND'||opened.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||typeof opened.local_token!=='string'||!opened.local_token)throw Error('INVALID_SESSION');sessionToken=opened.local_token;return opened;}
@@ -167,7 +167,8 @@ async function refreshCore(){
  const policyView=await loadPolicy(next);
  const portfolio=await loadPortfolio(next);
  const riskView=await loadRisk(next);
- state=next;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ const deskView=deskOpen()?await loadDesk(next,riskView):null;
+ state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
@@ -548,20 +549,247 @@ function validateReceipt(receipt,body){
  if(body.op==='reconcile'&&(r.matched!==true||typeof r.state_digest!=='string'||!Number.isSafeInteger(r.entry_count)))throw Error('INVALID_RECEIPT');
 }
 
-async function command(op,advance_id,args){
- if(busy||pending||writesBlocked()||!state)return;
- if(!can('command:'+op)){notice(`역할 경계: ${permissionReason('command:'+op)}`,true);return;}
- if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
+async function writeFenced(path,makeBody,validate,applied){
  busy=true;fence();
  try{await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
  if(!lock){notice('다른 탭의 명령이 진행 중입니다. 결과를 확인한 후 계속하세요.',true);return;}
  readPending();if(pending||writesBlocked()){fence();return;}
- const body={instance_id:state.instance_id,operation_id:crypto.randomUUID(),op,advance_id,args};
- try{savePending(body);fence();const receipt=await request('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validateReceipt(receipt,body);savePending(null);selected=advance_id;syncCaseUrl(advance_id);showReceipt(receipt);}
+ const body=makeBody();
+ try{savePending(body);fence();const receipt=await request(path,{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validate(receipt,body);savePending(null);applied(receipt,body);}
  catch(error){if(error.knownRejection){try{savePending(null);}catch{}notice(`요청 거절: ${errors[error.message]||error.message}`,true);}else notice('요청 결과 UNKNOWN. 자동 재시도하지 않습니다. 원 요청 결과를 조회하세요.',true);}
  finally{try{await refresh();}catch{notice('현재 상태를 조회하지 못했습니다. 서버 연결을 확인하세요.',true);}}
  });}finally{busy=false;fence();}
 }
+async function command(op,advance_id,args){
+ if(busy||pending||writesBlocked()||!state)return;
+ if(!can('command:'+op)){notice(`역할 경계: ${permissionReason('command:'+op)}`,true);return;}
+ if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
+ await writeFenced('/api/commands',()=>({instance_id:state.instance_id,operation_id:crypto.randomUUID(),op,advance_id,args}),validateReceipt,(receipt)=>{selected=advance_id;syncCaseUrl(advance_id);showReceipt(receipt);});
+}
+// DESK BEGIN
+const MEMO_LABEL='SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry';
+const DESK_DAYS=/^[1-9]\d{0,5}$/;
+let deskData=null,deskExtra={},deskEpoch=0;
+function deskOpen(){return location.hash==='#desk';}
+function applyDeskVisibility(){const open=deskOpen();document.body.classList.toggle('desk-open',open);$('desk').hidden=!open;return open;}
+function overlayOk(body,next){return !!body&&body.mode==='SIMULATED_OVERLAY'&&body.label===MEMO_LABEL&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.f04_journal_written===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&Array.isArray(body.advances)&&!!body.margin;}
+async function loadDesk(next,riskView){
+ const decision=next.auth.permissions['projection:read'];
+ if(!decision?.allowed)return {forbidden:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
+ const view={risk:riskView};
+ try{const body=await request('/api/overlay');if(overlayOk(body,next))view.overlay=body;else view.overlayError='오버레이 응답이 라벨 또는 절단면과 맞지 않습니다. sim_day와 이자를 표시하지 않습니다.';}
+ catch{view.overlayError='오버레이 시계를 확인하지 못했습니다. 제안 상태는 유지합니다.';}
+ const exportDecision=next.auth.permissions['export:read'];
+ if(!exportDecision?.allowed)view.timelineError=exportDecision?.reason||`${next.auth.role} 역할은 export:read 권한이 없습니다.`;
+ else{try{const body=await request('/api/export/manifest');if(manifestValid(body,next))view.manifest=body;else view.timelineError='타임라인 원본 응답이 현재 절단면과 맞지 않습니다. 타임라인을 표시하지 않습니다.';}catch{view.timelineError='타임라인 원본을 확인하지 못했습니다. 제안 상태는 유지합니다.';}}
+ return view;
+}
+function validateOverlayReceipt(receipt,body){
+ const labeled=syntheticRoles.includes(receipt?.role)&&receipt?.role_provenance==='SYNTHETIC_LOCAL_ROLE';
+ if(!receipt||receipt.operation_id!==body.operation_id||receipt.instance_id!==body.instance_id||receipt.op!=='advance_day'||receipt.outcome!=='APPLIED'||receipt.from_sim_day!==body.from_sim_day||receipt.to_sim_day!==body.to_sim_day||receipt.sim_day!==body.to_sim_day||receipt.reason!==body.reason||receipt.label!==MEMO_LABEL||receipt.clock_source!=='SIM_LOGICAL_CLOCK'||receipt.funds_executed!==false||receipt.f04_journal_written!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean'||!labeled)throw Error('INVALID_RECEIPT');
+}
+function validateOverlayLookup(view,original){
+ const op=view?.operation;
+ if(!view||view.mode!=='SIMULATED_OVERLAY'||view.instance_id!==original.instance_id||!op||op.operation_id!==original.operation_id||op.outcome!=='APPLIED'||op.op!=='advance_day'||op.from_sim_day!==original.from_sim_day||op.to_sim_day!==original.to_sim_day||op.reason!==original.reason)throw Error('UNKNOWN');
+}
+function deskAdvanceState(){
+ if(!can('overlay:command'))return {enabled:false,reason:permissionReason('overlay:command')};
+ const overlay=deskData?.overlay;
+ if(!overlay)return {enabled:false,reason:deskData?.overlayError||'오버레이를 불러오는 중입니다.'};
+ if(overlay.status!=='BOUND')return {enabled:false,reason:overlay.reason?`${overlay.status} · ${overlay.reason}`:overlay.status};
+ if(overlay.workspace_status!=='ACTIVE')return {enabled:false,reason:`workspace_status=${overlay.workspace_status}`};
+ const step=typeof overlay.capacity==='object'?` · max_step_days=${overlay.capacity.max_step_days}`:'';
+ return {enabled:true,reason:`${state.auth.permissions['overlay:command'].reason}${step}`};
+}
+function deskKey(c){return `${state.instance_id}:${state.state_digest}:${c.advance_id}:${deskData?.overlay?.sim_day}`;}
+function advisoryText(body){
+ if(!body)return '';
+ if(body.status!=='BOUND')return `심사 기록 ${body.status} · ${body.reason}`;
+ return `심사 기록 proposal=${body.proposal}${body.failed_check?` failed_check=${body.failed_check}`:''} (자문 · 승인을 막지 않음)`;
+}
+function deskActions(c){
+ const items=[];
+ const adv=deskData?.overlay?.advances?.find(row=>row.advance_id===c.advance_id);
+ const extra=deskExtra.key===deskKey(c)?deskExtra:{};
+ const add=(op,blockReason,note)=>{
+  const gate=can('command:'+op)?null:permissionReason('command:'+op);
+  const allowedNote=state.auth.permissions['command:'+op]?.reason||'';
+  const reason=gate||blockReason;
+  items.push({op,label:actionNames[op],enabled:!reason,reason:reason||[allowedNote,note].filter(Boolean).join(' · ')});
+ };
+ const overlayReason=deskData?.overlay?(deskData.overlay.reason||deskData.overlay.status):(deskData?.overlayError||'오버레이를 불러오는 중입니다.');
+ if(c.phase==='OFFERED'){add('approve',null,advisoryText(extra.underwrite));add('reject',null);add('cancel',null);}
+ if(c.phase==='APPROVED'){
+  if(!c.settlement_id)add('bind_settlement',null);
+  else{
+   const preview=extra.preview;
+   if(!preview)add('draw',extra.previewError?'사전점검을 확인하지 못했습니다. 노출 기록을 열지 않습니다.':'사전점검을 불러오는 중입니다.');
+   else if(preview.outcome==='WOULD_REJECT')add('draw',preview.reason||preview.outcome);
+   else add('draw',null,`사전점검 ${preview.outcome} · ${preview.settlement_gate}`);
+  }
+  add('cancel',null);
+ }
+ if(c.phase==='DRAWN'){
+  if(!adv)add('close',overlayReason);
+  else if(adv.close_ready!==true)add('close',`close_ready=${adv.close_ready} · principal_outstanding_krw=${adv.principal_outstanding_krw} · interest_due_krw=${adv.interest_due_krw} · default_interest_due_krw=${adv.default_interest_due_krw}`);
+  else add('close',null,'close_ready=true');
+  const proposal=(deskData?.overlay?.margin?.proposals||[]).find(item=>item.advance_id===c.advance_id);
+  if(!adv)add('default',overlayReason);
+  else if(!proposal)add('default',`default_eligible 제안 없음 · margin.state=${adv.margin?.state} · margin.limit=${deskData.overlay.margin.limit} · default_eligible_day=${adv.margin?.default_eligible_day}`);
+  else add('default',null,`default_eligible_day=${proposal.default_eligible_day}`);
+ }
+ return items;
+}
+function renderDeskActions(){
+ const c=state?.cases?.find(item=>item.advance_id===selected);
+ const list=$('desk-actions');
+ if(!c||!deskData||deskData.forbidden){list.replaceChildren();$('desk-next-help').textContent='';return;}
+ const items=deskActions(c);
+ $('desk-next-help').textContent=items.length?`${c.advance_id} · ${c.phase}. 가능 여부와 사유는 서버 응답입니다.`:`${c.advance_id} · ${c.phase}. 이 단계에서 데스크가 보낼 수 있는 작업이 없습니다.`;
+ list.replaceChildren(...items.map(item=>{
+  const li=document.createElement('li');
+  const button=textElement('button',item.label);button.type='button';button.id=`desk-act-${item.op}`;button.dataset.deskOp=item.op;
+  const reason=textElement('span',item.reason,'desk-reason');reason.id=`desk-reason-${item.op}`;
+  button.setAttribute('aria-describedby',reason.id);
+  if(!item.enabled)button.setAttribute('aria-disabled','true');
+  button.onclick=()=>deskAct(item.op);
+  li.append(button,reason);return li;
+ }));
+ deskFence();
+}
+function deskAct(op){
+ const c=state?.cases?.find(item=>item.advance_id===selected);
+ if(!c)return;
+ const item=deskActions(c).find(entry=>entry.op===op);
+ if(!item)return;
+ if(!item.enabled){notice(`${item.label}: ${item.reason}`,true);return;}
+ command(op,c.advance_id,{});
+}
+function deskFence(){
+ if(!$('desk')||$('desk').hidden)return;
+ const blocked=busy||!!pending||writesBlocked();
+ $('desk-refresh').disabled=busy;$('desk-case').disabled=busy;
+ $('desk-days').disabled=blocked;$('desk-advance').disabled=blocked;
+ document.querySelectorAll('#desk-actions button').forEach(button=>{button.disabled=blocked;});
+}
+async function deskAdvance(){
+ const gate=deskAdvanceState();
+ if(!gate.enabled){notice(`sim_day 진행: ${gate.reason}`,true);return;}
+ if(busy||pending||writesBlocked()||!state)return;
+ const days=$('desk-days').value;
+ if(!DESK_DAYS.test(days)){notice('진행 일수는 1 이상의 정수여야 합니다.',true);return;}
+ if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
+ await writeFenced('/api/overlay/commands',()=>{const from=deskData.overlay.sim_day;return {instance_id:state.instance_id,operation_id:'desk-'+crypto.randomUUID(),op:'advance_day',from_sim_day:from,to_sim_day:from+Number(days),reason:'operator desk advance_day'};},validateOverlayReceipt,receipt=>notice(`sim_day ${receipt.from_sim_day} → ${receipt.to_sim_day} 반영 · SIMULATED · F04 저널은 바뀌지 않았고 자금은 움직이지 않았습니다.`));
+ $('desk-advance').focus();
+}
+function paintDeskTiles(risk){
+ const wrap=$('desk-tiles'),label=$('desk-risk-label');
+ if(!risk?.risk){wrap.replaceChildren();label.textContent=risk?.error||'위험 요약을 표시하지 않습니다.';return;}
+ const body=risk.risk;
+ label.textContent=body.reason?`${body.label} · ${body.status} · ${body.reason}`:`${body.label} · ${body.status} · sim_day ${body.sim_day} · ${body.accounting_policy}`;
+ if(body.status==='NOT_BOUND'){wrap.replaceChildren();return;}
+ const last=body.stress.rows[body.stress.rows.length-1];
+ const krw=value=>value===null||value===undefined?'—':number(value);
+ const tiles=[['outstanding','미상환 (KRW)',krw(body.totals.outstanding_krw),'SIMULATED'],['open','열린 노출 · 기록된 노출',`${body.totals.advances_open}/${body.totals.advances_drawn}`,''],['reserve','준비금 요구액 (KRW)',krw(body.reserve.requirement_krw),'기장 안 함'],['hhi','집중도 HHI',`${body.concentration.hhi_permille===null?'—':body.concentration.hhi_permille}‰`,''],['shortfall','스트레스 부족액 (KRW)',last?krw(last.shortfall_krw):'—',last?`충격 ${last.shock_bps} bps`:''],['sim_day','sim_day',String(body.sim_day),body.terms_version]];
+ wrap.replaceChildren(...tiles.map(([key,title,value,note])=>{const tile=document.createElement('div');tile.className='tile';tile.dataset.tile=key;tile.append(textElement('span',title),textElement('strong',value),textElement('small',note));return tile;}));
+}
+function paintDeskOverlay(){
+ const overlay=deskData.overlay;
+ if(!overlay){$('desk-clock').textContent=deskData.overlayError||'';$('desk-overlay-rows').replaceChildren();return;}
+ $('desk-clock').textContent=`sim_day ${overlay.sim_day} · ${overlay.status}${overlay.reason?` · ${overlay.reason}`:''} · clock_source=${overlay.clock_source} · ${overlay.label}`;
+ $('desk-overlay-rows').replaceChildren(...overlay.advances.map(row=>{
+  const tr=document.createElement('tr');
+  for(const value of [row.advance_id,row.phase,number(row.principal_outstanding_krw),number(row.interest_due_krw),number(row.default_interest_due_krw),String(row.accrued_through_sim_day),String(row.close_ready),row.margin?row.margin.state:'—'])tr.append(textElement('td',value));
+  return tr;
+ }));
+}
+function timelineRows(manifest,c){
+ const rows=[];
+ manifest.sections.journal.body.entries.forEach((entry,index)=>{
+  if(entry.advance_id===c.advance_id)rows.push({key:[index,1,index],cells:[`#${index}`,'F04 저널','—',entry.op,entry.idempotency_key]});
+ });
+ const overlay=manifest.sections.overlay?manifest.sections.overlay.body.journal:[];
+ overlay.forEach((entry,n)=>{
+  const payload=entry.payload||{};
+  const own=payload.advance_id===c.advance_id,global=entry.kind==='clock'||entry.kind==='terms_binding';
+  if(!own&&!global)return;
+  const detail=Object.entries(payload).filter(([key,value])=>key!=='advance_id'&&['string','number','boolean'].includes(typeof value)).map(([key,value])=>`${key}=${value}`).join(' · ');
+  rows.push({key:[entry.after_journal_index,0,n],cells:[`@${entry.after_journal_index}`,own?'오버레이':'오버레이 · 전역',String(entry.sim_day),entry.kind,detail]});
+ });
+ rows.sort((a,b)=>a.key[0]-b.key[0]||a.key[1]-b.key[1]||a.key[2]-b.key[2]);
+ return rows;
+}
+function paintDeskTimeline(c){
+ const body=$('desk-timeline-rows'),note=$('desk-timeline-note');
+ if(!c||!deskData.manifest){body.replaceChildren();note.textContent=deskData.timelineError||'';return;}
+ const rows=timelineRows(deskData.manifest,c);
+ note.textContent=`${c.advance_id} · 행 ${rows.length}건 · F04 저널과 오버레이를 같은 순서 기준(after_journal_index)으로 합쳤습니다. 오버레이 이벤트는 같은 위치의 F04 행 앞에 옵니다.`;
+ body.replaceChildren(...rows.map(row=>{const tr=document.createElement('tr');tr.dataset.source=row.cells[1];for(const value of row.cells)tr.append(textElement('td',value));return tr;}));
+}
+function renderDesk(){
+ const open=applyDeskVisibility();
+ if(!open||!state)return;
+ const forbidden=$('desk-forbidden'),panel=$('desk-body');
+ if(deskData?.forbidden){forbidden.hidden=false;forbidden.textContent=`운영 데스크를 표시하지 않습니다 · ${deskData.forbidden}`;panel.hidden=true;return;}
+ forbidden.hidden=true;panel.hidden=false;
+ const error=$('desk-error');
+ error.hidden=!!deskData;error.textContent=deskData?'':'운영 데스크를 불러오는 중입니다.';
+ if(!deskData)return;
+ paintDeskTiles(deskData.risk);
+ const ids=state.cases.map(item=>item.advance_id);
+ const select=$('desk-case');
+ if([...select.options].map(option=>option.value).join()!==ids.join())select.replaceChildren(...ids.map(id=>{const option=textElement('option',id);option.value=id;return option;}));
+ if(selected)select.value=selected;
+ paintDeskOverlay();
+ paintDeskTimeline(state.cases.find(item=>item.advance_id===selected));
+ const commandsAllowed=can('overlay:command')||Object.entries(state.auth.permissions).some(([name,item])=>name.startsWith('command:')&&item.allowed);
+ $('desk-commands').hidden=!commandsAllowed;
+ $('desk-commands-note').hidden=commandsAllowed;
+ $('desk-commands-note').textContent=commandsAllowed?'':`명령 조작 없음 · ${permissionReason('overlay:command')}`;
+ const gate=deskAdvanceState();
+ const advance=$('desk-advance');
+ if(gate.enabled)advance.removeAttribute('aria-disabled');else advance.setAttribute('aria-disabled','true');
+ $('desk-advance-reason').textContent=gate.reason;
+ if(commandsAllowed)renderDeskActions();
+}
+async function loadDeskCase(){
+ const epoch=++deskEpoch;
+ deskExtra={};
+ const c=state?.cases?.find(item=>item.advance_id===selected);
+ if(!deskOpen()||!c||!deskData||deskData.forbidden||!can('projection:read')){if(c&&deskOpen())renderDeskActions();return;}
+ const instance=state.instance_id,digest=state.state_digest,id=c.advance_id;
+ const key=deskKey(c);
+ const current=()=>epoch===deskEpoch&&state.instance_id===instance&&state.state_digest===digest&&selected===id;
+ deskExtra={key};
+ renderDeskActions();
+ if(c.phase==='APPROVED'&&c.settlement_id){
+  try{
+   const body=await request(`/api/preview/${encodeURIComponent(id)}?instance_id=${encodeURIComponent(instance)}`);
+   if(!current())return;
+   if(body.instance_id!==instance||body.advance_id!==id||body.workspace_mutated!==false||body.write_authorized!==false||body.observed_state_digest!==digest)throw Error('INVALID_PREVIEW');
+   deskExtra.preview=body;
+  }catch{if(!current())return;deskExtra.previewError=true;}
+ }
+ if((c.phase==='OFFERED'||c.phase==='APPROVED')&&deskData.overlay){
+  const day=deskData.overlay.sim_day;
+  try{
+   const body=await request(`/api/underwrite/${encodeURIComponent(id)}?${new URLSearchParams({instance_id:instance,sim_day:String(day)})}`);
+   if(!current())return;
+   if(!underwriteOk(body,{advance_id:id,candidate:false,sim_day:day}))throw Error('INVALID_UNDERWRITE');
+   deskExtra.underwrite=body;
+  }catch{if(!current())return;}
+ }
+ if(current())renderDeskActions();
+}
+$('desk-advance').onclick=()=>{void deskAdvance();};
+$('desk-refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{await refresh();notice('운영 데스크를 다시 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('운영 데스크 조회에 실패했습니다.',true);}finally{busy=false;fence();}};
+$('desk-case').onchange=()=>{selected=$('desk-case').value;syncCaseUrl(selected);render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();};
+window.addEventListener('hashchange',()=>{
+ const open=applyDeskVisibility();
+ if(open&&state&&!busy){busy=true;fence();refresh().catch(()=>notice('운영 데스크를 조회하지 못했습니다.',true)).finally(()=>{busy=false;fence();});}
+});
+applyDeskVisibility();
+// DESK END
 $('offer-form').onsubmit=event=>{event.preventDefault();const amount=Number($('amount').value);if(!Number.isSafeInteger(amount)||amount<1||amount>1e12){notice('금액은 1부터 10¹² 사이의 정수여야 합니다.',true);return;}command('offer','sim-'+crypto.randomUUID().slice(0,12),{fixture_id:$('fixture').value,amount});};
 $('repay').onclick=()=>{const c=state.cases.find(item=>item.advance_id===selected);const amount=Number($('repay-amount').value);if(!Number.isSafeInteger(amount)||amount<1){notice('상환 메모 금액은 양의 정수여야 합니다.',true);return;}command('repay',selected,{amount,sequence:c.next_repayment_sequence});};
 $('unbound-draw').onclick=()=>{const c=state?.cases.find(item=>item.advance_id===selected);if(!c||c.phase!=='APPROVED'||c.settlement_id)return;command('draw',c.advance_id,{});};
@@ -581,7 +809,9 @@ function clearMatching(original){
  savePending(null);
 }
 $('recover').onclick=()=>pendingAction(async original=>{
- try{const receipt=await request(`/api/operations/${encodeURIComponent(original.operation_id)}?instance_id=${encodeURIComponent(original.instance_id)}`);validateReceipt(receipt,original);clearMatching(original);showReceipt(receipt);await refresh();}
+ try{
+  if(original.op==='advance_day'){const view=await request(`/api/overlay?operation_id=${encodeURIComponent(original.operation_id)}`);validateOverlayLookup(view,original);clearMatching(original);notice('원 sim_day 요청은 서버에 반영되어 있습니다. 같은 요청을 다시 보내지 않았습니다.');await refresh();return;}
+  const receipt=await request(`/api/operations/${encodeURIComponent(original.operation_id)}?instance_id=${encodeURIComponent(original.instance_id)}`);validateReceipt(receipt,original);clearMatching(original);showReceipt(receipt);await refresh();}
  catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}
 });
 $('new-session').onclick=()=>pendingAction(async original=>{
