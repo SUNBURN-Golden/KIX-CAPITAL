@@ -22,7 +22,7 @@ from capital.decisions import DecisionIndex
 from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manifest_status
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
-from capital.protocol import VENDOR
+from capital.protocol import VENDOR, SettlementMachine
 from capital.recon import build_reconciliation
 from capital.policy import (
     POLICY_LABEL, POLICY_NOT_BOUND, SCENARIO_ID, DecisionNoteSettlementPolicy,
@@ -100,6 +100,31 @@ def _agent_api_error(code, role=None):
     if code == 'NOT_BOUND':
         raise ApiError('NOT_BOUND', 400, detail)
     raise ApiError('NOT_BOUND', 500, detail)
+
+
+READ_SCHEMA_VERSION = '0.1'
+READ_FIXTURE_MODE = 'REFERENCE_IN_MEMORY'
+READ_MODE = 'READ_MODEL_REHEARSAL'
+READ_LABEL = ('SIMULATED consumer rehearsal of the READ_MODEL_QUERIES draft 0.1 envelope. '
+              'Not a read model, not a ReadObservationV1, not a payment or a loan.')
+READ_QUERIES = {
+    'credit_advance': 'get_credit_advance',
+    'credit_claim': 'get_credit_claim',
+    'settlement': 'get_settlement',
+}
+
+
+def _read_api_error(code):
+    """Map a pinned reader code to HTTP. Literals stay visible to the facade error scan."""
+    if code == 'INVALID_ID':
+        raise ApiError('INVALID_ID', 400)
+    if code == 'UNKNOWN_ADVANCE':
+        raise ApiError('UNKNOWN_ADVANCE', 404)
+    if code == 'UNKNOWN_CLAIM':
+        raise ApiError('UNKNOWN_CLAIM', 404)
+    if code == 'UNKNOWN_SETTLEMENT':
+        raise ApiError('UNKNOWN_SETTLEMENT', 404)
+    raise ApiError('READ_ONLY_INVARIANT', 500)
 
 
 class ApiError(Exception):
@@ -988,6 +1013,63 @@ class CapitalService:
 
     def _machine_frozen(self):
         return (self.machine.state_digest(), self.machine.canonical_state(), len(self.receipts))
+
+    def read_query(self, kind, ident):
+        """get_credit_advance, get_credit_claim, get_settlement of READ_MODEL_QUERIES 0.1.
+
+        The body is the pinned view dict, unmodified. The permission is checked by the
+        route registry. Visibility classes are UNDETERMINED upstream and not enforced.
+        """
+        if kind not in READ_QUERIES:
+            raise ApiError('NOT_FOUND', 404)
+        with self.lock:
+            frozen = (self._machine_frozen(), self.machine.export_journal())
+            try:
+                body = self._read_body(kind, ident)
+                accepted = len(self.machine.export_journal())
+                if kind == 'settlement':
+                    # One settlement book per fixture, so its entry count is its journal length.
+                    accepted = body['accepted_entries']
+            finally:
+                if (self._machine_frozen(), self.machine.export_journal()) != frozen:
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+            query = READ_QUERIES[kind]
+            return {
+                'read_schema_version': READ_SCHEMA_VERSION,
+                'query': query,
+                'query_digest': digest({'query': query, 'id': ident}),
+                'fixture_mode': READ_FIXTURE_MODE,
+                'accepted_through': accepted,
+                'visibility_enforced': False,
+                'visibility_matrix': 'UNDETERMINED',
+                'mode': READ_MODE,
+                'label': READ_LABEL,
+                'body': body,
+            }
+
+    def _read_body(self, kind, ident):
+        try:
+            if kind == 'credit_advance':
+                return self.producer.view(ident)
+            if kind == 'credit_claim':
+                view_claim = getattr(self.machine, 'view_claim', None)
+                if view_claim is None:
+                    raise ApiError('NOT_BOUND', 400)
+                return view_claim(ident)
+            try:
+                # The fixture reader reports every miss as UNKNOWN_SETTLEMENT. A scratch
+                # pinned machine tells a malformed id (INVALID_ID) from an absent one.
+                SettlementMachine().view(ident)
+            except Exception as exc:
+                if getattr(exc, 'code', None) == 'INVALID_ID':
+                    raise CreditError('INVALID_ID') from exc
+            return self.fixtures.view(ident)
+        except CreditError as exc:
+            _read_api_error(exc.code)
+        except Exception as exc:
+            if isinstance(exc, ApiError):
+                raise
+            _read_api_error(getattr(exc, 'code', None))
 
     def _machine_same(self, frozen):
         if self._machine_frozen() != frozen:

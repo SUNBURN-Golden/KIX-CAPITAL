@@ -61,6 +61,12 @@
     "readonly": [
       "READ_ONLY_INVARIANT"
     ],
+    "read": [
+      "INVALID_ID",
+      "UNKNOWN_ADVANCE",
+      "UNKNOWN_CLAIM",
+      "UNKNOWN_SETTLEMENT"
+    ],
     "agent": [
       "EXECUTE_AUTHORITY_DISABLED",
       "PER_ACTION_EXCEEDED",
@@ -274,6 +280,18 @@
 {
       "code": "OVERLAY_VOLATILE_KEY",
       "status": 400
+    },
+    {
+      "code": "INVALID_ID",
+      "status": 400
+    },
+    {
+      "code": "UNKNOWN_CLAIM",
+      "status": 404
+    },
+    {
+      "code": "UNKNOWN_SETTLEMENT",
+      "status": 404
     }
   ],
   "commands": {
@@ -798,6 +816,82 @@
       "query": [
         "instance_id"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/read/credit_advance/{id}",
+      "operationId": "local_read_credit_advance",
+      "dispatch": "/api/read/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/read_credit_advance"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "INVALID_ID",
+        "UNKNOWN_ADVANCE",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/read/credit_claim/{id}",
+      "operationId": "local_read_credit_claim",
+      "dispatch": "/api/read/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/read_credit_claim"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "INVALID_ID",
+        "UNKNOWN_CLAIM",
+        "NOT_BOUND",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/read/settlement/{id}",
+      "operationId": "local_read_settlement",
+      "dispatch": "/api/read/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/read_settlement"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "INVALID_ID",
+        "UNKNOWN_SETTLEMENT",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read"
     },
     {
       "method": "GET",
@@ -3416,6 +3510,254 @@
         },
         "recovery_due": {
           "type": "integer"
+        }
+      }
+    },
+    "credit_claim_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "claim_id",
+        "trade_id",
+        "currency",
+        "open_face",
+        "reserved_open",
+        "residual_unreserved",
+        "confirmed_cash_on_face",
+        "recovery_due_on_face",
+        "snapshot_frozen",
+        "funds_executed",
+        "license_granted",
+        "regulated_product",
+        "collateral_perfected",
+        "priority_bound",
+        "disposal_controlled",
+        "revenue_assigned",
+        "admission_granted",
+        "legal_debtor_bound",
+        "bank_debit_observed",
+        "external_pledge_complete",
+        "durable",
+        "repayment_observed",
+        "interest_defined"
+      ],
+      "properties": {
+        "provenance": {
+          "const": "MOCK_CREDIT_F04_ONLY"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "trade_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "open_face": {
+          "type": "integer"
+        },
+        "reserved_open": {
+          "type": "integer"
+        },
+        "residual_unreserved": {
+          "type": "integer"
+        },
+        "confirmed_cash_on_face": {
+          "type": "integer"
+        },
+        "recovery_due_on_face": {
+          "type": "integer"
+        },
+        "snapshot_frozen": {
+          "type": "boolean"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "license_granted": {
+          "const": false
+        },
+        "regulated_product": {
+          "const": false
+        },
+        "collateral_perfected": {
+          "const": false
+        },
+        "priority_bound": {
+          "const": false
+        },
+        "disposal_controlled": {
+          "const": false
+        },
+        "revenue_assigned": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "external_pledge_complete": {
+          "const": false
+        },
+        "durable": {
+          "const": false
+        },
+        "repayment_observed": {
+          "const": false
+        },
+        "interest_defined": {
+          "const": false
+        }
+      }
+    },
+    "read_credit_advance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read_schema_version",
+        "query",
+        "query_digest",
+        "fixture_mode",
+        "accepted_through",
+        "visibility_enforced",
+        "visibility_matrix",
+        "mode",
+        "label",
+        "body"
+      ],
+      "properties": {
+        "read_schema_version": {
+          "const": "0.1"
+        },
+        "query": {
+          "const": "get_credit_advance"
+        },
+        "query_digest": {
+          "type": "string"
+        },
+        "fixture_mode": {
+          "const": "REFERENCE_IN_MEMORY"
+        },
+        "accepted_through": {
+          "type": "integer"
+        },
+        "visibility_enforced": {
+          "const": false
+        },
+        "visibility_matrix": {
+          "const": "UNDETERMINED"
+        },
+        "mode": {
+          "const": "READ_MODEL_REHEARSAL"
+        },
+        "label": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/definitions/credit_view"
+        }
+      }
+    },
+    "read_credit_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read_schema_version",
+        "query",
+        "query_digest",
+        "fixture_mode",
+        "accepted_through",
+        "visibility_enforced",
+        "visibility_matrix",
+        "mode",
+        "label",
+        "body"
+      ],
+      "properties": {
+        "read_schema_version": {
+          "const": "0.1"
+        },
+        "query": {
+          "const": "get_credit_claim"
+        },
+        "query_digest": {
+          "type": "string"
+        },
+        "fixture_mode": {
+          "const": "REFERENCE_IN_MEMORY"
+        },
+        "accepted_through": {
+          "type": "integer"
+        },
+        "visibility_enforced": {
+          "const": false
+        },
+        "visibility_matrix": {
+          "const": "UNDETERMINED"
+        },
+        "mode": {
+          "const": "READ_MODEL_REHEARSAL"
+        },
+        "label": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/definitions/credit_claim_view"
+        }
+      }
+    },
+    "read_settlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read_schema_version",
+        "query",
+        "query_digest",
+        "fixture_mode",
+        "accepted_through",
+        "visibility_enforced",
+        "visibility_matrix",
+        "mode",
+        "label",
+        "body"
+      ],
+      "properties": {
+        "read_schema_version": {
+          "const": "0.1"
+        },
+        "query": {
+          "const": "get_settlement"
+        },
+        "query_digest": {
+          "type": "string"
+        },
+        "fixture_mode": {
+          "const": "REFERENCE_IN_MEMORY"
+        },
+        "accepted_through": {
+          "type": "integer"
+        },
+        "visibility_enforced": {
+          "const": false
+        },
+        "visibility_matrix": {
+          "const": "UNDETERMINED"
+        },
+        "mode": {
+          "const": "READ_MODEL_REHEARSAL"
+        },
+        "label": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/definitions/settlement_view"
         }
       }
     },
