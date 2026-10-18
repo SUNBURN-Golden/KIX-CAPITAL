@@ -8,6 +8,34 @@ from capital.readiness import GROUPS
 from capital.service import CapitalService
 
 ROOT = Path(__file__).resolve().parents[1]
+HANDBOOK = ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md'
+_STALE_REBASE = re.compile(r'(rebase|re-based|재기준|리베이스).{0,160}(DECISION_REQUIRED|결정 대기)'
+                           r'|(DECISION_REQUIRED|결정 대기).{0,160}(rebase|re-based|재기준|리베이스)',
+                           re.IGNORECASE | re.DOTALL)
+
+
+def handbook_section(text, name):
+    start = '<!-- handbook-section:%s -->' % name
+    if start not in text:
+        return ''
+    body = text.split(start, 1)[1]
+    return body.split('<!-- /handbook-section -->', 1)[0]
+
+
+def handbook_rebase_errors(text):
+    errors = []
+    risk = handbook_section(text, 'portfolio-risk-analytics')
+    if not risk:
+        errors.append('risk section missing')
+    if 'NOT_REBASED / DECISION_REQUIRED' in risk:
+        errors.append('retired NOT_REBASED / DECISION_REQUIRED in risk section')
+    for token in ('docs/decisions/CAPITAL_DEFAULT_RECOVERY.md', 'overlay-recovery-writeoff',
+                  'PROVISIONAL', 'interest_rebased'):
+        if token not in risk:
+            errors.append('risk section lacks ' + token)
+    if _STALE_REBASE.search(text):
+        errors.append('stale rebase wording in handbook')
+    return errors
 REQUIREMENTS = ROOT / 'docs' / 'CAPITAL_REQUIREMENTS_KO.md'
 COVERAGE = ROOT / 'docs' / 'CAP_COVERAGE.md'
 
@@ -166,12 +194,27 @@ class CoverageTests(unittest.TestCase):
         line9 = text.splitlines()[8]
         self.assertIn(recovery, line9)
         self.assertIn(posting, line9)
-        stale = re.compile(r'(rebase|re-based|재기준|리베이스).{0,160}(DECISION_REQUIRED|결정 대기)'
-                           r'|(DECISION_REQUIRED|결정 대기).{0,160}(rebase|re-based|재기준|리베이스)',
-                           re.IGNORECASE | re.DOTALL)
-        for rel in ('README.md', 'docs/INTEGRATION.md', 'docs/CAPITAL_REQUIREMENTS_KO.md'):
+        for rel in ('README.md', 'docs/INTEGRATION.md', 'docs/CAPITAL_REQUIREMENTS_KO.md',
+                    'docs/OPERATOR_HANDBOOK_KO.md'):
             body = (ROOT / rel).read_text(encoding='utf-8')
-            self.assertIsNone(stale.search(body), rel)
+            self.assertIsNone(_STALE_REBASE.search(body), rel)
+
+    def test_handbook_risk_section_rebase_wording_and_fence(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        self.assertEqual(handbook_rebase_errors(text), [])
+        old = '마진 가속 후의 만기 재기준(`NOT_REBASED / DECISION_REQUIRED`)은 반영하지 않는다.'
+        for name in ('portfolio-risk-analytics', 'margin-cure-default'):
+            section = handbook_section(text, name)
+            self.assertTrue(section, name)
+            mutated = text.replace(section, section + ' ' + old, 1)
+            self.assertNotEqual(mutated, text)
+            self.assertIsNotNone(_STALE_REBASE.search(mutated))
+            self.assertTrue(handbook_rebase_errors(mutated), name)
+        risk = handbook_section(text, 'portfolio-risk-analytics')
+        for token in ('overlay-recovery-writeoff', 'CAPITAL_DEFAULT_RECOVERY.md'):
+            self.assertIn(token, risk)
+            mutated = text.replace(risk, risk.replace(token, 'x'), 1)
+            self.assertTrue(handbook_rebase_errors(mutated), token)
 
     def test_missing_duplicate_and_flipped_status_fail(self):
         original = COVERAGE.read_text(encoding='utf-8')
