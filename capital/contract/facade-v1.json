@@ -41,7 +41,9 @@
     ],
     "session": [
       "INVALID_SESSION",
-      "NOT_BOUND"
+      "NOT_BOUND",
+      "IDP_TOKEN_REQUIRED",
+      "IDP_TOKEN_INVALID"
     ],
     "projection": [
       "NOT_BOUND",
@@ -126,6 +128,14 @@
     {
       "code": "NOT_BOUND",
       "status": 400
+    },
+    {
+      "code": "IDP_TOKEN_REQUIRED",
+      "status": 401
+    },
+    {
+      "code": "IDP_TOKEN_INVALID",
+      "status": 401
     },
     {
       "code": "ROLE_FORBIDDEN",
@@ -1155,7 +1165,9 @@
         "BODY_TOO_LARGE",
         "INVALID_JSON",
         "INVALID_SESSION",
-        "NOT_BOUND"
+        "NOT_BOUND",
+        "IDP_TOKEN_REQUIRED",
+        "IDP_TOKEN_INVALID"
       ],
       "permission": "session:bind",
       "request": {
@@ -4032,7 +4044,10 @@
           "const": "AuthorizerPort"
         },
         "mode": {
-          "const": "LOCAL_SYNTHETIC_ROLES"
+          "enum": [
+            "LOCAL_SYNTHETIC_ROLES",
+            "LOCAL_FAKE_IDP"
+          ]
         },
         "identity": {
           "const": "NOT_BOUND"
@@ -8592,7 +8607,10 @@
           "const": "SYNTHETIC_LOCAL_ROLE"
         },
         "mode": {
-          "const": "LOCAL_SYNTHETIC_ROLES"
+          "enum": [
+            "LOCAL_SYNTHETIC_ROLES",
+            "LOCAL_FAKE_IDP"
+          ]
         },
         "identity": {
           "const": "NOT_BOUND"
@@ -8667,7 +8685,9 @@
             "PROPOSAL_BINDING_CONFLICT",
             "INVALID_AMOUNT",
             "INVALID_PERIOD",
-            "TOOL_NOT_ALLOWED"
+            "TOOL_NOT_ALLOWED",
+            "IDP_TOKEN_REQUIRED",
+            "IDP_TOKEN_INVALID"
           ]
         },
         "role": {

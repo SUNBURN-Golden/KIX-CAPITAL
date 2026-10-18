@@ -99,3 +99,102 @@ class ProducerPort(Protocol):
 
     def preview_draw(self, advance_id):
         """Draw on a disposable copy. Diagnostic idempotency key only."""
+
+
+def run_authorizer_vectors(factory):
+    """Shared AuthorizerPort vectors. `factory()` returns a fresh authorizer.
+
+    Collects every failure and raises one AssertionError. Passing is a local
+    check of the role-scoped loopback contract. It is not an identity or
+    authentication claim: both stay NOT_BOUND.
+    """
+    import json
+    from email.message import Message
+
+    from capital.auth import ALL_PERMISSIONS, DEFAULT_ROLE, MATRIX, ROLES, Principal
+    from capital.service import ApiError
+
+    failures = []
+
+    def check(condition, label):
+        if not condition:
+            failures.append(label)
+
+    def headers(**pairs):
+        message = Message()
+        for name, values in pairs.items():
+            for value in (values if isinstance(values, list) else [values]):
+                message[name.replace('_', '-')] = value
+        return message
+
+    def code_of(call):
+        try:
+            call()
+        except ApiError as exc:
+            return exc.code
+        except Exception as exc:  # a vector never trusts the adapter's own exception type
+            return f'RAISED:{type(exc).__name__}'
+        return None
+
+    try:
+        authorizer = factory()
+    except Exception as exc:
+        raise AssertionError(f'authorizer factory failed: {type(exc).__name__}')
+    check(isinstance(authorizer, AuthorizerPort), 'implements AuthorizerPort')
+
+    for role in ROLES:
+        for permission in ALL_PERMISSIONS:
+            allowed = authorizer.authorize(Principal(role), permission).allowed
+            check(allowed is (permission in MATRIX[role]), f'matrix {role} {permission}')
+    for role in ('root', 'ORGANIZER', '', None):
+        check(not authorizer.authorize(Principal(role), 'state:read').allowed, f'unknown role denied {role!r}')
+    for permission in ('state:write', '', None, 7, ['state:read']):
+        check(not authorizer.authorize(Principal('organizer'), permission).allowed,
+              f'unknown permission denied {permission!r}')
+
+    check(authorizer.authenticate(headers()).role == DEFAULT_ROLE, 'default principal is organizer')
+    tokens = {role: authorizer.bind_role(role) for role in ROLES}
+    check(all(isinstance(token, str) and token for token in tokens.values()), 'bind_role returns a token')
+    check(len(set(tokens.values())) == len(ROLES), 'one distinct token per role')
+    for role in ROLES:
+        check(authorizer.bind_role(role) == tokens[role], f'bind_role idempotent {role}')
+        check(authorizer.token_for(role) == tokens[role], f'token_for {role}')
+        check(authorizer.role_for_token(tokens[role]) == role, f'role_for_token {role}')
+        check(authorizer.authenticate(headers(X_Capital_Token=tokens[role])).role == role, f'token resolves {role}')
+        check(authorizer.authenticate(
+            headers(X_Capital_Token=tokens[role], X_Capital_Role=role)).role == role, f'matching role header {role}')
+    check(authorizer.role_for_token('not-a-token') is None, 'unknown token has no role')
+    check(authorizer.role_for_token(None) is None, 'non-string token has no role')
+
+    check(code_of(lambda: authorizer.authenticate(
+        headers(X_Capital_Token=tokens['auditor'], X_Capital_Role='observer'))) == 'ROLE_MISMATCH', 'ROLE_MISMATCH')
+    check(code_of(lambda: authorizer.authenticate(headers(X_Capital_Role='auditor'))) == 'SESSION_REQUIRED',
+          'SESSION_REQUIRED')
+    check(code_of(lambda: authorizer.authenticate(headers(X_Capital_Role='root'))) == 'ROLE_UNKNOWN',
+          'unknown role header')
+    check(code_of(lambda: authorizer.authenticate(headers(X_Capital_Role=['organizer', 'organizer']))) == 'ROLE_UNKNOWN',
+          'duplicate role header')
+    check(code_of(lambda: authorizer.authenticate(headers(X_Capital_Token='nope'))) == 'LOCAL_TOKEN_REQUIRED',
+          'unknown token')
+    check(code_of(lambda: authorizer.authenticate(
+        headers(X_Capital_Token=[tokens['organizer'], tokens['organizer']]))) == 'LOCAL_TOKEN_REQUIRED',
+          'duplicate token')
+    check(code_of(lambda: authorizer.bind_role('root')) == 'ROLE_UNKNOWN', 'bind_role unknown role')
+
+    for role in ROLES:
+        try:
+            view = authorizer.describe(Principal(role))
+            text = json.dumps(view)
+        except Exception as exc:
+            failures.append(f'describe {role} raised {type(exc).__name__}')
+            continue
+        check(view.get('port') == 'AuthorizerPort', 'describe port')
+        check(view.get('identity') == 'NOT_BOUND' and view.get('authentication') == 'NOT_BOUND',
+              'describe keeps identity and authentication NOT_BOUND')
+        check(view.get('role') == role and view.get('roles') == list(ROLES), f'describe roles {role}')
+        check(view.get('mode') in ('LOCAL_SYNTHETIC_ROLES', 'LOCAL_FAKE_IDP'), 'describe mode in closed set')
+        check(set(view.get('permissions', {})) == set(ALL_PERMISSIONS), f'describe permissions {role}')
+        check(all(token not in text for token in tokens.values()), 'describe carries no token')
+
+    if failures:
+        raise AssertionError('authorizer vectors failed: ' + '; '.join(failures))
