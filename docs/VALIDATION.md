@@ -670,3 +670,18 @@ Commands actually run:
 - `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0. `manifest_vectors`, `workspace_vectors`, `docs_surface`, `not_bound_checklist`, `auth_matrix` with `--check`, and `decision_ledger.py`: exit 0.
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `demo.json` unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed**; no server left running.
+
+## shadow-participation-slice-uc
+
+`capital/shadow.py` adds three pure integer-floor computations from `CAPITAL_SHADOW_POLICY.md` §3.7, wired into `DecisionNoteShadow` and `GET /api/policy/shadow`: single-claim revenue participation posting, claim-slice size and price, and the ordered UC1-UC4 partition of `undistributed_cash`. All results are `SHADOW_NOT_APPLIED` with the nine false flags and `reconciliation: NOT_COMPARABLE`. The ratio, cap, advance rate and tier rate are read from the settlement and financial-terms notes at runtime; the only constants in code are the CAPITAL-SHADOW-V1 rule constants (10000 bps, 365 days), and an AST test bans the policy numbers. A missing settlement, terms or shadow note, or a non-ADOPTED entry, reports `SHADOW_NOT_BOUND` without numbers. A vector missing an input is `SHADOW_INPUT_UNKNOWN`; a domain breach is `SHADOW_INCONSISTENT`.
+
+Vectors reproduced from the shadow note: V-RP-single (base 95000, participation 19000, cap 75000, payable 19000), V-CP-size (slice max 80750, discount 929, price 79821), V-UC-late-cash-open-refund (uc2 100000), V-UC-late-cash-accepted (uc3 100000, replayed on a disposable `MockSettlement` after a full mock acceptance), V-UC-overpay (uc4 1000, a labelled synthetic literal) and V-UC-split-statement (uc1 49000). `paid_to_date` is 0 with the source label `NOTE_VECTOR_FIRST_POSTING_NO_STORED_STATE` because there is no stored state. The multi-claim base, 90-day window, upward late cash, term end, slice registry, holder priority, impairment, aggregate caps, 180-day timer, D+1 batch and provider return stay `SHADOW_DEFERRED` rows carrying the note's unblock seam.
+
+Resolutions and findings for the upstream candidates:
+
+- UC2 uses `refund_outstanding` only. The settlement note's "when" clause also names `pg_adjustment_outstanding`, but the shadow note's formula and V-UC-late-cash-accepted (uc3 = 100000 while the accepted view has `pg_adjustment_outstanding` = 100000) require it not to. The field is required and validated but is not a partition input.
+- The settlement note says largest remainder equals the pinned floor split for two payees. That does not hold in general (gross 99,999 at 500 bps: pinned 95000 / 4999, largest remainder 94999 / 5000). No equivalence is claimed and no reconciliation is attempted.
+- `organizer_borne_refunds` is an explicit input; it is not derived from the refund shadow results.
+- `expected_days` is a caller-supplied non-negative integer; the notes decide no bound for it.
+
+`/api/policy/simulation`, `state_digest`, receipts and `operation_count` are unchanged (golden digest in `tests/test_shadow_slice_uc.py`, taken on main before this node).
