@@ -14,8 +14,8 @@ Cases, in story order, use fixed operation ids:
 - sim-unbound: DRAWN with settlement_gate UNBOUND
 - sim-pending-settlement: bound to the CAPTURED fixture; draw stays REJECTED
 
-`tests/golden/demo.json` pins state_digest, projection totals, and the export
-manifest content_digest. A mismatch fails. Rewriting the pin requires
+`tests/golden/demo.json` pins state_digest, projection totals, the export
+manifest content_digest, and a `risk` digest of the read-only risk analytics. A mismatch fails. Rewriting the pin requires
 `--update-golden`.
 
 `--producer gate-fake` replays the same story through ``LOCAL_FAKE_GATE`` on
@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from capital import risk
 from capital.service import CapitalService
 from capital.store import FILE_NAME, FileWorkspace
 
@@ -171,6 +172,9 @@ def capture(service):
     manifest = service.export_manifest()
     if manifest.get('label') != 'SIMULATED' or manifest.get('funds_executed') is not False:
         raise SeedError('manifest is not simulated')
+    exposure = service.risk()
+    if exposure.get('status') != 'BOUND' or exposure.get('reconciliation', {}).get('matched') is not True:
+        raise SeedError('risk analytics are not bound or do not reconcile to the projection')
     body = {
         'label': 'SIMULATED',
         'funds_executed': False,
@@ -179,6 +183,7 @@ def capture(service):
         'state_digest': snapshot['state_digest'],
         'projection_totals': totals,
         'content_digest': manifest['content_digest'],
+        'risk': risk.pin(exposure),
     }
     _reject_volatile(body)
     return body

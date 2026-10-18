@@ -69,6 +69,7 @@ GET_PROBES = {
         f'/api/terms/{ADVANCE}/setoff?instance_id={INSTANCE}&as_of_day=1',
     ],
     '/api/overlay': ['/api/overlay'],
+    '/api/risk': ['/api/risk'],
     '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],

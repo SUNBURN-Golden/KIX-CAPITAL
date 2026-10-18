@@ -50,5 +50,13 @@
     "debit": 385000,
     "label": "SIMULATED"
   },
+  "risk": {
+    "hhi_permille": 1000,
+    "label": "SIMULATED",
+    "outstanding_krw": 45000,
+    "reserve_requirement_krw": 30750,
+    "risk_digest": "3c2046434abe238ab1be67474af6c0cb887e2115a2a2826dbeda6941b2cf513c",
+    "sim_day": 0
+  },
   "state_digest": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45"
 }
