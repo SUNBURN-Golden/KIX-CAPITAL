@@ -1187,6 +1187,30 @@
       "permission": "projection:read"
     },
     {
+      "method": "GET",
+      "path": "/api/risk",
+      "operationId": "local_risk",
+      "dispatch": "/api/risk",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/risk_state"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND"
+      ],
+      "permission": "projection:read"
+    },
+    {
       "method": "POST",
       "path": "/api/overlay/commands",
       "operationId": "local_overlay_command",
@@ -10861,6 +10885,611 @@
           "type": "string"
         }
       }
+    },
+    "risk_count_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "advances",
+        "outstanding_krw"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "advances": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "risk_buckets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "edges_days",
+        "rows"
+      ],
+      "properties": {
+        "edges_days": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_count_row"
+          }
+        }
+      }
+    },
+    "risk_totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advances_drawn",
+        "advances_open",
+        "outstanding_krw"
+      ],
+      "properties": {
+        "advances_drawn": {
+          "type": "integer"
+        },
+        "advances_open": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "risk_tier_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier",
+        "advances",
+        "outstanding_krw",
+        "share_permille"
+      ],
+      "properties": {
+        "tier": {
+          "type": "string"
+        },
+        "advances": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "share_permille": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "risk_holder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "outstanding_krw",
+        "share_permille"
+      ],
+      "properties": {
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "share_permille": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "risk_cap_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cap",
+        "cap_krw",
+        "used_krw",
+        "utilization_permille",
+        "remaining_krw",
+        "breached"
+      ],
+      "properties": {
+        "cap": {
+          "type": "string"
+        },
+        "cap_krw": {
+          "type": "integer"
+        },
+        "used_krw": {
+          "type": "integer"
+        },
+        "utilization_permille": {
+          "type": "integer"
+        },
+        "remaining_krw": {
+          "type": "integer"
+        },
+        "breached": {
+          "type": "boolean"
+        }
+      }
+    },
+    "risk_caps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "rows"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_cap_row"
+          }
+        }
+      }
+    },
+    "risk_concentration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hhi_permille",
+        "beneficiaries",
+        "caps"
+      ],
+      "properties": {
+        "hhi_permille": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "beneficiaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_holder"
+          }
+        },
+        "caps": {
+          "$ref": "#/definitions/risk_caps"
+        }
+      }
+    },
+    "risk_reserve_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket",
+        "bps",
+        "outstanding_krw",
+        "provision_krw"
+      ],
+      "properties": {
+        "bucket": {
+          "type": "string"
+        },
+        "bps": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "provision_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "risk_reserve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "label",
+        "rows",
+        "requirement_krw",
+        "unrated_outstanding_krw",
+        "complete",
+        "applied"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "const": "SIMULATED reserve requirement from the CAPITAL-TERMS-V1 provision table — not an accounting policy, no reserve is booked"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_reserve_row"
+          }
+        },
+        "requirement_krw": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "unrated_outstanding_krw": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "applied": {
+          "const": false
+        }
+      }
+    },
+    "risk_stress_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shock_bps",
+        "shocked_eligible_face_krw",
+        "margin_call_count",
+        "called_outstanding_krw",
+        "shortfall_krw"
+      ],
+      "properties": {
+        "shock_bps": {
+          "type": "integer"
+        },
+        "shocked_eligible_face_krw": {
+          "type": "integer"
+        },
+        "margin_call_count": {
+          "type": "integer"
+        },
+        "called_outstanding_krw": {
+          "type": "integer"
+        },
+        "shortfall_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "risk_stress_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "drawn_open_advances",
+        "assessed",
+        "unassessed"
+      ],
+      "properties": {
+        "drawn_open_advances": {
+          "type": "integer"
+        },
+        "assessed": {
+          "type": "integer"
+        },
+        "unassessed": {
+          "type": "integer"
+        }
+      }
+    },
+    "risk_stress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "label",
+        "shock_set",
+        "shocks_bps",
+        "baseline",
+        "rows",
+        "coverage",
+        "monotone",
+        "applied"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "label": {
+          "const": "SIMULATED refund-shock stress — hypothetical, no margin call is recorded"
+        },
+        "shock_set": {
+          "const": "FIXED_REFUND_SHOCK_BPS_OF_ELIGIBLE_FACE_V1"
+        },
+        "shocks_bps": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "baseline": {
+          "$ref": "#/definitions/risk_stress_row"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_stress_row"
+          }
+        },
+        "coverage": {
+          "$ref": "#/definitions/risk_stress_coverage"
+        },
+        "monotone": {
+          "type": "boolean"
+        },
+        "applied": {
+          "const": false
+        }
+      }
+    },
+    "risk_reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_krw",
+        "tier_sum",
+        "bucket_sum",
+        "aging_sum",
+        "projection_outstanding_krw",
+        "matched"
+      ],
+      "properties": {
+        "total_krw": {
+          "type": "integer"
+        },
+        "tier_sum": {
+          "type": "integer"
+        },
+        "bucket_sum": {
+          "type": "integer"
+        },
+        "aging_sum": {
+          "type": "integer"
+        },
+        "projection_outstanding_krw": {
+          "type": "integer"
+        },
+        "matched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "risk_not_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "risk_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy"
+        },
+        "mode": {
+          "const": "SIMULATED_RISK_ANALYTICS"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "risk_digest": {
+          "type": "null"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "risk_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "totals",
+        "by_tier",
+        "maturity_buckets",
+        "overdue_aging",
+        "concentration",
+        "reserve",
+        "stress",
+        "reconciliation",
+        "risk_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy"
+        },
+        "mode": {
+          "const": "SIMULATED_RISK_ANALYTICS"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "totals": {
+          "$ref": "#/definitions/risk_totals"
+        },
+        "by_tier": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_tier_row"
+          }
+        },
+        "maturity_buckets": {
+          "$ref": "#/definitions/risk_buckets"
+        },
+        "overdue_aging": {
+          "$ref": "#/definitions/risk_buckets"
+        },
+        "concentration": {
+          "$ref": "#/definitions/risk_concentration"
+        },
+        "reserve": {
+          "$ref": "#/definitions/risk_reserve"
+        },
+        "stress": {
+          "$ref": "#/definitions/risk_stress"
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/risk_reconciliation"
+        },
+        "risk_digest": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "risk_state": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/risk_bound"
+        },
+        {
+          "$ref": "#/definitions/risk_not_bound"
+        }
+      ]
     }
   }
 }

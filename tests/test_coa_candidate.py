@@ -115,16 +115,50 @@ class V1UnchangedTests(unittest.TestCase):
 
     def test_v1_and_golden_files_are_untouched(self):
         # Diff against main, not HEAD: files other nodes changed on main are not this node's edits.
+        # Goldens are compared key by key below; the T05-sim/T06-sim pins are new files owned by
+        # scripts/sim_journeys.py (--update-golden) and compared to a live run by tests/test_sim_journeys.py.
+        guarded = ['capital/projection.py', 'capital/ports.py', 'capital/overlay.py', 'capital/export.py',
+                   'capital/vendor', '.aiops', 'docs/decisions']
         probe = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT,
                                capture_output=True, text=True)
         base = 'origin/main' if probe.returncode == 0 else 'HEAD'
-        status = subprocess.run(
-            ['git', 'diff', '--name-only', base, '--', 'capital/projection.py', 'capital/ports.py', 'capital/overlay.py',
-             'capital/export.py', 'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions'],
-            cwd=ROOT, capture_output=True, text=True)
+        status = subprocess.run(['git', 'diff', '--name-only', base, '--', *guarded],
+                                cwd=ROOT, capture_output=True, text=True)
         if status.returncode != 0:
             self.skipTest('git unavailable')
-        self.assertEqual(status.stdout.split(), [])
+        changed = status.stdout.split()
+        if base == 'origin/main' and changed:
+            # A guarded file that main added after this branch's merge point, and that the working tree has
+            # never had, is another node's addition, not an edit or a deletion made here. A file this branch
+            # does hold, or did hold at its merge point, is still compared byte-for-byte against main.
+            merge_base = subprocess.run(['git', 'merge-base', 'HEAD', 'origin/main'], cwd=ROOT,
+                                        capture_output=True, text=True)
+            if merge_base.returncode == 0:
+                added_on_main = subprocess.run(
+                    ['git', 'diff', '--name-only', '--diff-filter=A', merge_base.stdout.strip(), 'origin/main',
+                     '--', *guarded],
+                    cwd=ROOT, capture_output=True, text=True)
+                if added_on_main.returncode == 0:
+                    absent = set(added_on_main.stdout.split())
+                    changed = [path for path in changed if path not in absent or (ROOT / path).exists()]
+        self.assertEqual(changed, [])
+        # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
+        # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
+        # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.
+        listed = subprocess.run(['git', 'ls-tree', '--name-only', base, 'tests/golden/'],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(listed.returncode, 0)
+        names = listed.stdout.split()
+        self.assertIn('tests/golden/demo.json', names)
+        for name in names:
+            shown = subprocess.run(['git', 'show', f'{base}:{name}'], cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(shown.returncode, 0, name)
+            pinned = json.loads(shown.stdout)
+            current = json.loads((ROOT / name).read_text(encoding='utf-8'))
+            self.assertIsInstance(current, dict, name)
+            for key, value in pinned.items():
+                self.assertIn(key, current, f'{name} ${key} dropped against {base}')
+                self.assertEqual(current[key], value, f'{name} ${key} moved against {base}')
 
     def test_default_reconciliation_still_has_the_six_checks(self):
         service = CapitalService()

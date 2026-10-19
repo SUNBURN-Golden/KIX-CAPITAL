@@ -1,0 +1,537 @@
+{
+  "digest": "614f735a7411b2b0bb8374c4ab67a8ab5f900941236610b9f0be9679014f0efb",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "T06-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 33,
+  "steps": [
+    {
+      "expect": [
+        "LOCAL_FILE_WORKSPACE",
+        false
+      ],
+      "facts": {
+        "label": "SIMULATED"
+      },
+      "kind": "PROCESS",
+      "n": 1,
+      "name": "organizer session on a --workspace server",
+      "status": [
+        "LOCAL_FILE_WORKSPACE",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "agent",
+        "NOT_BOUND"
+      ],
+      "kind": "HTTP",
+      "n": 2,
+      "name": "agent role bound",
+      "status": [
+        200,
+        "agent",
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t06-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "offer sim-t06-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t06-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "approve sim-t06-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t06-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "bind_settlement sim-t06-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t06-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "draw sim-t06-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 5
+      },
+      "kind": "HTTP",
+      "n": 7,
+      "name": "advance_day 0->5",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACTIVE",
+        false
+      ],
+      "facts": {
+        "authority": [
+          "PROPOSE",
+          "QUERY"
+        ]
+      },
+      "kind": "HTTP",
+      "n": 8,
+      "name": "agent queries its grant",
+      "status": [
+        200,
+        "ACTIVE",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "HUMAN_PENDING",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 9,
+      "name": "agent proposes a repay",
+      "status": [
+        200,
+        "HUMAN_PENDING",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "EXECUTE_AUTHORITY_DISABLED"
+      ],
+      "kind": "HTTP",
+      "n": 10,
+      "name": "agent EXECUTE is refused",
+      "status": [
+        403,
+        "EXECUTE_AUTHORITY_DISABLED"
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "EXECUTE_AUTHORITY_DISABLED"
+      ],
+      "kind": "HTTP",
+      "n": 11,
+      "name": "agent propose_action with kind EXECUTE is refused",
+      "status": [
+        403,
+        "EXECUTE_AUTHORITY_DISABLED"
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "ROLE_FORBIDDEN"
+      ],
+      "kind": "HTTP",
+      "n": 12,
+      "name": "the agent token cannot submit a command",
+      "status": [
+        403,
+        "ROLE_FORBIDDEN"
+      ]
+    },
+    {
+      "expect": [
+        "3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7",
+        4
+      ],
+      "facts": {
+        "operation_count": 4,
+        "state_digest": "3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7"
+      },
+      "kind": "HTTP",
+      "n": 13,
+      "name": "refused agent calls changed nothing",
+      "status": [
+        "3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7",
+        4
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        "sim-t06-proposal",
+        "organizer",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 14,
+      "name": "a human executes the proposal with proposal_id on the receipt",
+      "status": [
+        200,
+        "ACCEPTED",
+        "sim-t06-proposal",
+        "organizer",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        "HUMAN_PENDING",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 15,
+      "name": "the proposal is still a pending memo that executed no effect itself",
+      "status": [
+        200,
+        true,
+        "HUMAN_PENDING",
+        false
+      ]
+    },
+    {
+      "expect": "FENCED_NO_NETWORK_CALL",
+      "facts": {
+        "held": [
+          "h-repay-lost"
+        ]
+      },
+      "kind": "FENCE",
+      "n": 16,
+      "name": "a write while an outcome is UNKNOWN never leaves the process",
+      "status": "FENCED_NO_NETWORK_CALL"
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 17,
+      "name": "lookup by operation id finds the lost response",
+      "status": [
+        200,
+        "ACCEPTED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 18,
+      "name": "a never-sent operation id is UNKNOWN and not authorized for retry",
+      "status": [
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": "ACTIVE",
+      "facts": {
+        "operation_count": 6,
+        "overlay_state_digest": "8d7d3e1b54eb0b4ddd4b570ae9a42f852e76343e282c75474789bd048d9bae6b",
+        "sim_day": 5,
+        "state_digest": "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9"
+      },
+      "kind": "HTTP",
+      "n": 19,
+      "name": "state recorded before the kill",
+      "status": "ACTIVE"
+    },
+    {
+      "expect": -9,
+      "kind": "PROCESS",
+      "n": 20,
+      "name": "server killed with SIGKILL",
+      "status": -9
+    },
+    {
+      "expect": [
+        "ACTIVE",
+        true
+      ],
+      "facts": {
+        "workspace_kind": "LOCAL_FILE_WORKSPACE"
+      },
+      "kind": "PROCESS",
+      "n": 21,
+      "name": "server restarted on the same workspace",
+      "status": [
+        "ACTIVE",
+        true
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "LOCAL_TOKEN_REQUIRED"
+      ],
+      "kind": "HTTP",
+      "n": 22,
+      "name": "the stale token is refused",
+      "status": [
+        403,
+        "LOCAL_TOKEN_REQUIRED"
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "SESSION_CHANGED"
+      ],
+      "kind": "HTTP",
+      "n": 23,
+      "name": "the stale instance gets SESSION_CHANGED",
+      "status": [
+        409,
+        "SESSION_CHANGED"
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "SESSION_CHANGED"
+      ],
+      "kind": "HTTP",
+      "n": 24,
+      "name": "a lookup under the old instance gets SESSION_CHANGED",
+      "status": [
+        409,
+        "SESSION_CHANGED"
+      ]
+    },
+    {
+      "expect": [
+        "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9",
+        6,
+        "8d7d3e1b54eb0b4ddd4b570ae9a42f852e76343e282c75474789bd048d9bae6b"
+      ],
+      "facts": {
+        "operation_count": 6,
+        "state_digest": "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9"
+      },
+      "kind": "HTTP",
+      "n": 25,
+      "name": "digests and counts survive the restart unchanged",
+      "status": [
+        "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9",
+        6,
+        "8d7d3e1b54eb0b4ddd4b570ae9a42f852e76343e282c75474789bd048d9bae6b"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true
+      ],
+      "facts": {
+        "operations": [
+          "h-repay-lost",
+          "h-repay-proposal",
+          "o-draw",
+          "o-offer"
+        ],
+        "outcomes": {
+          "h-repay-lost": "ACCEPTED",
+          "h-repay-proposal": "ACCEPTED",
+          "o-draw": "ACCEPTED",
+          "o-offer": "ACCEPTED"
+        },
+        "proposal_id": "sim-t06-proposal"
+      },
+      "kind": "HTTP",
+      "n": 26,
+      "name": "receipts are restored unchanged, with the original instance id",
+      "status": [
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        0
+      ],
+      "kind": "HTTP",
+      "n": 27,
+      "name": "the new process executed no command at startup",
+      "status": [
+        200,
+        0
+      ]
+    },
+    {
+      "expect": [
+        404,
+        "UNKNOWN_PROPOSAL"
+      ],
+      "kind": "HTTP",
+      "n": 28,
+      "name": "proposals are process memory: the old citation is unknown after restart",
+      "status": [
+        404,
+        "UNKNOWN_PROPOSAL"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        [
+          "MATCHED"
+        ]
+      ],
+      "facts": {
+        "checks": 7
+      },
+      "kind": "HTTP",
+      "n": 29,
+      "name": "reconciliation checks match after the restart",
+      "status": [
+        200,
+        [
+          "MATCHED"
+        ]
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t06-a",
+        "op": "repay"
+      },
+      "kind": "HTTP",
+      "n": 30,
+      "name": "repay the remainder on the new instance",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t06-a",
+        "op": "close"
+      },
+      "kind": "HTTP",
+      "n": 31,
+      "name": "human close on the new instance",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": {
+        "sim-t06-a": "CLOSED"
+      },
+      "facts": {
+        "funds_executed": false,
+        "operation_count": 8,
+        "state_digest": "57def9bb0561bcaba6d730ffb67ea5c735162648604ed48f7db2ab2cf8c978b3"
+      },
+      "kind": "HTTP",
+      "n": 32,
+      "name": "final phase",
+      "status": {
+        "sim-t06-a": "CLOSED"
+      }
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 13
+      },
+      "kind": "AUDIT",
+      "n": 33,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}
