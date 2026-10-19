@@ -670,3 +670,25 @@ Commands actually run:
 - `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0. `manifest_vectors`, `workspace_vectors`, `docs_surface`, `not_bound_checklist`, `auth_matrix` with `--check`, and `decision_ledger.py`: exit 0.
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `demo.json` unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed**; no server left running.
+
+## http-hostile-corpus
+
+`tests/vectors/http/` pins 76 hostile raw-HTTP request recipes (format `KIX_CAPITAL_HTTP_HOSTILE_V1`, label `SIMULATED`). Each recipe is one raw request with `__PORT__`/`__TOKEN__` sentinels plus a pinned outcome (`status`, `code`, `content_type_prefix`, `body_marker`) and the unchanged post-state triple. `tests/test_http_hostile.py` replays every recipe over a raw socket against an in-process `make_server(0)`, asserts the pin, scans each response for traceback/token/repository-path leaks, and re-probes `state_digest`, `operation_count` and `/api/health` after every case. `scripts/http_hostile.py --write`/`--check` own the directory like the manifest and workspace corpora; `EXPECTED` in the test is the hand-written oracle.
+
+The corpus found one genuine server defect: a request target whose authority is a malformed IPv6 literal (for example `GET http://[bad/x`) made `urllib.parse.urlsplit` raise `ValueError`, which escaped `do_GET`/`do_POST`, printed a traceback on stderr and dropped the connection without any response. The minimal fix adds `Handler.request_route()` mapping that `ValueError` to `400 INVALID_TARGET`; `target-invalid-ipv6` and `target-unclosed-ipv6` are its pinning vectors. `INVALID_TARGET` was added to `capital/contract/facade-v1.json` (`errors`, `errorGroups.boundary`, first entry of every route's `errors`) because the contract fences every `ApiError` literal, and `tests/vectors/finance_vectors.json` was regenerated with `python3 scripts/finance_vectors.py --write` since the `facade_read_model` digests cover the contract bytes. No route, permission, role or auth rule changed.
+
+Other observed behaviors are pinned as designed stdlib semantics, not defects: `//` targets normalize to a single `/` (gh-87389), absolute-form authorities are ignored while the `Host` header binds loopback, HTTP/0.9-style requests get a body-only reply with no status line, malformed headers are tolerated, GET ignores declared bodies, TRACE/OPTIONS/HEAD get stdlib 501 HTML pages, and the 8192 byte cap keeps deep nesting under the interpreter recursion limit. The UTF-8 BOM parses through `utf-8-sig` and reaches the strict shape gate (`INVALID_SESSION`).
+
+Commands actually run:
+
+- `python3 /tmp/probe_hostile.py`, `python3 /tmp/probe2.py`: observed every candidate case live; confirmed the `urlsplit` crash (empty reply plus stderr traceback) before fixing it.
+- `python3 scripts/http_hostile.py --write`: wrote 76 recipes; `--check`: exit 0, `76 files match`.
+- `python3 -m unittest tests.test_http_hostile -v`: 9 passed.
+- `python3 -m unittest discover -s tests -v`: 631 run, **1 failed** — `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`, which diffs the worktree against `origin/main`. The flagged paths (`docs/decisions/CAPITAL_EXTERNAL_GATES.md`, `docs/decisions/CAPITAL_RELEASE_ACCEPTANCE.md`, `tests/golden/demo.json`) are changed on main after this branch's base `2acd625` (its merge-base) and are untouched by this node; the failure is environmental, present before these edits.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: 7 passed.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,finance_vectors,docs_surface,not_bound_checklist}.py --check` and `python3 scripts/decision_ledger.py`: exit 0. `agent_claims_check.py` reports `SKIPPED` (no protocol checkout) as designed.
+- `npm ci --offline --ignore-scripts`: exit 0.
+- `npm run test:browser`: the committed config binds 127.0.0.1:8765, held by a foreign process (`python3 -m http.server --directory dist` owned by `/workspace/fitness-hub/site`, not started here and not killed). The same suite was run with only the port numbers in `playwright.config.cjs` shifted 8765→8795 (the first `webServer` also lacked `--port`): **48 passed** in 1.6m; the config was reverted byte-identical afterwards. No server was left running.
+
+`git diff --name-only -- capital/vendor .aiops` is empty; the five vendored reference files are byte-identical.

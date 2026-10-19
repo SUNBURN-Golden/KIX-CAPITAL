@@ -395,6 +395,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             except Exception:
                 return
 
+        def request_route(self):
+            try:
+                return urlsplit(self.path)
+            except ValueError:
+                raise ApiError('INVALID_TARGET')
+
         def do_GET(self):
             started = time.perf_counter()
             status = 500
@@ -402,11 +408,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                route = self.request_route()
+                path = route.path
                 if path.startswith('/api/operations/'):
                     operation_id = path[len('/api/operations/'):]
                 self.boundary()
-                route = urlsplit(self.path)
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
                     self.reply(200, read_static(name), kind)
@@ -433,7 +439,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                path = self.request_route().path
                 self.boundary(mutate=True)
                 principal = self.principal()
                 permission = None
