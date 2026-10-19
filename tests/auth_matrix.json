@@ -153,6 +153,16 @@
     },
     {
       "method": "GET",
+      "route": "/api/risk",
+      "children": false,
+      "handler": "_get_risk",
+      "permission": "projection:read",
+      "probes": [
+        "/api/risk"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/policy",
       "children": true,
       "handler": "_get_policy",
@@ -784,6 +794,57 @@
     {
       "method": "GET",
       "route": "/api/overlay",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {

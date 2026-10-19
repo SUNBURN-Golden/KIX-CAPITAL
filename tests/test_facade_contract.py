@@ -210,6 +210,7 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', '/api/statement', '/api/statement', None),
             ('GET', '/api/metrics', '/api/metrics', None),
             ('GET', '/api/health', '/api/health', None),
+            ('GET', '/api/risk', '/api/risk', None),
         ]
         for method, path, template, _query in reads:
             code, payload = self.request(method, path)

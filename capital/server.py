@@ -34,6 +34,7 @@ GET_DISPATCH = (
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
     ('/api/overlay', False, 'overlay'),
+    ('/api/risk', False, 'risk'),
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
@@ -313,6 +314,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
             lookup = values[0] if values and len(values) == 1 else None
             return self.reply(200, service.overlay_state(lookup))
+
+        def _get_risk(self, route, principal):
+            return self.reply(200, service.risk())
 
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]

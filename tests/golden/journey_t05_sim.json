@@ -1,0 +1,753 @@
+{
+  "digest": "48ba521a0f2809c9a9d56bb32e6827aa0958818c1be015a0c66d389de86738c4",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "T05-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 35,
+  "steps": [
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 1,
+      "name": "offer sim-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "approve sim-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "bind_settlement sim-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "draw sim-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "offer sim-b",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "approve sim-b",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 7,
+      "name": "bind_settlement sim-b",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 8,
+      "name": "draw sim-b",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        [
+          "sim-committed"
+        ],
+        true
+      ],
+      "facts": {
+        "advances": {
+          "sim-a": 48000,
+          "sim-b": 20000
+        },
+        "organizer_line_face": 95000,
+        "reserved_open_on_claim": 68000,
+        "unreserved_remainder": 27000
+      },
+      "kind": "HTTP",
+      "n": 9,
+      "name": "partial allocation reserved on the organizer line",
+      "status": [
+        200,
+        [
+          "sim-committed"
+        ],
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 2
+      },
+      "kind": "HTTP",
+      "n": 10,
+      "name": "advance_day 0->2",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "WITHIN_BASE",
+        "WITHIN_BASE"
+      ],
+      "kind": "HTTP",
+      "n": 11,
+      "name": "no margin call before the refund",
+      "status": [
+        "WITHIN_BASE",
+        "WITHIN_BASE"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "repay"
+      },
+      "kind": "HTTP",
+      "n": 12,
+      "name": "repay sim-b",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        [
+          "observe_settlement_statement",
+          null,
+          true
+        ],
+        [
+          "bind_refund",
+          null,
+          true
+        ],
+        [
+          "apply_distribution",
+          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 13,
+      "name": "partial refund before allocation replayed on the disposable settlement book",
+      "status": [
+        [
+          "observe_settlement_statement",
+          null,
+          true
+        ],
+        [
+          "bind_refund",
+          null,
+          true
+        ],
+        [
+          "apply_distribution",
+          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "REJECTED",
+        "REFUND_OBLIGATION_OPEN"
+      ],
+      "facts": {
+        "advance_id": "sim-c"
+      },
+      "kind": "HTTP",
+      "n": 14,
+      "name": "pinned refusal while the refund obligation is open",
+      "status": [
+        200,
+        "REJECTED",
+        "REFUND_OBLIGATION_OPEN"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "UNSUPPORTED_BY_PINNED_FSM",
+        "SHADOW_COMPUTED",
+        false
+      ],
+      "facts": {
+        "label": "SHADOW_NOT_APPLIED",
+        "per_class": [
+          {
+            "lines": [
+              {
+                "payee": "organizer",
+                "shadow_cancelled_unpaid": 3000,
+                "shadow_recovery_due": 35000,
+                "shadow_reversal": 38000
+              },
+              {
+                "payee": "platform",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 2000,
+                "shadow_reversal": 2000
+              }
+            ],
+            "reason_class": "RC1_BUYER_WITHIN_POLICY",
+            "reconciliation": "DIVERGES_PINNED_FSM_BY_DESIGN"
+          },
+          {
+            "lines": [
+              {
+                "payee": "organizer",
+                "shadow_cancelled_unpaid": 3000,
+                "shadow_recovery_due": 37000,
+                "shadow_reversal": 40000
+              },
+              {
+                "payee": "platform",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 0,
+                "shadow_reversal": 0
+              }
+            ],
+            "reason_class": "RC2_EVENT_CANCELLED_OR_ORGANIZER_FAULT",
+            "reconciliation": "DIVERGES_PINNED_FSM_BY_DESIGN"
+          },
+          {
+            "lines": [
+              {
+                "payee": "organizer",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 0,
+                "shadow_reversal": 0
+              },
+              {
+                "payee": "platform",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 5000,
+                "shadow_reversal": 5000
+              }
+            ],
+            "reason_class": "RC3_PLATFORM_FAULT",
+            "reconciliation": "DIVERGES_PINNED_FSM_BY_DESIGN"
+          },
+          {
+            "lines": [
+              {
+                "payee": "organizer",
+                "shadow_cancelled_unpaid": 3000,
+                "shadow_recovery_due": 37000,
+                "shadow_reversal": 40000
+              },
+              {
+                "payee": "platform",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 0,
+                "shadow_reversal": 0
+              }
+            ],
+            "reason_class": "RC4_PROVIDER_CHARGEBACK_OR_DISPUTE",
+            "reconciliation": "DIVERGES_PINNED_FSM_BY_DESIGN"
+          },
+          {
+            "lines": [
+              {
+                "payee": "organizer",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 0,
+                "shadow_reversal": 0
+              },
+              {
+                "payee": "platform",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 5000,
+                "shadow_reversal": 5000
+              }
+            ],
+            "reason_class": "RC4_PROVIDER_CHARGEBACK_OR_DISPUTE",
+            "reconciliation": "DIVERGES_PINNED_FSM_BY_DESIGN"
+          },
+          {
+            "lines": [
+              {
+                "payee": "organizer",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 0,
+                "shadow_reversal": 0
+              },
+              {
+                "payee": "platform",
+                "shadow_cancelled_unpaid": 0,
+                "shadow_recovery_due": 0,
+                "shadow_reversal": 0
+              }
+            ],
+            "reason_class": "RC5_RESALE_UNWIND",
+            "reconciliation": "NOT_COMPARABLE"
+          }
+        ],
+        "policy_adopted": false,
+        "provenance": "SHADOW_ARITHMETIC_ONLY",
+        "vector": "frozen partial-after input, not the live book"
+      },
+      "kind": "HTTP",
+      "n": 15,
+      "name": "shadow refund split beside the pinned refusal",
+      "status": [
+        200,
+        "UNSUPPORTED_BY_PINNED_FSM",
+        "SHADOW_COMPUTED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        "BREACH_AWAITING_TICK",
+        "WITHIN_BASE"
+      ],
+      "kind": "HTTP",
+      "n": 16,
+      "name": "breach awaits a tick after the refund; sim-b stays within the base",
+      "status": [
+        "BREACH_AWAITING_TICK",
+        "WITHIN_BASE"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 3
+      },
+      "kind": "HTTP",
+      "n": 17,
+      "name": "advance_day 2->3 margin call",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "CALLED",
+        "WITHIN_BASE"
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "base_krw": 46750,
+        "cure_deadline": 8,
+        "default_eligible_day": null,
+        "interest_rebased": false,
+        "margin_state": "CALLED",
+        "principal_outstanding_krw": 48000
+      },
+      "kind": "HTTP",
+      "n": 18,
+      "name": "sim-a is called",
+      "status": [
+        "CALLED",
+        "WITHIN_BASE"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 8
+      },
+      "kind": "HTTP",
+      "n": 19,
+      "name": "advance_day 3->8 deadline inclusive",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": "CALLED",
+      "kind": "HTTP",
+      "n": 20,
+      "name": "the deadline day is still inside the window",
+      "status": "CALLED"
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 9
+      },
+      "kind": "HTTP",
+      "n": 21,
+      "name": "advance_day deadline->deadline+1 acceleration",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": "ACCELERATED",
+      "facts": {
+        "advance_id": "sim-a",
+        "base_krw": 46750,
+        "cure_deadline": 8,
+        "default_eligible_day": 19,
+        "interest_basis": "NOT_REBASED",
+        "interest_rebased": false,
+        "margin_state": "ACCELERATED",
+        "principal_outstanding_krw": 48000
+      },
+      "kind": "HTTP",
+      "n": 22,
+      "name": "sim-a accelerated; interest is not re-based",
+      "status": "ACCELERATED"
+    },
+    {
+      "expect": [
+        200,
+        "NOT_APPLICABLE",
+        "NOT_APPLICABLE"
+      ],
+      "facts": {
+        "cash": 5000
+      },
+      "kind": "HTTP",
+      "n": 23,
+      "name": "the allocation quote is not applicable after the refund",
+      "status": [
+        200,
+        "NOT_APPLICABLE",
+        "NOT_APPLICABLE"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        "NOT_RECORDED"
+      ],
+      "facts": {
+        "cash": 5000,
+        "default_interest_due_krw": 0,
+        "interest_due_krw": 18,
+        "order": [
+          "DEFAULT_INTEREST",
+          "INTEREST",
+          "PRINCIPAL"
+        ],
+        "principal_share_krw": 4982
+      },
+      "kind": "HTTP",
+      "n": 24,
+      "name": "late cash splits interest first; interest payments stay NOT_RECORDED",
+      "status": [
+        true,
+        "NOT_RECORDED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "op": "repay"
+      },
+      "kind": "HTTP",
+      "n": 25,
+      "name": "human repay of the late-cash principal share",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": "ACCELERATED",
+      "facts": {
+        "principal_outstanding_krw": 43018
+      },
+      "kind": "HTTP",
+      "n": 26,
+      "name": "acceleration is not reversed by late cash",
+      "status": "ACCELERATED"
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "repay"
+      },
+      "kind": "HTTP",
+      "n": 27,
+      "name": "repay sim-b to zero",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        false,
+        "NOT_RECORDED"
+      ],
+      "kind": "HTTP",
+      "n": 28,
+      "name": "interest payments are not recorded, so the overlay is not close-ready",
+      "status": [
+        false,
+        "NOT_RECORDED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-b",
+        "op": "close"
+      },
+      "kind": "HTTP",
+      "n": 29,
+      "name": "human close sim-b",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 19
+      },
+      "kind": "HTTP",
+      "n": 30,
+      "name": "advance_day to the default-eligible day 19",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        1,
+        "DEFAULT_ELIGIBLE",
+        false,
+        true
+      ],
+      "facts": {
+        "default_eligible_day": 19
+      },
+      "kind": "HTTP",
+      "n": 31,
+      "name": "one DEFAULT_ELIGIBLE proposal; the FSM default is not called",
+      "status": [
+        1,
+        "DEFAULT_ELIGIBLE",
+        false,
+        true
+      ]
+    },
+    {
+      "expect": "DRAWN",
+      "kind": "HTTP",
+      "n": 32,
+      "name": "the advance is still DRAWN before a human acts",
+      "status": "DRAWN"
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-a",
+        "op": "default"
+      },
+      "kind": "HTTP",
+      "n": 33,
+      "name": "human default sim-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": {
+        "sim-a": "DEFAULTED",
+        "sim-b": "CLOSED"
+      },
+      "facts": {
+        "funds_executed": false,
+        "operation_count": 14,
+        "state_digest": "12ac77bc89686edc8b419e7c77d39fea15c866f1b7ff30dd8a6cb14df6fb8dd0"
+      },
+      "kind": "HTTP",
+      "n": 34,
+      "name": "final phases",
+      "status": {
+        "sim-a": "DEFAULTED",
+        "sim-b": "CLOSED"
+      }
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 19
+      },
+      "kind": "AUDIT",
+      "n": 35,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}
