@@ -460,3 +460,13 @@ U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `sin
 workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 이자와 상각은 다시 기준을 잡지 않으며(`interest_rebased` false, `NOT_REBASED / DECISION_REQUIRED`) 재산정은 재무 조건 소유자가 정한다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:facade-load-harness -->
+
+### facade-load-harness
+
+`python3 scripts/load_harness.py`는 stdlib만 쓰는 loopback 부하 하네스다. 워크로드마다 `capital.server.make_server(0)`를 임시 포트에 새로 띄우고 `http.client`와 `ThreadPoolExecutor`로 `POST /api/commands`를 보낸다. 여섯 시드 워크로드는 `low-load-uniform`, `uniform`, `hot-seat`, `same-command-retry`, `history-growth`, `saturation`이고 메모리와 `--workspace` 두 mode로 돈다. `saturation`은 `MAX_OPERATIONS`(500)을 채운 뒤 `SIMULATION_CAPACITY`를 관측하고, 만석에서도 기존 operation_id의 replay는 저장된 receipt를 돌려준다.
+
+보고서 형식은 `KIX_CAPITAL_LOAD_REPORT_V1`이고 라벨은 `LOCAL_EXPLORATION`이다. 예정 도착시각(`scheduled_at_ms`)과 서비스 시간(`service_ms`)을 따로 기록하고 new-success·replay·reject·conflict·capacity를 클래스별로 세어 최근접 순위 백분위를 낸다 — 클래스를 절대 섞지 않는다. 입력 fingerprint, python, OS, CPU 정보만 담고 토큰은 쓰지 않는다. 매 실행 뒤 하네스는 저널 길이가 new-success 수와 같고, replay가 새 저널 없이 저장 receipt를 돌려주며, conflict와 capacity가 아무것도 쓰지 않고, 마지막 `state_digest`가 저널 재생과 같음을 확인한다. SLO나 TPS 주장은 없고 **이 보고서는 production 성능 증거가 아니다**. `smoke`는 unittest 안에서 임계값 없이 돌고, `full`은 수동 실행이며 출력은 커밋하지 않는 `build/` 아래에 둔다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
