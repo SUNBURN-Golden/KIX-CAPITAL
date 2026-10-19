@@ -55,7 +55,8 @@ class OperatorDeskStaticTests(unittest.TestCase):
         block = desk_block()
         for needle in ('/api/overlay/commands', "op:'advance_day'", "'/api/overlay'", '/api/export/manifest',
                        '/api/preview/', '/api/underwrite/', 'close_ready', 'proposals',
-                       'permissionReason', 'aria-disabled'):
+                       'permissionReason', 'aria-disabled', '/api/risk/covenants', 'covenant.reasons',
+                       "covenant.status!=='CLEAR'", 'WATCH', 'BREACH'):
             self.assertTrue(needle in block, needle)
         self.assertIn("navigator.locks.request('kix-capital-writer'", APP_JS)
         self.assertEqual(APP_JS.count("navigator.locks.request('kix-capital-writer'"), 2)
