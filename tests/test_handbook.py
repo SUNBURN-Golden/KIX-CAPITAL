@@ -252,6 +252,9 @@ class HandbookTests(unittest.TestCase):
             'caps-binding-fixtures': ('CAPITAL-DEMO-BOOK-V1', 'portfolio_cap_krw'),
             'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),
             'margin-cure-default': ('FIXTURE_VIEWS_IMMUTABLE', 'DEFAULT_ELIGIBLE', 'f04_default_called'),
+            'audit70-fix1': ('interest_rebased', 'overlay-recovery-writeoff', 'overlay-repayment-posting', 'CAPITAL_DEFAULT_RECOVERY.md', 'CAPITAL_REPAYMENT_POSTING.md'),
+            'coa-candidate-projection': ('GET /api/projection?mode=coa-candidate', 'GET /api/reconciliation?mode=coa-candidate', 'SIMULATION_FIXED_V2', 'SYNTHETIC_UNADOPTED', '9790', 'coa_candidate_totals_vs_v1', 'interest_ledger_vs_projection'),
+            'audit60-fix2': ('KIX_CAPITAL_EXPORT_MANIFEST_V2', 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'overlaypart', 'SECTION_SET', 'overlay_fold_digest_equals_persisted', 'tests/golden/overlay_demo.json'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')
