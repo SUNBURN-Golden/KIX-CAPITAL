@@ -12,10 +12,11 @@ from capital.server import make_server
 from capital.service import CapitalService
 from capital.store import FileWorkspace
 from capital.terms import DecisionNoteTermsPolicy
-from tests.test_overlay import draw_book, tick
+from tests.test_overlay import draw_book, terms_value, tick
 from tests.test_risk import fake_subject
 
 ROOT = Path(__file__).resolve().parents[1]
+CAPS = terms_value('underwriting_depth')
 
 
 def built(subjects, sim_day=0, margin_rows=None, proposals=None):
@@ -39,6 +40,23 @@ class VectorTests(unittest.TestCase):
             row = body['advances'][0]
             self.assertEqual((row['status'], [item['code'] for item in row['reasons']]),
                              (status, codes), day)
+
+    def test_closed_advances_carry_no_cap_reason(self):
+        # A repaid advance keeps its original amount in the journal but holds no open exposure,
+        # so no U4 cap — single-advance, shared beneficiary or shared portfolio — may flag it.
+        agg, total = CAPS['beneficiary_aggregate_cap_krw'], CAPS['portfolio_cap_krw']
+        subjects = [
+            fake_subject('sim-big', agg + 1, role='organizer-b', amount=agg + 1),
+            fake_subject('sim-top', total - agg, role='organizer-c', amount=total - agg),
+            fake_subject('sim-repaid', 0, role='organizer-b', amount=total),
+        ]
+        body = built(subjects)
+        rows = {row['advance_id']: row for row in body['advances']}
+        for key in ('sim-big', 'sim-top'):
+            self.assertIn('U4_CAP_BREACHED', [item['code'] for item in rows[key]['reasons']], key)
+        repaid = rows['sim-repaid']
+        self.assertEqual((repaid['status'], repaid['reasons']), ('CLEAR', []))
+        self.assertNotIn(repaid, body['watch_list'])
 
     def test_margin_states_are_server_reasons(self):
         subject = fake_subject('sim-margin', 1000)

@@ -34,6 +34,8 @@ def _reason(code, severity, detail, **facts):
 
 
 def _cap_reasons(row, risk_body):
+    if row['outstanding_krw'] <= 0:
+        return []
     section = risk_body['concentration']['caps']
     if section['status'] != 'BOUND':
         return []
@@ -47,7 +49,7 @@ def _cap_reasons(row, risk_body):
         used = row['amount'] if name == 'single_advance' else (
             holder['outstanding_krw'] if name == 'beneficiary_aggregate' and holder is not None
             else cap['used_krw'])
-        breached = applies and used > cap['cap_krw']
+        breached = applies and risk._nonneg_int(used) and used > cap['cap_krw']
         if breached:
             reasons.append(_reason(
                 'U4_CAP_BREACHED', 'BREACH',
