@@ -93,6 +93,8 @@ python3 scripts/acceptance.py
 
 `python3 scripts/seed_demo.py`는 고정 operation id로 종결·미이행·거절·취소·UNBOUND·정산 대기 케이스를 만듭니다. `tests/golden/demo.json`은 여섯 케이스의 `phase`·`settlement_gate`(`cases`), `state_digest`, 투영 합계, manifest `content_digest`, 그리고 읽기 전용 위험 분석의 `risk` 블록(`sim_day` 0, 미상환·준비금 요구액·HHI·`risk_digest`)을 고정합니다. instance id와 시각은 넣지 않습니다. 값이 달라지면 실패하고, 핀을 고치려면 `python3 scripts/seed_demo.py --update-golden`이 필요합니다. 금액은 합성 fixture 단위입니다.
 
+`python3 scripts/sim_journeys.py`는 이름 붙은 합성 여정 `T05-sim`(부분 배정·상환·상환 중 환불·마진 콜·가속·늦은 현금·종결 또는 부도)과 `T06-sim`(`--workspace` 서버 SIGKILL 재시작·UNKNOWN 펜스·agent 제안을 사람이 실행)을 루프백 API로 돌립니다. 둘 다 `SIMULATED`이고 `funds_executed`와 `integrated`는 false이며 T01–T06 자격 주장이 아닙니다. 핀은 `tests/golden/journey_t05_sim.json`, `tests/golden/journey_t06_sim.json`이고 어긋나면 실패합니다. 핀을 고치려면 `python3 scripts/sim_journeys.py --update-golden`이 필요합니다. `scripts/acceptance.py`의 `integrated-journeys` 단계가 이를 돌립니다.
+
 브라우저 검사는 포트폴리오, 케이스, 투영, 명세서, 대사, 준비도, 운영 데스크(`#desk`), organizer/auditor/observer 화면을 데스크톱과 375px로 `test-results/`에 저장합니다. 운영 데스크는 `test-results/operator-desk/{desktop,mobile}/`에 `organizer.png`, `auditor.png`, `observer.png`로 남습니다. 빈 화면이나 콘솔 오류면 실패합니다. 스크린샷은 CI 아티팩트이며 커밋하지 않습니다.
 
 CI는 동일 검사를 새 HEAD마다 실행합니다. UI 자동 검증과 독립 코드 리뷰는 실제 사용자 수용·아키텍처 승인·운영 승인과 구분합니다. Python HTTP 서버, 기본 메모리 receipt, 옵트인 `LOCAL_FILE_WORKSPACE` 파일은 개발용입니다. 내구 원장·멀티테넌트 인증·분산 잠금·stage5 durable transaction이 아닙니다.
