@@ -592,7 +592,7 @@ No `DECISION_REQUIRED.md` was written: limits still come from the ADOPTED `CAPIT
 
 ## workspace-offline-audit
 
-`python3 -m capital.verify --workspace DIR` audits `DIR/workspace.json` without a server. `capital/audit.py` reads the bytes once (`read_bytes` only: no flock, no mkdir, no write, no repair) and runs a staged pipeline: `workspace_file`, `strict_json`, `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay` into a scratch `CreditMachine`, `state_digest`, `service_restore` through the same `verify_document`/`_validated_restore` path over an in-memory document port whose `save()` raises, `receipt_journal_fingerprints` (recomputed per journal entry; REJECTED and reconcile receipts keep shape and uniqueness checks because their args are not persisted), and `recon` — the same six `build_reconciliation` checks as `GET /api/reconciliation`, embedded verbatim. The first failing check supplies the reason (`WORKSPACE_UNREADABLE`, or `RECON_MISMATCH` when the intact envelope disagrees with the reconciliation); exit 0/1, 2 on CLI misuse. `capital/verify.py` keeps the manifest positional and adds `--workspace` (mutually exclusive, no `--key-file`). `scripts/workspace_vectors.py --write/--check` owns the pinned corpus `tests/vectors/workspace/` (`clean`, `truncated`, `payload-byte`, `digest`, `duplicate-key`, `stale-digest`), seeded with fixed instance `workspace-vectors` and pinned `saved_at` (a top-level field `payload_sha256` does not cover). `tests/test_workspace_audit.py` covers the seeded all-MATCHED audit, audit under a live `FileWorkspace` lock and a live HTTP server, no-write/no-repair, missing/empty/non-directory dirs, a `RECON_MISMATCH` on an intact envelope with a tampered receipt result, and CLI misuse; `tests/test_workspace_vectors.py` pins each vector's failing check, byte-level tamper facts, and regeneration/drift behavior. Docs updated: README, INTEGRATION.md, OPERATOR_HANDBOOK_KO.md. No route, permission, or workspace-format change; CAP-11 stays `NOT_BOUND`.
+`python3 -m capital.verify --workspace DIR` audits `DIR/workspace.json` without a server. `capital/audit.py` reads the bytes once (`read_bytes` only: no flock, no mkdir, no write, no repair) and runs a staged pipeline: `workspace_file`, `strict_json`, `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay` into a scratch `CreditMachine`, `state_digest`, `service_restore` through the same `verify_document`/`_validated_restore` path over an in-memory document port whose `save()` raises, `receipt_journal_fingerprints` (recomputed per journal entry; REJECTED and reconcile receipts keep shape and uniqueness checks because their args are not persisted), and `recon` — the same `build_reconciliation` checks as `GET /api/reconciliation` (six, plus `overlay_fold_digest_equals_persisted` and `scope.overlay_state_digest` when the overlay is non-empty), embedded verbatim. The first failing check supplies the reason (`WORKSPACE_UNREADABLE`, or `RECON_MISMATCH` when the intact envelope disagrees with the reconciliation); exit 0/1, 2 on CLI misuse. `capital/verify.py` keeps the manifest positional and adds `--workspace` (mutually exclusive, no `--key-file`). `scripts/workspace_vectors.py --write/--check` owns the pinned corpus `tests/vectors/workspace/` (`clean`, `truncated`, `payload-byte`, `digest`, `duplicate-key`, `stale-digest`), seeded with fixed instance `workspace-vectors` and pinned `saved_at` (a top-level field `payload_sha256` does not cover). `tests/test_workspace_audit.py` covers the seeded all-MATCHED audit, audit under a live `FileWorkspace` lock and a live HTTP server, no-write/no-repair, missing/empty/non-directory dirs, a `RECON_MISMATCH` on an intact envelope with a tampered receipt result, and CLI misuse; `tests/test_workspace_vectors.py` pins each vector's failing check, byte-level tamper facts, and regeneration/drift behavior. Docs updated: README, INTEGRATION.md, OPERATOR_HANDBOOK_KO.md. No route, permission, or workspace-format change; CAP-11 stays `NOT_BOUND`.
 
 Commands actually run, in order:
 
@@ -670,3 +670,72 @@ Commands actually run:
 - `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0. `manifest_vectors`, `workspace_vectors`, `docs_surface`, `not_bound_checklist`, `auth_matrix` with `--check`, and `decision_ledger.py`: exit 0.
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `demo.json` unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed**; no server left running.
+
+## audit70-fix5
+
+`capital/audit.py` now passes the restored overlay journal and the persisted overlay section to `build_reconciliation` (`overlay_entries`, `overlay_persisted`), as `CapitalService.reconciliation` does. A non-empty overlay workspace therefore reports `overlay_fold_digest_equals_persisted` and `scope.overlay_state_digest` in the audit `recon`, matching `GET /api/reconciliation` and `GET /api/overlay`. An empty overlay (and a legacy v1 envelope) stays byte-identical: the seeded workspace audit output was compared with `cmp` before and after. `tests/test_workspace_audit.py` gains `AuditOverlayReconTests` (live-GET parity for a ticked and an empty workspace, and a stale overlay digest still failing at `service_restore`). The `tests/vectors/workspace` corpus, `capital/vendor/`, `recon.py` and `service.py` are unchanged. Out of scope: repair, writes, new formats, `?mode=coa-candidate`. Everything is SIMULATED.
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_workspace_audit tests.test_overlay`: exit 0, **56 passed**.
+- `python3 scripts/workspace_vectors.py --check`: exit 0, 6 files match.
+- `python3 -m unittest discover -s tests`: exit 0, **626 passed**.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py`: exit 0, 7 passed.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `docs_surface.py --check`, `not_bound_checklist.py --check`, `decision_ledger.py`: exit 0.
+- `npm run test:browser`: not run (no `node_modules` in this worktree).
+
+## portfolio-risk-analytics
+
+`capital/risk.py` is a read-only analytics model over the accepted journal, the overlay clock (`sim_day`) and `CAPITAL-TERMS-V1`; `GET /api/risk` (`projection:read`; observer and agent get 403) serves it and `CapitalService.risk()` checks that receipts, `state_digest`, overlay entries and the F04 state are byte-equal before and after. Everything is SIMULATED integer floor arithmetic: exposure by tier, maturity buckets (`0-30`, `31-60`, `61-90`, `>90` days to the standard maturity), overdue aging, beneficiary concentration (`hhi_permille` and U4 cap utilization in permille), the reserve requirement (per-advance `floor(outstanding * bps / 10000)` over the note's table; not an accounting policy, `applied` false) and the fixed refund shocks `[500, 1000, 2500, 5000]` bps of `eligible_face` (hypothetical; no margin call is recorded). The tier, maturity and aging sums equal the total, which equals the projection's advance outstanding. The seeded demo pins `risk` in `tests/golden/demo.json` (outstanding 45,000; reserve 30,750; HHI 1000; `risk_digest`), written only through `scripts/seed_demo.py --update-golden`. The risk pin depends on `sim_day`, so `test_overlay_commands_leave_f04_and_the_demo_golden_untouched` now compares every other golden key byte-for-byte after the clock ticks and asserts the `risk` pin moves with `sim_day`.
+
+Limits: the ledger knows only the 60-day standard term, so the `61-90` and `>90` maturity buckets stay empty on live data and are exercised by pure-function tests. Overdue aging reuses the same 30/60/90 edges as an analytics choice; the note defines no aging edges and no concentration bands. Maturity is not re-based on margin acceleration (`NOT_REBASED / DECISION_REQUIRED`, owner JunTae). Advances with no matching tier are reported as `NOT_APPLICABLE` and as unrated reserve, never guessed. The zipapp has no `docs/`, so `/api/risk` there is `NOT_BOUND`.
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_risk -v`: exit 0, **26 passed**.
+- `python3 scripts/seed_demo.py` before the pin: exit 1, drift on `$.risk` only; `--update-golden` then plain run: exit 0, `state_digest=a8609033…ef45` and `content_digest=2f71dab1…dca` unchanged; `git diff tests/golden/demo.json` adds the `risk` key only.
+- `python3 scripts/auth_matrix.py --write` and `python3 scripts/finance_vectors.py --write`, then `--check` on both: exit 0. The vector diff is the `facade_read_model` group only (26 routes, new digests).
+- `python3 -m unittest discover -s tests -v`: exit 0, **586 passed** (85.8s). The first run had one failure in `test_overlay` (the golden-after-ticks test above), fixed as described.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`, `manifest_vectors`, `finance_vectors`, `workspace_vectors`, `not_bound_checklist`, `auth_matrix` with `--check`: exit 0.
+- `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **51 passed** (2.0m), including `tests/browser/portfolio-risk.spec.cjs` (desktop 1280 and 375px, no horizontal overflow, no page or console errors, zero POSTs, observer reason, NOT_BOUND note); no server left running.
+- `git diff --name-only -- capital/vendor .aiops .github docs/decisions`: no output.
+
+Merge with main (2026-10-17; main had gained coa-candidate-projection, audit60-fix1..5 and event-log-summary): six conflicts, none dropped. `README.md` and `docs/INTEGRATION.md` keep main's rewritten `GET /api/overlay` and `GET /api/terms/portfolio` bullets (overlay `export` is `INCLUDED_IN_MANIFEST_V3` / `ABSENT_WHEN_EMPTY`, not `NOT_INCLUDED`) and add the `GET /api/risk` bullet after them. `capital/service.py` imports `coa, margin, overlay, risk`. `tests/test_overlay.py` `test_overlay_commands_leave_f04_and_the_demo_golden_untouched` now asserts both sides: after two ticks the `risk` pin (`sim_day` 75, new `risk_digest`, same `outstanding_krw`) and `content_digest` (the non-empty overlay moves the manifest to `KIX_CAPITAL_EXPORT_MANIFEST_V3` with an `overlay` section) are the only keys of `seed.capture` that move, every other key is byte-equal to `demo.json`, and the F04 `state_digest` is untouched. `tests/vectors/finance_vectors.json` was regenerated with `python3 scripts/finance_vectors.py --write` from the merged facade (only the `groups` block differs from either side), not hand-merged. `tests/test_coa_candidate.py` `test_v1_and_golden_files_are_untouched` diffed `tests/golden` byte-for-byte against `origin/main`, which contradicts this node's `--update-golden` pin of `risk` in `demo.json`; the byte diff stays for `capital/projection.py`, `capital/ports.py`, `capital/overlay.py`, `capital/export.py`, `capital/vendor`, `.aiops` and `docs/decisions`, and the golden check now requires every key pinned on `origin/main` (`state_digest`, `projection_totals`, `content_digest`, `cases`, …) to be present and equal in every golden, so additive pins through the explicit regeneration path pass and any moved V1 pin still fails. `tests/golden/demo.json` is unchanged by the merge (`state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`).
+
+Commands actually run after the merge:
+
+- `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0, 90609 bytes match.
+- `python3 -m unittest discover -s tests -v`: exit 0, **648 passed** (89.5s). The first run had one failure, `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched` (`tests/golden/demo.json` differs from `origin/main`), fixed as described above.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check` (28 routes, 20 artifacts, 8 stages), `manifest_vectors` (13 files), `workspace_vectors` (6 files), `not_bound_checklist`, `auth_matrix` with `--check`, and `scripts/decision_ledger.py`: exit 0.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `npm ci --offline --ignore-scripts`: exit 1 (`ENOTCACHED playwright-core-1.58.2`); `npm ci --ignore-scripts`: exit 0. `PLAYWRIGHT_BROWSERS_PATH=build/pw-browsers npx playwright install chromium` (worktree-local, gitignored). `npm run test:browser` with that path: exit 0, **51 passed** (1.8m), including the three `portfolio-risk.spec.cjs` cases; no server left running.
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output. Vendored file SHA256 values match `capital/vendor/manifest.json`.
+
+Second merge with main (2026-10-17; main had gained repayment-posting-decision, default-recovery-decision, external-gate-decision, release-acceptance-decision, audit50-fix4 and audit70-fix1..5): three conflicts, all docs, all add-only, none dropped. `README.md` and `docs/INTEGRATION.md` keep main's rewritten `GET /api/overlay` bullet (acceleration rebase now cited to `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`) followed by this node's `GET /api/risk` bullet; this file keeps main's `audit70-fix5` section before this one. No code, test, golden or vector conflicts; `capital/audit.py`, `capital/margin.py`, `tests/test_workspace_audit.py`, `tests/test_coverage.py` and `tests/test_handbook.py` merged cleanly.
+
+Commands actually run after the second merge:
+
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check` (28 routes, 20 artifacts, 8 stages), `manifest_vectors` (13 files), `finance_vectors` (90609 bytes), `workspace_vectors` (6 files), `not_bound_checklist`, `auth_matrix` with `--check`, and `scripts/decision_ledger.py`: exit 0; no regeneration needed.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `python3 -m unittest discover -s tests -v`: exit 0, **652 passed** (84.2s), no failures on the first run.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. Vendored file SHA256 values match `capital/vendor/manifest.json`.
+- `PLAYWRIGHT_BROWSERS_PATH=build/pw-browsers npm run test:browser`: exit 0, **51 passed** (1.7m), including the three `portfolio-risk.spec.cjs` cases; no server left running on 8765–8768.
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+## operator-console-ux (operator desk)
+
+Browser-only change: `#desk` view in `capital/static` (sim_day control through `POST /api/overlay/commands`, per-case timeline merging the F04 journal and overlay entries, server-reasoned next actions, risk tiles). No server, contract, auth, golden or vendor change. The only client arithmetic is `to_sim_day = from_sim_day + N`.
+
+Commands actually run:
+
+- `python3 -m unittest discover -s tests -v`: exit 0, **657 passed** (99.9s), including the five `tests/test_operator_desk.py` source pins.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
+- `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.

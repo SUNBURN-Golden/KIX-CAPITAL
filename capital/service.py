@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, margin, overlay
+from capital import coa, margin, overlay, risk
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1623,6 +1623,24 @@ class CapitalService:
                     receipt = overlay.operation_receipt(self.overlay_entries, operation_id)
                     body['operation'] = receipt if receipt is not None else {
                         'outcome': 'UNKNOWN', 'operation_id': operation_id, 'retry_authorized': False}
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def risk(self):
+        """Read-only portfolio risk analytics. Nothing is accrued, journaled or written here."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                sim_day = overlay.fold(self.overlay_entries)['sim_day']
+                status = self._overlay_terms()
+                if status is None or not risk.usable(self.terms):
+                    return self._terms_envelope(risk.not_bound(self.terms.status()['terms_version'], sim_day))
+                drawn = self._overlay_subjects(self.overlay_entries)
+                outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
+                body = risk.build(drawn, self._margin_subjects(drawn), terms=self.terms, sim_day=sim_day,
+                                  projection_outstanding_krw=outstanding)
                 return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):

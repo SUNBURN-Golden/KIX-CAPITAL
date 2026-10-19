@@ -35,6 +35,7 @@ class MatrixTests(unittest.TestCase):
             '/api/terms': 'projection:read',
             '/api/terms/sim-a': 'projection:read',
             '/api/overlay': 'projection:read',
+            '/api/risk': 'projection:read',
             '/api/policy': 'projection:read',
             '/api/policy/simulation': 'projection:read',
             '/api/policy/shadow': 'projection:read',

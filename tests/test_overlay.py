@@ -386,6 +386,15 @@ class ClockTests(unittest.TestCase):
         tick(service, 'c-1', 0, 60)
         tick(service, 'c-2', 60, 75)
         self.assertEqual(f04_view(service), before)
+        # The risk pin reads the sim_day clock and the manifest content_digest moves to V3 with a
+        # non-empty overlay, so those two keys alone move with the tick; every other key is byte-equal.
+        moved = seed.capture(service)
+        clock_bound = {'risk', 'content_digest'}
+        self.assertEqual({key: value for key, value in moved.items() if key not in clock_bound},
+                         {key: value for key, value in golden.items() if key not in clock_bound})
+        self.assertEqual(moved['risk']['sim_day'], 75)
+        self.assertNotEqual(moved['risk']['risk_digest'], golden['risk']['risk_digest'])
+        self.assertEqual(moved['risk']['outstanding_krw'], golden['risk']['outstanding_krw'])
         self.assertEqual(manifest_before['content_digest'], golden['content_digest'])
         # A non-empty overlay moves the manifest to V3 (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2);
         # the F04 state digest and the V2 golden itself are untouched.
@@ -393,6 +402,7 @@ class ClockTests(unittest.TestCase):
         self.assertEqual(manifest_after['format'], 'KIX_CAPITAL_EXPORT_MANIFEST_V3')
         self.assertIn('overlay', manifest_after['sections'])
         self.assertNotEqual(manifest_after['content_digest'], golden['content_digest'])
+        self.assertEqual(moved['content_digest'], manifest_after['content_digest'])
         self.assertEqual(service.snapshot()['state_digest'], golden['state_digest'])
         self.assertNotIn('overlay', service.snapshot())
 
