@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
-"""Seeded, deterministic SIMULATED journeys T05-sim and T06-sim over the loopback HTTP API.
+"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim over the loopback HTTP API.
 
-Both journeys are scripts of fixed operation ids against a real ``capital.server`` on
-127.0.0.1. They are Capital-local simulations. They are not the T05 or T06 rungs of the
+All four journeys are scripts of fixed operation ids against a real ``capital.server`` on
+127.0.0.1. They are Capital-local simulations. They are not the T03-T06 rungs of the
 acceptance ladder, claim no qualification, move no funds, and call no provider.
+
+T03-sim: the zero-exception full lifecycle of one advance in process (default pinned
+FSM): offer, approve, bind_settlement, draw, advance_day accrual under the ACT/365
+memo ledger, a full F04 repay of the outstanding principal, and close. Interest stays
+a memo (interest_payments NOT_RECORDED): post_repayment is parked, so nothing is
+posted for it and the overlay is never close-ready on its own.
+
+T04-sim: the auditor evidence chain on a ``python3 -m capital.server --workspace``
+subprocess. The seeded demo book is replayed over HTTP and its state_digest is checked
+against the seeded-demo pin, an auditor role is bound through POST /api/session, the
+organizer advances the clock, and the auditor reads the overlay, the risk rollup, the
+terms portfolio and the reconciliation (all MATCHED), then exports the manifest to a
+file. ``python3 -m capital.verify FILE`` rechecks the manifest and
+``python3 -m capital.verify --workspace DIR`` audits the live workspace read-only; both
+run as subprocesses. The auditor token can neither advance the clock nor post a command.
 
 T05-sim: partial allocation of the shared open face by two advances, ticks, a repay, a
 partial refund on the settlement book mid-repay (the pinned refusal REFUND_OBLIGATION_OPEN
@@ -21,9 +36,10 @@ stale instance gets SESSION_CHANGED, receipts are restored, and nothing is repla
 agent EXECUTE attempt is refused and a human executes the agent's proposal, citing
 proposal_id on the receipt.
 
-Each journey's step list is pinned by digest in tests/golden/journey_t05_sim.json and
-journey_t06_sim.json. A mismatch or a missing golden exits 1 unless --update-golden is
-passed. The golden carries no instance id, token, port, path, or timestamp.
+Each journey's step list is pinned by digest in tests/golden/journey_t03_sim.json,
+journey_t04_sim.json, journey_t05_sim.json and journey_t06_sim.json. A mismatch or a
+missing golden exits 1 unless --update-golden is passed. The golden carries no
+instance id, token, port, path, or timestamp.
 
 Output ends with ``SIM_JOURNEYS {json}`` and ``sim journeys ok SIMULATED ...``.
 """
@@ -56,12 +72,17 @@ from capital.server import make_server
 SEED = 'CAPITAL-SIM-JOURNEYS-V1'
 LABEL = 'SIMULATED'
 GOLDEN_DIR = ROOT / 'tests' / 'golden'
-GOLDEN_FILES = {'T05-sim': 'journey_t05_sim.json', 'T06-sim': 'journey_t06_sim.json'}
+GOLDEN_FILES = {
+    'T03-sim': 'journey_t03_sim.json', 'T04-sim': 'journey_t04_sim.json',
+    'T05-sim': 'journey_t05_sim.json', 'T06-sim': 'journey_t06_sim.json',
+}
 JOURNEY_IDS = tuple(GOLDEN_FILES)
 OUT_OF_BAND = 'SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT'
 LISTEN_TIMEOUT = 20.0
 REQUEST_TIMEOUT = 5
 # Fixture units on the pinned open face, never a product limit, fee or allocation.
+T03_AMOUNT = 30_000
+T04_TICK_DAYS = 10
 T05_A, T05_B = 48_000, 20_000
 T05_B_REPAY = 5_000
 T05_LATE_CASH = 5_000
@@ -271,6 +292,107 @@ def _tick(journey, session, key, start, end, label=None):
     journey.step(label or f'advance_day {start}->{end}', 'HTTP', (status, body.get('outcome')), (200, 'APPLIED'),
                  sim_day=end)
     return body
+
+
+# ----------------------------------------------------------------------- T03-sim
+
+def run_t03():
+    """Zero-exception lifecycle: offer -> approve -> bind -> draw -> accrue -> repay -> close."""
+    journey = Journey('T03-sim')
+    advance = 'sim-t03-a'
+    with _InProcessServer(PinnedFsmProducer()) as port:
+        session = Session(port)
+        journey.step('organizer session on an in-process server', 'PROCESS',
+                     (session.state['workspace']['kind'], session.state['funds_executed']),
+                     ('MEMORY', False), label=LABEL)
+        _drive(journey, session, f'offer {advance}', 'offer', advance, 't03-offer',
+               fixture_id='sim-committed', amount=T03_AMOUNT)
+        _drive(journey, session, f'approve {advance}', 'approve', advance, 't03-approve')
+        _drive(journey, session, f'bind_settlement {advance}', 'bind_settlement', advance, 't03-bind')
+        _drive(journey, session, f'draw {advance}', 'draw', advance, 't03-draw')
+        row = session.advance_row(advance)
+        journey.step('the advance is DRAWN from sim_day 0', 'HTTP',
+                     (row['phase'], row['principal_outstanding_krw'], row['draw_day'],
+                      row['accrued_through_sim_day'], row['interest_due_krw']),
+                     ('DRAWN', T03_AMOUNT, 0, 0, 0),
+                     tier=row['tier'], maturity_day=row['maturity_day'],
+                     contract_bps=row['contract_bps'], margin_state=row['margin']['state'])
+        status, receipt = session.operation('t03-draw')
+        journey.step('the draw receipt is queryable by operation id', 'HTTP',
+                     (status, receipt['outcome'], receipt['transport_duplicate']),
+                     (200, 'ACCEPTED', False))
+
+        _tick(journey, session, 't03-tick-1', 0, 15)
+        row = session.advance_row(advance)
+        journey.step('ACT/365 memo interest accrues through sim_day 15', 'HTTP',
+                     (row['phase'], row['accrued_through_sim_day'], row['interest_due_krw'] > 0,
+                      row['default_interest_due_krw'], row['close_ready']),
+                     ('DRAWN', 15, True, 0, False),
+                     interest_due_krw=row['interest_due_krw'],
+                     cumulative_exact_contract=row['cumulative_exact_contract'],
+                     carried_remainder_contract=row['carried_remainder_contract'])
+        _tick(journey, session, 't03-tick-2', 15, 30)
+        accrued_15 = row['interest_due_krw']
+        row = session.advance_row(advance)
+        journey.step('ACT/365 memo interest accrues through sim_day 30', 'HTTP',
+                     (row['accrued_through_sim_day'], row['interest_due_krw'] > accrued_15,
+                      row['default_interest_due_krw'], row['close_ready']),
+                     (30, True, 0, False),
+                     interest_due_krw=row['interest_due_krw'],
+                     cumulative_exact_contract=row['cumulative_exact_contract'],
+                     carried_remainder_contract=row['carried_remainder_contract'])
+
+        status, recon = session.get('/api/reconciliation')
+        journey.step('reconciliation is clean including the overlay fold check', 'HTTP',
+                     (status, recon['status'], sorted({check['status'] for check in recon['checks']})),
+                     (200, 'MATCHED', ['MATCHED']),
+                     checks=[check['id'] for check in recon['checks']])
+        status, risk = session.get('/api/risk')
+        journey.step('the risk rollup is bound and reconciles to the projection', 'HTTP',
+                     (status, risk['status'], risk['reconciliation']['matched'],
+                      risk['totals']['outstanding_krw']),
+                     (200, 'BOUND', True, T03_AMOUNT),
+                     risk_digest=risk['risk_digest'], sim_day=risk['sim_day'])
+
+        cash = row['principal_outstanding_krw'] + row['interest_due_krw'] + row['default_interest_due_krw']
+        status, quote = session.get(
+            f'/api/terms/{advance}/allocation?instance_id={session.instance_id}&as_of_day=30&cash={cash}')
+        journey.step('the full-repayment allocation quote', 'HTTP',
+                     (status, quote['allocation']['status'], quote['close_ready']),
+                     (200, 'BOUND', True), cash=cash, tier=quote['tier'],
+                     order=quote['allocation']['order'],
+                     to_interest=quote['allocation']['to_interest'],
+                     to_principal=quote['allocation']['to_principal'],
+                     fsm_repay=quote['fsm_repay'])
+        _drive(journey, session, 'repay the outstanding principal in full', 'repay', advance,
+               't03-repay', amount=row['principal_outstanding_krw'], sequence=1)
+        row = session.advance_row(advance)
+        journey.step('principal is zero; the unpaid interest memo keeps it not close-ready', 'HTTP',
+                     (row['phase'], row['principal_outstanding_krw'], row['close_ready'],
+                      session.overlay()['interest_payments']),
+                     ('DRAWN', 0, False, 'NOT_RECORDED'),
+                     interest_due_krw=row['interest_due_krw'])
+        _drive(journey, session, f'close {advance}', 'close', advance, 't03-close')
+        state = session.refresh()
+        journey.step('the advance is CLOSED', 'HTTP',
+                     {c['advance_id']: c['phase'] for c in state['cases']}, {advance: 'CLOSED'})
+
+        receipt = _tick(journey, session, 't03-tick-3', 30, 45, 'advance_day 30->45 after close')
+        row = session.advance_row(advance)
+        journey.step('no interest accrues after close', 'HTTP',
+                     (receipt['postings'], row['accrued_through_sim_day'], row['phase']),
+                     ([], 30, 'CLOSED'), interest_due_krw=row['interest_due_krw'])
+        state = session.refresh()
+        overlay = session.overlay()
+        status, risk = session.get('/api/risk')
+        journey.step('final phases and digests', 'HTTP',
+                     {c['advance_id']: c['phase'] for c in state['cases']}, {advance: 'CLOSED'},
+                     sim_day=overlay['sim_day'], overlay_state_digest=overlay['overlay_state_digest'],
+                     interest_payments=overlay['interest_payments'],
+                     risk_digest=risk['risk_digest'], state_digest=state['state_digest'],
+                     operation_count=state['operation_count'], funds_executed=state['funds_executed'])
+        _audit_no_replay(journey, session.client.posted_operation_ids())
+    return journey.result()
 
 
 # ----------------------------------------------------------------------- T05-sim
@@ -670,7 +792,148 @@ def run_t06():
     return journey.result()
 
 
-RUNNERS = {'T05-sim': run_t05, 'T06-sim': run_t06}
+# ----------------------------------------------------------------------- T04-sim
+
+def _verify_report(argv):
+    """Run ``python3 -m capital.verify`` and parse its one-line JSON report."""
+    proc = subprocess.run(
+        [sys.executable, '-m', 'capital.verify', *argv], cwd=os.fspath(ROOT),
+        capture_output=True, text=True, timeout=LISTEN_TIMEOUT)
+    try:
+        return proc.returncode, json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise JourneyError(f'capital.verify {argv}: {exc}: {proc.stdout!r} {proc.stderr!r}') from exc
+
+
+def _demo_pin():
+    """The seeded-demo state_digest the T04 book is checked against."""
+    try:
+        pin = json.loads((GOLDEN_DIR / 'demo.json').read_text(encoding='utf-8')).get('state_digest')
+    except (OSError, json.JSONDecodeError) as exc:
+        raise JourneyError(f'seeded-demo pin unreadable: {exc}') from exc
+    if type(pin) is not str:
+        raise JourneyError('seeded-demo pin has no state_digest')
+    return pin
+
+
+def run_t04():
+    """The auditor path: seeded book, manifest export + offline verify, workspace audit, recon."""
+    journey = Journey('T04-sim')
+    with tempfile.TemporaryDirectory(prefix='capital-sim-t04-') as tmp:
+        workspace = Path(tmp) / 'workspace'
+        workspace.mkdir()
+        server = ServerProcess(workspace)
+        try:
+            session = Session(server.start())
+            client = session.client
+            journey.step('organizer session on a --workspace server', 'PROCESS',
+                         (session.state['workspace']['kind'], session.state['funds_executed']),
+                         ('LOCAL_FILE_WORKSPACE', False), label=LABEL)
+            for operation_id, op, advance, args, outcome, error in seed_demo.STEPS:
+                response = session.command(op, advance, operation_id, **args)
+                journey.step(f'seed {op} {advance}', 'HTTP', _outcome(response),
+                             (200, outcome, error), op=op, advance_id=advance)
+            state = session.refresh()
+            journey.step('the seeded book matches the seeded-demo state_digest pin', 'HTTP',
+                         state['state_digest'], _demo_pin(),
+                         cases=len(state['cases']), operation_count=state['operation_count'])
+
+            status, auditor = client.request('POST', '/api/session', {'role': 'auditor'}, session.token)
+            journey.step('auditor role bound through the organizer session', 'HTTP',
+                         (status, auditor.get('role'), auditor.get('identity'),
+                          auditor.get('authentication'), auditor.get('agent_grant')),
+                         (200, 'auditor', 'NOT_BOUND', 'NOT_BOUND', 'NOT_BOUND'),
+                         mode=auditor.get('mode'), role_provenance=auditor.get('role_provenance'))
+            auditor_token = auditor['local_token']
+            auditor_get = lambda path: client.request('GET', path, token=auditor_token)
+
+            status, refused = client.request('POST', '/api/overlay/commands', {
+                'instance_id': session.instance_id, 'operation_id': 't04-auditor-tick',
+                'op': 'advance_day', 'from_sim_day': 0, 'to_sim_day': T04_TICK_DAYS,
+                'reason': 'SIM_JOURNEY'}, auditor_token)
+            journey.step('the auditor token cannot advance the clock', 'HTTP',
+                         (status, refused.get('error')), (403, 'ROLE_FORBIDDEN'))
+            _tick(journey, session, 't04-tick-1', 0, T04_TICK_DAYS)
+
+            status, overlay = auditor_get('/api/overlay')
+            journey.step('auditor reads the overlay after the organizer tick', 'HTTP',
+                         (status, overlay['sim_day'], overlay['status'], overlay['export']),
+                         (200, T04_TICK_DAYS, 'BOUND', 'INCLUDED_IN_MANIFEST_V3'),
+                         overlay_state_digest=overlay['overlay_state_digest'],
+                         advances=len(overlay['advances']),
+                         interest_payments=overlay['interest_payments'])
+            status, risk = auditor_get('/api/risk')
+            journey.step('auditor reads the risk rollup', 'HTTP',
+                         (status, risk['status'], risk['reconciliation']['matched']),
+                         (200, 'BOUND', True), risk_digest=risk['risk_digest'],
+                         outstanding_krw=risk['totals']['outstanding_krw'],
+                         advances_open=risk['totals']['advances_open'])
+            status, portfolio = auditor_get(
+                f'/api/terms/portfolio?instance_id={session.instance_id}&as_of_day={T04_TICK_DAYS}')
+            journey.step('auditor reads the terms portfolio rollup', 'HTTP',
+                         (status, portfolio['status']), (200, 'BOUND'),
+                         rows=len(portfolio['rows']), evaluated=portfolio['totals']['evaluated'],
+                         interest_krw=portfolio['totals']['interest_krw'])
+            status, recon = auditor_get('/api/reconciliation')
+            journey.step('auditor reconciliation: every check MATCHED', 'HTTP',
+                         (status, recon['status'], sorted({check['status'] for check in recon['checks']})),
+                         (200, 'MATCHED', ['MATCHED']),
+                         checks=[check['id'] for check in recon['checks']])
+
+            status, manifest = auditor_get('/api/export/manifest')
+            journey.step('auditor exports the V3 manifest', 'HTTP',
+                         (status, manifest['format'], manifest['status'],
+                          manifest['signature']['alg'], manifest['signature']['status']),
+                         (200, 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'COMPLETE', 'UNSIGNED', 'NOT_BOUND'),
+                         sections=sorted(manifest['sections']),
+                         content_digest=manifest['content_digest'],
+                         stage7_authenticated_export=manifest['stage7_authenticated_export'])
+            manifest_path = Path(tmp) / 'manifest.json'
+            manifest_path.write_bytes(
+                json.dumps(manifest, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode())
+            code, report = _verify_report([os.fspath(manifest_path)])
+            journey.step('capital.verify rechecks the exported manifest offline', 'VERIFY',
+                         (code, report['ok'], report['format'], report['content_digest'],
+                          report['signature'], report['stage7_authenticated_export']),
+                         (0, True, 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'MATCHED', 'NOT_BOUND', False),
+                         sections=report['sections'])
+            code, report = _verify_report(['--workspace', os.fspath(workspace)])
+            journey.step('capital.verify --workspace audits the live file read-only', 'VERIFY',
+                         (code, report['ok'], report['mode'], report['recon_status'],
+                          report['writes'], report['funds_executed'], report['lock_taken']),
+                         (0, True, 'OFFLINE_WORKSPACE_AUDIT', 'MATCHED', False, False, False),
+                         checks=report['checks'], entry_count=report['entry_count'],
+                         receipt_count=report['receipt_count'], state_digest=report['state_digest'],
+                         durable=report['durable'],
+                         stage5_durable_transactions=report['stage5_durable_transactions'])
+
+            status, denied = session.command('repay', 'sim-unbound', 't04-auditor-repay',
+                                             token=auditor_token, amount=1, sequence=1)
+            journey.step('the auditor token cannot submit a command', 'HTTP',
+                         (status, denied.get('error')), (403, 'ROLE_FORBIDDEN'))
+            status, observer = client.request('POST', '/api/session', {'role': 'observer'}, session.token)
+            status, denied = client.request('GET', '/api/export/manifest', token=observer['local_token'])
+            journey.step('the observer token cannot export the manifest', 'HTTP',
+                         (status, denied.get('error')), (403, 'ROLE_FORBIDDEN'))
+
+            state = session.refresh()
+            overlay = session.overlay()
+            status, risk = session.get('/api/risk')
+            journey.step('final phases and digests', 'HTTP',
+                         {c['advance_id']: c['phase'] for c in state['cases']},
+                         {row[0]: row[1] for row in seed_demo.EXPECTED},
+                         sim_day=overlay['sim_day'],
+                         overlay_state_digest=overlay['overlay_state_digest'],
+                         risk_digest=risk['risk_digest'], state_digest=state['state_digest'],
+                         operation_count=state['operation_count'],
+                         funds_executed=state['funds_executed'])
+            _audit_no_replay(journey, client.posted_operation_ids())
+        finally:
+            server.kill()
+    return journey.result()
+
+
+RUNNERS = {'T03-sim': run_t03, 'T04-sim': run_t04, 'T05-sim': run_t05, 'T06-sim': run_t06}
 
 
 # ------------------------------------------------------------------------ golden

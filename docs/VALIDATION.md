@@ -771,3 +771,17 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+## t03-t04-sim-journeys
+
+Scripts-only node: `scripts/sim_journeys.py` gains two named SIMULATED journeys over the existing loopback API. `T03-sim` (22 steps, in-process server) is the zero-exception F04 lifecycle `offer -> approve -> bind_settlement -> draw -> advance_day 0->15->30 accrual -> full repay -> close`, with a post-close tick showing no further accrual and a mid-run all-MATCHED reconciliation. `T04-sim` (38 steps, `--workspace` subprocess) is the auditor evidence chain: the seeded demo book replayed over HTTP and cross-pinned to `tests/golden/demo.json` `state_digest`, an auditor session, read-only auditor GETs, `GET /api/export/manifest` (V3) written to a file and re-verified by `python3 -m capital.verify FILE`, `python3 -m capital.verify --workspace DIR` (OFFLINE_WORKSPACE_AUDIT, all checks MATCHED), `GET /api/reconciliation` all MATCHED, and `403 ROLE_FORBIDDEN` for an auditor write. Both carry `label` SIMULATED, `funds_executed` false, `integrated` false and claim no T01-T06 qualification. `tests/golden/journey_t03_sim.json` / `journey_t04_sim.json` pin terminal phases, `sim_day`, `overlay_state_digest` and `risk_digest`; drift exits 1. The `integrated-journeys` acceptance stage now runs all four journeys. No `capital/` change, no new routes, no `post_repayment` (parked per `docs/decisions/CAPITAL_REPAYMENT_POSTING.md`), no funds movement.
+
+Commands actually run:
+
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T03-sim steps=22 T04-sim steps=38 T05-sim steps=35 T06-sim steps=33`; goldens written via `--update-golden` only.
+- `python3 -m unittest tests.test_sim_journeys -v`: exit 0, **32 passed** (13.6s).
+- `python3 -m unittest discover -s tests`: exit 0, **691 passed** (102.6s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py`: exit 0, **7 passed**. The five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `python3 scripts/docs_surface.py --check` (28 routes, 20 artifacts, 9 stages): exit 0.
+- `npm ci --no-audit --no-fund`: exit 0. `npm run test:browser`: exit 0, **62 passed** (1.8m); no server left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `ok` true; unit 691, storage-conformance 7, pinned-vendor 7, upstream-claims 181, node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
