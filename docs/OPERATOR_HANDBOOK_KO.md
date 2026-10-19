@@ -245,7 +245,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/risk`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -381,7 +381,15 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 ### terms-portfolio-rollup
 
-`GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 노출 버킷·집중도 한도·준비금·환불 충격 스트레스는 범위 밖이다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
+`GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이 롤업은 노출 버킷·집중도 한도·준비금·환불 충격 스트레스를 계산하지 않는다. 그것들은 `GET /api/risk`와 아래 `portfolio-risk-analytics` 절이 다룬다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:portfolio-risk-analytics -->
+
+### portfolio-risk-analytics
+
+`GET /api/risk`는 읽기 전용 포트폴리오 위험 분석이다. 라벨은 `SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy`이고 `mode`는 `SIMULATED_RISK_ANALYTICS`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 수락된 저널, 오버레이 시계 `sim_day`, `CAPITAL-TERMS-V1` 노트를 정수 나눗셈으로만 접으며 영수증·저널·오버레이 항목을 쓰지 않는다. 등급별 노출, 만기 버킷(표준 만기까지 남은 일수 0-30, 31-60, 61-90, >90; 만기일 당일과 연체 노출은 0-30), 연체 경과(`NOT_DUE`, 만기 후 1-30, 31-60, 61-90, >90일, `DEFAULTED`)의 합은 총 미상환과 같고 `reconciliation`이 로컬 투영의 advance 미상환과 맞춘다. 집중도는 수익자(`beneficiary_role`)별 정수 permille HHI와 `underwriting_depth` U4 세 한도(단일 건, 수익자 합계, 포트폴리오)에 대한 사용률(permille)이다. 준비금 요구액은 노트 `reserve.provision_bps_of_outstanding` 표(현재 150/500/2500/10000 bps)를 건별로 적용해 `floor(미상환 × bps / 10000)`을 더한 값이며 회계 정책이 아니고 `applied`는 false다. 스트레스는 마진 조건이 있는 `DRAWN` 건의 `eligible_face`를 고정 정수 충격 `[500, 1000, 2500, 5000]` bps만큼 줄여 다시 재고, 충격이 클수록 마진콜 건수는 줄지 않는다. 이 마진콜은 가정이며 오버레이에 기록되지 않는다. 장부가 알고 있는 만기는 표준 60일뿐이라 실제 데이터에서는 61-90, >90 버킷이 비어 있고 순수 함수 시험으로만 확인한다. 마진 가속 후의 만기 재기준은 반영하지 않는다. 연체이자·상각일을 가속 만기로 다시 잡는 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`(`acceleration_interest_rebase`)가 잠정 제품 결정(PROVISIONAL)으로 정했지만 아직 구현되지 않았고(`overlay-recovery-writeoff` 노드 소유) 그때까지 `interest_rebased`는 false다. 노트가 없으면 `NOT_BOUND`이고 숫자가 없다. 브라우저 패널 `#risk`는 `textContent`만 쓴다. 확률 모형, 부동소수점, 외부 데이터, 회계 채택은 범위 밖이다.
 
 <!-- /handbook-section -->
 
@@ -457,7 +465,7 @@ U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `sin
 
 `advance_day`마다 `additional_margin` 규칙을 평가하고 같은 원자 저장 안에 `margin_call`, `margin_cure`, `margin_acceleration`, `default_eligible_proposal` 항목을 쓴다. `GET /api/overlay`에는 최상위와 행마다 `margin` 블록이 붙는다.
 
-workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 이자와 상각은 다시 기준을 잡지 않으며(`interest_rebased` false, `NOT_REBASED / DECISION_REQUIRED`) 재산정은 재무 조건 소유자가 정한다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
+workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 가속 뒤 이자와 상각일은 아직 다시 기준을 잡지 않는다(`interest_rebased` false). 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`가 잠정 제품 결정(PROVISIONAL)으로 정했고 구현은 `overlay-recovery-writeoff`가 맡는다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
 
 <!-- /handbook-section -->
 
@@ -494,6 +502,28 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 `python3 -m capital.verify FILE`은 V2와 V3를 모두 받는다. V3에 `overlay`가 없거나 V2에 `overlay`가 있으면 `SECTION_SET`을, 그 밖의 절 구성 차이는 `MANIFEST_SHAPE`를 돌려준다. `overlay` 절의 바이트가 바뀌면 `SECTION_HASH_MISMATCH:overlay`다. 대사 검사 `overlay_fold_digest_equals_persisted`와 `scope.overlay_state_digest`는 오버레이가 비어 있지 않을 때만 나타나며, 불일치하면 매니페스트가 `INCOMPLETE`(`RECONCILIATION_NOT_CLEAN`)가 된다. 빈 오버레이는 기존 여섯 검사를 유지한다.
 
 `tests/golden/overlay_demo.json`은 `SIMULATED` 라벨, `overlay_schema` 1이며 `export_manifest_v3_content_digest`, `overlay_state_digest`, `entry_count`, `sim_day`, `interest_krw`, `scenario`를 고정한다. 시나리오는 고정된 F04 `repay` 명령을 쓴다. `tests/test_overlay.py`의 `GoldenTests`가 비교만 하며 재생성하지 않는다. `CAPITAL_REPAYMENT_POSTING.md`에 따라 재생성은 repayment-posting 노드만 한 번 할 수 있다. 운영자가 다이제스트 불일치를 보면 골든을 고칠 일이 아니라 드리프트로 취급한다. `demo.json`과 `overlay_empty.json`은 바이트가 그대로다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:operator-console-ux -->
+
+### operator-console-ux
+
+운영 데스크는 `http://127.0.0.1:<port>/#desk`로 연다. 왼쪽 메뉴의 `10 운영 데스크`도 같은 주소다. 열면 다른 패널은 숨고, 다른 메뉴를 누르면 원래 화면으로 돌아간다. 서버 경로, 권한, 역할은 바뀌지 않았다. 화면은 계산하지 않고 서버가 준 숫자와 사유 문장을 그대로 보여 준다. 예외는 `to_sim_day = from_sim_day + 진행 일수`뿐이며, 이는 요청 형식이 요구하는 논리 시계 정수다. 단계 상한과 낡은 시계 판정은 서버가 한다.
+
+영역은 위에서 아래로 다섯이다.
+
+- **위험 요약 타일**: `GET /api/risk`의 미상환, 열린·기록된 노출, 준비금 요구액(기장 안 함), HHI, 마지막 충격 행의 부족액, sim_day. 조건이 `NOT_BOUND`이면 라벨과 사유만 나온다.
+- **sim_day 제어**: `진행 일수`를 넣고 `sim_day 진행`을 누르면 `POST /api/overlay/commands`(`advance_day`)를 한 번 보낸다. 같은 탭 간 쓰기 잠금(`kix-capital-writer`)과 대기 기록을 쓴다. 응답을 잃으면 `UNKNOWN`이며 자동 재시도하지 않는다. `원 요청 결과 조회`는 `GET /api/overlay?operation_id=`만 읽고, 서버에 반영돼 있을 때만 대기 기록을 지운다. `SIM_CLOCK_STALE`, `SIM_CLOCK_NOT_ADVANCING`, `SIM_CLOCK_STEP`, `SIMULATION_CAPACITY`는 서버 거절이다.
+- **다음 작업**: 선택한 사례에서 보낼 수 있는 F04 명령. 활성·비활성과 사유는 서버 값이다. 노출 기록은 `GET /api/preview`의 `WOULD_REJECT` 사유, 종결은 `close_ready`와 원금·이자 필드, 미이행 메모는 마진 `default_eligible` 제안과 `margin.state`, `margin.limit`, `default_eligible_day`, 권한은 역할 권한 사유다. 심사 기록(`GET /api/underwrite`)의 `DECLINE`은 승인 옆에 자문 문장으로만 나오고 승인을 막지 않는다. 비활성 항목은 `aria-disabled`이며 눌러도 명령을 보내지 않는다.
+- **조건 오버레이 원장**: `GET /api/overlay`의 `interest_due_krw`, `default_interest_due_krw`, `close_ready`.
+- **사례 타임라인**: 내보내기 매니페스트의 F04 저널과 오버레이 저널을 `after_journal_index` 기준으로 합친다. 같은 위치에서는 오버레이가 F04 행 앞에 온다. F04 행에는 sim_day를 만들어 붙이지 않는다. 시계와 조건 연결 행은 `오버레이 · 전역`으로 표시한다.
+
+역할별 모습은 다음과 같다. organizer는 전부 본다. auditor는 타일, 원장, 타임라인만 보고 명령 조작은 숨겨지며 사유가 한 줄 나온다. observer는 `projection:read` 사유가 담긴 금지 안내만 보고 데스크용 요청을 보내지 않는다.
+
+키보드만으로 쓰려면 Tab 순서가 `데스크 새로고침` → `사례` → `진행 일수` → `sim_day 진행` → 다음 작업 버튼 → 오버레이 원장 → 타임라인이다. 일수를 넣고 `sim_day 진행`에서 Enter 또는 Space를 누른다. 완료 후 초점은 `sim_day 진행`에 남는다. 375px 폭에서 가로 넘침이 없고, 표는 자체 영역 안에서만 가로로 스크롤된다.
+
+스크린샷은 `npm run test:browser` 실행이 `test-results/operator-desk/desktop/`와 `test-results/operator-desk/mobile/`에 `organizer.png`, `auditor.png`, `observer.png`로 저장한다(데스크톱 1280px, 모바일 375px). 합성 데모 작업공간(`scripts/seed_demo.py`)에서 찍은 `SIMULATED` 화면이며 실제 자금·승인 화면이 아니다. 저장소에 커밋하지 않는다.
 
 <!-- /handbook-section -->
 

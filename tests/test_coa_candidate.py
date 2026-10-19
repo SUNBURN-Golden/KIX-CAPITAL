@@ -143,11 +143,29 @@ class V1UnchangedTests(unittest.TestCase):
             guarded = self._git('diff', '--name-only', introduced + '^', introduced, '--', *self.GUARDED)
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
             self.assertEqual(guarded.stdout.split(), [])
-            return
-        status = self._git('diff', '--name-only', 'HEAD', '--', *self.GUARDED)
-        if status.returncode != 0:
-            self.skipTest('git unavailable')
-        self.assertEqual(status.stdout.split(), [])
+            base = introduced
+        else:
+            status = self._git('diff', '--name-only', 'HEAD', '--', *self.GUARDED)
+            if status.returncode != 0:
+                self.skipTest('git unavailable')
+            self.assertEqual(status.stdout.split(), [])
+            base = 'HEAD'
+        # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
+        # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
+        # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.
+        listed = self._git('ls-tree', '--name-only', base, 'tests/golden/')
+        self.assertEqual(listed.returncode, 0)
+        names = listed.stdout.split()
+        self.assertIn('tests/golden/demo.json', names)
+        for name in names:
+            shown = self._git('show', f'{base}:{name}')
+            self.assertEqual(shown.returncode, 0, name)
+            pinned = json.loads(shown.stdout)
+            current = json.loads((ROOT / name).read_text(encoding='utf-8'))
+            self.assertIsInstance(current, dict, name)
+            for key, value in pinned.items():
+                self.assertIn(key, current, f'{name} ${key} dropped against {base}')
+                self.assertEqual(current[key], value, f'{name} ${key} moved against {base}')
 
     def test_default_reconciliation_still_has_the_six_checks(self):
         service = CapitalService()

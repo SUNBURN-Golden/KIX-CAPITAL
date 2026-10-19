@@ -77,6 +77,7 @@ ROUTE_NEEDLES = {
         '`GET /api/terms/portfolio',
     ),
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
+    ('GET', '/api/risk'): ('- `GET /api/risk`:',),
     ('GET', '/api/policy'): (
         '`GET /api/policy` and `GET /api/policy/simulation`',
         '`GET /api/policy/shadow`',),
