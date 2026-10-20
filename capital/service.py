@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, margin, overlay, risk
+from capital import coa, covenants, forecast, margin, overlay, risk
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1449,6 +1449,33 @@ class CapitalService:
                                        projection_outstanding_krw=outstanding)
                 return self._terms_envelope(covenants.build(
                     drawn, margin_rows, margin_block, risk_body, terms=self.terms, sim_day=sim_day))
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def forecast(self, instance_id, *, expected_settlement_cash_day=None):
+        """Read-only expected-cash ladder over the overlay ledger. Nothing is posted or written."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if expected_settlement_cash_day is not None:
+                self._require_day(expected_settlement_cash_day)
+            frozen = self._frozen()
+            try:
+                state = overlay.fold(self.overlay_entries)
+                sim_day = state['sim_day']
+                status = self._overlay_terms()
+                if status is None or not forecast.usable(self.terms):
+                    return self._terms_envelope(forecast.not_bound(
+                        self.terms.status()['terms_version'], sim_day,
+                        expected_settlement_cash_day=expected_settlement_cash_day))
+                drawn = self._overlay_subjects(self.overlay_entries)
+                posted = {advance_id: row['posted_contract_krw'] + row['posted_default_krw']
+                          for advance_id, row in state['advances'].items()}
+                body = forecast.build(drawn, terms=self.terms, sim_day=sim_day,
+                                      expected_settlement_cash_day=expected_settlement_cash_day,
+                                      posted_interest=posted)
+                return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
