@@ -77,6 +77,8 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 
 ```sh
 python3 -m unittest discover -s tests -v
+python3 scripts/decision_bindings.py --check
+python3 scripts/fsm_contract_claims_check.py --execute
 python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v
 python3 scripts/manifest_vectors.py --check
 python3 scripts/workspace_vectors.py --check
@@ -96,6 +98,8 @@ python3 scripts/acceptance.py
 ```
 
 결과는 커밋하지 않는 `build/acceptance-evidence.json`입니다. 명령, 종료 코드, 테스트 수, HEAD SHA, 도구 버전, vendor 해시, golden digest가 들어 있습니다. 단계가 실패하거나 빠지면 0이 아닌 코드로 끝납니다. CI는 매 HEAD에서 이 명령을 실행하고 evidence 파일을 올립니다. `storage-conformance` 단계는 `run_storage_vectors(factory)`로 메모리와 `LOCAL_FILE_WORKSPACE`를 같은 벡터에 통과시킨다. 그 통과는 SEMANTIC_CONFORMANCE가 아니고 CAP-11은 `NOT_BOUND`다. `upstream-claims` 단계의 라벨은 `CLAIM_CONFORMANCE`다. 프로토콜 체크아웃이 없으면 `scripts/upstream_claims_check.py`와 `scripts/agent_claims_check.py`, `scripts/read_model_claims_check.py`는 `SKIPPED`이며 그 상태는 통과가 아니다.
+
+`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute` 세 명령을 순서대로 실행할 뿐이다. `python3 scripts/fsm_contract_claims_check.py --execute`는 `capital/vendor/manifest.json`의 다섯 vendored 파일을 먼저 맞춘 뒤 `tests/fsm_contract_claims.json`의 고정 클레임을 vendored `CreditMachine`/`SettlementMachine`으로 실행해 `CLAIM_CONFORMANCE`를 찍는다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인하고 실제 연동이 아니다. 이 검사는 unit discovery 안의 `tests/test_fsm_contract_claims.py`로도 실행되며 `upstream-claims` 단계의 네 번째 명령이 아니다.
 
 `python3 scripts/seed_demo.py`는 고정 operation id로 종결·미이행·거절·취소·UNBOUND·정산 대기 케이스를 만듭니다. `tests/golden/demo.json`은 여섯 케이스의 `phase`·`settlement_gate`(`cases`), `state_digest`, 투영 합계, manifest `content_digest`, 그리고 읽기 전용 위험 분석의 `risk` 블록(`sim_day` 0, 미상환·준비금 요구액·HHI·`risk_digest`)을 고정합니다. instance id와 시각은 넣지 않습니다. 값이 달라지면 실패하고, 핀을 고치려면 `python3 scripts/seed_demo.py --update-golden`이 필요합니다. 금액은 합성 fixture 단위입니다.
 
