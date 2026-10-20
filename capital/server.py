@@ -13,7 +13,7 @@ from capital import __version__
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
     COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES,
-    SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
+    SESSION_BIND, LocalRoleAuthorizer, path_matches, permission_catalog, require, route_permission,
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
 from capital.resources import read_static
@@ -27,6 +27,7 @@ from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 # The auth test fails if these two registries diverge. Unlisted paths are 404.
 GET_DISPATCH = (
     ('/api/state', False, 'state'),
+    ('/api/permissions', False, 'permissions'),
     ('/api/scenarios', True, 'scenarios'),
     ('/api/readiness', False, 'readiness'),
     ('/api/decisions', False, 'decisions'),
@@ -244,6 +245,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_state(self, route, principal):
             return self.reply(200, {**service.snapshot(role=principal.role), 'local_token': self.local_token(principal)})
+
+        def _get_permissions(self, route, principal):
+            return self.reply(200, permission_catalog(POST_DISPATCH, ASSETS))
 
         def _get_evidence(self, route, principal):
             return self.reply(200, service.evidence())

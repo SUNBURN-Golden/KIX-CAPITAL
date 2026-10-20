@@ -78,6 +78,16 @@
     },
     {
       "method": "GET",
+      "route": "/api/permissions",
+      "children": false,
+      "handler": "_get_permissions",
+      "permission": "reference:read",
+      "probes": [
+        "/api/permissions"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/scenarios",
       "children": true,
       "handler": "_get_scenarios",
@@ -444,6 +454,54 @@
     {
       "method": "GET",
       "route": "/api/state",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reference:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {

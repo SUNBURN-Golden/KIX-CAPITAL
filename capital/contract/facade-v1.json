@@ -384,6 +384,28 @@
     },
     {
       "method": "GET",
+      "path": "/api/permissions",
+      "operationId": "local_permissions",
+      "dispatch": "/api/permissions",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/permission_catalog"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/readiness",
       "operationId": "local_readiness",
       "dispatch": "/api/readiness",
@@ -1551,6 +1573,41 @@
     }
   ],
   "definitions": {
+    "permission_catalog": {
+      "type": "object",
+      "required": ["format", "label", "provenance", "identity", "authentication", "no_token_principal", "routes", "role_permissions"],
+      "properties": {
+        "format": {"const": "KIX_CAPITAL_PERMISSION_CATALOG_V1"},
+        "label": {"const": "SIMULATED"},
+        "provenance": {"const": "SYNTHETIC_LOCAL_ROLE"},
+        "identity": {"const": "NOT_BOUND"},
+        "authentication": {"const": "NOT_BOUND"},
+        "no_token_principal": {"const": "organizer"},
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["method", "route", "children", "permission"],
+            "properties": {
+              "method": {"enum": ["GET", "POST"]},
+              "route": {"type": "string"},
+              "children": {"type": "boolean"},
+              "permission": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "role_permissions": {
+          "type": "object",
+          "required": ["organizer", "auditor", "observer", "agent"],
+          "properties": {
+            "organizer": {"type": "array", "items": {"type": "string"}},
+            "auditor": {"type": "array", "items": {"type": "string"}},
+            "observer": {"type": "array", "items": {"type": "string"}},
+            "agent": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
     "terms_snapshot": {
       "type": "object",
       "additionalProperties": false,

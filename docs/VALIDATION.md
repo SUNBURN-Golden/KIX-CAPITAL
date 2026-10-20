@@ -791,3 +791,25 @@ Commands actually run, in order:
 - Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`. `git status` shows no change under `capital/vendor/` or `.aiops/`.
 
 No `DECISION_REQUIRED.md` was written: the node is a cite-only mapping of existing read surfaces; nothing required money, credentials, a new route, an upstream edit, or an undetermined §6/§9 value.
+
+## permission-catalog-surface
+
+Read-only permission catalog: `GET /api/permissions` serves `KIX_CAPITAL_PERMISSION_CATALOG_V1` — the ordered registered GET/POST/static routes (`method`, `route`, `children`, `permission`; static permissions `null` because assets answer before authentication) and the synthetic role-to-permission sets. The route is itself registered under `reference:read`: organizer, auditor, observer and a tokenless caller (default organizer) get 200 with identical bodies; `agent` gets `403 ROLE_FORBIDDEN` naming `reference:read`. No role, permission or other route changed. Labels stay `SIMULATED` / `SYNTHETIC_LOCAL_ROLE`; identity and authentication stay `NOT_BOUND`; no token or operational state is exposed.
+
+`capital/auth.py` gained the registry entry and a deterministic `permission_catalog(post_routes, assets)` serializer (fresh collections per call; no server import). `capital/server.py` adds the dispatch row and `_get_permissions`. `scripts/auth_matrix.py --check` now also fetches the served JSON from an ephemeral memory-only loopback server (`make_server(0)`, shut down and joined) and reconciles it against both the generated projection and the pinned `tests/auth_matrix.json` projection, on top of the existing byte and generated-block comparisons; `--write` stays offline and deterministic. Registry validation is stricter: duplicate route identities, `MATRIX` keys vs `ROLES`, and unknown granted/mapped permissions are refused. `scripts/docs_surface.py` pins the hand-maintained INTEGRATION bullet; `capital/contract/facade-v1.json` gained the route row and a closed `permission_catalog` definition, and `tests/vectors/finance_vectors.json` was regenerated through `scripts/finance_vectors.py --write` (facade_read_model group only: 28 GET routes).
+
+Commands actually run, in order:
+
+- `python3 scripts/auth_matrix.py --check`: exit 0 (served catalog reconciled with pinned matrix and both generated blocks).
+- `python3 scripts/docs_surface.py --check`: exit 0 (30 routes, 20 artifacts, 9 stages).
+- `python3 scripts/finance_vectors.py --check`: exit 0 (91324 bytes match).
+- `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v`: exit 0, **47 passed** (10.8s), including the every-cell live sweep with the five new `/api/permissions` cells, served-drift refusals and the prose-needle mutation.
+- `python3 -m unittest discover -s tests`: exit 0, **709 passed** (110.2s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`: exit 0. `node --check capital/static/app.js`: exit 0.
+- `npm run test:browser`: exit 0, **62 passed** (1.8m; Chromium available). Playwright started and stopped its loopback servers.
+- `python3 scripts/manifest_vectors.py --check` (13 files), `workspace_vectors.py --check` (6 files), `not_bound_checklist.py`, `decision_ledger.py`, `seed_demo.py` (`state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`): exit 0.
+- Live spot check: `GET /api/permissions` returned 200 with 33 catalog routes for the tokenless caller and `403 ROLE_FORBIDDEN`/`reference:read` for the agent token; the check server was shut down.
+- Vendored SHA256 check against `capital/vendor/manifest.json` (`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`): all five files `OK`. `git diff --name-only -- capital/vendor .aiops .github`: no output.
+
+No `DECISION_REQUIRED.md` was written: the surface reads only existing registries; nothing required money, credentials, deployment, an upstream edit, or an undetermined product value.
