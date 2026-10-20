@@ -38,6 +38,9 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(commands['storage-conformance'][0][1:], [
             '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
         ])
+        self.assertEqual(commands['storage-conformance'][1][1:], [
+            '-m', 'unittest', 'tests.test_crash_replay', '-v',
+        ])
         self.assertIn('test_mock_credit.py', commands['pinned-vendor'][0])
         self.assertEqual(
             commands['upstream-claims'][0][1:],

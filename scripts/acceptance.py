@@ -70,6 +70,8 @@ def build_plan(root=None):
             'commands': [[
                 py, '-m', 'unittest', 'discover',
                 '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
+            ], [
+                py, '-m', 'unittest', 'tests.test_crash_replay', '-v',
             ]],
         },
         {
