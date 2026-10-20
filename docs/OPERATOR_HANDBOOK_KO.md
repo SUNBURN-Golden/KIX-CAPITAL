@@ -540,3 +540,13 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 스크린샷은 `npm run test:browser` 실행이 `test-results/operator-desk/desktop/`와 `test-results/operator-desk/mobile/`에 `organizer.png`, `auditor.png`, `observer.png`로 저장한다(데스크톱 1280px, 모바일 375px). 합성 데모 작업공간(`scripts/seed_demo.py`)에서 찍은 `SIMULATED` 화면이며 실제 자금·승인 화면이 아니다. 저장소에 커밋하지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:read-model-claims-conformance -->
+
+### read-model-claims-conformance
+
+`tests/read_model_claims.json`(`KIX_CAPITAL_READ_MODEL_CLAIMS_V1`, 39행)은 고정된 upstream 초안 `docs/contracts/READ_MODEL_QUERIES.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 `get_credit_advance`(§2.12)·`get_credit_claim`(§2.13)·비변경 술어(§8)를 기존 읽기 표면에 비춰 고정한 클레임 표다. 각 행은 `route` 필드로 매핑을 명시한다: `get_credit_advance`는 `GET /api/state`의 case 뷰(그대로 `CreditMachine.view` dict)에, `get_credit_claim`은 in-process `CreditMachine.view_claim`에 대응한다. `GET /api/evidence`는 §2.11 정산 claim 객체라 §2.13이 합치지 못하는 객체라 대응하지 않는다. `python3 scripts/read_model_claims_check.py --execute`가 `CLAIM_CONFORMANCE passed=39 total=39 failed=0`을 낸다. 모든 검사는 §8 비변경 가드(canonical_state·저널 길이·오버레이 fold digest·operation_count가 호출 전후 동일) 아래 읽기를 실행하고, 어긋나면 그 클레임이 실패한다.
+
+수용 사다리의 `upstream-claims` 단계는 이제 명령을 셋 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행)다. 단계의 `passed`와 `total`은 세 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39=220이고 label은 그대로 `CLAIM_CONFORMANCE`다. 인자 없이 실행하면 `SKIPPED`이며 통과가 아니다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인한다. 위 절들의 옛 합계 문장은 표가 적었을 때의 문장이며 고치지 않는다. 결과는 SIMULATED이고 upstream 쿼리 이름의 구현·카탈로그 승격·새 경로가 아니다.
+
+<!-- /handbook-section -->
