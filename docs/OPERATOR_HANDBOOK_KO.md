@@ -393,6 +393,14 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:cashflow-forecast -->
+
+### cashflow-forecast
+
+`GET /api/terms/portfolio/forecast`는 읽기 전용 현금 사다리 예측이다. 라벨은 `SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement`이고 `mode`는 `SIMULATED_CASH_FORECAST`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 오버레이 원장의 `sim_day`·건별 `draw_day`와 `CAPITAL-TERMS-V1`을 접어, 인출된 건마다 세 레그를 낸다: `expected_settlement_cash_day`의 `SETTLEMENT_CASH_IN`(미상환 원금, 가정 `SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`; 인자가 없으면 `day`/`bucket`이 null이고 상태는 `EXPECTED_DAY_NOT_PROVIDED`), 만기일의 `CONTRACT_INTEREST`(ACT/365 단리 정확 유리수, 가정 `NO_DEFAULT_CONTRACTUAL_SCHEDULE`), 만기일의 `PRINCIPAL`(가정 `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`). 정산일을 주면 기간은 노트의 settlement-linked 클램프(`term_source` `settlement_linked`)를 따른다. 버킷은 sim_day 이후 0-7/8-30/31-60/61-90/91+일이고 과거 날짜는 0-7에 놓인다. 버킷마다 성분별 유리수 합(`settlement_exact`, `repayment_exact`, `expected_exact`)과 한 번만 내린 `expected_cash_krw`를 담는다 — 레그별 내림이 아니다. `reconciliation.matched`는 상환 레그가 미상환 원금+만기 계약 이자와 정확히 같을 때만 true이고, `posted_accrued_interest_krw`는 오버레이 계상 메모를 참고로만 보여 준다. 미상환 0이거나 티어가 없는 건은 숫자 없이 `NOT_APPLICABLE`이고, 노트가 없거나 쓸 수 없으면 `NOT_BOUND`/`terms not bound`에 숫자 절이 없다. 이 경로만 문서화된 질의 인자(`instance_id`, `expected_settlement_cash_day`) 외에는 `400 INVALID_ARGUMENTS`로 거절한다. 리터럴 경로라 `{advance_id}` 폴스루보다 먼저 매치된다. receipt·저널·오버레이·작업공간 바이트는 바뀌지 않는다. 확률 가중, 할인/NPV, FX, 자금 이동은 범위 밖이다. 시드 데모 장부의 결과는 `tests/vectors/forecast_vectors.json`에 고정되고 `python3 scripts/forecast_vectors.py --check`가 바이트를 비교한다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:agent-lane-tools -->
 
 ### agent-lane-tools
