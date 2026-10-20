@@ -144,6 +144,10 @@
       "status": 404
     },
     {
+      "code": "GATE_FAILED",
+      "status": 502
+    },
+    {
       "code": "PROJECTION_INVARIANT",
       "status": 500
     },
@@ -536,6 +540,35 @@
         "instance_id",
         "as_of_day",
         "draw_day",
+        "expected_settlement_cash_day"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/terms/portfolio/forecast",
+      "operationId": "local_terms_portfolio_forecast",
+      "dispatch": "/api/terms",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/terms_forecast"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id",
         "expected_settlement_cash_day"
       ]
     },
@@ -953,6 +986,9 @@
           },
           {
             "$ref": "#/definitions/rejected_receipt"
+          },
+          {
+            "$ref": "#/definitions/unknown_operation"
           }
         ]
       },
@@ -983,7 +1019,8 @@
         "WORKSPACE_LOCKED",
         "WORKSPACE_WRITE_FAILED",
         "UNKNOWN_PROPOSAL",
-        "PROPOSAL_BINDING_CONFLICT"
+        "PROPOSAL_BINDING_CONFLICT",
+        "GATE_FAILED"
       ],
       "permission": "command:submit",
       "request": {
@@ -3993,6 +4030,9 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "label": {
+          "const": "LOCAL_FAKE_GATE"
         }
       }
     },
@@ -4044,6 +4084,9 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "label": {
+          "const": "LOCAL_FAKE_GATE"
         }
       }
     },
@@ -8092,6 +8135,448 @@
         }
       ]
     },
+    "terms_forecast": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_forecast_bound"
+        },
+        {
+          "$ref": "#/definitions/terms_forecast_unbound"
+        }
+      ]
+    },
+    "terms_forecast_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "sim_day",
+        "expected_settlement_cash_day",
+        "policy_adopted",
+        "accounting_policy",
+        "assumptions",
+        "advances",
+        "buckets",
+        "reconciliation",
+        "forecast_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement"
+        },
+        "mode": {
+          "const": "SIMULATED_CASH_FORECAST"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "BOUND"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "expected_settlement_cash_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY",
+              "NO_DEFAULT_CONTRACTUAL_SCHEDULE",
+              "NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES"
+            ]
+          }
+        },
+        "advances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/terms_forecast_row"
+          }
+        },
+        "buckets": {
+          "$ref": "#/definitions/terms_forecast_buckets"
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/terms_forecast_reconciliation"
+        },
+        "forecast_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "terms_forecast_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest",
+        "status",
+        "reason",
+        "sim_day",
+        "expected_settlement_cash_day",
+        "policy_adopted",
+        "accounting_policy",
+        "forecast_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement"
+        },
+        "mode": {
+          "const": "SIMULATED_CASH_FORECAST"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "const": "terms not bound"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "expected_settlement_cash_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "forecast_digest": {
+          "type": "null"
+        }
+      }
+    },
+    "terms_forecast_row": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/terms_forecast_row_bound"
+        },
+        {
+          "$ref": "#/definitions/terms_forecast_row_skipped"
+        }
+      ]
+    },
+    "terms_forecast_row_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "advance_id",
+        "phase",
+        "tier",
+        "principal_krw",
+        "draw_day",
+        "term_days",
+        "term_source",
+        "maturity_day",
+        "legs"
+      ],
+      "properties": {
+        "status": {
+          "const": "BOUND"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2"
+          ]
+        },
+        "principal_krw": {
+          "type": "integer"
+        },
+        "draw_day": {
+          "type": "integer"
+        },
+        "term_days": {
+          "type": "integer"
+        },
+        "term_source": {
+          "enum": [
+            "standard",
+            "settlement_linked"
+          ]
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "legs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/terms_forecast_leg"
+          }
+        }
+      }
+    },
+    "terms_forecast_row_skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "advance_id",
+        "phase"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_APPLICABLE"
+        },
+        "reason": {
+          "enum": [
+            "NO_OUTSTANDING_PRINCIPAL",
+            "tier not applicable"
+          ]
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "terms_forecast_leg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "day",
+        "bucket",
+        "status",
+        "exact",
+        "assumption"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "SETTLEMENT_CASH_IN",
+            "CONTRACT_INTEREST",
+            "PRINCIPAL"
+          ]
+        },
+        "day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "bucket": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "SCHEDULED",
+            "EXPECTED_DAY_NOT_PROVIDED"
+          ]
+        },
+        "exact": {
+          "type": "string"
+        },
+        "assumption": {
+          "enum": [
+            "SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY",
+            "NO_DEFAULT_CONTRACTUAL_SCHEDULE",
+            "NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES"
+          ]
+        }
+      }
+    },
+    "terms_forecast_buckets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "edges_days",
+        "rows"
+      ],
+      "properties": {
+        "edges_days": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/terms_forecast_bucket"
+          }
+        }
+      }
+    },
+    "terms_forecast_bucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "legs",
+        "settlement_exact",
+        "repayment_exact",
+        "expected_exact",
+        "expected_cash_krw"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "0-7",
+            "8-30",
+            "31-60",
+            "61-90",
+            "91+"
+          ]
+        },
+        "legs": {
+          "type": "integer"
+        },
+        "settlement_exact": {
+          "type": "string"
+        },
+        "repayment_exact": {
+          "type": "string"
+        },
+        "expected_exact": {
+          "type": "string"
+        },
+        "expected_cash_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "terms_forecast_reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outstanding_principal_krw",
+        "contract_interest_exact",
+        "contract_interest_krw",
+        "settlement_exact",
+        "repayment_exact",
+        "expected_exact",
+        "posted_accrued_interest_krw",
+        "matched"
+      ],
+      "properties": {
+        "outstanding_principal_krw": {
+          "type": "integer"
+        },
+        "contract_interest_exact": {
+          "type": "string"
+        },
+        "contract_interest_krw": {
+          "type": "integer"
+        },
+        "settlement_exact": {
+          "type": "string"
+        },
+        "repayment_exact": {
+          "type": "string"
+        },
+        "expected_exact": {
+          "type": "string"
+        },
+        "posted_accrued_interest_krw": {
+          "type": "integer"
+        },
+        "matched": {
+          "type": "boolean"
+        }
+      }
+    },
     "journal_section": {
       "type": "object",
       "additionalProperties": false,
@@ -8589,6 +9074,9 @@
         },
         "retry_authorized": {
           "const": false
+        },
+        "label": {
+          "const": "LOCAL_FAKE_GATE"
         }
       }
     },

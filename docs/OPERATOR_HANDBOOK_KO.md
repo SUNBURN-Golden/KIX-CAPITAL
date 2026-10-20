@@ -393,6 +393,14 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:cashflow-forecast -->
+
+### cashflow-forecast
+
+`GET /api/terms/portfolio/forecast`는 읽기 전용 현금 사다리 예측이다. 라벨은 `SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement`이고 `mode`는 `SIMULATED_CASH_FORECAST`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 오버레이 원장의 `sim_day`·건별 `draw_day`와 `CAPITAL-TERMS-V1`을 접어, 인출된 건마다 세 레그를 낸다: `expected_settlement_cash_day`의 `SETTLEMENT_CASH_IN`(미상환 원금, 가정 `SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`; 인자가 없으면 `day`/`bucket`이 null이고 상태는 `EXPECTED_DAY_NOT_PROVIDED`), 만기일의 `CONTRACT_INTEREST`(ACT/365 단리 정확 유리수, 가정 `NO_DEFAULT_CONTRACTUAL_SCHEDULE`), 만기일의 `PRINCIPAL`(가정 `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`). 정산일을 주면 기간은 노트의 settlement-linked 클램프(`term_source` `settlement_linked`)를 따른다. 버킷은 sim_day 이후 0-7/8-30/31-60/61-90/91+일이고 과거 날짜는 0-7에 놓인다. 버킷마다 성분별 유리수 합(`settlement_exact`, `repayment_exact`, `expected_exact`)과 한 번만 내린 `expected_cash_krw`를 담는다 — 레그별 내림이 아니다. `reconciliation.matched`는 상환 레그가 미상환 원금+만기 계약 이자와 정확히 같을 때만 true이고, `posted_accrued_interest_krw`는 오버레이 계상 메모를 참고로만 보여 준다. 미상환 0이거나 티어가 없는 건은 숫자 없이 `NOT_APPLICABLE`이고, 노트가 없거나 쓸 수 없으면 `NOT_BOUND`/`terms not bound`에 숫자 절이 없다. 이 경로만 문서화된 질의 인자(`instance_id`, `expected_settlement_cash_day`) 외에는 `400 INVALID_ARGUMENTS`로 거절한다. 리터럴 경로라 `{advance_id}` 폴스루보다 먼저 매치된다. receipt·저널·오버레이·작업공간 바이트는 바뀌지 않는다. 확률 가중, 할인/NPV, FX, 자금 이동은 범위 밖이다. 시드 데모 장부의 결과는 `tests/vectors/forecast_vectors.json`에 고정되고 `python3 scripts/forecast_vectors.py --check`가 바이트를 비교한다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:agent-lane-tools -->
 
 ### agent-lane-tools
@@ -538,5 +546,15 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 키보드만으로 쓰려면 Tab 순서가 `데스크 새로고침` → `사례` → `진행 일수` → `sim_day 진행` → 다음 작업 버튼 → 오버레이 원장 → 타임라인이다. 일수를 넣고 `sim_day 진행`에서 Enter 또는 Space를 누른다. 완료 후 초점은 `sim_day 진행`에 남는다. 375px 폭에서 가로 넘침이 없고, 표는 자체 영역 안에서만 가로로 스크롤된다.
 
 스크린샷은 `npm run test:browser` 실행이 `test-results/operator-desk/desktop/`와 `test-results/operator-desk/mobile/`에 `organizer.png`, `auditor.png`, `observer.png`로 저장한다(데스크톱 1280px, 모바일 375px). 합성 데모 작업공간(`scripts/seed_demo.py`)에서 찍은 `SIMULATED` 화면이며 실제 자금·승인 화면이 아니다. 저장소에 커밋하지 않는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:read-model-claims-conformance -->
+
+### read-model-claims-conformance
+
+`tests/read_model_claims.json`(`KIX_CAPITAL_READ_MODEL_CLAIMS_V1`, 39행)은 고정된 upstream 초안 `docs/contracts/READ_MODEL_QUERIES.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 `get_credit_advance`(§2.12)·`get_credit_claim`(§2.13)·비변경 술어(§8)를 기존 읽기 표면에 비춰 고정한 클레임 표다. 각 행은 `route` 필드로 매핑을 명시한다: `get_credit_advance`는 `GET /api/state`의 case 뷰(그대로 `CreditMachine.view` dict)에, `get_credit_claim`은 in-process `CreditMachine.view_claim`에 대응한다. `GET /api/evidence`는 §2.11 정산 claim 객체라 §2.13이 합치지 못하는 객체라 대응하지 않는다. `python3 scripts/read_model_claims_check.py --execute`가 `CLAIM_CONFORMANCE passed=39 total=39 failed=0`을 낸다. 모든 검사는 §8 비변경 가드(canonical_state·저널 길이·오버레이 fold digest·operation_count가 호출 전후 동일) 아래 읽기를 실행하고, 어긋나면 그 클레임이 실패한다.
+
+수용 사다리의 `upstream-claims` 단계는 이제 명령을 셋 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행)다. 단계의 `passed`와 `total`은 세 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39=220이고 label은 그대로 `CLAIM_CONFORMANCE`다. 인자 없이 실행하면 `SKIPPED`이며 통과가 아니다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인한다. 위 절들의 옛 합계 문장은 표가 적었을 때의 문장이며 고치지 않는다. 결과는 SIMULATED이고 upstream 쿼리 이름의 구현·카탈로그 승격·새 경로가 아니다.
 
 <!-- /handbook-section -->
