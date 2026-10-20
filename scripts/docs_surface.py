@@ -75,6 +75,7 @@ ROUTE_NEEDLES = {
         '`GET /api/terms/{advance_id}/allocation',
         '`GET /api/terms/{advance_id}/setoff',
         '`GET /api/terms/portfolio',
+        '`GET /api/terms/portfolio/forecast',
     ),
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
@@ -113,6 +114,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
     'gate_faults.json': (
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
+    'forecast_vectors.json': (
+        'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
 }
 

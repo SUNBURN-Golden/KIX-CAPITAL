@@ -788,3 +788,37 @@ Commands actually run:
 - Vendored `capital/vendor` SHA256 values all match `manifest.json`; `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
 
 Facade receipts keep the pinned shape (adding a `label` field was reverted because it moved `content_digest` and broke the gate-fake/pinned golden parity test); the `LOCAL_FAKE_GATE` label is carried by every gate receipt and by the UNKNOWN envelope, and `facade-v1.json` declares it as an optional property on all three receipt shapes plus `unknown_operation` in the `/api/commands` response union and the `GATE_FAILED` (502) error.
+## read-model-claims-conformance
+
+A third pinned claim table `tests/read_model_claims.json` (format `KIX_CAPITAL_READ_MODEL_CLAIMS_V1`, 39 rows) maps existing Capital read surfaces onto the upstream draft `docs/contracts/READ_MODEL_QUERIES.md` at `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` — the same SHA as the vendor pin. Rows cite `### 2.12 \`get_credit_advance\``, `### 2.13 \`get_credit_claim\`` and `## 8. 비변경` with verbatim needles. The mapping is an honest adapter, recorded in the table `note` and in each row's `route` field: `get_credit_advance` reads through `GET /api/state` case views (literal `CreditMachine.view` dicts), `get_credit_claim` through in-process `CreditMachine.view_claim`. `GET /api/evidence` is deliberately unmapped — its rows are `MockSettlement` claims (the §2.11 object) and §2.13 forbids merging the two objects. No upstream query name is implemented, no route was added, no catalogue promotion: this prepares the parked read-model-credit-queries node only.
+
+`capital/read_model_claims.py` mirrors `capital/agent_claims.py`: thin delegation to `capital/upstream_claims.py` helpers plus the `read.*` check registry and a `route` registry enforced by `validate_table`. It locates the table via the parent of `capital.resources.ROOT`, not `Path(__file__)`. Every check runs its read under a §8 non-mutation guard — `canonical_state()`, journal length, the folded overlay state digest and `len(receipts)` (operation_count) must be unchanged or the claim fails; four dedicated `read.readonly.*` claims assert the guard triple-plus-count outright, including erroring reads. `scripts/read_model_claims_check.py` is a structural clone of `scripts/agent_claims_check.py`: bare invocation prints `SKIPPED` (never a pass), `--execute` prints the count line, `--protocol-dir` verifies citations read-only. `scripts/acceptance.py` runs it as the third command of the unchanged `upstream-claims` stage; `_merge_counts` sums all three count lines (87+94+39=220). `tests/test_read_model_claims.py` adds 12 tests. Results are SIMULATED and labelled CLAIM_CONFORMANCE, never SEMANTIC_CONFORMANCE. Nothing under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` was edited.
+
+Commands actually run, in order:
+
+- `python3 scripts/read_model_claims_check.py --execute`: exit 0, `CLAIM_CONFORMANCE passed=39 total=39 failed=0`.
+- `python3 scripts/read_model_claims_check.py`: exit 0, first line `SKIPPED`, JSON status `SKIPPED` label `CLAIM_CONFORMANCE`, no success count.
+- `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro`: exit 0, `CLAIM_DRIFT verified=39 total=39`. The checkout was read only; its working tree HEAD `08119a4` carries the draft with all cited headings and needles.
+- `python3 -m unittest tests.test_read_model_claims -v`: exit 0, **12 passed** in 2.141s (merged stage evidence `passed=220`).
+- `python3 -m unittest discover -s tests -v`: exit 0, **704 passed** in ~98s (one interim run failed `test_acceptance_stage_runs_both_claim_tables` in `tests/test_agent_claims.py`, which pinned the old two-table sum 181; it now asserts the third command and the 87+94+39=220 total).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 20 artifacts, 9 stages).
+- `npm ci`: exit 0, added 3 packages. `npm run test:browser`: exit 0, **62 passed** (1.6m). Playwright started and stopped its loopback servers; nothing was left on the test ports.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` `ok` true. Stages: unit 704, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` label `CLAIM_CONFORMANCE`, node-check, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 2.
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`. `git status` shows no change under `capital/vendor/` or `.aiops/`.
+
+No `DECISION_REQUIRED.md` was written: the node is a cite-only mapping of existing read surfaces; nothing required money, credentials, a new route, an upstream edit, or an undetermined §6/§9 value.
+
+## cashflow-forecast
+
+New read-only route `GET /api/terms/portfolio/forecast` (`capital/forecast.py`, service method, literal child of `/api/terms` — no dispatcher or permission-registry change; inherits `projection:read`). Per drawn advance three legs (`SETTLEMENT_CASH_IN` on `expected_settlement_cash_day`, `CONTRACT_INTEREST` and `PRINCIPAL` at maturity) bucketed 0-7/8-30/31-60/61-90/91+ sim days ahead of the overlay `sim_day`, exact rationals floored once per bucket, `reconciliation.matched` against outstanding principal plus contract interest, `NOT_BOUND` with no numeric sections when the note is unusable. `capital/terms.py` `ledger_terms` gained an optional `expected_settlement_cash_day` kwarg (additive; postings unchanged). Contract `local_terms_portfolio_forecast` + `terms_forecast*` definitions; new `scripts/forecast_vectors.py` pinning `tests/vectors/forecast_vectors.json` on the seeded demo book; auth probe + finance-vector digests regenerated. No golden/vendor/decisions change.
+
+Commands actually run (worktree `agent/capital-cashflow-forecast`):
+
+- `python3 -m unittest tests.test_cashflow_forecast -v`: exit 0, **16 passed** (0.67s) — one fix: the test asserted a bucket for the unscheduled settlement leg (`day`/`bucket` are `null` by design).
+- `python3 -m unittest discover -s tests -v`: exit 0, **708 passed** (96.5s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/forecast_vectors.py --check` (6456 bytes), `scripts/finance_vectors.py --check` (91570 bytes), `scripts/auth_matrix.py --check`, `scripts/docs_surface.py --check` (29 routes, 21 artifacts, 9 stages), `scripts/seed_demo.py` (state/content digest unchanged), `scripts/not_bound_checklist.py --check`: all exit 0.
+- `npm ci` (3 packages): exit 0. `npm run test:browser`: exit 0, **62 passed** (1.8m); Playwright webServers on 8765–8768 shut down, none left running.
+- Vendor SHA256 vs `capital/vendor/manifest.json`: 5/5 match. `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
