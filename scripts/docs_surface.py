@@ -112,6 +112,8 @@ VECTOR_NEEDLES = {
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
+    'dev-keyset-active.json': ('tests/vectors/dev-keyset-active.json', 'scripts/manifest_vectors.py --check'),
+    'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),
 }
 
 

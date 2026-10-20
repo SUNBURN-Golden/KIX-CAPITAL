@@ -17,7 +17,8 @@ from capital.auth import (
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
 from capital.resources import read_static
-from capital.export import DevHmacSigner, ExportError, SignerConfigError, build_signer
+from capital.export import DevHmacSigner, ExportError, SignerConfigError
+from capital.keyset import build_signer
 from capital.service import ApiError, CapitalService
 from capital.policy import DecisionNoteSettlementPolicy
 from capital.terms import DecisionNoteTermsPolicy
@@ -512,8 +513,11 @@ def main():
                         help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Not bundled in the zipapp.')
     parser.add_argument('--policy-note', default=None,
                         help='Decision note for the simulated policy application. A missing note reports policy not bound. Not bundled in the zipapp.')
-    parser.add_argument('--dev-hmac', action='store_true',
+    signing = parser.add_mutually_exclusive_group()
+    signing.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')
+    signing.add_argument('--dev-keyset', action='store_true',
+                         help='Opt-in DEV_ONLY keyset at WORKSPACE/export-dev-keyset.json (0600). Integrity only; stage7 NOT_BOUND.')
     parser.add_argument('--producer', choices=('pinned', 'gate-fake'), default='pinned',
                         help='Opt-in producer. pinned is the in-process FSM (default). '
                              'gate-fake starts LOCAL_FAKE_GATE on 127.0.0.1. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND.')
@@ -523,7 +527,7 @@ def main():
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
     args = parser.parse_args()
     try:
-        signer = build_signer(args.workspace, args.dev_hmac)
+        signer = build_signer(args.workspace, args.dev_hmac, args.dev_keyset)
     except (SignerConfigError, ExportError) as exc:
         parser.error(exc.code)
     terms = DecisionNoteTermsPolicy(args.terms_note) if args.terms_note is not None else None

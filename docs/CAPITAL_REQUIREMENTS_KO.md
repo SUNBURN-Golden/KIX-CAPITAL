@@ -4,6 +4,10 @@
 Protocol 읽기 기준은 둘이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 모든 Protocol 출처는 위 두 SHA 중 해당 범위의 것에 고정한다(FSM 원본은 `7481b0e`, AI 위임 초안은 `e2a029d`). 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
 
+DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement 실험입니다.
+`KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
+CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
+
 ## 권위와 전체 범위
 
 사용자의 2026-10-07 지시는 Capital을 `SUNBURN-Golden/KIX-CAPITAL`에 구현하며 KIX Protocol의 큰 청사진을 따르라는 것이다. 따라서 과거 Finance 후보의 “새 저장소 없음/화면은 Commerce” 토폴로지는 이번 **Capital 로컬 개발 위치**에 적용하지 않는다. 그것이 후보 금융 정책 채택·AIOPS 신규 프로그램 생성·upstream 노드 완료·운영 권한 확대를 뜻하지는 않는다. Protocol·Commerce는 수정하지 않는다.
