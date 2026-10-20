@@ -116,6 +116,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
     'forecast_vectors.json': (
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
+    'workspace_crash.json': (
+        'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
 }
 
