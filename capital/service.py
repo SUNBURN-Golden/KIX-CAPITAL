@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, margin, overlay, risk
+from capital import coa, covenants, margin, overlay, risk
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1422,6 +1422,33 @@ class CapitalService:
                 body = risk.build(drawn, self._margin_subjects(drawn), terms=self.terms, sim_day=sim_day,
                                   projection_outstanding_krw=outstanding)
                 return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def covenants(self):
+        """Read-only covenant and watch-list projection. No command or enforcement is applied."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                sim_day = overlay.fold(self.overlay_entries)['sim_day']
+                status = self._overlay_terms()
+                if status is None or not risk.usable(self.terms):
+                    return self._terms_envelope(covenants.not_bound(
+                        self.terms.status()['terms_version'], sim_day))
+                drawn = self._overlay_subjects(self.overlay_entries)
+                margin_subjects = self._margin_subjects(drawn)
+                overlay_state = overlay.fold(self.overlay_entries)
+                mutable = margin.views_mutable(self.fixtures)
+                margin_rows = margin.row_blocks(overlay_state, margin_subjects, mutable=mutable)
+                margin_block = margin.status_block(
+                    overlay_state, margin_rows, mutable=mutable, bound=True,
+                    cure_terms=margin_subjects[0]['margin'] if margin_subjects else None)
+                outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
+                risk_body = risk.build(drawn, margin_subjects, terms=self.terms, sim_day=sim_day,
+                                       projection_outstanding_krw=outstanding)
+                return self._terms_envelope(covenants.build(
+                    drawn, margin_rows, margin_block, risk_body, terms=self.terms, sim_day=sim_day))
             finally:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)

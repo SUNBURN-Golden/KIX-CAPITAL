@@ -771,11 +771,32 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+## read-model-claims-conformance
+
+A third pinned claim table `tests/read_model_claims.json` (format `KIX_CAPITAL_READ_MODEL_CLAIMS_V1`, 39 rows) maps existing Capital read surfaces onto the upstream draft `docs/contracts/READ_MODEL_QUERIES.md` at `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` — the same SHA as the vendor pin. Rows cite `### 2.12 \`get_credit_advance\``, `### 2.13 \`get_credit_claim\`` and `## 8. 비변경` with verbatim needles. The mapping is an honest adapter, recorded in the table `note` and in each row's `route` field: `get_credit_advance` reads through `GET /api/state` case views (literal `CreditMachine.view` dicts), `get_credit_claim` through in-process `CreditMachine.view_claim`. `GET /api/evidence` is deliberately unmapped — its rows are `MockSettlement` claims (the §2.11 object) and §2.13 forbids merging the two objects. No upstream query name is implemented, no route was added, no catalogue promotion: this prepares the parked read-model-credit-queries node only.
+
+`capital/read_model_claims.py` mirrors `capital/agent_claims.py`: thin delegation to `capital/upstream_claims.py` helpers plus the `read.*` check registry and a `route` registry enforced by `validate_table`. It locates the table via the parent of `capital.resources.ROOT`, not `Path(__file__)`. Every check runs its read under a §8 non-mutation guard — `canonical_state()`, journal length, the folded overlay state digest and `len(receipts)` (operation_count) must be unchanged or the claim fails; four dedicated `read.readonly.*` claims assert the guard triple-plus-count outright, including erroring reads. `scripts/read_model_claims_check.py` is a structural clone of `scripts/agent_claims_check.py`: bare invocation prints `SKIPPED` (never a pass), `--execute` prints the count line, `--protocol-dir` verifies citations read-only. `scripts/acceptance.py` runs it as the third command of the unchanged `upstream-claims` stage; `_merge_counts` sums all three count lines (87+94+39=220). `tests/test_read_model_claims.py` adds 12 tests. Results are SIMULATED and labelled CLAIM_CONFORMANCE, never SEMANTIC_CONFORMANCE. Nothing under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` was edited.
+
+Commands actually run, in order:
+
+- `python3 scripts/read_model_claims_check.py --execute`: exit 0, `CLAIM_CONFORMANCE passed=39 total=39 failed=0`.
+- `python3 scripts/read_model_claims_check.py`: exit 0, first line `SKIPPED`, JSON status `SKIPPED` label `CLAIM_CONFORMANCE`, no success count.
+- `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro`: exit 0, `CLAIM_DRIFT verified=39 total=39`. The checkout was read only; its working tree HEAD `08119a4` carries the draft with all cited headings and needles.
+- `python3 -m unittest tests.test_read_model_claims -v`: exit 0, **12 passed** in 2.141s (merged stage evidence `passed=220`).
+- `python3 -m unittest discover -s tests -v`: exit 0, **704 passed** in ~98s (one interim run failed `test_acceptance_stage_runs_both_claim_tables` in `tests/test_agent_claims.py`, which pinned the old two-table sum 181; it now asserts the third command and the 87+94+39=220 total).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 20 artifacts, 9 stages).
+- `npm ci`: exit 0, added 3 packages. `npm run test:browser`: exit 0, **62 passed** (1.6m). Playwright started and stopped its loopback servers; nothing was left on the test ports.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` `ok` true. Stages: unit 704, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` label `CLAIM_CONFORMANCE`, node-check, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 2.
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`. `git status` shows no change under `capital/vendor/` or `.aiops/`.
+
+No `DECISION_REQUIRED.md` was written: the node is a cite-only mapping of existing read surfaces; nothing required money, credentials, a new route, an upstream edit, or an undetermined §6/§9 value.
+
 ## t03-t04-sim-journeys
 
 Scripts-only node: `scripts/sim_journeys.py` gains two named SIMULATED journeys over the existing loopback API. `T03-sim` (22 steps, in-process server) is the zero-exception F04 lifecycle `offer -> approve -> bind_settlement -> draw -> advance_day 0->15->30 accrual -> full repay -> close`, with a post-close tick showing no further accrual and a mid-run all-MATCHED reconciliation. `T04-sim` (38 steps, `--workspace` subprocess) is the auditor evidence chain: the seeded demo book replayed over HTTP and cross-pinned to `tests/golden/demo.json` `state_digest`, an auditor session, read-only auditor GETs, `GET /api/export/manifest` (V3) written to a file and re-verified by `python3 -m capital.verify FILE`, `python3 -m capital.verify --workspace DIR` (OFFLINE_WORKSPACE_AUDIT, all checks MATCHED), `GET /api/reconciliation` all MATCHED, and `403 ROLE_FORBIDDEN` for an auditor write. Both carry `label` SIMULATED, `funds_executed` false, `integrated` false and claim no T01-T06 qualification. `tests/golden/journey_t03_sim.json` / `journey_t04_sim.json` pin terminal phases, `sim_day`, `overlay_state_digest` and `risk_digest`; drift exits 1. The `integrated-journeys` acceptance stage now runs all four journeys. No `capital/` change, no new routes, no `post_repayment` (parked per `docs/decisions/CAPITAL_REPAYMENT_POSTING.md`), no funds movement.
 
-Commands actually run:
+Commands actually run (pre-merge, on this branch):
 
 - `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T03-sim steps=22 T04-sim steps=38 T05-sim steps=35 T06-sim steps=33`; goldens written via `--update-golden` only.
 - `python3 -m unittest tests.test_sim_journeys -v`: exit 0, **32 passed** (13.6s).
@@ -784,4 +805,18 @@ Commands actually run:
 - `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `python3 scripts/docs_surface.py --check` (28 routes, 20 artifacts, 9 stages): exit 0.
 - `npm ci --no-audit --no-fund`: exit 0. `npm run test:browser`: exit 0, **62 passed** (1.8m); no server left running.
 - `python3 scripts/acceptance.py`: exit 0, evidence `ok` true; unit 691, storage-conformance 7, pinned-vendor 7, upstream-claims 181, node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+Merge with main (2026-10-20; main had gained covenant-watch and read-model-claims-conformance): two conflicts, both docs, both add-only, neither side dropped. `docs/OPERATOR_HANDBOOK_KO.md` keeps main's `read-model-claims-conformance` handbook-section before this node's `t03-t04-sim-journeys` section, each with its own `<!-- /handbook-section -->` closer; this file keeps main's `read-model-claims-conformance` section before this one. No code, test, golden or vector conflicts; `scripts/acceptance.py` merged cleanly and now runs both sides' stage changes (three claim tables in `upstream-claims`, four journeys in `integrated-journeys`). The pre-merge `upstream-claims 181` figure above is the two-table sum recorded on this branch; the merged stage sums all three tables to 220.
+
+Commands actually run after the merge:
+
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T03-sim steps=22 T04-sim steps=38 T05-sim steps=35 T06-sim steps=33`; all four goldens still pin (check mode, nothing rewritten).
+- `python3 -m unittest tests.test_sim_journeys -v`: exit 0, **32 passed** (13.5s).
+- `python3 -m unittest discover -s tests -v`: exit 0, **710 passed** (103.0s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. The five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 20 artifacts, 9 stages). `python3 scripts/seed_demo.py`: ok, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `npm run test:browser` (Chromium from the default `~/.cache/ms-playwright` install): exit 0, **62 passed** (1.8m); no server left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 710, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.

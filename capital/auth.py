@@ -78,6 +78,7 @@ ROUTE_PERMISSIONS = (
     ('/api/terms', 'projection:read', True),
     ('/api/overlay', 'projection:read', False),
     ('/api/risk', 'projection:read', False),
+    ('/api/risk/covenants', 'projection:read', False),
     ('/api/policy', 'projection:read', True),
     ('/api/preview/', 'projection:read', True),
     ('/api/underwrite/', 'projection:read', True),

@@ -573,10 +573,13 @@ let deskData=null,deskExtra={},deskEpoch=0;
 function deskOpen(){return location.hash==='#desk';}
 function applyDeskVisibility(){const open=deskOpen();document.body.classList.toggle('desk-open',open);$('desk').hidden=!open;return open;}
 function overlayOk(body,next){return !!body&&body.mode==='SIMULATED_OVERLAY'&&body.label===MEMO_LABEL&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.f04_journal_written===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&Array.isArray(body.advances)&&!!body.margin;}
+function covenantsOk(body,next){return !!body&&body.mode==='SIMULATED_COVENANT_WATCH'&&body.label.startsWith('SIMULATED covenant watch')&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.enforced===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&(body.status==='NOT_BOUND'||Array.isArray(body.advances)&&body.advances.every(row=>['CLEAR','WATCH','BREACH'].includes(row.status)&&Array.isArray(row.reasons)));}
 async function loadDesk(next,riskView){
  const decision=next.auth.permissions['projection:read'];
  if(!decision?.allowed)return {forbidden:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
  const view={risk:riskView};
+ try{const body=await request('/api/risk/covenants');if(covenantsOk(body,next))view.covenants=body;else view.covenantsError='코버넌트 응답이 현재 절단면과 맞지 않습니다.';}
+ catch{view.covenantsError='코버넌트 watch-list를 확인하지 못했습니다.';}
  try{const body=await request('/api/overlay');if(overlayOk(body,next))view.overlay=body;else view.overlayError='오버레이 응답이 라벨 또는 절단면과 맞지 않습니다. sim_day와 이자를 표시하지 않습니다.';}
  catch{view.overlayError='오버레이 시계를 확인하지 못했습니다. 제안 상태는 유지합니다.';}
  const exportDecision=next.auth.permissions['export:read'];
@@ -611,11 +614,13 @@ function deskActions(c){
  const items=[];
  const adv=deskData?.overlay?.advances?.find(row=>row.advance_id===c.advance_id);
  const extra=deskExtra.key===deskKey(c)?deskExtra:{};
+ const covenant=deskData?.covenants?.advances?.find(row=>row.advance_id===c.advance_id);
+ const covenantNote=covenant&&covenant.status!=='CLEAR'?`코버넌트 ${covenant.status} · ${covenant.reasons.map(reason=>reason.detail).join(' · ')}`:'';
  const add=(op,blockReason,note)=>{
   const gate=can('command:'+op)?null:permissionReason('command:'+op);
   const allowedNote=state.auth.permissions['command:'+op]?.reason||'';
   const reason=gate||blockReason;
-  items.push({op,label:actionNames[op],enabled:!reason,reason:reason||[allowedNote,note].filter(Boolean).join(' · ')});
+  items.push({op,label:actionNames[op],enabled:!reason,reason:[covenantNote,reason||allowedNote,note].filter(Boolean).join(' · ')});
  };
  const overlayReason=deskData?.overlay?(deskData.overlay.reason||deskData.overlay.status):(deskData?.overlayError||'오버레이를 불러오는 중입니다.');
  if(c.phase==='OFFERED'){add('approve',null,advisoryText(extra.underwrite));add('reject',null);add('cancel',null);}
@@ -645,7 +650,9 @@ function renderDeskActions(){
  const list=$('desk-actions');
  if(!c||!deskData||deskData.forbidden){list.replaceChildren();$('desk-next-help').textContent='';return;}
  const items=deskActions(c);
- $('desk-next-help').textContent=items.length?`${c.advance_id} · ${c.phase}. 가능 여부와 사유는 서버 응답입니다.`:`${c.advance_id} · ${c.phase}. 이 단계에서 데스크가 보낼 수 있는 작업이 없습니다.`;
+ const covenant=deskData?.covenants?.advances?.find(row=>row.advance_id===c.advance_id);
+ const covenantHelp=covenant&&covenant.status!=='CLEAR'?` 코버넌트 ${covenant.status} · ${covenant.reasons.map(reason=>reason.detail).join(' · ')}`:'';
+ $('desk-next-help').textContent=items.length?`${c.advance_id} · ${c.phase}. 가능 여부와 사유는 서버 응답입니다.${covenantHelp}`:`${c.advance_id} · ${c.phase}. 이 단계에서 데스크가 보낼 수 있는 작업이 없습니다.${covenantHelp}`;
  list.replaceChildren(...items.map(item=>{
   const li=document.createElement('li');
   const button=textElement('button',item.label);button.type='button';button.id=`desk-act-${item.op}`;button.dataset.deskOp=item.op;

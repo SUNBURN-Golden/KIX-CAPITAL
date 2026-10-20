@@ -1211,6 +1211,30 @@
       "permission": "projection:read"
     },
     {
+      "method": "GET",
+      "path": "/api/risk/covenants",
+      "operationId": "local_risk_covenants",
+      "dispatch": "/api/risk/covenants",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/covenant_state"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND"
+      ],
+      "permission": "projection:read"
+    },
+    {
       "method": "POST",
       "path": "/api/overlay/commands",
       "operationId": "local_overlay_command",
@@ -11438,6 +11462,33 @@
         "observed_state_digest": {
           "type": "string"
         }
+      }
+    },
+    "covenant_state": {
+      "type": "object",
+      "required": [
+        "label",
+        "mode",
+        "status",
+        "sim_day",
+        "enforced",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {"const": "SIMULATED covenant watch — read-only, not an enforcement gate"},
+        "mode": {"const": "SIMULATED_COVENANT_WATCH"},
+        "status": {"enum": ["BOUND", "PARTIAL", "NOT_BOUND"]},
+        "sim_day": {"type": "integer"},
+        "enforced": {"const": false},
+        "funds_executed": {"const": false},
+        "workspace_mutated": {"const": false},
+        "write_authorized": {"const": false},
+        "instance_id": {"type": "string"},
+        "observed_state_digest": {"type": "string"}
       }
     },
     "risk_state": {
