@@ -78,6 +78,7 @@ ROUTE_NEEDLES = {
     ),
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
+    ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
     ('GET', '/api/policy'): (
         '`GET /api/policy` and `GET /api/policy/simulation`',
         '`GET /api/policy/shadow`',),
