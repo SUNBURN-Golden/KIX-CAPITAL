@@ -283,6 +283,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 return self.reply(200, service.terms_portfolio(
                     instance, draw_day=draw_day, as_of_day=as_of_day,
                     expected_settlement_cash_day=expected))
+            if route.path == '/api/terms/portfolio/forecast':
+                # Only the documented parameters are accepted on this route.
+                keys = set(parse_qs(route.query, keep_blank_values=True))
+                if keys - {'instance_id', 'expected_settlement_cash_day'}:
+                    raise ApiError('INVALID_ARGUMENTS')
+                instance = parse_qs(route.query).get('instance_id', [''])[0]
+                expected = query_day(route.query, 'expected_settlement_cash_day', False)
+                return self.reply(200, service.forecast(
+                    instance, expected_settlement_cash_day=expected))
             if route.path.endswith('/setoff'):
                 advance_id = route.path[len('/api/terms/'):-len('/setoff')].rstrip('/')
                 instance = parse_qs(route.query).get('instance_id', [''])[0]

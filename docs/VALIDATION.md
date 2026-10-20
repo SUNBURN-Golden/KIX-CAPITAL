@@ -771,3 +771,17 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+
+## cashflow-forecast
+
+New read-only route `GET /api/terms/portfolio/forecast` (`capital/forecast.py`, service method, literal child of `/api/terms` — no dispatcher or permission-registry change; inherits `projection:read`). Per drawn advance three legs (`SETTLEMENT_CASH_IN` on `expected_settlement_cash_day`, `CONTRACT_INTEREST` and `PRINCIPAL` at maturity) bucketed 0-7/8-30/31-60/61-90/91+ sim days ahead of the overlay `sim_day`, exact rationals floored once per bucket, `reconciliation.matched` against outstanding principal plus contract interest, `NOT_BOUND` with no numeric sections when the note is unusable. `capital/terms.py` `ledger_terms` gained an optional `expected_settlement_cash_day` kwarg (additive; postings unchanged). Contract `local_terms_portfolio_forecast` + `terms_forecast*` definitions; new `scripts/forecast_vectors.py` pinning `tests/vectors/forecast_vectors.json` on the seeded demo book; auth probe + finance-vector digests regenerated. No golden/vendor/decisions change.
+
+Commands actually run (worktree `agent/capital-cashflow-forecast`):
+
+- `python3 -m unittest tests.test_cashflow_forecast -v`: exit 0, **16 passed** (0.67s) — one fix: the test asserted a bucket for the unscheduled settlement leg (`day`/`bucket` are `null` by design).
+- `python3 -m unittest discover -s tests -v`: exit 0, **708 passed** (96.5s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/forecast_vectors.py --check` (6456 bytes), `scripts/finance_vectors.py --check` (91570 bytes), `scripts/auth_matrix.py --check`, `scripts/docs_surface.py --check` (29 routes, 21 artifacts, 9 stages), `scripts/seed_demo.py` (state/content digest unchanged), `scripts/not_bound_checklist.py --check`: all exit 0.
+- `npm ci` (3 packages): exit 0. `npm run test:browser`: exit 0, **62 passed** (1.8m); Playwright webServers on 8765–8768 shut down, none left running.
+- Vendor SHA256 vs `capital/vendor/manifest.json`: 5/5 match. `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
