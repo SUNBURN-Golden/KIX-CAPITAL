@@ -112,6 +112,8 @@ VECTOR_NEEDLES = {
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
+    'gate_faults.json': (
+        'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
     'forecast_vectors.json': (
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),

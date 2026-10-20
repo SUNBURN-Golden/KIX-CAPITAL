@@ -144,6 +144,10 @@
       "status": 404
     },
     {
+      "code": "GATE_FAILED",
+      "status": 502
+    },
+    {
       "code": "PROJECTION_INVARIANT",
       "status": 500
     },
@@ -982,6 +986,9 @@
           },
           {
             "$ref": "#/definitions/rejected_receipt"
+          },
+          {
+            "$ref": "#/definitions/unknown_operation"
           }
         ]
       },
@@ -1012,7 +1019,8 @@
         "WORKSPACE_LOCKED",
         "WORKSPACE_WRITE_FAILED",
         "UNKNOWN_PROPOSAL",
-        "PROPOSAL_BINDING_CONFLICT"
+        "PROPOSAL_BINDING_CONFLICT",
+        "GATE_FAILED"
       ],
       "permission": "command:submit",
       "request": {
@@ -4022,6 +4030,9 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "label": {
+          "const": "LOCAL_FAKE_GATE"
         }
       }
     },
@@ -4073,6 +4084,9 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "label": {
+          "const": "LOCAL_FAKE_GATE"
         }
       }
     },
@@ -9060,6 +9074,9 @@
         },
         "retry_authorized": {
           "const": false
+        },
+        "label": {
+          "const": "LOCAL_FAKE_GATE"
         }
       }
     },
