@@ -62,7 +62,10 @@ def build_plan(root=None):
         {
             'id': 'unit',
             'timeout': 300,
-            'commands': [[py, '-m', 'unittest', 'discover', '-s', 'tests', '-v']],
+            'commands': [
+                [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
+                [py, 'scripts/decision_bindings.py', '--check'],
+            ],
         },
         {
             'id': 'storage-conformance',
