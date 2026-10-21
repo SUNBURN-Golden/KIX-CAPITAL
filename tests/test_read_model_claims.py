@@ -349,10 +349,13 @@ class ReadModelClaimsTests(unittest.TestCase):
         self.assertEqual(plan[0]['commands'][0][1:], ['scripts/upstream_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][1][1:], ['scripts/agent_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py', '--execute'])
+        self.assertEqual(plan[0]['commands'][3][1:], ['scripts/ce1_claims_check.py', '--execute'])
+        from capital.ce1_claims import load_table as load_ce1
         expected_total = (
             len(load_upstream()['claims'])
             + len(load_agent()['claims'])
-            + len(load_table()['claims']))
+            + len(load_table()['claims'])
+            + len(load_ce1()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
             code = acceptance.execute_plan(
