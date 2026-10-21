@@ -321,6 +321,34 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/portfolio/snapshot",
+      "operationId": "local_portfolio_snapshot",
+      "dispatch": "/api/portfolio/snapshot",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/portfolio_snapshot"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/state",
       "operationId": "local_state",
       "dispatch": "/api/state",
@@ -11986,6 +12014,1123 @@
         },
         {
           "$ref": "#/definitions/risk_not_bound"
+        }
+      ]
+    },
+    "snapshot_terms_rollup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "status",
+        "reason",
+        "draw_day",
+        "as_of_day",
+        "expected_settlement_cash_day",
+        "cap",
+        "rows",
+        "totals"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "draw_day": {
+          "type": "integer"
+        },
+        "as_of_day": {
+          "type": "integer"
+        },
+        "expected_settlement_cash_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cap": {
+          "$ref": "#/definitions/terms_portfolio_cap"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/terms_portfolio_row"
+          }
+        },
+        "totals": {
+          "$ref": "#/definitions/terms_portfolio_totals"
+        }
+      }
+    },
+    "snapshot_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "totals",
+        "by_tier",
+        "maturity_buckets",
+        "overdue_aging",
+        "concentration",
+        "reserve",
+        "stress",
+        "reconciliation",
+        "risk_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy"
+        },
+        "mode": {
+          "const": "SIMULATED_RISK_ANALYTICS"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "totals": {
+          "$ref": "#/definitions/risk_totals"
+        },
+        "by_tier": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/risk_tier_row"
+          }
+        },
+        "maturity_buckets": {
+          "$ref": "#/definitions/risk_buckets"
+        },
+        "overdue_aging": {
+          "$ref": "#/definitions/risk_buckets"
+        },
+        "concentration": {
+          "$ref": "#/definitions/risk_concentration"
+        },
+        "reserve": {
+          "$ref": "#/definitions/risk_reserve"
+        },
+        "stress": {
+          "$ref": "#/definitions/risk_stress"
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/risk_reconciliation"
+        },
+        "risk_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "snapshot_forecast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "expected_settlement_cash_day",
+        "policy_adopted",
+        "accounting_policy",
+        "assumptions",
+        "advances",
+        "buckets",
+        "reconciliation",
+        "forecast_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement"
+        },
+        "mode": {
+          "const": "SIMULATED_CASH_FORECAST"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "const": "BOUND"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "expected_settlement_cash_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY",
+              "NO_DEFAULT_CONTRACTUAL_SCHEDULE",
+              "NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES"
+            ]
+          }
+        },
+        "advances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/terms_forecast_row"
+          }
+        },
+        "buckets": {
+          "$ref": "#/definitions/terms_forecast_buckets"
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/terms_forecast_reconciliation"
+        },
+        "forecast_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "snapshot_covenant_reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "detail"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "U4_CAP_BREACHED",
+            "CURE_DEADLINE_PASSED",
+            "MARGIN_CALL_ACTIVE",
+            "MARGIN_BREACH_PENDING",
+            "DEFAULT_ELIGIBLE",
+            "MARGIN_ACCELERATED",
+            "PAST_MATURITY",
+            "MATURITY_WINDOW",
+            "RESERVE_CLASS_ESCALATED",
+            "DEFAULTED"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "WATCH",
+            "BREACH"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "cap_krw": {
+          "type": "integer"
+        },
+        "used_krw": {
+          "type": "integer"
+        },
+        "utilization_permille": {
+          "type": "integer"
+        },
+        "cure_deadline": {
+          "type": "integer"
+        },
+        "default_eligible_day": {
+          "type": "integer"
+        },
+        "days_past_maturity": {
+          "type": "integer"
+        },
+        "days_to_maturity": {
+          "type": "integer"
+        },
+        "window_days": {
+          "type": "integer"
+        },
+        "provision_bps": {
+          "type": "integer"
+        },
+        "cap": {
+          "type": "string"
+        },
+        "reserve_class": {
+          "type": "string"
+        }
+      }
+    },
+    "snapshot_covenant_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "phase",
+        "status",
+        "reasons",
+        "outstanding_krw",
+        "maturity_day",
+        "days_to_maturity",
+        "days_past_maturity",
+        "margin",
+        "reserve_class",
+        "provision_bps",
+        "applied",
+        "enforced"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "CLEAR",
+            "WATCH",
+            "BREACH"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/snapshot_covenant_reason"
+          }
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "days_to_maturity": {
+          "type": "integer"
+        },
+        "days_past_maturity": {
+          "type": "integer"
+        },
+        "margin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "cure_deadline",
+            "effective_maturity_day",
+            "default_eligible_day"
+          ],
+          "properties": {
+            "state": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cure_deadline": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "effective_maturity_day": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "default_eligible_day": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        },
+        "reserve_class": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provision_bps": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        }
+      }
+    },
+    "snapshot_covenants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "watch_window_days",
+        "advances",
+        "watch_list",
+        "totals",
+        "caps",
+        "reserve",
+        "reconciliation",
+        "enforced",
+        "covenant_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED covenant watch — read-only, not an enforcement gate"
+        },
+        "mode": {
+          "const": "SIMULATED_COVENANT_WATCH"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "watch_window_days": {
+          "type": "integer"
+        },
+        "advances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/snapshot_covenant_row"
+          }
+        },
+        "watch_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/snapshot_covenant_row"
+          }
+        },
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "advances",
+            "clear",
+            "watch",
+            "breach",
+            "outstanding_krw",
+            "flagged_outstanding_krw"
+          ],
+          "properties": {
+            "advances": {
+              "type": "integer"
+            },
+            "clear": {
+              "type": "integer"
+            },
+            "watch": {
+              "type": "integer"
+            },
+            "breach": {
+              "type": "integer"
+            },
+            "outstanding_krw": {
+              "type": "integer"
+            },
+            "flagged_outstanding_krw": {
+              "type": "integer"
+            }
+          }
+        },
+        "caps": {
+          "$ref": "#/definitions/risk_caps"
+        },
+        "reserve": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "requirement_krw",
+            "funding_source",
+            "coverage",
+            "coverage_reason",
+            "applied"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "BOUND",
+                "NOT_BOUND"
+              ]
+            },
+            "requirement_krw": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "funding_source": {
+              "const": "NOT_BOUND"
+            },
+            "coverage": {
+              "const": "NOT_BOUND"
+            },
+            "coverage_reason": {
+              "const": "RESERVE_POOL_NOT_BOUND"
+            },
+            "applied": {
+              "const": false
+            }
+          }
+        },
+        "reconciliation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "total_krw",
+            "risk_total_krw",
+            "matched"
+          ],
+          "properties": {
+            "total_krw": {
+              "type": "integer"
+            },
+            "risk_total_krw": {
+              "type": "integer"
+            },
+            "matched": {
+              "type": "boolean"
+            }
+          }
+        },
+        "enforced": {
+          "const": false
+        },
+        "covenant_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "portfolio_snapshot_complete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "label",
+        "instance_id",
+        "status",
+        "complete",
+        "cut",
+        "assumptions",
+        "completeness",
+        "terms_rollup",
+        "risk",
+        "covenants",
+        "forecast",
+        "snapshot_digest",
+        "authenticated_source_cut",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_PORTFOLIO_SNAPSHOT_V1"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "status": {
+          "const": "COMPLETE"
+        },
+        "complete": {
+          "const": true
+        },
+        "cut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "state_digest",
+            "overlay_state_digest",
+            "fixtures_digest",
+            "policy_inputs_digest",
+            "inputs_digest",
+            "sim_day"
+          ],
+          "properties": {
+            "kind": {
+              "const": "LOCAL_DIAGNOSTIC"
+            },
+            "state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "overlay_state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "fixtures_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "policy_inputs_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "inputs_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "sim_day": {
+              "type": "integer"
+            }
+          }
+        },
+        "assumptions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terms_rollup",
+            "risk_covenants_forecast_draw_day",
+            "forecast_settlement_cash",
+            "scope"
+          ],
+          "properties": {
+            "terms_rollup": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "draw_day",
+                "draw_day_source",
+                "as_of_day",
+                "expected_settlement_cash_day"
+              ],
+              "properties": {
+                "draw_day": {
+                  "const": 0
+                },
+                "draw_day_source": {
+                  "const": "DEFAULT"
+                },
+                "as_of_day": {
+                  "const": "CAPTURED_SIM_DAY"
+                },
+                "expected_settlement_cash_day": {
+                  "type": "null"
+                }
+              }
+            },
+            "risk_covenants_forecast_draw_day": {
+              "const": "RECORDED_DRAW_DAY"
+            },
+            "forecast_settlement_cash": {
+              "const": "EXPECTED_DAY_NOT_PROVIDED"
+            },
+            "scope": {
+              "const": "SERVICE_MANAGED_MUTATIONS_ONLY"
+            }
+          }
+        },
+        "completeness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "producer",
+            "fixtures",
+            "storage",
+            "terms",
+            "sections",
+            "reasons"
+          ],
+          "properties": {
+            "producer": {
+              "enum": [
+                "SUPPORTED"
+              ]
+            },
+            "fixtures": {
+              "enum": [
+                "IMMUTABLE"
+              ]
+            },
+            "storage": {
+              "enum": [
+                "HEALTHY"
+              ]
+            },
+            "terms": {
+              "enum": [
+                "BOUND"
+              ]
+            },
+            "sections": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "terms_rollup",
+                "risk",
+                "covenants",
+                "forecast"
+              ],
+              "properties": {
+                "terms_rollup": {
+                  "enum": [
+                    "AVAILABLE"
+                  ]
+                },
+                "risk": {
+                  "enum": [
+                    "AVAILABLE"
+                  ]
+                },
+                "covenants": {
+                  "enum": [
+                    "AVAILABLE"
+                  ]
+                },
+                "forecast": {
+                  "enum": [
+                    "AVAILABLE"
+                  ]
+                }
+              }
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 0
+            }
+          }
+        },
+        "terms_rollup": {
+          "$ref": "#/definitions/snapshot_terms_rollup"
+        },
+        "risk": {
+          "$ref": "#/definitions/snapshot_risk"
+        },
+        "covenants": {
+          "$ref": "#/definitions/snapshot_covenants"
+        },
+        "forecast": {
+          "$ref": "#/definitions/snapshot_forecast"
+        },
+        "snapshot_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "authenticated_source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        }
+      }
+    },
+    "portfolio_snapshot_incomplete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "label",
+        "instance_id",
+        "status",
+        "complete",
+        "cut",
+        "assumptions",
+        "completeness",
+        "terms_rollup",
+        "risk",
+        "covenants",
+        "forecast",
+        "snapshot_digest",
+        "authenticated_source_cut",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_PORTFOLIO_SNAPSHOT_V1"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "status": {
+          "const": "INCOMPLETE"
+        },
+        "complete": {
+          "const": false
+        },
+        "cut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "state_digest",
+            "overlay_state_digest",
+            "fixtures_digest",
+            "policy_inputs_digest",
+            "inputs_digest",
+            "sim_day"
+          ],
+          "properties": {
+            "kind": {
+              "const": "LOCAL_DIAGNOSTIC"
+            },
+            "state_digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "[0-9a-f]{64}"
+            },
+            "overlay_state_digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "[0-9a-f]{64}"
+            },
+            "fixtures_digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "[0-9a-f]{64}"
+            },
+            "policy_inputs_digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "[0-9a-f]{64}"
+            },
+            "inputs_digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "[0-9a-f]{64}"
+            },
+            "sim_day": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        },
+        "assumptions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terms_rollup",
+            "risk_covenants_forecast_draw_day",
+            "forecast_settlement_cash",
+            "scope"
+          ],
+          "properties": {
+            "terms_rollup": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "draw_day",
+                "draw_day_source",
+                "as_of_day",
+                "expected_settlement_cash_day"
+              ],
+              "properties": {
+                "draw_day": {
+                  "const": 0
+                },
+                "draw_day_source": {
+                  "const": "DEFAULT"
+                },
+                "as_of_day": {
+                  "const": "CAPTURED_SIM_DAY"
+                },
+                "expected_settlement_cash_day": {
+                  "type": "null"
+                }
+              }
+            },
+            "risk_covenants_forecast_draw_day": {
+              "const": "RECORDED_DRAW_DAY"
+            },
+            "forecast_settlement_cash": {
+              "const": "EXPECTED_DAY_NOT_PROVIDED"
+            },
+            "scope": {
+              "const": "SERVICE_MANAGED_MUTATIONS_ONLY"
+            }
+          }
+        },
+        "completeness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "producer",
+            "fixtures",
+            "storage",
+            "terms",
+            "sections",
+            "reasons"
+          ],
+          "properties": {
+            "producer": {
+              "enum": [
+                "SUPPORTED",
+                "UNSUPPORTED",
+                "UNAVAILABLE"
+              ]
+            },
+            "fixtures": {
+              "enum": [
+                "IMMUTABLE",
+                "UNSUPPORTED",
+                "UNAVAILABLE"
+              ]
+            },
+            "storage": {
+              "enum": [
+                "HEALTHY",
+                "DEGRADED",
+                "UNAVAILABLE"
+              ]
+            },
+            "terms": {
+              "enum": [
+                "BOUND",
+                "NOT_BOUND",
+                "UNSUPPORTED",
+                "UNAVAILABLE"
+              ]
+            },
+            "sections": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "terms_rollup",
+                "risk",
+                "covenants",
+                "forecast"
+              ],
+              "properties": {
+                "terms_rollup": {
+                  "enum": [
+                    "AVAILABLE",
+                    "PARTIAL",
+                    "UNAVAILABLE"
+                  ]
+                },
+                "risk": {
+                  "enum": [
+                    "AVAILABLE",
+                    "PARTIAL",
+                    "UNAVAILABLE"
+                  ]
+                },
+                "covenants": {
+                  "enum": [
+                    "AVAILABLE",
+                    "PARTIAL",
+                    "UNAVAILABLE"
+                  ]
+                },
+                "forecast": {
+                  "enum": [
+                    "AVAILABLE",
+                    "PARTIAL",
+                    "UNAVAILABLE"
+                  ]
+                }
+              }
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "terms_rollup": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/snapshot_terms_rollup"
+            }
+          ]
+        },
+        "risk": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/snapshot_risk"
+            }
+          ]
+        },
+        "covenants": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/snapshot_covenants"
+            }
+          ]
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/snapshot_forecast"
+            }
+          ]
+        },
+        "snapshot_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "authenticated_source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        }
+      }
+    },
+    "portfolio_snapshot": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/portfolio_snapshot_complete"
+        },
+        {
+          "$ref": "#/definitions/portfolio_snapshot_incomplete"
         }
       ]
     }
