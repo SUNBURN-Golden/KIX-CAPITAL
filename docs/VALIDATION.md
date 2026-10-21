@@ -924,3 +924,21 @@ Commands actually run after the second merge:
 - `npm run test:browser` (Chromium from the default `~/.cache/ms-playwright` install): exit 0, **62 passed** (1.8m); no server left running.
 - `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 733, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+## fold-fuzz-determinism
+
+Verification-only node: `scripts/fold_fuzz.py` plus the pinned corpus `tests/vectors/fold_fuzz.json` (format `KIX_CAPITAL_FOLD_FUZZ_V1`, label `SIMULATED`). Fixed LCG32 generator (`LCG32-LIFECYCLE-1`, seeds 74810048–74810063, ≤64 commands, six advances per seed) deterministically interleaves legal lifecycle heads covering all ten F04 operations, bound/unbound draws, partial/full repayment, close/default/reject/cancel and logical-day ticks; every seed produces 46 commands (736 total). For each seed the identical sequence is replayed through two fresh `FileWorkspace` directories with separate services and producers; per-prefix checkpoints pin `state_digest`, `overlay_state_digest`, `envelope_sha256`, `receipts_sha256` and `overlay_receipts_sha256`, and the two runs' raw `workspace.json` bytes are compared directly. Copied F04 journals and overlay entries are refolded independently each step; every completed sequence is closed and reopened with a fresh session identity to verify receipt/fingerprint mappings, overlay receipt cores and unchanged file bytes. Synthetic writer identity and the clock replacement are scoped to `capital.store` during saves; envelope byte equality is claimed only under those fixed inputs on the same interpreter and tree. `--check` exits 1 on any command/digest/byte drift and rewrites nothing; `--write` authors only this new corpus; `--file` isolates mutation tests. No `capital/` change, no new command semantics, rejection codes, routes or goldens; no durability or performance claim; CAP-11 stays `NOT_BOUND`. Complements the crash matrix (sequence-order determinism, not crash boundaries).
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_fold_fuzz -v`: exit 0, **12 passed** (86.2s) — generator pins, coverage/legality, independent replays and reloads across `PYTHONHASHSEED` values 1 and 987654321, drift/malformed/no-rewrite checks, capacity-NOT_BOUND and unexpected-rejection failure modes.
+- `python3 scripts/fold_fuzz.py --check`: exit 0, `fold fuzz ok SIMULATED: 16 seeds, 736 commands`.
+- `python3 scripts/docs_surface.py --check`: exit 0, `docs surface ok: 29 routes, 39 artifacts, 9 stages`.
+- `python3 tests/crash_matrix.py --check`: exit 0, `crash matrix vectors ok: 23 cells match`. `python3 scripts/workspace_vectors.py --check`: exit 0, `workspace vectors ok: 6 files match`.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `python3 -m unittest discover -s tests -v`: exit 0, **817 passed** (193.5s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. All five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `npm run test:browser` (Chromium from `~/.cache/ms-playwright`): exit 0, **62 passed** (2.0m); playwright webServers stopped, none left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 817, storage-conformance 19, pinned-vendor 7, upstream-claims `passed=220 failed=0`, node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4.
+- `git status --short` after all runs: only `README.md`, `docs/INTEGRATION.md`, `docs/VALIDATION.md`, `scripts/docs_surface.py` modified; new `scripts/fold_fuzz.py`, `tests/test_fold_fuzz.py`, `tests/vectors/fold_fuzz.json`. No `capital/`, `.aiops/`, golden or `docs/decisions` change.
