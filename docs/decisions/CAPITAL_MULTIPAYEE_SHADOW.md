@@ -2,112 +2,111 @@
 
 > **PROVISIONAL PRODUCT DECISION**
 >
-> Requested attribution: **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**.
+> Requested decision attribution: **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**.
 >
-> Date: **2026-10-22** · Capital main: **`cde0bc7`** · kix-protocol: **`93cec6a`**. Bases are supervisor-supplied, not independently verified.
+> Date: **2026-10-22** · Capital main: **`cde0bc7`** · kix-protocol: **`93cec6a`**. These bases are supervisor-supplied.
 >
-> Execution provenance: prepared by **Codex** from the supplied pack. Claude CLI was not executed; no Sonnet execution, failed attempts, or Fable fallback is claimed.
+> Execution provenance: revised by **Codex** from the supplied pack. No Claude CLI execution, Sonnet attempts or Fable fallback is claimed.
 >
-> Simulation/product design only; no real money. Production remains **`NOT_AUTHORIZED`**. All shadow effects remain **`SHADOW_NOT_APPLIED`**. No persistent settlement record, UC1–UC4 implementation, or upstream contract change is authorized.
+> Simulation/product design only; no real money. Production remains **`NOT_AUTHORIZED`** and every shadow effect remains **`SHADOW_NOT_APPLIED`**. This decision authorizes no persistent settlement records, UC1–UC4 implementation or upstream contract changes.
 
 Node: `multipayee-shadow-input-decision`. Dependencies: `settlement-policy-decision`, `shadow-policy-decision`, `shadow-refund-resale`.
 
-The inherited policies remain authoritative. Their adoption and the shadow-envelope requirements are supplied by the supervisor and review. Their originals are outside the final exact-path reading scope and were not opened. Missing source detail does not reopen adopted financial decisions.
+The inherited allocation and shadow policies remain authoritative. Their adoption is supplied by the supervisor; their originals were not opened because they are outside the exact-path reading scope. This decision defines local inputs without reopening financial priorities.
 
 ## 1. 결정 요약
 
-All six entries are **ADOPTED as provisional Capital-local product decisions**, without implying upstream adoption.
+All six items are **ADOPTED as provisional Capital-local product decisions**. This does not imply upstream adoption or completed implementation.
 
 | Item | Decision | CAP rows | Consumer |
 |---|---|---|---|
 | `synthetic_payee_identity` | Unique ASCII fixture labels; one row per payee per snapshot | CAP-02, CAP-05 | Multi-payee input adapter |
-| `class_mapping_and_unknowns` | Explicit inherited class membership; reject unknown classes | CAP-02, CAP-05 | Policy loader and allocator |
+| `class_mapping_and_unknowns` | Explicit inherited membership; reject unknown classes | CAP-02, CAP-05 | Policy loader and allocator |
 | `single_cut_allocation_inputs` | One frozen cash amount and remaining-obligation vector | CAP-02, CAP-05 | `policy-simulator`, `shadow-refund-resale` |
-| `within_class_caps_and_rounding` | Inherit priority, largest remainder and tie comparator; cap at remaining obligations | CAP-02, CAP-05 | Shadow allocator |
-| `fixture_capacity_bounds` | Maximum 64 rows, 32,768 bytes, bounded integer amounts | CAP-08, CAP-20 | Input validation |
-| `shadow_comparison_labels` | Preserve shadow envelope; separate adapter diagnostics; compare compatible snapshots | CAP-09, CAP-20 | Comparison presentation |
-
-CAP mappings identify local coverage responsibilities, not completed implementation.
+| `within_class_caps_and_rounding` | Preserve priority, largest remainder and inherited tie comparator; cap at remaining obligations | CAP-02, CAP-05 | Shadow allocator |
+| `fixture_capacity_bounds` | At most 64 rows and 32,768 bytes; exact bounded integer amounts | CAP-08, CAP-20 | Input validation |
+| `shadow_comparison_labels` | Preserve shadow envelope; separate diagnostics; compare compatible snapshots | CAP-09, CAP-20 | Comparison presentation |
 
 ## 2. KIX 비전 연결
 
-The supplied [Capital requirements](../CAPITAL_REQUIREMENTS_KO.md) distinguish local development authority from operational authorization. The [seams registry](../SEAMS.md) distinguishes local checks from upstream adoption and semantic conformance. This decision makes larger synthetic allocation experiments reproducible within those boundaries.
+The supplied [Capital requirements excerpt](../CAPITAL_REQUIREMENTS_KO.md) separates local development authority from operational authorization. The [seams excerpt](../SEAMS.md) separates local verification from upstream adoption and semantic conformance. Bounded multi-payee inputs extend reproducible synthetic experiments within these boundaries.
 
-The [claim-slice registry excerpt](CAPITAL_CLAIM_SLICE_REGISTRY.md) retains responsibility for slice uniqueness, shared caps and borrowing-base protection. Synthetic payee rows neither create claim slices nor establish eligibility. The [accounts, tax and legal excerpt](CAPITAL_ACCOUNTS_TAX_LEGAL.md) keeps professional interpretations provisional; fixture identity does not establish legal payee identity.
+The [claim-slice registry excerpt](CAPITAL_CLAIM_SLICE_REGISTRY.md) leaves slice uniqueness, shared caps and borrowing-base protection with that decision. A synthetic payee row creates neither a claim slice nor participation eligibility. The [accounts, tax and legal excerpt](CAPITAL_ACCOUNTS_TAX_LEGAL.md) preserves professional-review boundaries: fixture identity establishes no legal payee identity.
 
-Only supplied excerpts support these connections. No upstream receipt or additional source inspection is claimed.
+These connections rely only on supplied excerpts. No upstream receipt or independent source verification is claimed.
 
 ## 3. 항목별 결정
 
 ### 3.1 `synthetic_payee_identity`
 
-Adopt `CAPITAL-MULTIPAYEE-SHADOW-INPUT-V1`.
+Adopt input version `CAPITAL-MULTIPAYEE-SHADOW-INPUT-V1`.
 
-Each payee row contains exactly `payee_label`, `class_id`, and `shadow_remaining_obligation_krw`. Labels match `^fx-[a-z0-9][a-z0-9_-]{0,60}$`, giving 4–64 ASCII bytes. Equality is exact: no trimming, case folding, normalization or alias expansion.
+Each payee row contains exactly `payee_label`, `class_id` and `shadow_remaining_obligation_krw`. Labels match `^fx-[a-z0-9][a-z0-9_-]{0,60}$`: 4–64 ASCII bytes. Equality is exact, without trimming, normalization, case folding or aliases.
 
-Labels must be unique across the entire snapshot, including different classes and zero-obligation rows. Duplicates reject the whole input; they are never merged. Each label belongs to exactly one class.
+Labels must be unique across the whole snapshot, including different classes and zero-obligation rows. Duplicate labels reject the entire input; they are never merged. A label belongs to exactly one class.
 
-Identity is `(fixture_id, snapshot_id, payee_label)`. Both enclosing identifiers use the same label grammar. Reusing a label in another snapshot establishes no continuing creditor or beneficiary identity.
+Identity is `(fixture_id, snapshot_id, payee_label)`. Both enclosing identifiers use the same grammar. Reuse in another snapshot establishes no continuing creditor identity.
 
-Canonical presentation order is ascending ASCII label. Input order cannot influence allocation, and presentation order does not replace the inherited tie comparator. Real names, bank details and legal identifiers are outside this schema.
+Canonical presentation order is ascending ASCII label. Neither presentation nor input order overrides the inherited allocation tie comparator. Real names, bank details and legal identifiers are outside this schema.
 
 ### 3.2 `class_mapping_and_unknowns`
 
-Every row declares `class_id`. Load the vocabulary, class priority and tie comparator from adopted `CAPITAL-ALLOC-V1`; never infer membership from a payee label.
+Require explicit `class_id` on every row. Load class vocabulary, priority and the tie comparator from adopted `CAPITAL-ALLOC-V1`; never infer membership from labels.
 
-An unknown class rejects the whole input with adapter outcome `INVALID_INPUT` and reason `UNKNOWN_CLASS`. Missing, wrongly typed or syntactically invalid classes use reason `INVALID_CLASS`. Validation includes zero-obligation rows. There is no fallback class, ignored row or partial allocation.
+Unknown classes reject the whole input with `adapter_outcome: INVALID_INPUT` and reason `UNKNOWN_CLASS`. Missing, wrongly typed or syntactically invalid classes use `INVALID_CLASS`. Validate zero-obligation rows too. There is no fallback class, silent omission or partial allocation.
 
-Freeze the loaded allocation and shadow-policy digests before computation. Missing, unreadable or unresolved required policy produces adapter outcome `NOT_BOUND`, with monetary results null. An inherited undecided or deferred branch retains its existing not-bound behavior; adopted branches are applied without another decision request.
+Freeze allocation-policy and shadow-policy source digests before computation. Missing, unreadable or unresolved required policy yields `adapter_outcome: NOT_BOUND` and null monetary results. Adopted branches require no further policy decision; inherited undecided or deferred branches retain their existing not-bound behavior.
 
-The pack does not establish the complete class vocabulary or concrete tie comparator. Those are inherited dependencies, not new values for this node to invent.
+The pack does not establish the complete class vocabulary or concrete tie comparator. Those remain inherited dependencies, not replacement values invented here.
 
 ### 3.3 `single_cut_allocation_inputs`
 
-The input object has exactly:
+The input object contains exactly:
 
 - `schema`: `CAPITAL-MULTIPAYEE-SHADOW-INPUT-V1`;
 - `fixture_id` and `snapshot_id`;
 - `shadow_cash_krw`: available synthetic cash;
 - `payees`: the complete remaining-obligation vector.
 
-All monetary keys use the `shadow_` prefix, including inputs, echoed amounts, outputs and comparison deltas. This replaces the earlier draft’s unprefixed amount fields.
+All monetary keys use `shadow_`, including inputs, echoed values, outputs and comparison deltas. Reject unknown fields and duplicate JSON object keys.
 
-Reject unknown fields and duplicate JSON object keys. Amounts are nonnegative JSON integers; booleans, strings, fractions and exponent-form numeric encodings are rejected.
+Amounts are nonnegative JSON integers. Reject booleans, strings, fractions and exponent-form numeric encodings. Remaining obligations are fixture-author assumptions immediately before this calculation, not verified debt evidence. Do not derive them from face amounts, historical payments, fees, refunds or prior shadow results.
 
-`shadow_remaining_obligation_krw` is the fixture author’s assumption immediately before this calculation. It is not verified debt evidence. The allocator does not derive it from face value, historical payments, refund events, fees or earlier shadow results.
+Freeze the complete payload and policy sources once. Do not reread mutable state between classes or comparison runs. Identifiers alone do not establish input equivalence.
 
-Freeze the complete payload and policy sources once. Never reread mutable state between classes or comparison runs. Identifiers alone do not establish equivalent inputs.
+Successful results contain per-row `payee_label`, `class_id`, `shadow_allocation_krw` and `shadow_remaining_after_krw`, plus `shadow_total_allocated_krw` and `shadow_unallocated_cash_krw`.
 
-Successful results contain:
+Keep zero-obligation rows visible. An empty payee array is valid and leaves all cash unallocated.
 
-- per row: `payee_label`, `class_id`, `shadow_allocation_krw`, `shadow_remaining_after_krw`;
-- totals: `shadow_total_allocated_krw`, `shadow_unallocated_cash_krw`.
-
-Zero-obligation rows remain visible. An empty array is valid and leaves all cash unallocated.
-
-There is no history lookup, settlement write, replay ledger or automatic carry-forward. Recomputing repeats a hypothetical calculation. Cumulative late cash, participation, claim slices and refund/resale lifecycle effects remain with their existing nodes.
+There is no history lookup, settlement write, replay ledger or automatic carry-forward. Recomputing repeats a hypothetical calculation. Cumulative late-cash handling, participation, claim slices and refund/resale lifecycle effects remain with their existing nodes.
 
 ### 3.4 `within_class_caps_and_rounding`
 
-Preserve `CAPITAL-ALLOC-V1` financial priority and largest-remainder rules. No new fee, percentage, entitlement or underwriting limit is introduced.
+Preserve `CAPITAL-ALLOC-V1` class priority and largest-remainder rules. Introduce no financial percentage, fee, entitlement or underwriting limit.
 
-For each inherited class, let remaining cash be `C`, obligations be `r_i`, and their sum be `R`. The class budget is `B = min(C, R)`. If `R = 0`, allocate zero without division. Otherwise:
+Process classes in inherited priority order. For a class, let remaining cash be `C`, obligations be `r_i`, and their sum be `R`. Set class budget `B = min(C, R)`.
 
-- `q_i = floor(B × r_i / R)`;
-- `m_i = (B × r_i) mod R`;
-- distribute `B − Σq_i` single units by descending `m_i`, resolving ties with the inherited comparator.
+If `R = 0`, allocate zero without division. Otherwise compute:
 
-Synthetic labels supply payee identity only where that comparator accepts it. If required comparator information is unavailable, return adapter outcome `NOT_BOUND`; do not substitute alphabetical or input order.
+- Base allocation `q_i = floor(B × r_i / R)`.
+- Remainder numerator `m_i = (B × r_i) mod R`.
+- Distribute the remaining `B − Σq_i` units by descending `m_i`, resolving equal remainders with the inherited comparator.
 
-Use exact integers, including intermediate products. No allocation exceeds its remaining obligation. Lower-priority classes receive cash only after higher-priority remaining obligations are satisfied. Surplus remains unallocated.
+Synthetic labels supply identity only where that comparator accepts it. If information needed to resolve a tie is unavailable, return `NOT_BOUND`; never substitute alphabetical or input order.
 
-The mathematical invariants are:
+Use exact integer arithmetic, including intermediate products. No payee receives more than its remaining obligation. Lower-priority classes receive cash only after higher-priority remaining obligations are satisfied. Surplus stays unallocated.
 
-`0 ≤ a_i ≤ r_i`; `remaining_after_i = r_i − a_i`; `Σa_i + unallocated = cash`.
+For allocations `a_i`, preserve:
+
+`0 ≤ a_i ≤ r_i`
+
+`remaining_after_i = r_i − a_i`
+
+`Σa_i + unallocated = cash`
 
 These are mathematical symbols, not additional output keys.
 
-**Worked examples.** Amounts are synthetic KRW integers. `P` denotes the inherited protected class and `L` an inherited lower-priority class. P1–P3 and L1 are table aliases for valid fixture labels. In the tie case, P1–P3 are already ordered by the inherited comparator.
+**Worked examples.** Amounts are synthetic KRW integers. `P` represents the inherited protected class; `L` represents an inherited lower-priority class. P1–P3 and L1 are table aliases for valid fixture labels. In the tie example, P1–P3 are ordered by the inherited comparator.
 
 | Case | Remaining obligations | Cash | Allocations | Remaining after | Unallocated |
 |---|---|---:|---|---|---:|
@@ -117,9 +116,9 @@ These are mathematical symbols, not additional output keys.
 | Fully satisfied obligations | P1=0, P2=0 | 7 | P1=0, P2=0 | P1=0, P2=0 | 7 |
 | Cash exceeds obligations | P1=2, P2=1; L1=4 | 10 | P1=2, P2=1, L1=4 | P1=0, P2=0, L1=0 | 3 |
 
-For the first case, bases are 3 and 1; remainder numerators are 1 and 7, so P2 receives the extra unit. For the tie case, bases are zero and all remainder numerators are 2; the first two inherited ranks receive one unit.
+In the first example, bases are 3 and 1 and remainder numerators are 1 and 7; P2 receives the extra unit. In the tie example, all bases are zero and all remainder numerators are 2; the first two inherited ranks receive one unit.
 
-These are arithmetic specifications, not executed fixtures or evidence that concrete comparator bindings were validated.
+These examples specify arithmetic. They are not executed fixtures or evidence of validated concrete policy bindings.
 
 ### 3.5 `fixture_capacity_bounds`
 
@@ -131,36 +130,36 @@ Adopt inclusive local bounds:
 | Payee rows | 0–64 |
 | Fixture, snapshot and payee identifiers | 4–64 ASCII bytes |
 | Class identifier | 1–64 ASCII bytes and inherited membership |
-| Cash, each obligation, total obligations | Each 0–1,000,000,000,000 KRW |
+| Cash, each obligation and total obligations | Each 0–1,000,000,000,000 KRW |
 
-These limits bound fixtures and computation, not lending or economic rights.
+These limits bound synthetic inputs and computation, not lending or economic rights.
 
-Check payload size before parsing; validate the full schema and bounds before allocation. Exceeding a bound produces adapter outcome `SIMULATION_CAPACITY`, names the dimension, and returns no monetary result. Never truncate or batch an oversized snapshot.
+Check payload size before parsing. Validate the entire schema and all bounds before allocating. A capacity violation yields `adapter_outcome: SIMULATION_CAPACITY`, identifies the exceeded dimension and returns null monetary results. Never truncate or divide an oversized snapshot into separately allocated batches.
 
-Intermediate products can reach `10^24`. Use arbitrary-precision integers or an equally exact method, never floating-point approximation.
+Intermediate products can reach `10^24`. Use arbitrary-precision integers or an equally exact method.
 
 ### 3.6 `shadow_comparison_labels`
 
-Preserve the inherited shadow envelope. The adapter emits `status: SHADOW_NOT_APPLIED` for every outcome: successful arithmetic does not apply an effect. It also carries `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE`, `PROVISIONAL_PRODUCT_DECISION`, `funds_executed:false`, `effects_applied:false`, and `production:NOT_AUTHORIZED`.
+Every adapter outcome preserves `status: SHADOW_NOT_APPLIED`. Successful arithmetic applies no effect. Preserve labels `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE` and `PROVISIONAL_PRODUCT_DECISION`, with `funds_executed:false`, `effects_applied:false` and `production:NOT_AUTHORIZED`.
 
-The following values belong only to `adapter_outcome`. They are diagnostic metadata, never values of the inherited shadow `status` field:
+Diagnostics belong exclusively to `adapter_outcome`:
 
 | `adapter_outcome` | Shadow `status` | Monetary payload |
 |---|---|---|
 | `COMPUTED` | `SHADOW_NOT_APPLIED` | Computed amounts |
 | `INVALID_INPUT` | `SHADOW_NOT_APPLIED` | Null; validation reason |
 | `SIMULATION_CAPACITY` | `SHADOW_NOT_APPLIED` | Null; exceeded dimension |
-| `NOT_BOUND` | `SHADOW_NOT_APPLIED` | Null; missing policy dependency |
+| `NOT_BOUND` | `SHADOW_NOT_APPLIED` | Null; unresolved policy dependency |
 
-Thus no new execution status enters the inherited closed set. Failed calculations never masquerade as successful zero allocations.
+No diagnostic extends the inherited shadow status set. Failed calculations never appear as successful zero allocations.
 
-Comparison metadata uses a separate `comparison_state`: `COMPARABLE` or `NOT_COMPARABLE`. Neither is a shadow execution status.
+Use separate comparison metadata `comparison_state: COMPARABLE` or `NOT_COMPARABLE`.
 
-Numeric comparison requires two `COMPUTED` results with identical frozen cash, label set, class membership, remaining obligations and KRW unit. Each side records its explicit algorithm/policy identity and source digest. Different policies may be compared deliberately; differing results do not establish error or financial superiority.
+Numeric comparison requires two `COMPUTED` results with identical frozen cash, label set, class membership, remaining obligations and KRW unit. Record each side’s explicit algorithm/policy identity and source digest. Deliberately different policies may be compared; differences do not establish error or financial superiority.
 
-Report candidate minus baseline using `shadow_allocation_delta_krw`, `shadow_remaining_after_delta_krw`, `shadow_total_allocated_delta_krw`, and `shadow_unallocated_cash_delta_krw`. Equality applies only to this snapshot.
+Report candidate minus baseline with `shadow_allocation_delta_krw`, `shadow_remaining_after_delta_krw`, `shadow_total_allocated_delta_krw` and `shadow_unallocated_cash_delta_krw`. Equality applies only to this snapshot.
 
-Otherwise use `NOT_COMPARABLE`, a reason and null deltas. Never pad a pinned two-payee baseline with fabricated rows. No comparison establishes executed settlement, upstream adoption or semantic conformance.
+Otherwise return `NOT_COMPARABLE`, a reason and null deltas. Never fabricate rows to extend a pinned two-payee baseline. Comparison establishes neither executed settlement nor upstream adoption or semantic conformance.
 
 ## 4. 기계 판독 결정 블록
 
@@ -288,7 +287,7 @@ Otherwise use `NOT_COMPARABLE`, a reason and null deltas. Never pad a pinned two
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-10-22",
       "cap_rows": ["CAP-09", "CAP-20"],
-      "rationale": "Keep adapter diagnostics outside the inherited status set and reject fabricated comparison compatibility.",
+      "rationale": "Keep diagnostics outside inherited statuses and reject fabricated comparison compatibility.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
@@ -300,29 +299,27 @@ Otherwise use `NOT_COMPARABLE`, a reason and null deltas. Never pad a pinned two
 
 | Acceptance | Evidence / status |
 |---|---|
-| Exactly one block; six decisions | §4 |
-| Unique labels, classes and bounded sizes | §§3.1–3.2, 3.5 |
-| Inherited priority and five examples | §3.4 |
-| Frozen snapshot and existing-node boundaries | §3.3 |
-| Shadow amount prefix and status envelope | §§3.3, 3.6; first review blocker addressed |
+| Exactly one decision block with six items | §4 |
+| Unique labels, explicit classes and bounded sizes | §§3.1–3.2, 3.5 |
+| Preserve priority and largest remainder; five examples | §3.4 |
+| One frozen snapshot; existing-node boundaries | §3.3 |
+| Shadow monetary keys and inherited status envelope | §§3.3, 3.6 |
 | Production unauthorized; effects unapplied | Banner and §3.6 |
-| Decision ledger validates note | **UNDETERMINED:** validator not executed under this document-only scope |
-| Documentation-index reference | **NOT COMPLETED:** required location is `docs/CAP_COVERAGE.md`; final revision scope excludes editing it |
+| Decision-ledger validation | **UNDETERMINED:** no validator execution or independent validation receipt available |
+| Actual documentation-index reference | **UNSATISFIED:** no authorized index modification is included |
 
-The index finding is valid. It cannot be resolved by a link inside this note. The final instruction permits only this document as the deliverable and excludes the index from editable paths, so repository-level acceptance remains incomplete until the supervisor applies that separate edit.
+**Blocking review disposition:** The index finding is valid. The final revision scope permits edits only to this note, `tests/decision_bindings.json` and `tests/vectors/pack/`, and requires the decision document as the sole deliverable. It excludes `docs/CAP_COVERAGE.md`. Consequently, this response cannot make the required actual index edit. A link or insertion instruction inside this note cannot satisfy that acceptance criterion. Repository acceptance remains blocked; this document does not claim otherwise.
 
 ## 6. Open risks
 
-Concrete class vocabulary and label-to-tie-rank bindings remain unverified from this pack. Consumers must resolve adopted sources before affected calculations; this note does not authorize substitutes.
+Concrete inherited class vocabulary and label-to-tie-rank bindings remain unverified from the pack. Consumers must resolve adopted sources before affected calculations.
 
-Remaining obligations are synthetic assertions, not proof of completeness or legal validity. Legal, tax and accounting interpretations remain working assumptions pending professional review.
+Remaining obligations are synthetic assertions, not evidence of completeness or legal validity. Legal, tax and accounting interpretations remain working assumptions pending professional review. The documentation-index and validator requirements remain outstanding independently of the six product decisions.
 
 ## 7. 후속 작업
 
-The supervisor writes this note and adds the following actual index entry to `docs/CAP_COVERAGE.md`:
+Repository integration requires an actual reference from `docs/CAP_COVERAGE.md` to `decisions/CAPITAL_MULTIPAYEE_SHADOW.md`, followed by the existing decision-ledger validator and `python3 scripts/docs_surface.py --check`. These are outstanding integration requirements, not completed actions or substitutes for the blocking index edit.
 
-`[CAPITAL_MULTIPAYEE_SHADOW — bounded multi-payee shadow inputs](decisions/CAPITAL_MULTIPAYEE_SHADOW.md)`
+The implementation consumer must bind inherited policies and verify permutation independence, equal-remainder ties, duplicate and unknown-class rejection, numeric and capacity boundaries, conservation, shadow-envelope preservation and incompatible comparisons. New vectors require maintained surface registrations and README needles.
 
-Then run the existing decision-ledger validator and `python3 scripts/docs_surface.py --check`. No execution or passing result is claimed here.
-
-The implementation consumer binds inherited policy sources and checks permutation independence, ties, duplicates, unknown classes, numeric rejection, capacity boundaries, conservation, shadow-envelope mapping and incompatible comparisons. New vectors require maintained surface registrations and README needles. Cumulative late cash, participation, claim slices, UC1–UC4 and upstream changes stay with their existing nodes.
+Cumulative late cash, participation, claim slices, UC1–UC4 and upstream changes remain with their existing nodes.
