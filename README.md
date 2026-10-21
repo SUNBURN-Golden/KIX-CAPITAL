@@ -2,6 +2,16 @@
 
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
+## DEV_ONLY keyset integrity
+
+Opt in with `python3 -m capital.server --workspace ./var/capital-workspace --dev-keyset`.
+This creates `export-dev-keyset.json` mode 0600. Verify a saved manifest offline with
+`python3 -m capital.verify manifest.json --keyset-file ./var/capital-workspace/export-dev-keyset.json`.
+This is shared-HMAC integrity only, not authentication; stage7 remains NOT_BOUND.
+See [integration](docs/INTEGRATION.md#dev-only-keyset) for explicit local rotation.
+Synthetic fixtures `tests/vectors/dev-keyset-active.json` and
+`tests/vectors/dev-keyset-retired.json` are pinned by `scripts/manifest_vectors.py --check`.
+
 ## 실행
 
 Python 3.10 이상, runtime 패키지 설치나 DB 없이 실행합니다.

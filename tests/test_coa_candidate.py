@@ -151,6 +151,18 @@ class V1UnchangedTests(unittest.TestCase):
         names = listed.stdout.split()
         self.assertIn('tests/golden/demo.json', names)
         for name in names:
+            if base == 'origin/main' and not (ROOT / name).exists():
+                ancestor = subprocess.run(['git', 'merge-base', 'HEAD', base], cwd=ROOT,
+                                          capture_output=True, text=True)
+                self.assertEqual(ancestor.returncode, 0)
+                upstream_added = subprocess.run(
+                    ['git', 'diff', '--name-only', '--diff-filter=A', ancestor.stdout.strip(), base, '--', name],
+                    cwd=ROOT, capture_output=True, text=True)
+                self.assertEqual(upstream_added.returncode, 0)
+                branch_has = subprocess.run(['git', 'cat-file', '-e', f'HEAD:{name}'], cwd=ROOT,
+                                            capture_output=True, text=True)
+                if upstream_added.stdout.split() == [name] and branch_has.returncode != 0:
+                    continue
             shown = subprocess.run(['git', 'show', f'{base}:{name}'], cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(shown.returncode, 0, name)
             pinned = json.loads(shown.stdout)

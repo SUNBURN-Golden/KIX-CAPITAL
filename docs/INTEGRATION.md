@@ -2,6 +2,34 @@
 
 `/api/*` is **Capital's local simulation facade**, not a promoted KIX Protocol catalogue, generated SDK, lending endpoint, or live provider adapter. No fallback to `offer_gift`, `settle_capture`, bank, PG or chain exists.
 
+## DEV_ONLY keyset
+
+`--dev-keyset` requires `--workspace` and excludes `--dev-hmac`. On first startup it
+exclusively creates `WORKSPACE/export-dev-keyset.json` with one random local `kid-1`.
+Existing files are never repaired or chmodded. Files must be regular, non-symlink,
+mode 0600, strict UTF-8 JSON, at most 65536 bytes. No key material is logged or
+included in signatures. This is local shared-HMAC integrity, not identity authentication.
+
+The exact object is `{format: "KIX_CAPITAL_DEV_KEYSET_V1", label: "DEV_ONLY",
+active_kid: "kid-1", keys: [{kid: "kid-1", alg: "DEV_KEYSET_HMAC_SHA256",
+status: "ACTIVE", key_hex: "<64 lowercase hex characters>"}]}` (JSON keys must be quoted).
+Kids are unique, 1–128 ASCII letters/digits/`-._`; at most 100 entries.
+`active_kid` selects an ACTIVE signing entry; other ACTIVE entries remain verifiable.
+Signatures bind canonical JSON `{alg, kid, content_digest}` using HMAC-SHA256.
+
+For explicit local rotation, stop the server, add a fresh synthetic local 32-byte
+key under `kid-2`, select it with `active_kid`, preserve mode 0600, then restart.
+To retire the old key, retain its entry but set `status` to `RETIRED`.
+Offline `--keyset-file FILE` pins that local snapshot: both active kids verify,
+unknown kids report `UNKNOWN_KID`, retired kids report `KEY_RETIRED` (exit 1).
+Deleting an entry instead reports unknown kid. There is no hot reload, network
+key discovery, publication, expiry, historical-time policy, or fallback to another key.
+Missing/invalid/insecure keysets report `SIGNATURE_KEYSET_*` errors.
+`--key-file` and `--keyset-file` exclude each other and neither applies to workspace audit.
+Synthetic committed keyset fixtures may check out mode 0644: copy and chmod 0600
+before verification. Never use fixture keys outside tests.
+`authentication` and `external_key` remain NOT_BOUND; `stage7_authenticated_export` is false.
+
 ## Local facade v1
 
 - `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, `terms` (a `{status, reason, terms_version}` snapshot of the decision-note overlay, where `status` is `BOUND`, `PARTIAL` or `NOT_BOUND`, `reason` is null unless `NOT_BOUND`, and `terms_version` is the note's version or null), pinned source, `assets`, local CSRF token, capacity, workspace status and undecided capabilities. `assets` is an array of exactly one entry, the declared KRW AssetSpec `{namespace: "fiat", reference: "KRW", decimals: 0, max_atoms: 1000000000000}` (declared once in `capital/assets.py`; PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` section 3.6). `max_atoms` is the pinned FSM `MONEY_MAX` fixture bound, not a registry limit. There is no asset registry (DEFERRED), no FX (NOT_ADOPTED) and no second asset; amounts stay integers in that one asset. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery. The claim table `tests/read_model_claims.json` maps this route's case views to the pinned upstream draft `docs/contracts/READ_MODEL_QUERIES.md` `get_credit_advance` (checked by `scripts/read_model_claims_check.py`, label CLAIM_CONFORMANCE); the route itself is unchanged.

@@ -1,5 +1,45 @@
 # Validation scope
 
+## DEV_ONLY keyset coverage
+
+`tests/test_dev_keyset.py` covers secure creation/restart, strict schema and encoding,
+0600/no-follow/nonregular rejection, two-key rotation, retirement, identity-bound MACs,
+V2/V3, CLI refusal, and response/log non-disclosure. The deterministic manifest corpus
+adds two clean keyset manifests, unknown-kid and retired-key cases with independently
+written expected reasons. Fixture keysets are synthetic DEV_ONLY, never external keys.
+Stage7 remains NOT_BOUND.
+
+Actual local node verification (2026-10-20; SIMULATED fixtures only):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_dev_keyset.py' -v` | 7 passed (initial run before HTTP coverage: 6 passed) |
+| `python3 -m unittest discover -s tests -p 'test_manifest_vectors.py' -v` | 11 passed, including rerun after module relocation |
+| `python3 -m unittest discover -s tests -p 'test_coa_candidate.py' -v` | 35 passed |
+| `python3 -m unittest discover -s tests -v` | Final 711 passed; first run had 2 failures (export byte guard, missing fixture registry); second had 1 error (upstream-only absent goldens); both corrected and rerun |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 scripts/manifest_vectors.py --check` | Initial expected failure: six new files missing; final 19 files match |
+| `python3 scripts/manifest_vectors.py --write` | 19 files written; no stale files removed; legacy bytes unchanged |
+| `python3 scripts/seed_demo.py` | SIMULATED golden digests matched |
+| `python3 scripts/docs_surface.py --check` | 29 routes, 26 artifacts, 9 stages; zero findings |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm ci` | Installed locked dependencies; audit reported zero vulnerabilities |
+| `npm run test:browser` | 62 Chromium tests passed |
+| `python3 scripts/acceptance.py` | All 9 stages passed; local build/acceptance-evidence.json reports ok=true |
+| `python3 scripts/build_release.py --out dist` | Built capital-0.1.0.pyz |
+| `python3 scripts/build_release.py --out dist2` | Same package SHA256 as dist build |
+| `cmp dist/capital-*.pyz dist2/capital-*.pyz` | Exit 0, byte-identical |
+| `python3 scripts/smoke_release.py dist/capital-*.pyz` | 8 checks passed |
+| `git diff --check` | Exit 0 |
+| `git diff --exit-code -- capital/vendor .aiops capital/export.py tests/golden` | Exit 0; locked/reference and legacy files untouched |
+
+Plan deviations: signer/loader/factory live in `capital/keyset.py` to preserve the existing
+export byte guard, with strict JSON parsing shared in `capital/strict_json.py`. Added docs
+surface registry entries. Corrected the existing COA baseline test to ignore only goldens
+added exclusively on main after the merge point and absent from HEAD; deletion of any
+branch-owned golden still fails. No golden or vendor content was regenerated to hide drift.
+
 Initial Capital base: `e9bea122102b87a1f11ac673d50e01c31cba6922` (README only; no pre-existing test or workflow gates).
 Protocol reference: `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`.
 

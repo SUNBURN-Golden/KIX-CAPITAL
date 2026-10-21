@@ -119,6 +119,8 @@ VECTOR_NEEDLES = {
     'workspace_crash.json': (
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
+    'dev-keyset-active.json': ('tests/vectors/dev-keyset-active.json', 'scripts/manifest_vectors.py --check'),
+    'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),
 }
 
 
