@@ -1,135 +1,373 @@
-# Capital 업스트림 리핀 정책 결정 — 핀 분류 어휘, 실행 핀 목록, 연구 기준 규칙, 리핀 트리거·절차, 이중 핀, 클레임 표 재생성, 드리프트 펜스, 현행 핀 평가
+# Capital 업스트림 리핀 정책 결정 — 실행·참조 핀, 연구 기준, 원자적 갱신과 검증
 
-**상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).**
-이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 거버넌스 결정이다. 실자금이 움직이지 않으며 production은 계속 `NOT_AUTHORIZED`다. 어떤 upstream 파일도 바꾸지 않고, 어떤 핀도 실제로 옮기지 않으며, 어떤 upstream 계약·노드의 채택·완료도 주장하지 않는다. 채택은 upstream의 실제 영수증(commit·review URL·profile digest)만이 증명한다(`docs/SEAMS.md`의 ADOPTED 정의). diff는 `docs/decisions/CAPITAL_UPSTREAM_REPINS.md` 한 파일이다.
+**PROVISIONAL PRODUCT DECISION — 잠정 제품 결정**
 
 | 항목 | 값 |
 |---|---|
-| 결정 노드 | `upstream-repin-policy-decision` (Decision: executable pin classes, re-pin triggers and procedure for upstream reference baselines) · deps `upstream-binding-decision`, `audit90-fix2` · kind `decision` · user_merge `False` |
-| 결정자 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
-| 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
+| 결정 노드 | `upstream-repin-policy-decision` |
+| 결정 귀속(요청 지정) | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
 | 결정일 | 2026-10-21 |
-| KIX-CAPITAL 기준 | main `4cf1de3` |
-| kix-protocol 기준 | `a114b5b` (읽기 전용 `/workspace/capital-run/kixproto-ro`) — **이 값 자체가 RESEARCH_BASELINE의 예다** |
-| 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. **UNDETERMINED** = 값을 정할 수 없어 이유만(`value: null`). 여덟 항목 모두 ADOPTED다 |
+| 기준 | KIX-CAPITAL main `02bc3e5` · kix-protocol `e2313ab` — supervisor 제공 연구 스냅샷 |
+| 선행 | `upstream-binding-decision`, `audit90-fix2` |
+| 범위 | Capital 자체 참조의 시뮬레이션·제품 설계용 거버넌스. 실자금 없음. production `NOT_AUTHORIZED` |
+| 산출물 | `docs/decisions/CAPITAL_UPSTREAM_REPINS.md` 전체 수정본. 이번 응답에서 파일 쓰기·검증 실행·리핀 없음 |
+
+위임 원문: “금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해.”
+
+여기서 `ADOPTED`는 위임 범위의 잠정 제품 정책을 결정했다는 뜻이다. upstream 계약 채택, seam의 `ADOPTED`, SEMANTIC_CONFORMANCE, 운영 승인을 뜻하지 않는다. upstream 파일·vendor 바이트·현행 핀은 변경하지 않는다.
+
+**리뷰 차단 사항을 수용한다.** 기존 `scripts/decision_bindings.py` 펜스와 `tests/decision_bindings.json` 등록이 빠졌다. 여덟 항목의 등록을 **별도 선행 PR의 필수 작업**으로 결정하며, 등록과 검증이 완료되기 전 이 노트를 병합하지 않는다. 아래 절차는 등록 완료를 주장하지 않는다. 현재 전달된 리뷰 기준으로 여덟 등록은 미완료다.
 
 ## 1. 결정 요약
 
-| item | 결정 (요지) | CAP rows | 소비 노드 / seam |
+| item | 결정 | CAP rows | consumer |
 |---|---|---|---|
-| `pin_class_vocabulary` | **ADOPTED.** 세 클래스: `EXECUTABLE_VENDOR`(manifest 바이트 잠금), `EXECUTABLE_CITATION`(읽기 전용 인용 핀), `RESEARCH_BASELINE`(출처 기록, 비구속). 앞의 둘만 "실행 핀" | CAP-01, CAP-20 | 모든 결정 노트·claim table·감사 |
-| `executable_pin_inventory` | **ADOPTED.** 실행 핀은 정확히 둘: vendor pin `7481b0e`(5파일 SHA256)와 citation pin `e2a029d`(AI 위임 초안 0.1+mock). Commerce `7c24526` 확인값은 BASELINE | CAP-11, CAP-15, CAP-16 | `capital/vendor/manifest.json`, claim 표 4종 |
-| `research_baseline_rule` | **ADOPTED.** `기준`/`bases` 칸은 추가전용 출처다. 테스트를 게이트하지 않고, 리핀이 과거 baseline을 소급 수정하지 않으며, 새 노트는 작성 시점 main을 기록 | CAP-01, CAP-20 | `docs/decisions/*` 전부 |
-| `repin_trigger_procedure` | **ADOPTED.** 트리거 = 영수증 있는 upstream 채택·수정/보안 픽스 수용 결정·위임된 결정/소유자 지시. upstream main 전진은 트리거가 아님. 절차 = 단일 원자 PR | CAP-11, CAP-15, CAP-16, CAP-20 | `scripts/manifest_vectors.py`, `scripts/docs_surface.py` |
-| `dual_pin_handling` | **ADOPTED.** 병합 시점에 bound surface당 핀은 정확히 하나. 상시 이중 핀 전환 창 금지. 서로 다른 surface의 복수 핀은 이중 핀이 아님 | CAP-15, CAP-16 | 향후 리핀 PR |
-| `claim_table_regeneration_rule` | **ADOPTED.** claim-table 핀 이동은 **항상 같은 PR에서** 표·벡터를 재생성한다. 핀만 옮긴 PR·핀 없이 표만 바꾼 PR 모두 무효 | CAP-13, CAP-14, CAP-15 | `tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`, `tests/agent_claims.json` |
-| `drift_fence_integration` | **ADOPTED.** 펜스 = manifest SHA256 잠금 + `manifest_vectors.py --check` + `docs_surface.py --check`/README needle + `test_seams.py` 영수증 규칙. 리핀 PR은 모든 펜스 갱신을 같은 diff에 담는다 | CAP-15, CAP-20 | 위 스크립트·`tests/vectors/`·`AGENTS.md` 규칙 |
-| `current_pin_assessment` | **ADOPTED.** 두 실행 핀 모두 **HOLD(리핀 보류)**. 사유는 §4.8 | CAP-11, CAP-15, CAP-16 | 현행 main `4cf1de3`의 테스트·골든 |
+| `pin_class_vocabulary` | **ADOPTED.** `EXECUTABLE_VENDOR`, `EXECUTABLE_CITATION`, `RESEARCH_BASELINE` 세 클래스 | CAP-01, CAP-20 | 핀 목록·클레임 표·결정 노트 |
+| `executable_pin_inventory` | **ADOPTED.** vendor `7481b0e`, AI 인용 `e2a029d` 두 핀 유지 | CAP-11, CAP-15, CAP-16 | manifest·클레임 표 네 종 |
+| `research_baseline_rule` | **ADOPTED.** 연구 기준은 역사적 출처. 전역 실행 핀과 동기화하지 않음 | CAP-01, CAP-20 | 결정 노트의 `기준`·`bases` |
+| `repin_trigger_procedure` | **ADOPTED.** 근거 있는 트리거와 단일 원자 PR. main 전진만으로 리핀하지 않음 | CAP-11, CAP-15, CAP-16, CAP-20 | 향후 리핀 구현·리뷰 |
+| `dual_pin_handling` | **ADOPTED.** 병합 시 구속 표면당 하나의 핀. 상시 이중 핀 전환 창 금지 | CAP-15, CAP-16 | 어댑터·참조 소비자 |
+| `claim_table_regeneration_rule` | **ADOPTED.** claim-table 핀 이동은 항상 같은 PR에서 해당 표·벡터 재생성 | CAP-13, CAP-14, CAP-15 | 클레임 표·벡터·관련 골든 |
+| `drift_fence_integration` | **ADOPTED.** 기존 decision-binding 검사 포함. 여덟 등록의 별도 선행 PR 완료가 이 노트 병합 조건 | CAP-15, CAP-20 | `decision_bindings.py`, 등록 JSON, 문서·벡터·seam 검사 |
+| `current_pin_assessment` | **ADOPTED.** 두 핀 모두 `HOLD`. 새 실행 기준을 정당화할 증거가 팩에 없음 | CAP-11, CAP-15, CAP-16 | 현행 실행·참조 소비자 |
 
-## 2. KIX 비전과의 연결
+## 2. KIX 비전 연결
 
-인용은 팩이 허용한 경로로 한정한다.
+Capital의 확장 방향은 upstream 계약을 실제로 수용할 수 있는 구조와, 어느 기준으로 동작했는지 재현할 수 있는 증거를 함께 갖추는 것이다. 핀을 무조건 최신으로 옮기는 대신, 소비 범위와 전환 근거를 명시한다.
 
-- **기준 구분의 선례.** `/workspace/capital-run/kixproto-ro/README.md`는 "이 문서 작업 시작 시 확인한 main HEAD"를 "기준 스냅샷이며 영원히 최신 HEAD라는 뜻이 아니다"로 라벨하고, 태그·검토 SHA·실험 보존본의 용도를 `docs/status/BASELINES.md`에서 한 번에 구분한다. Capital의 `RESEARCH_BASELINE` vs 실행 핀 구분은 이 패턴의 로컬 적용이다.
-- **바이트 잠금의 선례.** 같은 README §2는 검토한 동작을 Git blob으로 잠그고 "주석·명칭·포맷·자동 수정도 잠금 예외가 아니다"라고 못 박는다. `capital/vendor/manifest.json`의 5파일 SHA256 잠금은 동일한 강도의 펜스다.
-- **출처와 권위의 분리.** `/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md`는 승인 원문의 Git blob을 기록하되 요약본과 현재 승인의 정본을 분리한다. 결정 노트의 `기준` 칸이 출처 증명이지 실행 구속이 아니라는 규칙의 근거다.
-- **현행 핀 목록의 정본.** `docs/CAPITAL_REQUIREMENTS_KO.md`는 두 고정(① `7481b0e` vendor 바이트 핀, ② `e2a029d` AI 위임 초안 읽기 전용 인용 핀)과 각각의 구속 범위를 명시하고, 노트별 `기준` 값은 "출처 증명이며 실행·참조 구속이 아니므로 위 두 고정의 범위 밖"이라고 이미 선언한다. 이 결정은 그 선언을 어휘·절차·펜스로 제도화할 뿐 핀 값을 바꾸지 않는다.
-- **펜스 도구.** `docs/SEAMS.md`(영수증 없는 ADOPTED 금지, `test_seams.py`), `docs/VALIDATION.md`(검증 명령 표), 저장소 `AGENTS.md`(`tests/vectors/` 신규 파일은 `docs_surface.py` 항목 + README needle 필요, export 바이트 가드)가 drift 펜스의 실제 집행자다.
-- **선행 결정.** [CAPITAL_CLOSEOUT_ARTIFACT.md](CAPITAL_CLOSEOUT_ARTIFACT.md)·[CAPITAL_ARTIFACT_BUNDLING.md](CAPITAL_ARTIFACT_BUNDLING.md)는 vendor pin `7481b0e` 불변을 전제로 쌓였고, [CAPITAL_CLAIM_SLICE_REGISTRY.md](CAPITAL_CLAIM_SLICE_REGISTRY.md)·[CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md)·[CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md)의 `기준` 칸(`51d8380`·`9eb6b9f`·`244595d`·`adcddc5`·`751c51b`)이 RESEARCH_BASELINE의 실례다.
+- [CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md)의 제공 발췌는 vendor 바이트 핀과 AI 위임 초안 인용 핀을 구분한다. 노트별 연구 체크아웃은 출처 증명이며 두 핀의 구속 범위 밖이라고 명시한다. 이 구분을 분류·변경 절차로 고정한다.
+- [SEAMS.md](../SEAMS.md)의 제공 발췌는 upstream 계약이 로컬 구현을 실제 대체하고 영수증이 있어야 seam을 `ADOPTED`로 표시한다고 정한다. 로컬 벡터 통과나 핀 변경만으로 계약 채택을 주장하지 않는다.
+- [VALIDATION.md](../VALIDATION.md)의 제공 발췌는 2026-10-20의 로컬 검증 기록이다. 재현 가능한 검증의 선례로 사용하되, 그 결과를 이번 헤드나 향후 리핀의 통과 증거로 재사용하지 않는다.
+- [CAPITAL_ARTIFACT_BUNDLING.md](CAPITAL_ARTIFACT_BUNDLING.md)와 [CAPITAL_CLOSEOUT_ARTIFACT.md](CAPITAL_CLOSEOUT_ARTIFACT.md)의 제공 발췌는 결정 노트·산출물의 바이트 출처와 비운영 라벨을 유지한다. 리핀도 원본·표·벡터·문서가 어떤 기준을 사용했는지 추적 가능해야 한다.
+- [CAPITAL_CLAIM_SLICE_REGISTRY.md](CAPITAL_CLAIM_SLICE_REGISTRY.md), [CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md), [CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md)의 제공 발췌에 기록된 서로 다른 연구 SHA는 역사적 출처의 실례다. 이 차이는 실행 핀 드리프트가 아니다.
+
+`CAPITAL_UPSTREAM_BINDING.md`는 선행 정책이지만 이번 허용 읽기 목록 밖이다. 직접 읽었다고 주장하지 않으며, 제공된 요구사항의 §3.9 인용과 구속 범위를 적용한다. 생략된 파일과 잘린 발췌의 나머지는 사용하지 않았다. decision-binding 펜스의 동작은 이번 리뷰가 제공한 정적 검사 결과를 근거로 한다.
 
 ## 3. 항목별 결정
 
-공통 라벨: 모든 값 `provisional: true`, `basis: PRODUCT_DECISION`. 이 노트는 핀을 옮기지 않는다.
+### 3.1 `pin_class_vocabulary`
 
-### 3.1 pin_class_vocabulary (CAP-01, CAP-20)
+**ADOPTED.** 세 클래스를 사용한다.
 
-- **값.** 세 클래스를 고정한다.
-  - `EXECUTABLE_VENDOR` — upstream commit + vendored 바이트의 per-file SHA256이 `capital/vendor/manifest.json`에 잠긴 핀. 실행·테스트 경로를 구속한다.
-  - `EXECUTABLE_CITATION` — upstream commit이 결정 노트(§3.9)와 claim-table JSON에 인용돼 읽기 전용 참조를 구속하는 핀. vendor하지 않고 manifest 해시도 없다.
-  - `RESEARCH_BASELINE` — 노트 작성 시점의 체크아웃을 `기준`/`bases`에 기록한 값. 출처 증명이며 어떤 테스트·실행도 게이트하지 않는다.
-- `EXECUTABLE_*` 둘을 합쳐 "실행 핀"이라 부른다. 실행 핀의 이동만이 "리핀"이며 이 노트의 절차를 따른다. BASELINE 갱신은 리핀이 아니다.
+| 클래스 | 구속 대상 | 변경의 의미 |
+|---|---|---|
+| `EXECUTABLE_VENDOR` | 지정 upstream commit에서 가져온 파일 바이트와 per-file SHA256, 관련 실행·테스트 소비자 | 원본 commit 또는 잠긴 바이트 변경은 리핀 절차 대상 |
+| `EXECUTABLE_CITATION` | 지정 commit의 문서·mock을 읽기 전용으로 인용하는 참조 소비자 | 인용 commit 변경은 리핀 절차 대상 |
+| `RESEARCH_BASELINE` | 결정 작성에 사용한 역사적 체크아웃의 출처 | 출처 기록이며 실행 기준 전환이 아님 |
 
-### 3.2 executable_pin_inventory (CAP-11, CAP-15, CAP-16)
+앞의 두 클래스를 이 정책의 “실행·참조 핀”으로 묶는다. `EXECUTABLE_CITATION`이라는 이름은 해당 mock을 vendor하거나 운영에서 실행한다는 뜻이 아니다.
 
-- **값.** 현행 실행 핀 목록은 정확히 둘이다.
+분류는 SHA 문자열 자체가 아니라 **그 SHA를 사용하는 역할과 구속 범위**에 붙인다. 같은 commit이 연구 출처와 실행 핀에 동시에 등장해도 각 역할은 별개다. 새 소비자가 기존 SHA를 인용한다는 이유만으로 자동으로 기존 핀 범위에 편입되지 않는다. 소비 범위 확대는 목록·바인딩·검증을 함께 갱신해야 한다.
 
-| 핀 | 클래스 | upstream 기준 | 구속 범위 | 펜스 |
-|---|---|---|---|---|
-| vendor pin | `EXECUTABLE_VENDOR` | kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` | vendor된 F04·F01–F03 FSM reference 5파일의 바이트; `tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`의 인용 | `capital/vendor/manifest.json` SHA256 |
-| AI draft pin | `EXECUTABLE_CITATION` | kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232` | `docs/contracts/AI_DELEGATION_AUTHORITY.md` 초안 0.1 + `reference/ai_delegation/` mock의 읽기 전용 인용; `tests/agent_claims.json`(agent lane) | claim JSON의 인용 SHA + binding 노트 §3.9 |
+### 3.2 `executable_pin_inventory`
 
-- Commerce main `7c2452645c50b8ede17bdd762794adeabe42319e`는 "확인" 기록이며 `RESEARCH_BASELINE`이다. 새 실행 핀 추가는 위임된 결정 + 펜스 등록 없이 불가하다.
+**ADOPTED.** 제공된 현행 요구사항에서 확인되는 실행·참조 핀은 다음 둘이다.
 
-### 3.3 research_baseline_rule (CAP-01, CAP-20)
+| 클래스 | 전체 SHA | 구속 범위 |
+|---|---|---|
+| `EXECUTABLE_VENDOR` | `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` | vendor된 F04·F01–F03 FSM reference 다섯 파일, manifest의 SHA256 잠금, `tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`의 해당 인용 |
+| `EXECUTABLE_CITATION` | `e2a029d8ac3af7575888dac22fc4bf173ebec232` | AI 위임 권한 계약 초안 0.1과 `reference/ai_delegation/` mock의 읽기 전용 인용, `tests/agent_claims.json`의 agent lane |
 
-- **값.** (1) `기준`/`bases` 칸은 **추가전용(append-only)**: 기록된 값은 소급 수정하지 않고, 정정이 필요하면 superseding 노트가 새 baseline을 기록한다. (2) BASELINE은 어떤 테스트·게이트도 묶지 않는다 — 노트가 인용한 연구 시점의 출처일 뿐이다. (3) 새 노트는 작성 시점의 main을 기록한다(이 노트의 `a114b5b`처럼). (4) 실행 핀 리핀은 과거 노트의 BASELINE을 갱신하지 않는다 — 각 노트는 자기 시점의 출처를 영구 보존한다. (5) BASELINE의 전진(upstream main 이동)은 어떤 작업 의무도 발생시키지 않는다.
-- **근거.** 출처를 최신으로 고쳐 쓰면 감사가 "어느 시점 연구를 보고 결정했는가"를 재구성할 수 없다. kix-protocol의 blob 잠금·스냅샷 라벨 관행과 같은 이유다.
+AI mock은 vendor하지 않았고 vendor manifest 해시도 없다. 향후 인용 핀 검사를 보강해도 이를 vendor 바이트 검증과 같은 것으로 표시하지 않는다.
 
-### 3.4 repin_trigger_procedure (CAP-11, CAP-15, CAP-16, CAP-20)
+Commerce `7c2452645c50b8ede17bdd762794adeabe42319e`는 팩에서 “main 확인”으로 주어진 `RESEARCH_BASELINE`이다. 이 노트의 Capital `02bc3e5`와 Protocol `e2313ab` 역시 supervisor가 제공한 연구 기준이다.
 
-- **트리거(허용 목록).** 아래 중 하나가 성립할 때만 리핀 PR을 열 수 있다.
-  1. **영수증 있는 채택** — upstream 계약이 실제 영수증과 함께 ADOPTED돼(`SEAMS.md`) 관련 표면이 채택 커밋을 가리켜야 할 때.
-  2. **수용 결정된 수정** — 핀된 upstream 파일의 정확성·보안 수정을 Capital이 가져오기로 위임 범위 안에서 결정했을 때.
-  3. **명시 지시** — 소유자 지시 또는 새 delegated 결정 노트가 특정 핀의 이동을 지명했을 때.
-- **비트리거.** upstream main의 전진 자체, "최신화" 욕구, 표면 변경 없는 cosmetic diff, BASELINE 갱신. 핀은 의도적으로 main을 추적하지 않는다.
-- **절차(단일 원자 PR).** ① 핀 기록 갱신(commit 필드, 해당 시 manifest commit) → ② vendor의 경우 바이트 재vendor + 5파일 SHA256 재잠금 → ③ 영향받는 claim 표·벡터·골든을 **같은 diff에서** 재생성(§3.6) → ④ `docs_surface.py` 항목·README needle 등 문서 펜스 갱신 → ⑤ `scripts/decision_ledger.py`에 old→new 핀 쌍과 트리거 사유 기록 → ⑥ 검증: `python3 -m unittest discover -s tests -v`, `python3 scripts/manifest_vectors.py --check`, `python3 scripts/docs_surface.py --check`, 필요 시 `python3 scripts/acceptance.py`(VALIDATION.md 표의 명령군) → ⑦ 통상 리뷰·정확헤드 병합 흐름.
+새 핀을 추가하려면 대상 저장소·전체 SHA·파일 또는 계약 범위·소비자·검증 방법·결정 근거를 명시하고 등록한다. 이 결정은 새로운 핀을 추가하지 않는다.
 
-### 3.5 dual_pin_handling (CAP-15, CAP-16)
+### 3.3 `research_baseline_rule`
 
-- **값.** **병합 시점에 bound surface당 실행 핀은 정확히 하나**다. 같은 surface를 두 SHA가 동시에 구속하는 상시 전환 창은 금지한다. 리핀 PR의 생애 안에서 old/new 아티팩트가 공존하는 것은 허용되나 병합 커밋에는 단일 핀만 남는다. vendor pin과 citation pin처럼 **서로 다른 surface**의 복수 핀은 이중 핀이 아니며 허용·현행 상태다. 진정한 단계적 이전이 필요해지면 이 노트가 아니라 새 delegated 결정이 승인해야 한다.
-- **근거.** 이중 핀 창은 "어느 기준이 claim을 구속하는가"를 시간 의존으로 만들어 감사 재현성을 깬다. 원자 교체가 이 저장소의 펜스 구조(SHA256 잠금 + 결정론적 벡터)와 맞다.
+**ADOPTED.** `기준`·`bases`의 연구 기록은 추가전용 출처로 보존한다. 실행 핀을 옮겨도 과거 노트의 연구 SHA를 일괄 교체하지 않는다. 연구 기준과 실행 핀이 다르다는 이유로 테스트를 실패시키지 않는다.
 
-### 3.6 claim_table_regeneration_rule (CAP-13, CAP-14, CAP-15)
+이 규칙은 노트 자체의 스키마·등록·바이트 검사를 면제하지 않는다. 금지하는 것은 **연구 SHA와 현행 실행 SHA의 동일성을 요구하는 게이트**다.
 
-- **값.** **claim-table 핀 이동은 항상 그 표와 벡터를 같은 PR에서 재생성한다.** 구체적으로: (1) `tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`, `tests/agent_claims.json` 중 인용 SHA가 바뀌는 표는 같은 diff에서 재작성한다. (2) 표에서 파생되는 `tests/vectors/` 산출물·골든 digest도 같은 PR에서 재생성한다(`AGENTS.md`의 docs_surface·README needle 규칙 포함). (3) 핀만 옮기고 표를 그대로 둔 PR은 무효, 핀 변경 없이 표의 인용을 바꾼 PR도 무효 — 단 재생성 절차 자체의 버그 픽스는 인용 SHA를 바꾸지 않는 조건으로 허용한다. (4) 재생성 결과와 핀이 불일치하면 `manifest_vectors.py --check`/해당 테스트가 병합 전에 잡아야 하며, 못 잡는 공백은 발견 시 펜스 추가 PR로 닫는다.
-- **근거.** 클레임 표는 "핀된 upstream 텍스트에서 무엇을 주장하는가"의 결정론적 산출물이다. 둘이 어긋난 커밋이 하나라도 존재하면 bisect·감사가 깨진다.
+새 노트는 실제 사용한 스냅샷과 출처를 기록한다. 직접 확인한 HEAD와 supervisor가 제공한 기준을 구분하며, 확인하지 않은 값을 “현재 최신 main”이라고 쓰지 않는다. 잘못된 출처는 기존 기록을 지우지 않고 날짜·이유·대체 출처가 있는 정정 기록이나 후속 노트로 바로잡는다.
 
-### 3.7 drift_fence_integration (CAP-15, CAP-20)
+Protocol `51d8380`, `adcddc5`, `9eb6b9f`, `751c51b`, `244595d` 등 제공된 선행 노트의 기준은 이러한 역사적 출처다. 서로 다른 값이라는 이유만으로 리핀 작업이 발생하지 않는다.
 
-- **값.** 리핀을 둘러싼 펜스와 그 PR이 보이는 모습을 고정한다.
-  - **바이트 펜스:** `capital/vendor/manifest.json`의 commit + 5파일 SHA256. vendor 바이트·핀 값 불일치는 테스트가 거절한다.
-  - **벡터 펜스:** `python3 scripts/manifest_vectors.py --check`가 19개 파일의 기대 digest를 대조. 재생성 누락은 여기서 드러난다.
-  - **문서 펜스:** `tests/vectors/` 신규 파일은 `scripts/docs_surface.py`의 수동 유지 항목 + README needle이 필요(`AGENTS.md`); `--check`가 zero findings여야 한다.
-  - **결정 바인딩 펜스:** claim JSON의 인용 SHA가 핀 기록과 일치해야 하며, `tests/test_seams.py`는 영수증 없는 `ADOPTED` 행을 거절한다 — **리핀은 그 자체로 어떤 seam도 ADOPTED로 만들지 않는다.**
-  - **원자성:** 위 펜스가 참조하는 old pin은 모두 같은 diff에서 갱신한다. 후속 PR로의 펜스 갱신 유보는 금지다.
+### 3.4 `repin_trigger_procedure`
 
-### 3.8 current_pin_assessment (CAP-11, CAP-15, CAP-16)
+**ADOPTED.** 리핀 검토를 시작할 수 있는 트리거는 다음 셋이다.
 
-- **값.** 두 실행 핀 모두 **`HOLD` — 지금 리핀하지 않는다.**
-  - **vendor pin `7481b0e`: HOLD.** 현행 개발계획 정본이 이 커밋의 `DEVELOPMENT_PLAN.md`를 가리키고(`CAPITAL_REQUIREMENTS_KO.md`), vendor 바이트·세 claim 표·골든·export 바이트 가드가 전부 이 기준에서 정렬돼 711 unittest가 통과한다(`docs/VALIDATION.md`). 이동을 정당화할 upstream 영수증·수정 수용 결정·지시가 없다. upstream main(`a114b5b`)이 앞서 있지만 main 전진은 비트리거이며, 신선도 목적의 리핀은 감사된 기준선을 근거 없이 무효화한다.
-  - **AI draft pin `e2a029d`: HOLD.** 초안 0.1의 읽기 전용 인용이고 agent lane/`agent_claims.json`에만 묶이며 mock은 vendor도 해시 잠금도 아니다. 더 새 초안으로 옮기면 채택된 계약 없이 claim 표만 소모성으로 churn된다. upstream이 안정 authority 계약을 내거나 agent lane이 새 조항을 필요로 할 때 §3.4 트리거로 재평가한다.
-- **비주장.** HOLD 판정은 두 핀이 가리키는 upstream 내용의 채택·완성을 주장하지 않는다. CAP-11·CAP-15·CAP-16은 계속 `NOT_BOUND`다.
+1. 실제 upstream 채택 영수증을 Capital의 특정 소비자에 적용해야 하는 경우.
+2. 정확성·보안 수정의 수용을 권한 있는 Capital 결정자가 명시한 경우.
+3. 소유자 지시 또는 위임된 결정이 특정 핀의 이동을 지명한 경우.
+
+트리거는 검토 개시 조건이다. 그 자체로 변경·병합이나 운영 사용을 승인하지 않는다. main 전진, 최신화 욕구, 연구 기준 갱신, 표면의 의미 변화가 없는 cosmetic diff만으로는 리핀하지 않는다.
+
+실제 리핀은 다음을 **한 PR에서 원자적으로** 처리한다.
+
+1. old/new 전체 SHA, 트리거, 수용 결정자, 대상 표면, upstream 차이와 호환성 영향을 기록한다.
+2. 새 원본과 소비 범위를 확인한다. vendor이면 대상 바이트와 manifest commit·SHA256을 함께 교체한다.
+3. 영향받는 클레임 표·벡터·골든을 재생성한다. 기대 결과 변경에는 의미상 근거를 붙인다.
+4. 현재 핀을 설명하는 문서, 인용 검사, `docs_surface.py` 등록·README needle, 영향받는 `tests/decision_bindings.json` 바인딩을 갱신한다. 과거 연구 기준은 보존한다.
+5. 기존 decision-binding 검사와 관련 테스트를 실행하고, 전체 unittest·벡터·문서 검사를 통과시킨다. acceptance 입력이나 결과에 영향을 주면 acceptance도 다시 실행한다.
+6. 후보 헤드에 대한 결과와 변경 근거를 남기고 통상 리뷰·병합 절차를 따른다.
+
+old→new 이력은 리핀 노트와 PR에 기록한다. `scripts/decision_ledger.py`를 임의의 이력 저장소로 간주하거나 스크립트 소스에 사건을 추가하도록 요구하지 않는다. 기존 ledger가 읽는 형식과 실제 통합 방법은 구현자가 해당 범위에서 확인해야 한다.
+
+실패하면 기존 핀을 유지한다. 병합 후 되돌림도 핀·표·벡터·펜스를 함께 되돌리는 검증된 PR로 수행한다. 문제가 있는 기존 핀을 유지할 수 없는 경우 관련 소비를 중단하며, 검증되지 않은 새 핀으로 자동 전환하지 않는다.
+
+### 3.5 `dual_pin_handling`
+
+**ADOPTED.** 병합된 활성 구성에는 구속 표면당 정확히 하나의 실행·참조 핀만 둔다. 같은 표면에서 두 SHA 중 상황에 따라 선택하는 전환 창과 자동 fallback은 허용하지 않는다.
+
+리핀 PR 안에서는 비교를 위해 old/new 결과를 함께 제시할 수 있다. 이전 결과는 비교 증거로 명시하고 활성 소비 경로에서 제외한다. 과거 Git 이력과 비활성 증거의 보존은 이중 핀이 아니다.
+
+vendor와 AI 인용처럼 서로 다른 표면이 서로 다른 핀을 사용하는 것은 허용한다. 단계적 이전이 필요하면 별도 위임 결정에서 표면 분리, 선택 규칙, 종료 조건, 검증·되돌림 방식을 먼저 정해야 한다. 이번 결정이 허용하는 상시 전환 기간은 **없음**이다.
+
+### 3.6 `claim_table_regeneration_rule`
+
+**ADOPTED. claim-table 핀 이동은 항상 해당 표와 벡터를 같은 PR에서 재생성한다.** 별도 후속 PR로 재생성을 미루지 않는다.
+
+적용 대상은 네 클레임 표 중 인용 핀이 바뀌는 표와 그 표에 연결된 벡터·관련 골든이다. vendor 핀 이동은 앞의 세 표를, AI 핀 이동은 agent 표를 기본 영향 범위로 검토한다. 실제 의존 범위를 PR에 명시한다.
+
+재생성 결과가 이전과 바이트 단위로 같을 수 있다. 이 경우 불필요한 변경을 만들지 않고, 실행한 재생성 절차·대상 파일·동일 결과를 후보 헤드의 증거로 남긴다. “바이트가 같을 것”이라는 추정으로 실행을 생략하지 않는다.
+
+자동 생성기가 없는 표·벡터는 새 핀에 대한 주장별 근거와 독립적인 기대 결과를 다시 구성·검토한다. SHA 문자열만 치환하는 것은 재생성이 아니다. 관측된 출력에 맞춰 기대값을 무조건 덮어쓰는 것도 허용하지 않는다.
+
+핀을 유지한 채 표의 오류나 커버리지를 수정하는 작업은 가능하다. 이 경우 인용 근거와 관련 벡터를 함께 검증한다. 금지하는 것은 핀 이동과 그에 따른 표·벡터 갱신을 분리하는 것이다. 새 벡터 파일은 제공된 저장소 지침대로 `docs_surface.py` 항목과 README needle도 같은 PR에 포함한다.
+
+### 3.7 `drift_fence_integration`
+
+**ADOPTED.** 다음 펜스는 서로 다른 사실을 검증하며 대체 관계가 아니다.
+
+| 펜스 | 검증 대상 |
+|---|---|
+| vendor manifest 및 관련 테스트 | 지정 원본·commit·vendored 바이트·SHA256의 일치 |
+| 클레임 인용 검사와 관련 벡터 테스트 | 핀, 주장, 기대 동작의 일치 |
+| `python3 scripts/manifest_vectors.py --check` | 이 도구가 관리하는 결정론적 manifest 벡터 |
+| `python3 scripts/docs_surface.py --check` | 등록된 문서 표면·산출물·README 연결 |
+| `scripts/decision_bindings.py`와 `tests/decision_bindings.json` | 결정 노트의 ADOPTED 항목에 대한 기존 바인딩 등록과 유효성 |
+| `tests/test_seams.py` | upstream 영수증 없는 seam `ADOPTED` 금지 |
+
+manifest 벡터 검사가 모든 claim-table 인용을 검사한다고 가정하지 않는다. 제공 팩에 없는 세부 검사 범위는 미확인이다. 리핀 구현자는 관련 표면의 검사 공백을 같은 PR에서 닫아야 한다.
+
+**이번 노트의 필수 선행 작업:** 별도 Capital PR에서 `tests/decision_bindings.json`에 이 `decision_id`의 여덟 항목을 기존 스키마와 checker 규칙대로 모두 등록한다. 대상은 §1의 여덟 item과 정확히 같아야 한다. 로컬 거버넌스 소비·검증 근거를 연결하며 upstream 채택 영수증을 만들어 넣지 않는다.
+
+등록 스키마와 정확한 consumer 필드는 허용 팩에 없어 **UNDETERMINED — 이번 문서에서 추측하지 않음**이다. 등록 담당은 별도 구현 노드다. 이 문서는 JSON 레코드 모양이나 지원 여부가 확인되지 않은 예외 유형을 신설하지 않는다.
+
+선행 PR은 기존 checker의 누락·유효성 검사를 유지해야 한다. 이 노트를 검색 대상에서 제외하거나, 허위 바인딩을 넣거나, 정책상 결정된 여덟 항목을 등록 회피 목적으로 `UNDETERMINED`로 바꾸지 않는다. 사전 등록이 기존 규칙에 맞지 않으면 정상 검증을 유지하는 선행 구현으로 해결해야 하며, 해결 전에는 이 노트 병합 조건이 충족되지 않는다.
+
+**실제 decision-binding 검증 명령**은 다음과 같다.
+
+`python3 -m unittest discover -s tests -p 'test_decision_bindings.py' -v`
+
+리뷰에 따르면 이 테스트는 `scripts/decision_bindings.py` 검사가 zero findings일 것을 요구한다. 등록만 있는 선행 헤드의 통과로 끝내지 않고, **선행 변경과 이 노트가 함께 있는 최종 후보 트리에서** 재실행해야 한다. 그 결과와 선행 PR 병합 commit을 이 노트 PR에 남긴다. 이후 전체 unittest와 `docs_surface.py --check`도 통과해야 한다.
+
+이 문서만 추가한 상태에서는 리뷰가 지적한 여덟 미등록 오류가 해소되지 않는다. 현재 등록 영수증은 없으며 병합 조건은 미충족이다. 향후 실제 리핀에서는 관련 바인딩 갱신을 리핀 PR 안에서 처리한다. 이번 별도 선행 PR은 문서 전용 결정 노드의 등록을 위한 것이며 일반적인 원자 갱신 규칙의 예외로 확장하지 않는다.
+
+### 3.8 `current_pin_assessment`
+
+**ADOPTED. 두 핀 모두 `HOLD`: 지금 리핀하지 않는다.**
+
+- **vendor `7481b0e`: HOLD.** 제공된 요구사항이 FSM 원본·vendor 바이트와 세 클레임 표의 기준으로 명시한다. 팩에는 이 기준을 대체할 특정 수정 수용 결정이나 upstream 채택 영수증이 없다. 2026-10-20의 검증 기록은 과거 로컬 결과이며 이번 `02bc3e5`의 재검증을 뜻하지 않는다.
+- **AI 인용 `e2a029d`: HOLD.** 범위는 초안 0.1과 mock의 읽기 전용 인용 및 agent 표다. 새 계약·새 조항으로 이동해야 할 근거가 팩에 없다. `e2313ab`라는 더 나중의 연구 기준만으로 이동하지 않는다.
+
+HOLD는 무기한 안전성 보증이 아니다. §3.4 트리거가 발생하면 재평가한다. 신뢰할 수 있는 결함 보고도 수정 수용 여부를 검토할 이유가 된다. 실제 채택이나 운영 권한은 별도 증거가 필요하며 CAP-11·CAP-15·CAP-16의 해당 미구속 범위는 계속 `NOT_BOUND`다.
 
 ## 4. 결정 블록
 
 ```capital-decision-v1
-{"schema":"capital-decision-v1","decision_id":"upstream-repin-policy-decision","decided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","provisional":true,
- "entries":{
-  "pin_class_vocabulary":{"status":"ADOPTED","value":{"classes":["EXECUTABLE_VENDOR","EXECUTABLE_CITATION","RESEARCH_BASELINE"],"executable_union":["EXECUTABLE_VENDOR","EXECUTABLE_CITATION"],"baseline_gates_tests":false},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-01","CAP-20"],"rationale":"바이트 잠금·읽기 인용·출처 기록은 구속력이 다르므로 감사가 혼동하지 않게 세 클래스로 분리","provisional":true,"basis":"PRODUCT_DECISION"},
-  "executable_pin_inventory":{"status":"ADOPTED","value":{"vendor_pin":{"sha":"7481b0e16ce9b903abbffa62249bb91cd9e63cfe","class":"EXECUTABLE_VENDOR","fence":"capital/vendor/manifest.json","bound_tables":["tests/upstream_claims.json","tests/fsm_contract_claims.json","tests/read_model_claims.json"]},"ai_draft_pin":{"sha":"e2a029d8ac3af7575888dac22fc4bf173ebec232","class":"EXECUTABLE_CITATION","vendored":false,"bound_tables":["tests/agent_claims.json"]},"commerce_check":"7c2452645c50b8ede17bdd762794adeabe42319e (RESEARCH_BASELINE)"},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-11","CAP-15","CAP-16"],"rationale":"실행 핀을 정확히 둘로 열거해 감사의 목록 질문을 닫는다","provisional":true,"basis":"PRODUCT_DECISION"},
-  "research_baseline_rule":{"status":"ADOPTED","value":{"append_only":true,"gates_tests":false,"repin_updates_old_baselines":false,"new_notes_record_current_main":true},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-01","CAP-20"],"rationale":"출처 증명의 시간축 보존 — kix-protocol baseline/blob 관행과 동일 논리","provisional":true,"basis":"PRODUCT_DECISION"},
-  "repin_trigger_procedure":{"status":"ADOPTED","value":{"triggers":["adopted_upstream_receipt","accepted_correctness_or_security_fix","explicit_delegated_decision_or_owner_directive"],"non_triggers":["upstream_main_advanced","freshness","cosmetic_diff","baseline_refresh"],"procedure":"single atomic PR: pin record -> re-vendor+rehash -> regenerate tables/vectors/goldens -> docs fences -> ledger old->new -> full verification -> normal review"},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-11","CAP-15","CAP-16","CAP-20"],"rationale":"허용 목록 트리거로 drift-chasing을 원천 차단하고 원자 절차로 재현성 확보","provisional":true,"basis":"PRODUCT_DECISION"},
-  "dual_pin_handling":{"status":"ADOPTED","value":{"max_pins_per_surface_at_merge":1,"standing_transition_window":false,"distinct_surfaces_multi_pin_allowed":true,"staged_migration_requires":"new delegated decision"},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-15","CAP-16"],"rationale":"시간 의존 이중 기준은 감사 재현성을 깨므로 병합 시 단일 핀만 허용","provisional":true,"basis":"PRODUCT_DECISION"},
-  "claim_table_regeneration_rule":{"status":"ADOPTED","value":{"atomic_with_pin_move":true,"pin_move_without_regen":"invalid","regen_without_pin_move":"invalid unless regeneration-bug fix not changing cited SHAs","applies_to":["tests/upstream_claims.json","tests/fsm_contract_claims.json","tests/read_model_claims.json","tests/agent_claims.json","tests/vectors/","goldens"]},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-13","CAP-14","CAP-15"],"rationale":"클레임 표는 핀의 결정론적 산출물 — 같은 PR 재생성이 불일치 커밋을 막는다","provisional":true,"basis":"PRODUCT_DECISION"},
-  "drift_fence_integration":{"status":"ADOPTED","value":{"fences":["capital/vendor/manifest.json SHA256 lock","scripts/manifest_vectors.py --check","scripts/docs_surface.py --check + README needles","claim-JSON cited-SHA match","tests/test_seams.py receipt rule"],"all_fence_updates_same_diff":true,"repin_adopts_no_seam":true},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-15","CAP-20"],"rationale":"기존 펜스가 리핀을 그대로 관측하도록 갱신 원자성을 규정","provisional":true,"basis":"PRODUCT_DECISION"},
-  "current_pin_assessment":{"status":"ADOPTED","value":{"vendor_pin_7481b0e":"HOLD","ai_draft_pin_e2a029d":"HOLD","reasons":{"vendor_pin_7481b0e":"정본 계획 앵커 + 전 표면 정렬·711 tests green + 트리거 부재","ai_draft_pin_e2a029d":"초안 인용·agent lane 한정 + 채택 계약 없이 이동 시 churn만 발생"},"next_review":"when any §3.4 trigger fires"},"provided_by":"Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)","date":"2026-10-21","cap_rows":["CAP-11","CAP-15","CAP-16"],"rationale":"두 핀 모두 이동 근거 없음 — 감사된 기준선 유지가 정직한 상태 라벨","provisional":true,"basis":"PRODUCT_DECISION"}
- }}
+{
+  "schema": "capital-decision-v1",
+  "decision_id": "upstream-repin-policy-decision",
+  "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+  "date": "2026-10-21",
+  "provisional": true,
+  "entries": {
+    "pin_class_vocabulary": {
+      "status": "ADOPTED",
+      "value": {
+        "classes": ["EXECUTABLE_VENDOR", "EXECUTABLE_CITATION", "RESEARCH_BASELINE"],
+        "binding_classes": ["EXECUTABLE_VENDOR", "EXECUTABLE_CITATION"],
+        "classification_basis": "consumer_role_and_bound_surface",
+        "citation_implies_runtime_execution": false
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-01", "CAP-20"],
+      "rationale": "바이트 구속, 인용 구속, 연구 출처를 구분한다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "executable_pin_inventory": {
+      "status": "ADOPTED",
+      "value": {
+        "vendor_pin": {
+          "sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+          "class": "EXECUTABLE_VENDOR",
+          "manifest": "capital/vendor/manifest.json",
+          "file_count": 5,
+          "bound_tables": ["tests/upstream_claims.json", "tests/fsm_contract_claims.json", "tests/read_model_claims.json"]
+        },
+        "ai_draft_pin": {
+          "sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+          "class": "EXECUTABLE_CITATION",
+          "vendored": false,
+          "bound_tables": ["tests/agent_claims.json"]
+        },
+        "commerce_check": {
+          "sha": "7c2452645c50b8ede17bdd762794adeabe42319e",
+          "class": "RESEARCH_BASELINE"
+        },
+        "repin_performed": false
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-11", "CAP-15", "CAP-16"],
+      "rationale": "제공된 요구사항의 두 실행·참조 핀과 소비 범위를 유지한다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "research_baseline_rule": {
+      "status": "ADOPTED",
+      "value": {
+        "append_only_provenance": true,
+        "must_equal_current_executable_pin": false,
+        "repin_rewrites_historical_baselines": false,
+        "new_notes_record": "actual_used_snapshot_and_source",
+        "corrections": "dated_addendum_or_superseding_note",
+        "ordinary_note_validation_exempt": false
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-01", "CAP-20"],
+      "rationale": "연구 출처를 보존하면서 실행 핀과의 허위 동일성 요구를 막는다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "repin_trigger_procedure": {
+      "status": "ADOPTED",
+      "value": {
+        "triggers": ["applicable_upstream_adoption_receipt", "authorized_acceptance_of_correctness_or_security_fix", "explicit_owner_or_delegated_directive"],
+        "non_triggers": ["upstream_main_advance", "freshness_only", "cosmetic_only", "research_baseline_refresh"],
+        "atomic_pr_contents": ["old_new_sha_and_rationale", "source_and_hash_updates", "affected_tables_vectors_goldens", "current_reference_docs", "decision_bindings", "validation_evidence"],
+        "history_location": "repin_note_and_PR",
+        "failed_validation": "do_not_switch_pin",
+        "rollback": "atomic_verified_PR"
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-11", "CAP-15", "CAP-16", "CAP-20"],
+      "rationale": "근거 있는 전환만 허용하고 핀과 소비자 변경을 원자적으로 검증한다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "dual_pin_handling": {
+      "status": "ADOPTED",
+      "value": {
+        "active_pins_per_bound_surface_at_merge": 1,
+        "standing_transition_window": false,
+        "automatic_old_new_fallback": false,
+        "inactive_comparison_evidence_allowed": true,
+        "distinct_surface_pins_allowed": true,
+        "staged_migration_requires": "separate_delegated_decision"
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-15", "CAP-16"],
+      "rationale": "병합된 소비 경로의 구속 기준을 하나로 재현 가능하게 유지한다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "claim_table_regeneration_rule": {
+      "status": "ADOPTED",
+      "value": {
+        "every_claim_table_pin_move_regenerates_table_and_vectors_in_same_PR": true,
+        "related_goldens_in_same_PR": true,
+        "unchanged_output_requires_regeneration_evidence": true,
+        "deferred_regeneration_allowed": false,
+        "unchanged_pin_table_corrections_allowed_with_validation": true,
+        "new_vectors_require_docs_surface_and_readme_registration": true
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-13", "CAP-14", "CAP-15"],
+      "rationale": "핀移動과 주장·기대 결과의 갱신을 분리하지 않는다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "drift_fence_integration": {
+      "status": "ADOPTED",
+      "value": {
+        "fences": [
+          "vendor_manifest_and_integrity_tests",
+          "claim_pin_and_vector_tests",
+          "python3 scripts/manifest_vectors.py --check",
+          "python3 scripts/docs_surface.py --check",
+          "scripts/decision_bindings.py",
+          "tests/decision_bindings.json",
+          "tests/test_seams.py"
+        ],
+        "decision_binding_check": "python3 -m unittest discover -s tests -p 'test_decision_bindings.py' -v",
+        "this_note_prerequisite": {
+          "delivery": "separate_prerequisite_PR",
+          "registry": "tests/decision_bindings.json",
+          "required_items": [
+            "pin_class_vocabulary",
+            "executable_pin_inventory",
+            "research_baseline_rule",
+            "repin_trigger_procedure",
+            "dual_pin_handling",
+            "claim_table_regeneration_rule",
+            "drift_fence_integration",
+            "current_pin_assessment"
+          ],
+          "use_existing_binding_schema": true,
+          "registration_receipt": null,
+          "completion_claimed": false
+        },
+        "merge_gate": "prerequisite_merged_and_final_combined_candidate_has_zero_binding_findings",
+        "checker_bypass_allowed": false,
+        "future_repin_binding_updates_same_PR": true,
+        "repin_adopts_no_seam": true
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-15", "CAP-20"],
+      "rationale": "レビューで判明した八項目の未登録を必須の先行作業と最終候補検証で解消する。",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    },
+    "current_pin_assessment": {
+      "status": "ADOPTED",
+      "value": {
+        "vendor_pin_7481b0e": "HOLD",
+        "ai_draft_pin_e2a029d": "HOLD",
+        "reason": "no_specific_repin_trigger_evidence_in_supplied_pack",
+        "next_review": "on_any_authorized_repin_trigger",
+        "historical_validation_is_current_head_evidence": false,
+        "production": "NOT_AUTHORIZED"
+      },
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-10-21",
+      "cap_rows": ["CAP-11", "CAP-15", "CAP-16"],
+      "rationale": "현행 두 핀의 범위는 명확하지만 이동을 정당화할 새 근거는 제공되지 않았다.",
+      "provisional": true,
+      "basis": "PRODUCT_DECISION"
+    }
+  }
+}
 ```
 
 ## 5. 수용 기준 매핑
 
-- ✅ 이 노트는 `capital-decision-v1` 블록에 여덟 항목을 status와 함께 이름으로 나열한다(§4, 전부 ADOPTED).
-- ✅ `7481b0e` vendor pin·`e2a029d` AI 초안 pin·기록된 research baseline을 §3.2·§3.3에서 분류했고 **어떤 핀도 옮기지 않았다**(diff는 이 노트 한 파일).
-- ✅ §3.6이 claim-table 핀 이동은 **항상 같은 PR에서 표·벡터를 재생성**함을 명시한다.
+- 단일 `capital-decision-v1` 블록에 여덟 필수 항목과 각각의 `ADOPTED` 상태를 명시했다.
+- vendor `7481b0e`, AI 인용 `e2a029d`, 연구 기준을 분류했으며 어느 핀도 변경하지 않는다.
+- claim-table 핀 이동 시 항상 같은 PR에서 해당 표·벡터를 재생성하도록 결정했다.
+- 리뷰의 누락된 decision-binding 펜스, 등록 대상 여덟 항목, 범위가 분리된 선행 PR, 실제 검사 명령과 최종 후보 검증을 명시했다.
+- **저장소 병합 수용은 아직 미충족이다.** 등록 PR과 통과 영수증은 제공되지 않았다. 문서 수정만으로 여덟 오류가 사라졌다고 주장하지 않는다.
 
 ## 6. Open risks
 
-- citation pin(`e2a029d`)의 기계적 펜스가 vendor manifest보다 얇다 — 인용 SHA 불일치를 잡는 전용 테스트가 없으면 드리프트가 늦게 발견될 수 있다.
-- "수정 수용 결정" 트리거(§3.4-②)의 판정 주체가 명시 지시 없이는 모호할 수 있다 — 실제 발동 시 누가 수용을 결정했는지 PR에 반드시 기록해야 한다.
-- CAP row 매핑은 커버리지 표 원문이 아닌 인용 기준이라 차후 조정될 수 있다.
+- 인용 SHA 검사와 벡터 생성기의 실제 커버리지는 팩만으로 확정할 수 없다. 향후 구현에서 공백을 확인하고 변경과 함께 닫아야 한다.
+- decision-binding 등록 스키마와 사전 등록의 허용 여부는 미확인이다. 선행 작업은 기존 검사를 유지한 상태에서 이를 해결해야 한다.
+- 선행 binding 노트의 전체 내용과 현재 HEAD 검증 결과는 직접 확인하지 않았다. 제공 발췌 밖의 계약·영수증·통과 결과를 추론하지 않는다.
+- CAP 매핑은 제공 노트와 이번 노드 범위에 따른 잠정 연결이다. 금융·법무·세무 정책이나 운영 권한을 확대하지 않는다.
 
 ## 7. 후속 작업
 
-- `tests/agent_claims.json`의 인용 SHA를 `e2a029d`와 대조하는 자동 게이트 추가(별도 구현 노드).
-- 리핀이 실제로 발동될 때 `scripts/decision_ledger.py`에 old→new 핀 쌍 기록 절차를 첫 실행으로 검증.
-- upstream 안정 authority 계약 또는 채택 영수증이 나오면 `current_pin_assessment`를 §3.4 절차로 재평가.
+1. 별도 구현 노드가 여덟 decision-binding 등록을 선행 PR로 완료한다. checker 우회나 허위 영수증을 허용하지 않는다.
+2. supervisor가 선행 변경과 이 문서가 결합된 후보에서 decision-binding 검사, 전체 unittest, `docs_surface.py --check`를 실행하고 결과를 PR에 기록한다. 이 응답에서는 실행하지 않았다.
+3. 실제 리핀 트리거가 생기면 영향 표·벡터·문서·바인딩을 같은 PR에서 갱신한다. export 바이트 가드와 DEV_ONLY fixture의 임시 파일 0600 규칙 등 기존 검증 제약을 유지한다.
+4. 등록과 검증이 완료될 때까지 이 노트는 병합하지 않는다. 두 현행 핀은 계속 `HOLD`다.
