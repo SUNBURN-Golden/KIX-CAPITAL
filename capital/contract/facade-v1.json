@@ -4031,6 +4031,9 @@
         "proposal_id": {
           "type": "string"
         },
+        "effects_executed": {
+          "const": false
+        },
         "label": {
           "const": "LOCAL_FAKE_GATE"
         }
@@ -4084,6 +4087,9 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "effects_executed": {
+          "const": false
         },
         "label": {
           "const": "LOCAL_FAKE_GATE"

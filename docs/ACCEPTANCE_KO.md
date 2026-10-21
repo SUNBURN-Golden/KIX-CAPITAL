@@ -4,6 +4,25 @@
 
 사람 수용은 아직 일어나지 않았다. `scripts/acceptance.py`가 0으로 끝나도 사람이 수용한 것이 아니다. 금액·역할·공연은 합성이다. 실자금, 실 PG, 은행, KYC, 제공자 호출이 없다.
 
+## Capital-local 추가 여정 (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check`는 `integrated-journeys` 단계에서 기존
+T03-sim–T06-sim과 N1-sim, N2-sim을 모두 검사한다. N 이름은 Capital-local이며
+upstream T-rung 의미나 자격을 주장하지 않는다. `funds_executed: false`,
+`integrated: false`, `qualification_claimed: false`를 유지한다.
+
+- N1-sim: disposable ScenarioReplaySource의 call-fire → inclusive cure deadline
+  (미치유) → acceleration → HUMAN_OPERATOR_DECISION의 DEFAULT_ELIGIBLE 제안.
+  F04 default는 호출하지 않으며 DRAWN 상태를 유지한다.
+  고정 증거: `tests/golden/journey_n1_sim.json`.
+- N2-sim: agent 제안은 HUMAN_PENDING이며 organizer가 proposal_id를 인용한
+  실제 모의 repay 명령을 제출한다. receipt의 `effects_executed: false`는 agent가
+  실행하지 않았다는 뜻이다. auditor는 receipt와 journal을 대조하고 manifest와
+  workspace를 offline 검증한다. 변조된 citation은 검증 실패해야 한다.
+  고정 증거: `tests/golden/journey_n2_sim.json`.
+
+실자금·외부 제공자·인증은 없고 제안 자체는 프로세스 메모리 메모다.
+
 ## 체크아웃에서 설치하고 실행
 
 Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실행한다.

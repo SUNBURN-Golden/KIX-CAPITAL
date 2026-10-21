@@ -125,6 +125,13 @@ VECTOR_NEEDLES = {
 }
 
 
+JOURNEY_NEEDLES = {
+    'journey_n1_sim.json': ('N1-sim', 'tests/golden/journey_n1_sim.json'),
+    'journey_n2_sim.json': ('N2-sim', 'tests/golden/journey_n2_sim.json'),
+}
+JOURNEY_COMMAND = 'python3 scripts/sim_journeys.py --check'
+
+
 class SurfaceError(Exception):
     """A needle registry contradicts the live routes or the vectors tree."""
 
@@ -189,7 +196,8 @@ def _read_stripped(path, label, findings):
 
 
 def find_drift(integration=DEFAULT_INTEGRATION, readme=DEFAULT_README,
-               handbook=None, acceptance=None, vectors_dir=DEFAULT_VECTORS):
+               handbook=None, acceptance=None, vectors_dir=DEFAULT_VECTORS,
+               golden_dir=ROOT / 'tests' / 'golden'):
     """Every drift finding, plus counts for the ok line. Registry errors raise."""
     handbook = STAGE_DOCS['docs/OPERATOR_HANDBOOK_KO.md'] if handbook is None else handbook
     acceptance = STAGE_DOCS['docs/ACCEPTANCE_KO.md'] if acceptance is None else acceptance
@@ -231,6 +239,14 @@ def find_drift(integration=DEFAULT_INTEGRATION, readme=DEFAULT_README,
         for needle in VECTOR_NEEDLES[key]:
             if needle not in docs['README.md']:
                 findings.append(f'README.md drops tests/vectors/{key}: needle {needle!r} is absent')
+
+    for artifact, needles in JOURNEY_NEEDLES.items():
+        if not (Path(golden_dir) / artifact).is_file():
+            findings.append(f'journey artifact missing: tests/golden/{artifact}')
+        for label in ('README.md', 'docs/ACCEPTANCE_KO.md'):
+            for needle in (*needles, JOURNEY_COMMAND):
+                if needle not in docs[label]:
+                    findings.append(f'{label} drops journey needle {needle!r}')
 
     required = acceptance_stages()
     for label in STAGE_DOCS:

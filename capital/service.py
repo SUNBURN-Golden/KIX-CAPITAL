@@ -1060,6 +1060,7 @@ class CapitalService:
                        'role': principal.role, 'role_provenance': ROLE_PROVENANCE}
             if cited is not None:
                 receipt['proposal_id'] = cited
+                receipt['effects_executed'] = False
             try:
                 bound = None
                 if op == 'bind_settlement':

@@ -2,6 +2,23 @@
 
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
+## Capital-local named journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs all six named synthetic journeys in
+acceptance's `integrated-journeys` stage. N1-sim and N2-sim are Capital-local names,
+not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
+`integrated: false`, and `qualification_claimed: false`.
+
+- N1-sim: disposable ScenarioReplaySource margin call, inclusive uncured deadline,
+  acceleration and a human-facing DEFAULT_ELIGIBLE proposal; no F04 default call.
+  Pin: `tests/golden/journey_n1_sim.json`.
+- N2-sim: agent HUMAN_PENDING proposal, organizer repayment citing proposal_id,
+  citation-bearing receipt (`effects_executed: false` for the agent), and auditor
+  receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
+  Pin: `tests/golden/journey_n2_sim.json`.
+
+No real funds, providers or authentication; proposals remain process-memory memos.
+
 ## DEV_ONLY keyset integrity
 
 Opt in with `python3 -m capital.server --workspace ./var/capital-workspace --dev-keyset`.
