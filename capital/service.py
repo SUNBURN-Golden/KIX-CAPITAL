@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, forecast, margin, overlay, risk
+from capital import coa, covenants, forecast, margin, overlay, risk, portfolio_snapshot
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1427,6 +1427,57 @@ class CapitalService:
                 return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def portfolio_snapshot(self, instance_id):
+        """One lock-held, detached local diagnostic cut. No persistence or remote reads."""
+        with self.lock:
+            if not instance_id or instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            body = portfolio_snapshot.diagnostic(self.instance_id)
+            marks = body['completeness']
+            # Reject before touching machines on remote/unknown adapters.
+            from capital.gate_producer import GateHttpProducer
+            if type(self.producer) is not PinnedFsmProducer or not callable(getattr(self.producer, 'snapshot_inputs', None)):
+                marks['producer'] = 'UNSUPPORTED'
+                marks['reasons'].append('GATE_FAKE_UNSUPPORTED' if isinstance(self.producer, GateHttpProducer)
+                                        else 'COHERENT_SNAPSHOT_UNSUPPORTED')
+                return portfolio_snapshot.finish(body)
+            marks['producer'] = 'SUPPORTED'
+            try:
+                captured = self.producer.snapshot_inputs()
+            except ValueError as exc:
+                reason = str(exc)
+                marks['producer' if reason == 'COHERENT_SNAPSHOT_UNSUPPORTED' else 'fixtures'] = 'UNSUPPORTED'
+                marks['reasons'].append(reason)
+                return portfolio_snapshot.finish(body)
+            marks['fixtures'] = 'IMMUTABLE'
+            if type(self.terms) is not DecisionNoteTermsPolicy:
+                marks['terms'] = 'UNSUPPORTED'
+                marks['reasons'].append('FROZEN_TERMS_UNSUPPORTED')
+                return portfolio_snapshot.finish(body)
+            frozen = portfolio_snapshot.FrozenInputs.capture(
+                captured, self.receipts, self.case_fixtures, self.overlay_entries, self.terms, self.overlay_bounds)
+            data = frozen.detached()
+            error = portfolio_snapshot.storage_health(self.storage, self.workspace_status, data)
+            if error:
+                marks['storage'] = 'DEGRADED'
+                marks['reasons'].append(error)
+                return portfolio_snapshot.finish(body)
+            marks['storage'] = 'HEALTHY'
+            before = (self._frozen(), copy.deepcopy(self.case_fixtures), copy.deepcopy(self.terms.__dict__),
+                      copy.deepcopy(self.overlay_bounds))
+            try:
+                try:
+                    return portfolio_snapshot.compose(frozen, body)
+                except (CreditError, ProjectionError, ValueError, KeyError, TypeError, ArithmeticError):
+                    for name in portfolio_snapshot.SECTIONS:
+                        body[name] = None
+                        marks['sections'][name] = 'UNAVAILABLE'
+                    marks['reasons'].append('CAPTURE_RECONCILIATION_FAILED')
+                    return portfolio_snapshot.finish(body)
+            finally:
+                if before != (self._frozen(), self.case_fixtures, self.terms.__dict__, self.overlay_bounds):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
     def risk(self):
