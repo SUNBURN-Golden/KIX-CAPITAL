@@ -219,7 +219,7 @@ def _validate_bundle(root, manifest_path, manifest, raw):
         return data
 
     _keys(m['contract'], {'contract_only', 'integration_gate'}, 'manifest.contract')
-    loaded = {key: reference(ref, 'manifest.contract.' + key, {'gitBlob'})
+    loaded = {key: decode_input(reference(ref, 'manifest.contract.' + key, {'gitBlob'}), canonical=False)
               for key, ref in m['contract'].items()}
     reference(m['generator'], 'manifest.generator', {'toolchain'})
     toolchains = decode_input(read_bundle_file(root, 'toolchains.json'), canonical=False)
@@ -260,7 +260,7 @@ def _validate_bundle(root, manifest_path, manifest, raw):
              'catalogue-binding', 'profile.catalogue')
     # Resolve the profile's path too, independently of the manifest binding.
     read_bundle_file(root, catalogue['openapi_path'])
-    api = decode_input(loaded['contract_only'], canonical=False)
+    api = loaded['contract_only']
     _require(type(api) is dict and api.get('x-kix-live-http-server') is False
              and api.get('x-kix-production-endpoint') is False and 'servers' not in api,
              'contract-live-flag', 'contract_only')

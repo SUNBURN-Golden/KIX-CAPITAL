@@ -182,7 +182,7 @@ class CompatibilityTests(unittest.TestCase):
                 self.assert_error('forbidden-field', 'profile.' + key)
 
     def test_duplicate_keys_are_rejected_in_manifest_profile_contract_and_metadata(self):
-        for which in ('manifest', 'profile', 'contract', 'toolchain'):
+        for which in ('manifest', 'profile', 'contract_only', 'integration_gate', 'toolchain'):
             with self.subTest(which=which):
                 # Fresh copy for each input; refresh every dependent digest.
                 with tempfile.TemporaryDirectory() as tmp:
@@ -196,10 +196,11 @@ class CompatibilityTests(unittest.TestCase):
                     elif which == 'toolchain':
                         (b.root / 'toolchains.json').write_bytes(duplicate)
                     else:
-                        ref = b.manifest['contract']['contract_only']
+                        ref = b.manifest['contract'][which]
                         (b.root / ref['path']).write_bytes(duplicate)
                         ref.update(sha256=sha256(duplicate), gitBlob=git_blob(duplicate))
-                        b.profile['catalogue']['openapi_sha256'] = sha256(duplicate)
+                        if which == 'contract_only':
+                            b.profile['catalogue']['openapi_sha256'] = sha256(duplicate)
                         b.save_profile()
                     self.assertIn('duplicate-key', [e['code'] for e in b.check().errors])
 
