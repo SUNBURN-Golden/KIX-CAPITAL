@@ -1,7 +1,7 @@
 # Capital 2인 승인 시뮬레이션 결정 — 승인자 identity 모델, capital-desk 역할 채택 여부, 임계값 출처, 동일 선지급 당일 합산, AI 제안 비승인, 증거 인용 형태, auth matrix·데스크 UI 영향
 
 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).**
-이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 2인 원칙은 **시뮬레이션 통제**이며 실제 sign-off 권한이 아니다. 청약이나 대출 제안이 아니고, 실자금이 움직이지 않으며, production은 계속 `NOT_AUTHORIZED`다. `approver_label`은 인증이 아니고 모든 승인 증거는 `LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED`를 단다. 어떤 upstream 계약(IdP, AgentGrant/ActionPermit, `ai-delegation-contract-mock` 등)의 채택도 주장하지 않는다. diff는 `docs/decisions/CAPITAL_SECOND_APPROVER.md` 한 파일이며, `capital/`·`tests/`·vendor 바이트·골든·pinned auth matrix·기존 결정 노트의 상태 토큰은 건드리지 않는다.
+이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 2인 원칙은 **시뮬레이션 통제**이며 실제 sign-off 권한이 아니다. 청약이나 대출 제안이 아니고, 실자금이 움직이지 않으며, production은 계속 `NOT_AUTHORIZED`다. `approver_label`은 인증이 아니고 모든 승인 증거는 `LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED`를 단다. 어떤 upstream 계약(IdP, AgentGrant/ActionPermit, `ai-delegation-contract-mock` 등)의 채택도 주장하지 않는다. 이 결정 PR은 `docs/decisions/CAPITAL_SECOND_APPROVER.md`, `tests/decision_bindings.json`, `tests/vectors/pack/`만 갱신한다. 바인딩은 세 parked 소비 노드의 기존 Python 통합 지점을 `PENDING_CONSUMER`로 명시하며 구현 완료를 주장하지 않는다. pack은 변경된 결정 목록·문서 digest를 반영해 재생성한 `SIMULATED` 진단 fixture다. `capital/`·vendor 바이트·기타 골든·pinned auth matrix·기존 결정 노트의 상태 토큰은 건드리지 않는다.
 
 | 항목 | 값 |
 |---|---|
