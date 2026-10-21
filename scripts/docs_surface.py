@@ -80,6 +80,7 @@ ROUTE_NEEDLES = {
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
     ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
+    ('GET', '/api/risk/scenarios'): ('`GET /api/risk/scenarios/{id}`',),
     ('GET', '/api/policy'): (
         '`GET /api/policy` and `GET /api/policy/simulation`',
         '`GET /api/policy/shadow`',),
@@ -117,6 +118,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
     'forecast_vectors.json': (
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
+    'risk_scenarios.json': (
+        'tests/vectors/risk_scenarios.json', 'scripts/risk_scenario_vectors.py --check'),
     'workspace_crash.json': (
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),

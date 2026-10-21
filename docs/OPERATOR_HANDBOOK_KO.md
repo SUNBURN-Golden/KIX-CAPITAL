@@ -247,7 +247,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -610,5 +610,13 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 ### fsm-contract-claims
 
 `tests/fsm_contract_claims.json`(`KIX_CAPITAL_FSM_CONTRACT_CLAIMS_V1`, 라벨 `CLAIM_CONFORMANCE`, pinned_sha `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`)는 vendored `CreditMachine`과 `SettlementMachine`에 대한 결정적 클레임 표다. 각 행은 고정 계약 문서의 절과 needle을 인용하고 `check_id`로 등록된 검사 하나를 부른다: 공유 액면 예약(`shared_face`), 환불·회수 의미(`refund`, `recovery`), 재생·멱등(`restore_digest`, `restore_duplicate`, `idempotent_replay`), 대사(`reconcile`), 거절 시 저널 비증가, vendor 정체(`vendor.commit`, `vendor.hashes`, 파일별 SHA). `python3 scripts/fsm_contract_claims_check.py --execute`는 먼저 `capital/vendor/manifest.json`의 다섯 파일 SHA256을 모두 맞추고(`VENDOR_HASH_MISMATCH`면 1) 그 다음 표를 실행해 `CLAIM_CONFORMANCE passed=N total=N failed=0`을 찍는다. 결과는 SIMULATED `CLAIM_CONFORMANCE`이지 SEMANTIC_CONFORMANCE도 제품 채택도 아니다. `--protocol-dir`는 인용된 제목과 needle을 읽기 전용으로만 확인하고 체크아웃에 쓰지 않으며 실제 연동을 세우지 않는다. `--execute`도 `--protocol-dir`도 없으면 `SKIPPED`이고 통과가 아니다. 이 표는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하며 `upstream-claims` 단계의 네 번째 명령이 아니다 — 그 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute` 셋뿐이다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:risk-whatif-scenarios -->
+
+### risk-whatif-scenarios
+
+`GET /api/risk/scenarios`와 `GET /api/risk/scenarios/{id}`는 읽기 전용 가상 시나리오 평가기다. `mode`는 `SIMULATED_WHATIF`이고 권한은 `projection:read`라 organizer·auditor가 읽고 observer·agent는 `403 ROLE_FORBIDDEN`이다. 인덱스는 고정 넷 `largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`을 이름 붙이고, 각 id는 `GET /api/risk`·`GET /api/risk/covenants`가 쓰는 정수 입력을 깊은 복사해 가정 하나를 적용한 뒤 `risk.build`·`covenants.build`를 다시 접는다. 가정은 최대 미상환 잔액의 미디폴트 오픈 전진을 `DEFAULTED`로 두기, 스펙 고정 최대 충격(`SHOCKS_BPS` 마지막 값)만큼 `refund_face`를 올리기(새로 위반하는 대상엔 `hypothetical` `CALLED` 행만 보고, 기록은 안 함), 마지막 기록 만기 하루 뒤로 `sim_day`를 투영하기, 가장 빡빡한 bound U4 캡을 넘는 가상 인출 `sim-whatif-cap` 하나 넣기다. `reconciliation`은 `baseline_outstanding_krw`·`assumption_delta_krw`·`scenario_outstanding_krw`·`matched`와 기준 digest를 싣고, `applied`·`enforced`·`policy_adopted`는 항상 false다. 대상이 없으면 `evaluated` false에 `unevaluated_reason`만 둔다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 없거나 쓸 수 없으면 숫자 절 없는 `NOT_BOUND`이며 인덱스는 이름만 계속 낸다. 저널·오버레이 항목·receipt·예약은 변하지 않는다. 시드 데모 응답은 `tests/vectors/risk_scenarios.json`(`KIX_CAPITAL_RISK_WHATIF_VECTORS_V1`)에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝난다. `tests/test_risk_whatif.py`가 고정 벡터·대사·역할 거절·읽기 불변을 확인한다.
 
 <!-- /handbook-section -->

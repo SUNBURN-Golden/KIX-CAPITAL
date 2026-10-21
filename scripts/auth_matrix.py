@@ -72,6 +72,7 @@ GET_PROBES = {
     '/api/overlay': ['/api/overlay'],
     '/api/risk': ['/api/risk'],
     '/api/risk/covenants': ['/api/risk/covenants'],
+    '/api/risk/scenarios': ['/api/risk/scenarios', '/api/risk/scenarios/largest-advance-default'],
     '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],
