@@ -95,6 +95,7 @@ def build_plan(root=None):
                 [py, 'scripts/upstream_claims_check.py', '--execute'],
                 [py, 'scripts/agent_claims_check.py', '--execute'],
                 [py, 'scripts/read_model_claims_check.py', '--execute'],
+                [py, 'scripts/ce1_claims_check.py', '--execute'],
             ],
         },
         {
