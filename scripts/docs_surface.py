@@ -110,6 +110,7 @@ ROUTE_NEEDLES = {
 VECTOR_NEEDLES = {
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
+    'pack/': ('tests/vectors/pack/', 'scripts/pack_vectors.py --check'),
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
     'gate_faults.json': (
