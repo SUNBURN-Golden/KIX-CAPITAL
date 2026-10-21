@@ -116,6 +116,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
     'gate_faults.json': (
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
+    'compat/': (
+        'tests/vectors/compat/', 'scripts/compat_preflight.py --check'),
     'forecast_vectors.json': (
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'workspace_crash.json': (
