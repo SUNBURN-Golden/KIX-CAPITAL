@@ -222,14 +222,21 @@ class StageTableTests(unittest.TestCase):
         self.assertEqual(self.digest['packaged'], {'sha256': FAKE_SMOKE_SHA, 'artifact_kind': 'LOCAL_SIMULATION_ARTIFACT'})
 
     def test_a_vendor_file_that_does_not_match_its_pin_is_refused(self):
-        evidence = synthetic_evidence()
-        name = sorted(evidence['vendor_hashes']['hashes'])[0]
-        evidence['vendor_hashes']['hashes'][name] = '0' * 64
-        evidence['vendor_hashes']['verified'] = False
-        self.work.put_evidence(evidence)
-        code, _, err = run(*self.work.args('--write'))
-        self.assertEqual(code, 1)
-        self.assertIn('vendor', err)
+        raw = self.raw
+        for name in sorted(vendor_manifest()['files']):
+            with self.subTest(file=name):
+                evidence = synthetic_evidence()
+                evidence['vendor_hashes']['hashes'][name] = '0' * 64
+                self.assertIs(evidence['vendor_hashes']['verified'], True)
+                self.work.put_evidence(evidence)
+                code, _, err = run(*self.work.args('--write'))
+                self.assertEqual(code, 1)
+                self.assertIn(name, err)
+                self.assertEqual(self.work.artifact.read_bytes(), raw)
+                self.work.artifact.unlink()
+                self.assertEqual(run(*self.work.args('--write'))[0], 1)
+                self.assertFalse(self.work.artifact.exists())
+                self.work.artifact.write_bytes(raw)
 
 
 class DeterminismTests(unittest.TestCase):
@@ -363,6 +370,9 @@ class WriteGateTests(unittest.TestCase):
     def test_unrecorded_golden_digests_are_refused(self):
         self.refuses(lambda e: e['golden_digests'].update(status='unrun'), 'golden_digests')
 
+    def test_unverified_vendor_evidence_is_refused(self):
+        self.refuses(lambda e: e['vendor_hashes'].update(verified=False), 'vendor_hashes is not verified')
+
     def test_missing_or_unreadable_evidence_exits_one(self):
         code, _, err = run(*self.work.args('--write'))
         self.assertEqual(code, 1)
@@ -459,6 +469,37 @@ class CheckTests(unittest.TestCase):
         code, _, err = self.check()
         self.assertEqual(code, 1)
         self.assertIn('differs from the digest: $.golden.debit', err)
+
+    def test_vendor_flags_must_all_be_true_even_when_both_copies_match(self):
+        for name in sorted(vendor_manifest()['files']):
+            with self.subTest(file=name):
+                document = json.loads(self.raw)
+                document['vendor']['files'][name] = False
+                self.assertIs(document['vendor']['verified'], True)
+                self.assertIs(document['ok'], True)
+                self.work.artifact.write_bytes(script.dump(document))
+                self.work.embed(document)
+                code, _, err = self.check()
+                self.assertEqual(code, 1)
+                self.assertIn('$.vendor', err)
+
+    def test_vendor_pin_file_set_and_summary_must_match_the_manifest(self):
+        for what, mutate in {
+            'wrong commit': lambda v: v.update(commit='0' * 40),
+            'missing file': lambda v: v['files'].pop(next(iter(v['files']))),
+            'extra file': lambda v: v['files'].update({'extra.py': True}),
+            'unverified': lambda v: v.update(verified=False),
+            'non-boolean flag': lambda v: v['files'].update({next(iter(v['files'])): 1}),
+            'missing vendor': lambda v: v.clear(),
+        }.items():
+            with self.subTest(change=what):
+                document = json.loads(self.raw)
+                mutate(document['vendor'])
+                self.work.artifact.write_bytes(script.dump(document))
+                self.work.embed(document)
+                code, _, err = self.check()
+                self.assertEqual(code, 1)
+                self.assertIn('$.vendor', err)
 
     def test_a_tampered_digest_with_a_stale_embedded_copy_fails(self):
         document = json.loads(self.raw)

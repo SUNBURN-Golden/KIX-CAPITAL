@@ -195,16 +195,22 @@ def _packaged_sha256(stage):
     raise DigestError('packaged-smoke build record prints no "<path>.pyz <sha256>" line')
 
 
+def _vendor_manifest():
+    try:
+        return json.loads(VENDOR_MANIFEST.read_text(encoding='utf-8'))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise DigestError(f'vendor manifest unreadable: {exc}') from exc
+
+
 def _vendor(evidence):
     vendor = evidence.get('vendor_hashes')
     _require(type(vendor) is dict and vendor.get('verified') is True, 'evidence vendor_hashes is not verified')
-    try:
-        pinned = json.loads(VENDOR_MANIFEST.read_text(encoding='utf-8'))
-    except (OSError, UnicodeError, ValueError) as exc:
-        raise DigestError(f'vendor manifest unreadable: {exc}') from exc
+    pinned = _vendor_manifest()
     _require(vendor.get('commit') == pinned.get('commit'), 'evidence vendor commit differs from the manifest pin')
     hashes = vendor.get('hashes')
     _require(type(hashes) is dict and sorted(hashes) == sorted(pinned['files']), 'evidence vendor file set differs')
+    for name, expected in sorted(pinned['files'].items()):
+        _require(hashes[name] == expected, f'evidence vendor hash differs from the manifest pin: {name}')
     return {
         'commit': pinned['commit'],
         'files': {name: hashes[name] == expected for name, expected in sorted(pinned['files'].items())},
@@ -297,6 +303,18 @@ def structural_problems(raw: bytes, policy) -> list:
     found = _has_strip_key(body, set(policy['strip_keys']))
     if found:
         problems.append(f'strip key present at {found}')
+    try:
+        pinned = _vendor_manifest()
+    except DigestError as exc:
+        problems.append(str(exc))
+    else:
+        expected_vendor = {
+            'commit': pinned['commit'],
+            'files': {name: True for name in pinned['files']},
+            'verified': True,
+        }
+        if dump(document.get('vendor')) != dump(expected_vendor):
+            problems.append('$.vendor must match the manifest pin and verify every pinned file')
     stages = document.get('stages')
     if type(stages) is not list or [row.get('stage_id') for row in stages if type(row) is dict] != list(REQUIRED_STAGES):
         problems.append('$.stages is not the acceptance ladder')

@@ -746,7 +746,7 @@ Commands actually run:
 The `closeout-evidence-vector` node supplies the eighth finance input vector, so all eight `FINANCE_PENDING_NODES` candidates now carry vectors. It implements the decided artifact of `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md` (provisional product decision; its ADOPTED entries are the policy, and the generator reads the strip keys, labels and non-claims from that note instead of copying them).
 
 - `scripts/closeout_digest.py --write` emits `tests/vectors/closeout_digest.json` (format `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`, label `INPUT_VECTOR_CANDIDATE`, data label `SIMULATED`, canonical ASCII JSON) from `build/acceptance-evidence.json`. Per acceptance stage it keeps `stage_id`, `command`, `status`, `expected_exit` (0), `test_count` (including the parser-intentional null of `node-check`), `label` `SIMULATED` and `funds_executed` false, plus the seeded-demo `state_digest`, `content_digest`, `debit`, `credit`, the vendor pin commit with its five `verified` flags, and the packaged zipapp `sha256`. The git `head_sha`, tool versions, timestamps, instance ids, paths and hosts are not carried: the digest is an allowlist projection, the 18 strip keys are also deleted at every depth, and they are listed in `stripped_keys`. The interpreter path becomes `python3` and the built zipapp path (it names the capital version) a placeholder. The write gate refuses (exit 1, no file written) unless the evidence is `ok:true`, `SIMULATED`, `funds_executed` false and holds exactly the eight ladder stages, each passed and not injected.
-- `scripts/closeout_digest.py --check` needs no evidence: canonical bytes, format, labels, `semantic_conformance` false, `upstream_nodes_completed` `[]`, `ok:true`, the stage table, no strip key at any depth, and byte equality with the copy embedded in `tests/vectors/finance_vectors.json` group `closeout_digest` (whose candidates-index row must name it). Exit 1 on drift or a missing file. `--check-evidence` regenerates from fresh evidence, byte-compares, and names the first differing JSON path.
+- `scripts/closeout_digest.py --check` needs no evidence: canonical bytes, format, labels, `semantic_conformance` false, `upstream_nodes_completed` `[]`, `ok:true`, the stage table, no strip key at any depth, and byte equality with the copy embedded in `tests/vectors/finance_vectors.json` group `closeout_digest` (whose candidates-index row must name it). The vendor summary must match the manifest pin, contain exactly the pinned files, and set every file flag and `verified` to boolean `true`, even when the two copies match. Exit 1 on drift or a missing file. `--check-evidence` regenerates from fresh evidence, byte-compares, and names the first differing JSON path.
 - `scripts/finance_vectors.py` gained the group `closeout_digest` → `fin-finance-closeout`, which embeds the committed digest as it is. The `candidates` index now has `vectors` non-null and `reason` null for 8 of 8 ids. `semantic_conformance` stays `false` and `upstream_nodes_completed` stays `[]`. `finance_vectors.json` was regenerated only with `--write`; the digest is regenerated first.
 - `scripts/docs_surface.py` gained the `VECTOR_NEEDLES` entry for `closeout_digest.json`, and the binding note (`CAPITAL_UPSTREAM_BINDING.md` §3.3 prose and `artifact_map`) now maps `fin-finance-closeout` to `tests/vectors/closeout_digest.json (derived from that evidence)` as the decision's `binding_note` directs; `candidate_ids` and every status token are unchanged. The acceptance ladder is unchanged (no closeout stage: the evidence describes the ladder, so a stage inside it would self-reference).
 
@@ -788,3 +788,49 @@ No `DECISION_REQUIRED.md` was written: the decision note ADOPTS every item this 
 ### Second merge with main (2026-10-17, `origin/main` at `2acd2a0`)
 
 Main's `audit70-fix5` and the external-gate and release-acceptance decision notes landed meanwhile. The only conflict was this file (main's `audit70-fix5` section is kept before this node's section; both sides kept). `python3 scripts/acceptance.py` on the merged tree: `ok=true`, unit 684, storage-conformance 7, pinned-vendor 7, upstream-claims 181, browser 48, packaged-smoke 8, seeded-demo 1. `python3 scripts/closeout_digest.py --write` and `python3 scripts/finance_vectors.py --write` regenerated the digest (3995 bytes) and the finance pack (93806 bytes); both `--check` and `closeout_digest.py --check-evidence`: exit 0. No code, test or golden file conflicted.
+
+### PR fix round 1 (2026-10-21)
+
+The blocking review finding was reproduced and fixed: `_vendor()` now compares
+every evidence hash to the locked manifest before returning a verified summary.
+`verified:true` alone cannot authorize a mismatched hash. The evidence-free
+`--check` also requires the manifest commit, exactly the pinned file set, and
+boolean `true` for every file flag and the summary, even if the digest and its
+embedded copy match. Regression mutations cover each of the five hashes while
+retaining `verified:true`, preserve an existing artifact on refusal, and leave no
+new artifact when refused. Matching-copy mutations cover each false flag, a
+changed commit, missing/extra files, an unverified summary and a non-boolean flag.
+Before the fix, these checks produced 16 failing subcases; afterward all 61
+closeout tests pass.
+
+Actual local verification from HEAD `e771368`, Python 3.13.5, node v20.19.2,
+npm 11.21.0, Playwright 1.58.2 (installed offline from the existing cache):
+
+- `python3 -m unittest discover -s tests -v`: 674 reported, 2 failures, 55 errors.
+  All errors report `PermissionError: [Errno 1] Operation not permitted` creating
+  sockets. The failures concern server startup and packaged server smoke;
+  failed class setups also prevent dependent tests from running. Full log:
+  `/tmp/closeout-review-unit.log`.
+- `python3 scripts/acceptance.py`: exits 1, `ok:false`. Unit, storage HTTP fuzz,
+  browser server startup and packaged smoke fail under the socket restriction;
+  pinned-vendor (7), upstream-claims (181), node-check and seeded-demo (1) pass.
+  Log: `/tmp/closeout-review-acceptance-pass1.log`.
+- Pinned MockCredit discovery: 7 pass. `python3 -m compileall -q capital`,
+  `node --check capital/static/app.js`, `scripts/docs_surface.py --check`,
+  `scripts/closeout_digest.py --check` and `scripts/finance_vectors.py --check`:
+  exit 0.
+- `npm run test:browser`: exits 1 before tests run because the configured
+  `127.0.0.1` web server cannot create a socket, despite Chromium being available.
+  Log: `/tmp/closeout-review-browser.log`.
+- `closeout_digest.py --write` against the failed evidence: exit 1,
+  `evidence ok is not true`; existing digest bytes preserved. The digest and
+  finance pack remain unchanged. A fresh successful two-pass regeneration is
+  pending a loopback-capable runner; the structural checks above do not claim
+  fresh acceptance. See root `DECISION_REQUIRED.md` for the runner options and
+  completion procedure.
+
+The five vendored files SHA256-match the locked manifest; those files, the
+manifest itself, manifest vectors, export development key, golden demo,
+acceptance ladder, `.aiops/` and CI definitions remain byte-identical to HEAD.
+No commit, push or post was made. All data and acceptance remain SIMULATED;
+there is no SEMANTIC_CONFORMANCE or upstream-completion claim.
