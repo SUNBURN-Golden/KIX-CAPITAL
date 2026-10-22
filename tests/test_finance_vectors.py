@@ -199,6 +199,7 @@ INSTANCE_BOUND_SECTIONS = ['receipts', 'projection', 'reconciliation', 'statemen
 SHA256 = re.compile(r'[0-9a-f]{64}')
 # Every GET api route of the facade contract, in contract order: path -> response definitions.
 FACADE_READS = [
+    ('/api/portfolio/snapshot', ['portfolio_snapshot']),
     ('/api/state', ['state']),
     ('/api/scenarios', ['scenario_list']),
     ('/api/scenarios/{id}', ['scenario_detail']),
@@ -208,6 +209,7 @@ FACADE_READS = [
     ('/api/projection', ['projection', 'projection_coa_candidate']),
     ('/api/terms', ['terms_status']),
     ('/api/terms/portfolio', ['terms_portfolio']),
+    ('/api/terms/portfolio/forecast', ['terms_forecast']),
     ('/api/terms/{advance_id}', ['terms_case']),
     ('/api/terms/{advance_id}/allocation', ['terms_allocation']),
     ('/api/terms/{advance_id}/setoff', ['terms_setoff']),
@@ -225,6 +227,7 @@ FACADE_READS = [
     ('/api/health', ['health']),
     ('/api/overlay', ['overlay_state']),
     ('/api/risk', ['risk_state']),
+    ('/api/risk/covenants', ['covenant_state']),
 ]
 FACADE = ROOT / 'capital' / 'contract' / 'facade-v1.json'
 UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -735,14 +738,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_twenty_five_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 26)
+    def test_exactly_the_twenty_nine_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 29)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 38)
+        self.assertEqual(len(self.contract['routes']), 41)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))

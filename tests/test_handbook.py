@@ -264,6 +264,84 @@ class HandbookTests(unittest.TestCase):
             for word in words:
                 self.assertIn(word, body)
 
+    def test_handbook_has_audit90_fix1_node_sections(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        needed = {
+            'covenant-watch': (
+                'GET /api/risk/covenants', 'SIMULATED_COVENANT_WATCH', 'projection:read',
+                '403 ROLE_FORBIDDEN', 'CLEAR', 'WATCH', 'BREACH', 'MATURITY_WINDOW',
+                'U4_CAP_BREACHED', 'applied', 'enforced', 'GET /api/risk',
+                'reconciliation.matched', 'NOT_BOUND', 'tests/test_covenant_watch.py'),
+            'gate-fake-fault-corpus': (
+                'tests/vectors/gate_faults.json', 'KIX_CAPITAL_GATE_FAULTS_V1',
+                'scripts/fake_gate.py', 'gate_faults.py --check', 'LOCAL_FAKE_GATE',
+                'GATE_FAILED', 'INVALID_JSON', 'UNKNOWN', 'retry_authorized',
+                'IDEMPOTENCY_CONFLICT', 'NOT_BOUND', 'tests/test_gate_faults.py'),
+            'crash-replay-matrix': (
+                'tests/crash_matrix.py', 'tests/vectors/workspace_crash.json',
+                'KIX_CAPITAL_WORKSPACE_CRASH_V1', '--check', 'WORKSPACE_UNREADABLE',
+                'SIGKILL', 'overlay_state_digest_one_of', 'journal-append',
+                'overlay-entry', 'storage-conformance', 'LOCAL_FILE_WORKSPACE',
+                'NOT_BOUND', 'tests/test_crash_replay.py', 'SIMULATED'),
+            'decision-binding-fence': (
+                'tests/decision_bindings.json', 'capital-decision-bindings-v1',
+                'scripts/decision_bindings.py --check', 'ADOPTED', 'CONSUMED',
+                'PENDING_CONSUMER', 'consumer_node', 'reason', 'unit',
+                'python3 -m unittest discover -s tests -v',
+                'tests/test_decision_bindings.py'),
+            'fsm-contract-claims': (
+                'tests/fsm_contract_claims.json', 'KIX_CAPITAL_FSM_CONTRACT_CLAIMS_V1',
+                'scripts/fsm_contract_claims_check.py --execute', 'CLAIM_CONFORMANCE',
+                'CreditMachine', 'SettlementMachine', 'capital/vendor/manifest.json',
+                'VENDOR_HASH_MISMATCH', '--protocol-dir', 'SKIPPED',
+                'tests/test_fsm_contract_claims.py', 'upstream-claims'),
+            'ce1-canonical-claims': (
+                'tests/ce1_claims.json', 'KIX_CAPITAL_CE1_CLAIMS_V1',
+                'scripts/ce1_claims_check.py --execute', 'CLAIM_CONFORMANCE',
+                'CANONICAL_ENCODING_V1', 'DOCUMENTED_DIVERGENCE', 'ensure_ascii',
+                'capital/ce1_claims.py', 'capital/store.py',
+                '--protocol-dir', 'SKIPPED', 'tests/test_ce1_claims.py',
+                'upstream-claims'),
+        }
+        for name, words in needed.items():
+            start = text.index(f'<!-- handbook-section:{name} -->')
+            body = text[start:text.index('<!-- /handbook-section -->', start)]
+            self.assertIn(f'### {name}', body)
+            for word in words:
+                self.assertIn(word, body, (name, word))
+
+    def test_docs_name_the_checkers_and_their_stage_placement(self):
+        plan = {stage['id']: stage for stage in acceptance_ladder.build_plan()}
+        unit_commands = [' '.join(map(str, argv)) for argv in plan['unit']['commands']]
+        upstream_commands = [
+            ' '.join(map(str, argv)) for argv in plan['upstream-claims']['commands']]
+        self.assertTrue(any('unittest' in argv and 'discover' in argv for argv in unit_commands))
+        fence = [argv for argv in unit_commands if 'decision_bindings.py' in argv]
+        self.assertEqual(len(fence), 1)
+        self.assertIn('--check', fence[0])
+        self.assertLess(
+            unit_commands.index(next(c for c in unit_commands if 'discover' in c)),
+            unit_commands.index(fence[0]))
+        self.assertEqual(len(upstream_commands), 4)
+        for argv in upstream_commands:
+            self.assertIn('--execute', argv)
+            self.assertIn('_claims_check.py', argv)
+        for doc in (README.read_text(encoding='utf-8'),
+                    HANDBOOK.read_text(encoding='utf-8')):
+            self.assertIn('python3 scripts/decision_bindings.py --check', doc)
+            self.assertIn('python3 scripts/fsm_contract_claims_check.py --execute', doc)
+            for argv in upstream_commands:
+                needle = argv[argv.index('scripts/'):]
+                self.assertIn(needle, doc)
+            needles = [
+                'python3 ' + argv[argv.index('scripts/'):] for argv in upstream_commands]
+            positions = [doc.index(needle) for needle in needles]
+            self.assertEqual(positions, sorted(positions))
+            self.assertIn('추가 명령', doc)
+            self.assertIn('네 번째', doc)
+            self.assertIn('tests/test_fsm_contract_claims.py', doc)
+            self.assertIn('SKIPPED', doc)
+
 
 if __name__ == '__main__':
     unittest.main()

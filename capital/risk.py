@@ -96,7 +96,7 @@ def aging_class(sim_day, maturity_day, phase):
     return AGING_IDS[-2]
 
 
-def _advances(drawn, terms, sim_day):
+def advance_rows(drawn, terms, sim_day):
     """One fact row per drawn advance. Tier follows the draw receipt gate through the terms."""
     standard = _value(terms, 'term')['standard_term_days']
     weights = (_value(terms, 'reserve') or {}).get('provision_bps_of_outstanding')
@@ -238,7 +238,7 @@ def _stress(margin_subjects, drawn_open):
 
 def build(drawn, margin_subjects, *, terms, sim_day, projection_outstanding_krw):
     """The risk body. `drawn` and `margin_subjects` are the overlay's subjects; nothing is mutated."""
-    rows = _advances(drawn, terms, sim_day)
+    rows = advance_rows(drawn, terms, sim_day)
     total = sum(row['outstanding_krw'] for row in rows)
     open_rows = [row for row in rows if row['outstanding_krw'] > 0]
     tiers = _tiers(terms, rows, total)

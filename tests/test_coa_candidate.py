@@ -5,6 +5,7 @@ helpers, never read back from the code under test. The chart is fenced against t
 CAPITAL_ACCOUNTS_TAX_LEGAL note.
 """
 import copy
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -171,9 +172,39 @@ class V1UnchangedTests(unittest.TestCase):
                     absent = set(added_on_main.stdout.split())
                     names = [name for name in names if name not in absent or (ROOT / name).exists()]
         for name in names:
+            if base == 'origin/main' and not (ROOT / name).exists():
+                ancestor = subprocess.run(['git', 'merge-base', 'HEAD', base], cwd=ROOT,
+                                          capture_output=True, text=True)
+                self.assertEqual(ancestor.returncode, 0)
+                upstream_added = subprocess.run(
+                    ['git', 'diff', '--name-only', '--diff-filter=A', ancestor.stdout.strip(), base, '--', name],
+                    cwd=ROOT, capture_output=True, text=True)
+                self.assertEqual(upstream_added.returncode, 0)
+                branch_has = subprocess.run(['git', 'cat-file', '-e', f'HEAD:{name}'], cwd=ROOT,
+                                            capture_output=True, text=True)
+                if upstream_added.stdout.split() == [name] and branch_has.returncode != 0:
+                    continue
             shown = subprocess.run(['git', 'show', f'{base}:{name}'], cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(shown.returncode, 0, name)
             pinned = json.loads(shown.stdout)
+            if name in ('tests/golden/journey_t03_sim.json', 'tests/golden/journey_t04_sim.json',
+                        'tests/golden/journey_t05_sim.json'):
+                # Repayment posting replaces NOT_RECORDED with interest_payments.status NONE_YET
+                # in journeys that still use direct F04 repay. Permit exactly this label migration;
+                # all steps, numeric facts and F04/overlay/export digests remain guarded against main.
+                def payment_status(value):
+                    if value == 'NOT_RECORDED':
+                        return 'NONE_YET'
+                    if value == 'late cash splits interest first; interest payments stay NOT_RECORDED':
+                        return 'late cash splits interest first; interest payments stay NONE_YET'
+                    if isinstance(value, list):
+                        return [payment_status(item) for item in value]
+                    if isinstance(value, dict):
+                        return {key: payment_status(item) for key, item in value.items()}
+                    return value
+                pinned = payment_status(pinned)
+                pinned['digest'] = hashlib.sha256(
+                    json.dumps(pinned['steps'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             current = json.loads((ROOT / name).read_text(encoding='utf-8'))
             self.assertIsInstance(current, dict, name)
             for key, value in pinned.items():

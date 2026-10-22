@@ -334,14 +334,22 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(proc.stderr, '')
         self.assertNotIn(PROFILE_TOKEN, proc.stdout)
 
-    def test_acceptance_stage_runs_both_claim_tables(self):
+    def test_acceptance_stage_runs_all_claim_tables(self):
+        from capital.read_model_claims import load_table as load_read_model
         from capital.upstream_claims import load_table as load_upstream
         acceptance = _acceptance()
         plan = [stage for stage in acceptance.build_plan(ROOT) if stage['id'] == 'upstream-claims']
         self.assertEqual(len(plan), 1)
         self.assertEqual(plan[0]['commands'][0][1:], ['scripts/upstream_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][1][1:], ['scripts/agent_claims_check.py', '--execute'])
-        expected_total = len(load_upstream()['claims']) + len(load_table()['claims'])
+        self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py', '--execute'])
+        self.assertEqual(plan[0]['commands'][3][1:], ['scripts/ce1_claims_check.py', '--execute'])
+        from capital.ce1_claims import load_table as load_ce1
+        expected_total = (
+            len(load_upstream()['claims'])
+            + len(load_table()['claims'])
+            + len(load_read_model()['claims'])
+            + len(load_ce1()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
             code = acceptance.execute_plan(

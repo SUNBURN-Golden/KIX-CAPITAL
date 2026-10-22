@@ -1,5 +1,45 @@
 # Validation scope
 
+## DEV_ONLY keyset coverage
+
+`tests/test_dev_keyset.py` covers secure creation/restart, strict schema and encoding,
+0600/no-follow/nonregular rejection, two-key rotation, retirement, identity-bound MACs,
+V2/V3, CLI refusal, and response/log non-disclosure. The deterministic manifest corpus
+adds two clean keyset manifests, unknown-kid and retired-key cases with independently
+written expected reasons. Fixture keysets are synthetic DEV_ONLY, never external keys.
+Stage7 remains NOT_BOUND.
+
+Actual local node verification (2026-10-20; SIMULATED fixtures only):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_dev_keyset.py' -v` | 7 passed (initial run before HTTP coverage: 6 passed) |
+| `python3 -m unittest discover -s tests -p 'test_manifest_vectors.py' -v` | 11 passed, including rerun after module relocation |
+| `python3 -m unittest discover -s tests -p 'test_coa_candidate.py' -v` | 35 passed |
+| `python3 -m unittest discover -s tests -v` | Final 711 passed; first run had 2 failures (export byte guard, missing fixture registry); second had 1 error (upstream-only absent goldens); both corrected and rerun |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 scripts/manifest_vectors.py --check` | Initial expected failure: six new files missing; final 19 files match |
+| `python3 scripts/manifest_vectors.py --write` | 19 files written; no stale files removed; legacy bytes unchanged |
+| `python3 scripts/seed_demo.py` | SIMULATED golden digests matched |
+| `python3 scripts/docs_surface.py --check` | 29 routes, 26 artifacts, 9 stages; zero findings |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm ci` | Installed locked dependencies; audit reported zero vulnerabilities |
+| `npm run test:browser` | 62 Chromium tests passed |
+| `python3 scripts/acceptance.py` | All 9 stages passed; local build/acceptance-evidence.json reports ok=true |
+| `python3 scripts/build_release.py --out dist` | Built capital-0.1.0.pyz |
+| `python3 scripts/build_release.py --out dist2` | Same package SHA256 as dist build |
+| `cmp dist/capital-*.pyz dist2/capital-*.pyz` | Exit 0, byte-identical |
+| `python3 scripts/smoke_release.py dist/capital-*.pyz` | 8 checks passed |
+| `git diff --check` | Exit 0 |
+| `git diff --exit-code -- capital/vendor .aiops capital/export.py tests/golden` | Exit 0; locked/reference and legacy files untouched |
+
+Plan deviations: signer/loader/factory live in `capital/keyset.py` to preserve the existing
+export byte guard, with strict JSON parsing shared in `capital/strict_json.py`. Added docs
+surface registry entries. Corrected the existing COA baseline test to ignore only goldens
+added exclusively on main after the merge point and absent from HEAD; deletion of any
+branch-owned golden still fails. No golden or vendor content was regenerated to hide drift.
+
 Initial Capital base: `e9bea122102b87a1f11ac673d50e01c31cba6922` (README only; no pre-existing test or workflow gates).
 Protocol reference: `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`.
 
@@ -684,6 +724,38 @@ Commands actually run:
 - `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `docs_surface.py --check`, `not_bound_checklist.py --check`, `decision_ledger.py`: exit 0.
 - `npm run test:browser`: not run (no `node_modules` in this worktree).
 
+## t05-t06-sim-journeys
+
+`scripts/sim_journeys.py` runs the named SIMULATED journeys `T05-sim` (35 steps, in-process server on a disposable `ScenarioReplaySource` book) and `T06-sim` (33 steps, `--workspace` subprocess killed with SIGKILL and restarted) over the loopback API, with fixed operation ids and seed `CAPITAL-SIM-JOURNEYS-V1`. Digests are pinned in `tests/golden/journey_t05_sim.json` and `tests/golden/journey_t06_sim.json`; a mismatch or a missing pin exits 1 unless `--update-golden` is passed. `scripts/acceptance.py` gained the ninth stage `integrated-journeys`, and its evidence now carries top-level `integrated: false` and `qualification.claimed: false`. The refund in T05-sim is replayed on the disposable book out of band (`SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT`) because Capital has no settlement-event route. These journeys are Q0-named synthetic variants. They are not integrated acceptance, not T01–T06 qualification, and not human acceptance; no `ACCEPTANCE_KO.md` checkbox was touched. No file under `capital/`, `capital/vendor/`, `.aiops/`, `.github/`, or `docs/decisions/` was edited, and no test was weakened.
+
+Commands actually run:
+
+- `python3 scripts/sim_journeys.py --update-golden`, then `python3 scripts/sim_journeys.py` twice: exit 0, `sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33`, same digests each run.
+- `python3 -m unittest tests.test_sim_journeys tests.test_acceptance -v`: exit 0, **32 passed**.
+- `python3 -m unittest discover -s tests -v`: exit 0, **587 passed** (99.3s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check` (9 stages), `not_bound_checklist`, `auth_matrix`, `manifest_vectors`, `finance_vectors`, `workspace_vectors` with `--check`: exit 0. `python3 scripts/seed_demo.py`: exit 0, golden unchanged.
+- `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed** (1.8m).
+- `python3 scripts/acceptance.py`: exit 0, evidence `ok` true; unit 587, storage-conformance 7, pinned-vendor 7, upstream-claims 181, browser 48, packaged-smoke 8, seeded-demo 1, integrated-journeys 2 (T05-sim 35 steps, T06-sim 33 steps, both `SIMULATED`).
+- `git diff --name-only -- capital .aiops .github docs/decisions tests/golden/demo.json`: no output. No `capital.server` process of this run remained.
+
+After the merge with main (2026-10-17, `origin/main` at `4d04a5b`, event-log-summary #59): main's `audit60-fix2` added the conditional `overlay_fold_digest_equals_persisted` reconciliation check for a non-empty overlay, so the T06-sim step `reconciliation checks match after the restart` now observes seven checks instead of six. The T06-sim pin was regenerated with `python3 scripts/sim_journeys.py --update-golden`; `git diff tests/golden/journey_t06_sim.json` touches only `digest` and that step's `facts.checks` (6 → 7), and the T05-sim pin is byte-identical. Main's `tests/test_coa_candidate.py` guard `test_v1_and_golden_files_are_untouched` diffs `tests/golden` and `docs/decisions` against `origin/main`: the two journey pins are carved out of that pathspec by name (they are compared to a live run by `tests/test_sim_journeys.py`), and a guarded file that main added after this branch's merge point and that the working tree never held is no longer reported as this branch's edit (`origin/main` had moved on to `2acd625`, two `docs/decisions` notes past the merged `4d04a5b`, while the merge was in progress). A stray edit to a guarded file is still reported: this was verified by appending a newline to `capital/export.py` and, separately, by deleting `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`; each run failed the guard naming that one path, and each file was restored byte-identical to main. The handbook section and the `integrated-journeys` stage are unchanged; main's handbook sections (`event-log-summary`, `shadow-refund-resale`, `caps-binding-fixtures`, `sim-clock-ledger`, `margin-cure-default`) precede this node's section.
+
+Commands actually run after the merge:
+
+- `python3 scripts/sim_journeys.py --golden-dir TMP --update-golden`: exit 0; the regenerated T05-sim pin equals the committed one and the T06-sim pin differs from the pre-merge commit only in `digest` and `steps[28].facts.checks`. Then `python3 scripts/sim_journeys.py --update-golden` on `tests/golden` and two plain runs: exit 0, `sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33`, the same digests each run.
+- `python3 -m unittest discover -s tests -v`: exit 0, **649 passed** (96.9s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check` (27 routes, 20 artifacts, 9 stages), `not_bound_checklist`, `auth_matrix`, `manifest_vectors` (13 files), `finance_vectors`, `workspace_vectors` (6 files) with `--check`: exit 0. `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, golden unchanged. `python3 scripts/agent_claims_check.py --execute`: passed=94 total=94. `python3 scripts/decision_ledger.py`: exit 0.
+- `npm run test:browser`: exit 0, **48 passed** (1.5m); no `capital.server` of this worktree remained. The suite's fixed ports 8765–8768 are shared with other worktrees' runs on the same machine; one `acceptance.py` attempt hit `http://127.0.0.1:8765 is already used` from another worktree's Playwright servers and was re-run, not patched.
+- `python3 scripts/build_release.py --out` twice into separate directories: both `capital-0.1.0.pyz` byte-identical (SHA256 `4376cd1e…6840`); `python3 scripts/smoke_release.py` on it: `smoke ok` (8 checks).
+- `python3 scripts/acceptance.py`: exit 0, evidence `ok` true, `integrated` false, `qualification.claimed` false, `funds_executed` false; unit 649, storage-conformance 7, pinned-vendor 7, upstream-claims 181, browser 48, packaged-smoke 8, seeded-demo 1, integrated-journeys 2 (T05-sim 35 steps, T06-sim 33 steps, both `SIMULATED`). An earlier attempt failed once in the pre-existing `portfolio.spec.cjs` `#case-title` expectation while a release build ran concurrently on the loaded box; that spec, `capital/static/app.js`, and `playwright.config.cjs` are not touched by this node. `docs/ACCEPTANCE_KO.md` has no checked box.
+- The five files under `capital/vendor/` match `manifest.json` SHA256. `git diff --name-only MERGE_HEAD -- capital .aiops .github docs/decisions tests/golden/demo.json`: no output.
+
+Second merge with main (2026-10-17, `origin/main` at `2acd2a0`, external-gate decision #77): the only conflict was this file (main's `audit70-fix5` section sits before this node's section; both kept). No code, test or golden file conflicted. After the merge: `python3 -m unittest discover -s tests`: **653 passed**; vendor mock tests 7 passed; `compileall`, `node --check`, `docs_surface`, `not_bound_checklist`, `auth_matrix`, `manifest_vectors`, `finance_vectors`, `workspace_vectors` `--check` and `sim_journeys.py` (goldens unchanged): exit 0; `npm run test:browser`: **48 passed**.
+
 ## portfolio-risk-analytics
 
 `capital/risk.py` is a read-only analytics model over the accepted journal, the overlay clock (`sim_day`) and `CAPITAL-TERMS-V1`; `GET /api/risk` (`projection:read`; observer and agent get 403) serves it and `CapitalService.risk()` checks that receipts, `state_digest`, overlay entries and the F04 state are byte-equal before and after. Everything is SIMULATED integer floor arithmetic: exposure by tier, maturity buckets (`0-30`, `31-60`, `61-90`, `>90` days to the standard maturity), overdue aging, beneficiary concentration (`hhi_permille` and U4 cap utilization in permille), the reserve requirement (per-advance `floor(outstanding * bps / 10000)` over the note's table; not an accounting policy, `applied` false) and the fixed refund shocks `[500, 1000, 2500, 5000]` bps of `eligible_face` (hypothetical; no margin call is recorded). The tier, maturity and aging sums equal the total, which equals the projection's advance outstanding. The seeded demo pins `risk` in `tests/golden/demo.json` (outstanding 45,000; reserve 30,750; HHI 1000; `risk_digest`), written only through `scripts/seed_demo.py --update-golden`. The risk pin depends on `sim_day`, so `test_overlay_commands_leave_f04_and_the_demo_golden_untouched` now compares every other golden key byte-for-byte after the clock ticks and asserts the `risk` pin moves with `sim_day`.
@@ -739,3 +811,137 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+
+## crash-replay-matrix
+
+Test-only change: `tests/crash_matrix.py` replays a fixed seven-save command script (offer → approve → bind_settlement → draw → advance_day 0→3 → repay → advance_day 3→4 on `sim-cr-a`, fixture `sim-committed` 40000/10000 units) through `FileWorkspace` wrapped in the save-counted `CrashInjectingStorage`. Each of the 23 cells injects a crash before and after a workspace write boundary — journal-append, overlay-entry, temp-file rename (`replace` and `dir-fsync` reuse the `tests/storage_conformance.py` os injector) — plus three torn-payload cells (truncated, payload-byte flip with intact JSON, overlay-section digest-byte flip with intact `payload_sha256`), a stale `.workspace.json.*.tmp` leftover, and one real SIGKILL on the `python3 -m capital.server --workspace` subprocess via the T06-sim `ServerProcess`/`Session` harness with a fire-and-forget overlay write in flight. Every cell restarts (`FileWorkspace.open` → `CapitalService`) and must restore the pinned `state_digest`/`overlay_state_digest` or fail closed `WORKSPACE_UNREADABLE` — never a silent empty book, never a rewrite of torn bytes, writes stay 503 after the boundary. The mid-flight SIGKILL is bivalent by nature, so the pin names the two complete overlay digests it may restore (`overlay_state_digest_one_of`); a torn value can never match. Each restarted cell also runs `capital.audit.audit_workspace` (workspace-offline-audit dep): ok for restored cells, `WORKSPACE_UNREADABLE` with the pinned failing check for torn ones. Outcomes are pinned in `tests/vectors/workspace_crash.json` (format `KIX_CAPITAL_WORKSPACE_CRASH_V1`, label `SIMULATED`, `semantic_conformance` false, `stage5_durable_transactions`/`cross_host_fencing` NOT_BOUND/NOT_CLAIMED; digests only — no instance id, token, port or timestamp). `scripts/acceptance.py` joins the matrix to the `storage-conformance` stage as a second command; `scripts/docs_surface.py` gains the `workspace_crash.json` VECTOR_NEEDLES entry and README keeps its artifact plus `--check` needles. No production code changed; no new file format or schema; envelope v2 only.
+
+Commands actually run:
+
+- `python3 tests/crash_matrix.py --write`: wrote 23 cells to `tests/vectors/workspace_crash.json`. First `--check` attempt failed on three authoring bugs (missing prefix-0 audit expectation for a never-saved directory, a `*_one_of` key lookup, and a byte flip that produced invalid JSON); fixed, regenerated.
+- `python3 tests/crash_matrix.py --check`: exit 0, `crash matrix vectors ok: 23 cells match`.
+- `python3 -m unittest tests.test_crash_replay -v`: exit 0, **12 passed** (~1.3s), run three times — the SIGKILL cell is deterministic in verdict (it restores one of the two pinned digests).
+- `python3 -m unittest discover -s tests -p test_crash_replay.py`: exit 0, 12 passed.
+- `python3 -m unittest discover -s tests -v`: exit 0, **704 passed** (97.5s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital tests`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 21 artifacts, 9 stages). `python3 scripts/workspace_vectors.py --check`: 6 files match, no vector bytes changed.
+- `python3 scripts/manifest_vectors.py --check` (13 files), `finance_vectors.py --check` (90966 bytes), `auth_matrix.py --check`, `not_bound_checklist.py --check`, `scripts/decision_ledger.py`: exit 0. `python3 scripts/seed_demo.py`: ok, `state_digest`/`content_digest` unchanged.
+- `npm ci --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **62 passed** (1.6m); playwright webServers stopped, none left on 8765–8768.
+- `python3 scripts/acceptance.py`: exit 0, evidence `ok` true; `storage-conformance` stage passed=19 (7 conformance + 12 crash-replay) across its two commands; unit 704, pinned-vendor 7, upstream-claims 181, node-check ok, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 2 (T05-sim/T06-sim `SIMULATED`).
+- Vendor check: all five `capital/vendor/` SHA256 match `manifest.json`. `git status` modified set: `README.md`, `scripts/acceptance.py`, `scripts/docs_surface.py`, `tests/test_acceptance.py`; new: `tests/crash_matrix.py`, `tests/test_crash_replay.py`, `tests/vectors/workspace_crash.json`. No `capital/`, `.aiops/`, golden or docs/decisions change.
+
+## gate-fake-fault-corpus
+
+`tests/vectors/gate_faults.json` (format `KIX_CAPITAL_GATE_FAULTS_V1`) pins seven scripted `LOCAL_FAKE_GATE` cases replayed through the real loopback facade (`POST /api/commands`, `GET /api/operations/{id}`) with `GateHttpProducer` against `scripts/fake_gate.py`: accept, `error-5xx` (502 `GATE_FAILED`, no application), `malformed-json` (502 `INVALID_JSON`, original receipt kept), `drop-before` and `drop-after` (UNKNOWN, `retry_authorized` false, exactly one upstream POST, never resent), `timeout` (delayed-then-lost, same UNKNOWN shape), and an `operationId` replay whose different body is `409 IDEMPOTENCY_CONFLICT` at both the facade fingerprint check and the gate. `scripts/gate_faults.py --check` re-runs the corpus on `127.0.0.1` and exits nonzero on drift; it rewrites nothing. SIMULATED, `NOT_BOUND`, not SEMANTIC_CONFORMANCE; no funds move.
+
+Commands actually run:
+
+- `python3 scripts/gate_faults.py --check`: exit 0, 7 cases match.
+- `python3 -m unittest tests.test_gate_faults`: exit 0, 7 tests (21.2s).
+- `python3 -m unittest discover -s tests -p test_gate_producer.py`: exit 0, 14 tests — the producer vectors still pass because a conflicting replay surfaces as `CreditError('IDEMPOTENCY_CONFLICT')` (the FSM detects it; the gate emits HTTP 409).
+- `python3 -m unittest discover -s tests -v`: exit 0, **699 passed** (121.9s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, 7 passed.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `python3 scripts/seed_demo.py` (digests unchanged), `python3 scripts/docs_surface.py --check` (29 routes, 21 artifacts, 9 stages), `python3 scripts/finance_vectors.py --check` (90966 bytes, after the documented `--write` regeneration for the honest facade-v1.json edit): exit 0.
+- `npm ci --ignore-scripts`: exit 0. `npm run test:browser` first run: 61/62 — one `SERVER_NOT_READY` flake (`terms-overlay.spec.cjs` spawned helper on :8892 answered late); the spec passed alone and the second full run: exit 0, **62 passed** (2.0m). No server left running.
+- Vendored `capital/vendor` SHA256 values all match `manifest.json`; `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+Facade receipts keep the pinned shape (adding a `label` field was reverted because it moved `content_digest` and broke the gate-fake/pinned golden parity test); the `LOCAL_FAKE_GATE` label is carried by every gate receipt and by the UNKNOWN envelope, and `facade-v1.json` declares it as an optional property on all three receipt shapes plus `unknown_operation` in the `/api/commands` response union and the `GATE_FAILED` (502) error.
+## read-model-claims-conformance
+
+A third pinned claim table `tests/read_model_claims.json` (format `KIX_CAPITAL_READ_MODEL_CLAIMS_V1`, 39 rows) maps existing Capital read surfaces onto the upstream draft `docs/contracts/READ_MODEL_QUERIES.md` at `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` — the same SHA as the vendor pin. Rows cite `### 2.12 \`get_credit_advance\``, `### 2.13 \`get_credit_claim\`` and `## 8. 비변경` with verbatim needles. The mapping is an honest adapter, recorded in the table `note` and in each row's `route` field: `get_credit_advance` reads through `GET /api/state` case views (literal `CreditMachine.view` dicts), `get_credit_claim` through in-process `CreditMachine.view_claim`. `GET /api/evidence` is deliberately unmapped — its rows are `MockSettlement` claims (the §2.11 object) and §2.13 forbids merging the two objects. No upstream query name is implemented, no route was added, no catalogue promotion: this prepares the parked read-model-credit-queries node only.
+
+`capital/read_model_claims.py` mirrors `capital/agent_claims.py`: thin delegation to `capital/upstream_claims.py` helpers plus the `read.*` check registry and a `route` registry enforced by `validate_table`. It locates the table via the parent of `capital.resources.ROOT`, not `Path(__file__)`. Every check runs its read under a §8 non-mutation guard — `canonical_state()`, journal length, the folded overlay state digest and `len(receipts)` (operation_count) must be unchanged or the claim fails; four dedicated `read.readonly.*` claims assert the guard triple-plus-count outright, including erroring reads. `scripts/read_model_claims_check.py` is a structural clone of `scripts/agent_claims_check.py`: bare invocation prints `SKIPPED` (never a pass), `--execute` prints the count line, `--protocol-dir` verifies citations read-only. `scripts/acceptance.py` runs it as the third command of the unchanged `upstream-claims` stage; `_merge_counts` sums all three count lines (87+94+39=220). `tests/test_read_model_claims.py` adds 12 tests. Results are SIMULATED and labelled CLAIM_CONFORMANCE, never SEMANTIC_CONFORMANCE. Nothing under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` was edited.
+
+Commands actually run, in order:
+
+- `python3 scripts/read_model_claims_check.py --execute`: exit 0, `CLAIM_CONFORMANCE passed=39 total=39 failed=0`.
+- `python3 scripts/read_model_claims_check.py`: exit 0, first line `SKIPPED`, JSON status `SKIPPED` label `CLAIM_CONFORMANCE`, no success count.
+- `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro`: exit 0, `CLAIM_DRIFT verified=39 total=39`. The checkout was read only; its working tree HEAD `08119a4` carries the draft with all cited headings and needles.
+- `python3 -m unittest tests.test_read_model_claims -v`: exit 0, **12 passed** in 2.141s (merged stage evidence `passed=220`).
+- `python3 -m unittest discover -s tests -v`: exit 0, **704 passed** in ~98s (one interim run failed `test_acceptance_stage_runs_both_claim_tables` in `tests/test_agent_claims.py`, which pinned the old two-table sum 181; it now asserts the third command and the 87+94+39=220 total).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 20 artifacts, 9 stages).
+- `npm ci`: exit 0, added 3 packages. `npm run test:browser`: exit 0, **62 passed** (1.6m). Playwright started and stopped its loopback servers; nothing was left on the test ports.
+- `python3 scripts/acceptance.py`: exit 0. Evidence `build/acceptance-evidence.json` `ok` true. Stages: unit 704, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` label `CLAIM_CONFORMANCE`, node-check, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 2.
+- Vendored SHA256 check against `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`: all five files `OK`. `git status` shows no change under `capital/vendor/` or `.aiops/`.
+
+No `DECISION_REQUIRED.md` was written: the node is a cite-only mapping of existing read surfaces; nothing required money, credentials, a new route, an upstream edit, or an undetermined §6/§9 value.
+
+## cashflow-forecast
+
+New read-only route `GET /api/terms/portfolio/forecast` (`capital/forecast.py`, service method, literal child of `/api/terms` — no dispatcher or permission-registry change; inherits `projection:read`). Per drawn advance three legs (`SETTLEMENT_CASH_IN` on `expected_settlement_cash_day`, `CONTRACT_INTEREST` and `PRINCIPAL` at maturity) bucketed 0-7/8-30/31-60/61-90/91+ sim days ahead of the overlay `sim_day`, exact rationals floored once per bucket, `reconciliation.matched` against outstanding principal plus contract interest, `NOT_BOUND` with no numeric sections when the note is unusable. `capital/terms.py` `ledger_terms` gained an optional `expected_settlement_cash_day` kwarg (additive; postings unchanged). Contract `local_terms_portfolio_forecast` + `terms_forecast*` definitions; new `scripts/forecast_vectors.py` pinning `tests/vectors/forecast_vectors.json` on the seeded demo book; auth probe + finance-vector digests regenerated. No golden/vendor/decisions change.
+
+Commands actually run (worktree `agent/capital-cashflow-forecast`):
+
+- `python3 -m unittest tests.test_cashflow_forecast -v`: exit 0, **16 passed** (0.67s) — one fix: the test asserted a bucket for the unscheduled settlement leg (`day`/`bucket` are `null` by design).
+- `python3 -m unittest discover -s tests -v`: exit 0, **708 passed** (96.5s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/forecast_vectors.py --check` (6456 bytes), `scripts/finance_vectors.py --check` (91570 bytes), `scripts/auth_matrix.py --check`, `scripts/docs_surface.py --check` (29 routes, 21 artifacts, 9 stages), `scripts/seed_demo.py` (state/content digest unchanged), `scripts/not_bound_checklist.py --check`: all exit 0.
+- `npm ci` (3 packages): exit 0. `npm run test:browser`: exit 0, **62 passed** (1.8m); Playwright webServers on 8765–8768 shut down, none left running.
+- Vendor SHA256 vs `capital/vendor/manifest.json`: 5/5 match. `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
+
+## t03-t04-sim-journeys
+
+Scripts-only node: `scripts/sim_journeys.py` gains two named SIMULATED journeys over the existing loopback API. `T03-sim` (22 steps, in-process server) is the zero-exception F04 lifecycle `offer -> approve -> bind_settlement -> draw -> advance_day 0->15->30 accrual -> full repay -> close`, with a post-close tick showing no further accrual and a mid-run all-MATCHED reconciliation. `T04-sim` (38 steps, `--workspace` subprocess) is the auditor evidence chain: the seeded demo book replayed over HTTP and cross-pinned to `tests/golden/demo.json` `state_digest`, an auditor session, read-only auditor GETs, `GET /api/export/manifest` (V3) written to a file and re-verified by `python3 -m capital.verify FILE`, `python3 -m capital.verify --workspace DIR` (OFFLINE_WORKSPACE_AUDIT, all checks MATCHED), `GET /api/reconciliation` all MATCHED, and `403 ROLE_FORBIDDEN` for an auditor write. Both carry `label` SIMULATED, `funds_executed` false, `integrated` false and claim no T01-T06 qualification. `tests/golden/journey_t03_sim.json` / `journey_t04_sim.json` pin terminal phases, `sim_day`, `overlay_state_digest` and `risk_digest`; drift exits 1. The `integrated-journeys` acceptance stage now runs all four journeys. No `capital/` change, no new routes, no `post_repayment` (parked per `docs/decisions/CAPITAL_REPAYMENT_POSTING.md`), no funds movement.
+
+Commands actually run (pre-merge, on this branch):
+
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T03-sim steps=22 T04-sim steps=38 T05-sim steps=35 T06-sim steps=33`; goldens written via `--update-golden` only.
+- `python3 -m unittest tests.test_sim_journeys -v`: exit 0, **32 passed** (13.6s).
+- `python3 -m unittest discover -s tests`: exit 0, **691 passed** (102.6s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py`: exit 0, **7 passed**. The five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `python3 scripts/docs_surface.py --check` (28 routes, 20 artifacts, 9 stages): exit 0.
+- `npm ci --no-audit --no-fund`: exit 0. `npm run test:browser`: exit 0, **62 passed** (1.8m); no server left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `ok` true; unit 691, storage-conformance 7, pinned-vendor 7, upstream-claims 181, node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+Merge with main (2026-10-20; main had gained covenant-watch and read-model-claims-conformance): two conflicts, both docs, both add-only, neither side dropped. `docs/OPERATOR_HANDBOOK_KO.md` keeps main's `read-model-claims-conformance` handbook-section before this node's `t03-t04-sim-journeys` section, each with its own `<!-- /handbook-section -->` closer; this file keeps main's `read-model-claims-conformance` section before this one. No code, test, golden or vector conflicts; `scripts/acceptance.py` merged cleanly and now runs both sides' stage changes (three claim tables in `upstream-claims`, four journeys in `integrated-journeys`). The pre-merge `upstream-claims 181` figure above is the two-table sum recorded on this branch; the merged stage sums all three tables to 220.
+
+Commands actually run after the merge:
+
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T03-sim steps=22 T04-sim steps=38 T05-sim steps=35 T06-sim steps=33`; all four goldens still pin (check mode, nothing rewritten).
+- `python3 -m unittest tests.test_sim_journeys -v`: exit 0, **32 passed** (13.5s).
+- `python3 -m unittest discover -s tests -v`: exit 0, **710 passed** (103.0s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. The five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 20 artifacts, 9 stages). `python3 scripts/seed_demo.py`: ok, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `npm run test:browser` (Chromium from the default `~/.cache/ms-playwright` install): exit 0, **62 passed** (1.8m); no server left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 710, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+Second merge with main (2026-10-20; main had gained cashflow-forecast and gate-fake-fault-corpus): one conflict, docs only, add-only, neither side dropped. This file keeps main's `cashflow-forecast` section before this one. Everything else merged cleanly: `capital/forecast.py`, `capital/terms.py` (additive `expected_settlement_cash_day` kwarg), `capital/server.py`, `capital/service.py`, `capital/gate_producer.py`, `capital/contract/facade-v1.json`, `scripts/forecast_vectors.py`, `scripts/gate_faults.py`, `scripts/fake_gate.py`, `scripts/auth_matrix.py`, `scripts/docs_surface.py`, `tests/test_cashflow_forecast.py`, `tests/test_gate_faults.py`, `tests/test_facade_contract.py`, `tests/test_finance_vectors.py`, `tests/auth_matrix.json`, `tests/vectors/forecast_vectors.json`, `tests/vectors/gate_faults.json`, `tests/vectors/finance_vectors.json`, `README.md`, `docs/INTEGRATION.md`, `docs/OPERATOR_HANDBOOK_KO.md`, `docs/CAPITAL_REQUIREMENTS_KO.md` and `docs/SEAMS.md`. The four-journey `integrated-journeys` stage and the three-table `upstream-claims` stage are unchanged.
+
+Commands actually run after the second merge:
+
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T03-sim steps=22 T04-sim steps=38 T05-sim steps=35 T06-sim steps=33`; all four goldens still pin (check mode, nothing rewritten).
+- `python3 -m unittest tests.test_sim_journeys -v`: exit 0, **32 passed** (13.9s).
+- `python3 -m unittest discover -s tests -v`: exit 0, **733 passed** (123.9s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. The five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 22 artifacts, 9 stages). `python3 scripts/seed_demo.py`: ok, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged. `python3 scripts/forecast_vectors.py --check` (6456 bytes), `scripts/finance_vectors.py --check` (91570 bytes), `scripts/gate_faults.py --check` (7 cases), `scripts/auth_matrix.py --check` and `scripts/not_bound_checklist.py --check`: exit 0; no regeneration needed.
+- `npm run test:browser` (Chromium from the default `~/.cache/ms-playwright` install): exit 0, **62 passed** (1.8m); no server left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 733, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+## ce1-canonical-claims
+
+A fourth pinned claim table `tests/ce1_claims.json` (format `KIX_CAPITAL_CE1_CLAIMS_V1`, 49 rows) binds the pinned `docs/CANONICAL_ENCODING_V1.md` byte rules (kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, the vendor pin; the spec text at that commit is byte-identical to the current checkout's) to Capital's canonical JSON (`capital/store.py` `canonical_bytes`) and digest framing. Each row cites a CE1 section and verbatim needle, carries an `input` form, and names one `ce1.*` check in `capital/ce1_claims.py`: canonical-bytes recomputation (`ce1.encode`), rejection-before-hashing (`ce1.reject`: duplicate and escaped-duplicate keys, NaN/Infinity/-Infinity, fractions, exponents, -0, out-of-range integers, non-ASCII/empty/out-of-grammar keys, non-NFC strings, lone surrogates, >262,144-byte and >64-deep inputs, BOM and NUL bytes, trailing garbage), digest outputs (`ce1.plain_digest`, `ce1.framed_digest`, `ce1.part_tag_digest`), the domain-tag machine-ID grammar (`ce1.domain_tag`), and the digest-family equivalence (`ce1.digest_family`: `service.digest`, `export.sha256_hex` and the workspace checksum are all SHA-256 over the same canonical bytes). The binding gate `decode_input` applies the CE1 input rules before any `canonical_bytes`/digest call; it changes no encoder and does not enforce the pinned Unicode-15.0 assigned-scalar repertoire (that range table is not vendored; NFC and scalar validity are enforced and no row claims repertoire enforcement). The `ensure_ascii` escaping divergence is recorded in four `DOCUMENTED_DIVERGENCE` rows whose checks re-verify the §3.4 rationale needle in `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`; the CE1 `KIX-CE1\0<domain>\0` wire frame is stage-7 adapter scope and no row claims it. `scripts/ce1_claims_check.py` mirrors the upstream CLI (bare → `SKIPPED`, never a pass; `--protocol-dir` read-only). `scripts/acceptance.py` runs it as the fourth command of the unchanged `upstream-claims` stage; the stage sums 87+94+39+49=269. `tests/test_ce1_claims.py` adds 14 tests; the agent/read-model stage tests and `test_handbook.py` now assert the fourth command and the 269 total. Results are SIMULATED and labelled CLAIM_CONFORMANCE, never SEMANTIC_CONFORMANCE. Nothing under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` was edited.
+
+Commands actually run, in order:
+
+- `python3 scripts/ce1_claims_check.py --execute`: exit 0, `CLAIM_CONFORMANCE passed=49 total=49 failed=0`.
+- `python3 scripts/ce1_claims_check.py`: exit 0, first line `SKIPPED`, JSON status `SKIPPED` label `CLAIM_CONFORMANCE`, no success count.
+- `python3 scripts/ce1_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro`: exit 0, `CLAIM_DRIFT verified=49 total=49`; the checkout was read only. `--execute --protocol-dir` together also exit 0.
+- `python3 -m unittest tests.test_ce1_claims -v`: exit 0, **14 passed** (2.3s). The stage run inside it recorded `upstream-claims passed=269`.
+- `python3 -m unittest tests.test_ce1_claims tests.test_handbook tests.test_agent_claims tests.test_read_model_claims tests.test_upstream_claims tests.test_acceptance`: exit 0, **65 passed** — after the fourth stage command was added and the agent/read-model stage sums were extended to 87+94+39+49=269.
+- `python3 -m unittest discover -s tests -v`: exit 0, **819 passed** (149.7s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (29 routes, 38 artifacts, 9 stages). `python3 scripts/decision_bindings.py --check`: exit 0.
+- `npm ci --no-audit --no-fund`: exit 0, 3 packages. `npm run test:browser` (run inside the acceptance ladder, Chromium from `~/.cache/ms-playwright`): **62 passed**; no server left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 819, storage-conformance 19, pinned-vendor 7, upstream-claims `passed=269 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4.
+- `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
+
+Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v` covers detached-input component parity, independent cut digests, read-only workspace bytes, deterministic snapshots across sessions, controlled reader/writer ordering for repayment and clock commands, unsupported producers/fixtures, degraded storage, unbound terms, identity, authorization and closed facade schemas. `python3 scripts/docs_surface.py --check` guards the route documentation and the auth matrix includes the route. All data is SIMULATED; no authenticated or cross-process source cut is claimed.
