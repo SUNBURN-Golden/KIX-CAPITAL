@@ -36,7 +36,7 @@ Capital의 금융 기능을 확장하려면 계약 출처, 소비 범위, 주장
 - [CAPITAL_ARTIFACT_BUNDLING.md](CAPITAL_ARTIFACT_BUNDLING.md)와 [CAPITAL_CLOSEOUT_ARTIFACT.md](CAPITAL_CLOSEOUT_ARTIFACT.md)의 제공 발췌에 따라 결정 출처와 결정론적 산출물을 추적한다.
 - [CAPITAL_CLAIM_SLICE_REGISTRY.md](CAPITAL_CLAIM_SLICE_REGISTRY.md), [CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md), [CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md)의 서로 다른 Protocol SHA는 역사적 연구 출처의 사례다.
 
-정책 근거는 supervisor pack과 리뷰로 제한했다. 개정에서 허용된 `tests/decision_bindings.json`을 직접 읽고 수정했다. 허용 목록 밖의 선행 binding 노트 전문과 checker 구현은 열지 않았다. 제공되지 않은 선행 정책을 재정의하지 않는다.
+이번 fix round 3에서는 선행 [CAPITAL_UPSTREAM_BINDING.md](CAPITAL_UPSTREAM_BINDING.md)의 결정 블록과 checker·생성기를 직접 읽었다. 선행 `ai_agent_grant_action_permit`의 `ADOPTED` 범위는 grant·QUERY/PROPOSE lane이며, 지정 핀은 `e2a029d8ac3af7575888dac22fc4bf173ebec232`다. 이 문서의 현재 AI 인용 분류는 그 결정을 취소하거나 adapter 구현 완료를 뜻하지 않는다. 선행의 `DEFERRED`·`UNDETERMINED` 범위는 계속 `NOT_BOUND`로 둔다. 수정 범위는 이 노트, binding 등록과 `tests/vectors/pack/`이며 upstream 파일과 실행 핀은 바꾸지 않는다.
 
 ## 3. 항목별 결정
 
@@ -150,17 +150,24 @@ vendor 핀 이동은 세 FSM·읽기 모델 클레임 표를, AI 인용 핀 이�
 - decision-binding 테스트: 전체 `(decision_id, entry)` 목록의 정렬·유일성.
 - seam 검사: 실제 upstream 영수증 없는 seam 채택 방지.
 
-**이번 개정의 실제 검증:** 등록 JSON을 파싱하고 여덟 레코드를 재배열한 뒤 저장·재파싱했다. 전체 **98개** identity 목록이 `sorted(set(identities))`와 같음을 확인했다. 모든 레코드 내용, 대상 여덟 줄 외의 텍스트, 여덟 binding의 `PENDING_CONSUMER` 상태가 보존됐다.
+**등록 검증:** 앞선 개정에서 여덟 레코드를 재배열했다. 이번 round 3에서 전체 **98개** identity가 `sorted(set(identities))`와 같고 여덟 binding이 모두 `PENDING_CONSUMER`임을 재확인했다. `scripts/decision_bindings.py --check`는 findings 0, `scripts/docs_surface.py --check`는 29 routes·38 artifacts·9 stages로 통과했다. 기존 등록 내용은 이번 round에서 바꾸지 않는다.
 
-checker와 전체 테스트는 허용 범위 밖 파일들을 읽으므로 실행하지 않았다. 위 검증은 지적된 정렬 조건의 직접 확인이며, 전체 checker findings 0이나 최종 후보 통과 주장이 아니다. Supervisor는 문서와 등록 변경을 같은 후보에 포함하여 다음을 실행한다.
+**CI 수정:** 결정 블록의 누락된 최상위 `status`를 `PROVISIONAL_PRODUCT_DECISION`으로 명시했다. 개별 여덟 정책의 `ADOPTED`와 노트 전체의 잠정 제품 결정 라벨은 별개다. 누락으로 생긴 decision-surface의 `KeyError: 'status'`와 잘못된 rollup을 함께 바로잡았다. `scripts/pack_vectors.py --check`로 아홉 fixture의 드리프트도 재현했다. 이전 clean pack에는 이 노트의 여덟 `ADOPTED` entry 요약이 빠져 있었다. 생성된 pack과 비교하면 `decisions` section만 바뀌고 나머지 네 section은 동일하다. 정본 생성기의 `--write`로 clean pack과 모든 변조·절단 fixture를 함께 재생성했다. 해시나 기대 오류를 수동으로 고치지 않았으며, 기존 파일만 갱신하므로 새 docs-surface 등록은 필요 없다.
+
+후보 검증 명령은 다음과 같다. 전체 실행의 제한과 실패는 §6에 구분하며, checker 통과를 전체 수용 통과로 표시하지 않는다.
 
 ```text
 python3 -m unittest discover -s tests -p 'test_decision_bindings.py' -v
+python3 scripts/decision_bindings.py --check
 python3 scripts/docs_surface.py --check
+python3 scripts/pack_vectors.py --check
+python3 -m unittest discover -s tests -p 'test_evidence_pack.py' -v
 python3 -m unittest discover -s tests -v
 ```
 
 첫 명령은 리뷰가 지정한 정렬 펜스를 포함한 decision-binding 검사다. 신규 여덟 항목뿐 아니라 **전체 binding findings 0**을 요구한다. 계획이나 선행 PR 링크로 실제 등록과 후보 검증을 대체하지 않는다.
+
+round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP decision-surface 14개·vendor mock 7개 테스트 통과, pack 아홉 파일의 `--check` 통과, `compileall`과 `node --check` 통과. 이 결과는 `SIMULATED` 로컬 검증이며 전체 HTTP·browser·acceptance 통과가 아니다(§6).
 
 ### 3.8 `current_pin_assessment`
 
@@ -176,6 +183,7 @@ python3 -m unittest discover -s tests -v
 ```capital-decision-v1
 {
   "schema": "capital-decision-v1",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decision_id": "upstream-repin-policy-decision",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-10-22",
@@ -339,7 +347,7 @@ python3 -m unittest discover -s tests -v
           "non_target_lines_unchanged": true,
           "pending_consumer_status_preserved": true,
           "policy_specific_automatic_enforcement_implemented": false,
-          "full_checker_run": false,
+          "full_checker_run": true,
           "final_candidate_verified": false
         }
       },
@@ -377,18 +385,21 @@ python3 -m unittest discover -s tests -v
 - 단일 결정 블록에 여덟 필수 항목의 상태·값·귀속·날짜·CAP 연결·잠정성을 명시했다.
 - vendor `7481b0e`, AI 인용 `e2a029d`, 연구 기준을 분류하고 두 실행·참조 핀을 유지했다.
 - claim-table 핀 이동 시 해당 표·벡터의 같은 PR 재생성을 예외 없이 요구했다.
-- blocking finding의 여덟 등록 순서를 실제 수정했다. 전체 98개 identity의 정렬·유일성과 레코드 내용 보존을 확인했다. 최종 후보의 저장소 검증은 아직 실행하지 않았다.
+- 앞선 개정의 여덟 등록 정렬을 유지하고 전체 98개 identity의 정렬·유일성과 checker findings 0을 재확인했다. pack fixture는 이 노트의 결정 요약을 포함하도록 정본 생성기로 갱신했다. 전체 수용 통과 여부는 §6의 검증 한계와 구분한다.
 
 ## 6. Open risks
 
 - 정책별 자동 검증은 `PENDING_CONSUMER`다. 구현 전에는 리핀 리뷰 담당자가 영향 목록과 같은 PR 재생성 증거를 확인해야 한다.
-- checker 구현·선행 binding 노트 전문·생성기 커버리지는 직접 확인하지 않았다. 최종 후보의 전체 findings 0은 supervisor 검증이 필요하다.
+- round 3 환경은 `socket.bind(('127.0.0.1', 0))`에 `PermissionError: [Errno 1] Operation not permitted`를 반환한다. HTTP·loopback 검증은 이 환경에서 통과했다고 주장하지 않는다. Chromium은 있지만 프로젝트의 Node Playwright test 의존성은 없고, `npm run test:browser`는 `unknown command 'test'`로 실패한다.
+- `tests/test_coa_candidate.py::V1UnchangedTests.test_v1_and_golden_files_are_untouched`는 `docs/decisions/` 전체를 `origin/main`과 비교하여 이번에 명시적으로 허용된 노트도 거부한다. 같은 guard 경로에 대한 실제 diff는 `docs/decisions/CAPITAL_UPSTREAM_REPINS.md` 하나이며, guard 대상 Capital 코드·vendor·`.aiops/` 변경은 없다. 이 문서 변경은 V1 코드 회귀가 아니므로 guard 결과에 이 근거로 이의 제기한다. 테스트를 약화하거나 허용 범위 밖에서 수정하지 않는다.
+- 제공된 CI acceptance의 unit 단계는 300초 timeout이었다. 오래된 pack의 대용량 assertion diff는 재생성으로 제거하지만 이 환경의 loopback·browser 제한과 위 guard 충돌 때문에 전체 acceptance 통과·CI 시간 내 완료를 주장하지 않는다. 정상 loopback·Node Playwright 환경과 guard 소유자의 확인이 필요하다.
+- 이번 round의 실제 `python3 scripts/acceptance.py` 결과도 `ok=false`다. 최종 unit 실행은 730개 중 659개 통과·6 failures·65 errors이며, 남은 원인은 loopback 제한과 위 문서 guard다. pinned-vendor(7개)·upstream-claims(220개)·node-check·seeded-demo는 통과했고 browser·storage-conformance·packaged-smoke·integrated-journeys는 환경 제약으로 실패했다. 이 결과는 로컬 작업 트리 증거이며 exact-head CI 통과나 통합 수용이 아니다.
 - 요청 지정 모델 귀속을 기록했으나 Claude CLI 실행이나 해당 모델의 검토 영수증을 주장하지 않는다.
 - 회계·세무·법무 내용은 전문가 검토 전 작업 가정이다. DEV_ONLY shared-HMAC은 인증이 아니며 CAP-15 stage7 인증 export·external key·authentication은 계속 `NOT_BOUND`다.
 
 ## 7. 후속 작업
 
-1. Supervisor는 이 문서를 저장하고 수정된 `tests/decision_bindings.json`을 같은 후보에 포함한다. §3.7 검사를 수행하여 후보 SHA·결과를 남기고 통과 후 병합한다.
+1. Supervisor는 이 노트·기존 binding 등록·재생성된 아홉 pack fixture를 같은 후보에 포함한다. §3.7 검사를 수행하고 §6의 guard 충돌과 실행 환경 제한을 해소한 뒤 CI 결과를 확인한다. 이번 unattended builder는 commit·push·게시·병합하지 않는다.
 2. `upstream-repin-policy-enforcement`는 등록된 통합 지점에 정책별 검증을 구현한다. 실제 소비 증거가 생긴 항목만 `CONSUMED`로 바꾼다.
 3. 현행 두 핀은 `HOLD`다. 향후 승인된 이동은 표·벡터·관련 골든·문서·binding을 같은 리핀 PR에서 갱신한다.
 4. upstream 파일은 변경하지 않는다. 향후 구현도 기존 export 바이트 가드와 DEV_ONLY fixture의 mode 0600 임시 파일 로딩 규칙을 지킨다.
