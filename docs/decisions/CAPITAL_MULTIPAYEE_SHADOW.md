@@ -10,10 +10,10 @@
 | 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
 | 결정일 | 2026-10-22 |
 | 기준 | KIX-CAPITAL main `5c23989` · kix-protocol `1a69364` (읽기 전용 `/workspace/capital-run/kixproto-ro`) · vendor FSM pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` |
-| 실행 출처 | 개정 라운드 5는 Fable 5.1(claude-fable-5-1)이 supervisor pack과 검토자 발췌만으로 수행했다 |
+| 실행 출처 | 개정 라운드 5는 Fable 5.1(claude-fable-5-1)이 supervisor pack과 검토자 발췌만으로 수행했다. 라운드 6(벡터 고정만, 결정 내용 변경 없음)은 Devin swe-2-high가 수행했다 |
 | 읽기 범위 | supervisor pack이 허용한 경로만 읽었다. 선행 노트 `CAPITAL_SETTLEMENT_POLICY.md`(`CAPITAL-ALLOC-V1`)·`CAPITAL_SHADOW_POLICY.md`는 허용 경로 밖이라 **직접 열지 않았다.** 상속 규칙 두 가지는 검토 라운드의 검토자 발췌(2차 정보)로 확인했다: (a) `CAPITAL-ALLOC-V1`은 동률을 **`payee_label` 오름차순**으로 가르고 클래스 표(`PROTECTED_THIRD_PARTY`, `COUNTERPARTY_PROCEEDS`, `ECOSYSTEM_ROYALTY`, `PLATFORM_FEE`)를 구체적으로 정한다; (b) 클래스 내 비례 배분, 클래스당 수취인 복수, 보호 제3자 라인은 **upstream FSM 변경이 필요**하다. 이 노트는 그 값을 재정의하지 않고 로드해 쓴다. 충돌 시 선행 노트가 이기고, 입력 형태·용량·비교 규칙은 이 노트가 이긴다 |
 | 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. **UNDETERMINED** = 값을 정할 수 없어 이유만(`value: null`). 여섯 항목 모두 ADOPTED |
-| 개정 | 라운드 5: (1) **동률 규칙 정정.** 이전 판은 "동률 정보가 없으면 `NOT_BOUND`이며 알파벳 순서를 대체로 쓰지 않는다"고 적어 상속 비교자(`payee_label` 오름차순)를 금지하는 모순을 냈다. §3.2·§3.4·§4 `equal_remainders`를 상속 비교자 그대로("ascending `payee_label`")로 고치고, `NOT_BOUND`는 정책을 로드할 수 없는 경우로만 한정했다. 작업 예시의 P1<P2<P3 순서를 그 비교자로 명시했다. (2) **FSM 표현 불가 표시 추가.** §3.4와 §4 `within_class_caps_and_rounding`에 `fsm_expressible: false`를 두고, 고정된 두 수취인 FSM 기준선과 "행 조작 금지" 규칙을 유지했다. (3) 기준을 supervisor 값 main `5c23989`·kix `1a69364`로 맞췄다. 라운드 4: `tests/decision_bindings.json`에 여섯 `PENDING_CONSUMER` 행 추가, 블록에 `status` 추가, 검사 실행 |
+| 개정 | 라운드 5: (1) **동률 규칙 정정.** 이전 판은 "동률 정보가 없으면 `NOT_BOUND`이며 알파벳 순서를 대체로 쓰지 않는다"고 적어 상속 비교자(`payee_label` 오름차순)를 금지하는 모순을 냈다. §3.2·§3.4·§4 `equal_remainders`를 상속 비교자 그대로("ascending `payee_label`")로 고치고, `NOT_BOUND`는 정책을 로드할 수 없는 경우로만 한정했다. 작업 예시의 P1<P2<P3 순서를 그 비교자로 명시했다. (2) **FSM 표현 불가 표시 추가.** §3.4와 §4 `within_class_caps_and_rounding`에 `fsm_expressible: false`를 두고, 고정된 두 수취인 FSM 기준선과 "행 조작 금지" 규칙을 유지했다. (3) 기준을 supervisor 값 main `5c23989`·kix `1a69364`로 맞췄다. 라운드 4: `tests/decision_bindings.json`에 여섯 `PENDING_CONSUMER` 행 추가, 블록에 `status` 추가, 검사 실행. 라운드 6: **`tests/vectors/pack` 코퍼스 재고정(내용 결정 변경 없음).** 그림자 증거 팩의 `decisions` 섹션은 원장 인덱스 행을 바이트로 박제하는데, 커밋된 코퍼스는 이 노트의 원장 행이 생기기 전(main 머지 기점 `02bc3e5`, 15행)에 만들어져 `--check` 드리프트로 CI 단위 테스트 4개(`PackRegenerationTests`)가 실패했다. `scripts/pack_vectors.py --write`로 이 트리 기준 16행(기존 15 + 이 노트 1)을 재고정했다. 본문·블록은 바꾸지 않았고, 팩 행은 블록에서 파싱한 필드만 담으므로 산문 편집은 코퍼스를 오염시키지 않는다 |
 
 ## 1. 결정 요약
 
@@ -270,7 +270,7 @@
 | 동결 스냅샷 하나, 기존 노드 경계 | §3.3 |
 | production NOT_AUTHORIZED, 그림자 효과 미적용 | 배너, §3.6 |
 | 문서 색인 참조 | `tests/decision_bindings.json`에 여섯 항목의 `PENDING_CONSUMER` 행(라운드 4, 이 라운드에서 변경 없음). `docs/CAP_COVERAGE.md` 한 줄은 개정 범위 밖이라 §7로 넘긴다 |
-| 결정 원장 검증 | 라운드 5에서 이 워크트리에서 실행: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 -m unittest tests/test_decision_bindings.py`. 결과는 최종 메시지에 기록 |
+| 결정 원장 검증 | 라운드 6에서 이 워크트리에서 실행: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/pack_vectors.py --check`, `python3 -m unittest tests/test_decision_bindings.py tests/test_evidence_pack.py`. 결과는 최종 메시지에 기록 |
 
 **차단 소견 처리:** (1) 동률 규칙: 수용. 상속 비교자를 금지하던 문장을 제거하고 `payee_label` 오름차순을 상속 규칙으로 명시했다. (2) FSM 표현 불가: 수용. `fsm_expressible: false`, 고정 두 수취인 기준선, fabricated row 금지를 §3.4와 §4에 추가했다.
 
