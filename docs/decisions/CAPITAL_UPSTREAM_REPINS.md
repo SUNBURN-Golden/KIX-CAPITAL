@@ -5,7 +5,7 @@
 > 결정 귀속(요청 지정): **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**
 >
 > 결정일: **2026-10-22**  
-> 기준: **KIX-CAPITAL main `cde0bc7` · kix-protocol `93cec6a`** — supervisor 제공 기준이며 직접 HEAD를 확인한 결과가 아니다.  
+> 기준: **KIX-CAPITAL main `cde0bc7` · kix-protocol `93cec6a`** — supervisor 제공 기준이다. 병합 라운드 1(2026-10-22)에서 `origin/main` = `cde0bc7`(`cde0bc778573ef8d543f2e1bb70a521e06bf4e44`)를 이 작업 트리에 직접 병합해 Capital 기준은 확인했고, Protocol `93cec6a`는 여전히 직접 확인하지 않은 연구 기준이다.  
 > 결정 노드: `upstream-repin-policy-decision`  
 > 선행: `upstream-binding-decision`, `audit90-fix2`
 
@@ -18,7 +18,7 @@ Capital 자체 참조의 **시뮬레이션·제품 설계용** 거버넌스다. 
 | item | decision | CAP rows | consumer |
 |---|---|---|---|
 | `pin_class_vocabulary` | **ADOPTED:** vendor 바이트 구속, 인용 구속, 연구 출처의 세 클래스 | CAP-01, CAP-20 | 참조 목록·클레임 표·결정 노트 |
-| `executable_pin_inventory` | **ADOPTED:** vendor `7481b0e`, AI 인용 `e2a029d`와 지정 소비 범위 유지 | CAP-11, CAP-15, CAP-16 | manifest·클레임 표 네 종 |
+| `executable_pin_inventory` | **ADOPTED:** vendor `7481b0e`, AI 인용 `e2a029d`와 지정 소비 범위 유지 | CAP-11, CAP-15, CAP-16 | manifest·클레임 표 다섯 종 |
 | `research_baseline_rule` | **ADOPTED:** 역사적 출처 보존; 실행 핀과 동일성 강제 금지 | CAP-01, CAP-20 | 노트의 `기준`·`bases` |
 | `repin_trigger_procedure` | **ADOPTED:** 수용 근거·영향 분석·원자적 PR·검증 필수 | CAP-11, CAP-15, CAP-16, CAP-20 | 향후 리핀 구현·리뷰 |
 | `dual_pin_handling` | **ADOPTED:** 활성 구속 표면당 하나의 핀; 일반 이중 핀 전환 창 없음 | CAP-15, CAP-16 | 실행·참조 소비 경로 |
@@ -60,7 +60,7 @@ Capital의 금융 기능을 확장하려면 계약 출처, 소비 범위, 주장
 
 | 클래스 | 전체 SHA | 구속 범위 |
 |---|---|---|
-| `EXECUTABLE_VENDOR` | `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` | F04·F01–F03 FSM reference 다섯 파일, vendor manifest SHA256, `tests/upstream_claims.json`·`tests/fsm_contract_claims.json`·`tests/read_model_claims.json`의 관련 인용 |
+| `EXECUTABLE_VENDOR` | `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` | F04·F01–F03 FSM reference 다섯 파일, vendor manifest SHA256, `tests/upstream_claims.json`·`tests/fsm_contract_claims.json`·`tests/read_model_claims.json`의 관련 인용, `tests/ce1_claims.json`의 `docs/CANONICAL_ENCODING_V1.md` 바이트 규칙 인용(main `cde0bc7` 병합으로 합류; 같은 SHA, 새 소비 범위) |
 | `EXECUTABLE_CITATION` | `e2a029d8ac3af7575888dac22fc4bf173ebec232` | AI 위임 권한 계약 초안 0.1, `reference/ai_delegation/` mock의 읽기 전용 인용, `tests/agent_claims.json` |
 
 AI mock은 vendor되지 않았고 manifest 해시도 없다. 인용 핀 검사를 vendor 바이트 검증으로 표시하지 않는다.
@@ -111,7 +111,7 @@ vendor와 AI 인용처럼 별개 표면이 서로 다른 핀을 쓰는 것은 �
 
 **ADOPTED. claim-table 핀 이동은 항상 해당 표와 벡터를 같은 PR에서 재생성한다.** 후속 PR로 미루지 않는다. 관련 골든과 인용 검사도 동일 변경 단위에 포함한다.
 
-vendor 핀 이동은 세 FSM·읽기 모델 클레임 표를, AI 인용 핀 이동은 agent 표를 기본 영향 범위로 삼는다. 리핀 담당자는 각 표와 연결 벡터를 대응시켜 누락 여부를 검토한다.
+vendor 핀 이동은 FSM·읽기 모델·CE1 네 클레임 표(`tests/upstream_claims.json`·`tests/fsm_contract_claims.json`·`tests/read_model_claims.json`·`tests/ce1_claims.json`)를, AI 인용 핀 이동은 agent 표를 기본 영향 범위로 삼는다. 리핀 담당자는 각 표와 연결 벡터를 대응시켜 누락 여부를 검토한다.
 
 재생성 결과가 같은 바이트이면 인위적인 diff는 필요 없다. 대신 대상 파일, 재생성 절차와 동일 결과를 후보 증거로 남긴다. 동일할 것이라는 추정으로 재생성을 생략하지 않는다.
 
@@ -173,7 +173,7 @@ round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP de
 
 **ADOPTED. 두 핀 모두 `HOLD`; 지금 리핀하지 않는다.**
 
-- **vendor `7481b0e`: HOLD.** 요구사항이 다섯 reference 파일과 세 클레임 표의 기준으로 명시한다. 대체할 특정 수정 수용 결정이나 실제 채택 영수증이 팩에 없다.
+- **vendor `7481b0e`: HOLD.** 요구사항이 다섯 reference 파일과 세 클레임 표의 기준으로 명시하고, main `cde0bc7` 병합으로 합류한 CE1 표 `tests/ce1_claims.json`도 같은 SHA의 `docs/CANONICAL_ENCODING_V1.md`를 인용한다. 대체할 특정 수정 수용 결정이나 실제 채택 영수증이 팩에 없다.
 - **AI 인용 `e2a029d`: HOLD.** 초안 0.1·mock 인용과 agent 표의 기준이다. 다른 계약·조항으로 이동할 구체 근거가 제공되지 않았다.
 
 연구 기준 `93cec6a`는 자동 대체 후보가 아니다. HOLD는 안전성 인증이나 영구 동결이 아니며 §3.4의 근거가 생기면 재평가한다. CAP-11·CAP-15·CAP-16의 해당 미구속 범위는 계속 `NOT_BOUND`다.
@@ -212,7 +212,7 @@ round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP de
           "class": "EXECUTABLE_VENDOR",
           "file_count": 5,
           "manifest": "capital/vendor/manifest.json",
-          "bound_tables": ["tests/upstream_claims.json", "tests/fsm_contract_claims.json", "tests/read_model_claims.json"]
+          "bound_tables": ["tests/upstream_claims.json", "tests/fsm_contract_claims.json", "tests/read_model_claims.json", "tests/ce1_claims.json"]
         },
         "ai_draft_pin": {
           "sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
@@ -386,12 +386,14 @@ round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP de
 - vendor `7481b0e`, AI 인용 `e2a029d`, 연구 기준을 분류하고 두 실행·참조 핀을 유지했다.
 - claim-table 핀 이동 시 해당 표·벡터의 같은 PR 재생성을 예외 없이 요구했다.
 - 앞선 개정의 여덟 등록 정렬을 유지하고 전체 98개 identity의 정렬·유일성과 checker findings 0을 재확인했다. pack fixture는 이 노트의 결정 요약을 포함하도록 정본 생성기로 갱신했다. 전체 수용 통과 여부는 §6의 검증 한계와 구분한다.
+- 병합 라운드 1(2026-10-22, `origin/main` = `cde0bc7`): 충돌한 `tests/vectors/pack/` 아홉 fixture는 수작업 병합 대신 `python3 scripts/pack_vectors.py --write`로 병합된 트리에서 재생성했다. 결과 pack은 main의 `auth_matrix` 섹션 변경과 이 노트의 `decisions` 행을 함께 담는다(ours 대비 398 leaf diff는 모두 main 측, theirs 대비 15 leaf diff는 모두 이 노트의 행). main이 추가한 CE1 표 `tests/ce1_claims.json`(`pinned_sha` = `7481b0e`)은 §3.2 vendor 핀의 `bound_tables`와 §3.6 기본 영향 범위에 추가했다. 핀·upstream 파일·binding 등록은 바꾸지 않았다.
 
 ## 6. Open risks
 
 - 정책별 자동 검증은 `PENDING_CONSUMER`다. 구현 전에는 리핀 리뷰 담당자가 영향 목록과 같은 PR 재생성 증거를 확인해야 한다.
 - round 3 환경은 `socket.bind(('127.0.0.1', 0))`에 `PermissionError: [Errno 1] Operation not permitted`를 반환한다. HTTP·loopback 검증은 이 환경에서 통과했다고 주장하지 않는다. Chromium은 있지만 프로젝트의 Node Playwright test 의존성은 없고, `npm run test:browser`는 `unknown command 'test'`로 실패한다.
 - `tests/test_coa_candidate.py::V1UnchangedTests.test_v1_and_golden_files_are_untouched`는 `docs/decisions/` 전체를 `origin/main`과 비교하여 이번에 명시적으로 허용된 노트도 거부한다. 같은 guard 경로에 대한 실제 diff는 `docs/decisions/CAPITAL_UPSTREAM_REPINS.md` 하나이며, guard 대상 Capital 코드·vendor·`.aiops/` 변경은 없다. 이 문서 변경은 V1 코드 회귀가 아니므로 guard 결과에 이 근거로 이의 제기한다. 테스트를 약화하거나 허용 범위 밖에서 수정하지 않는다.
+- 병합 라운드 1(2026-10-22) 환경은 loopback bind가 허용되어 `python3 -m unittest discover -s tests -v` 840개 중 839개 통과·1 failure(위 문서 guard 하나)였고, vendor mock 7개·`compileall`·`node --check`·`pack_vectors --check`·`decision_bindings --check`·`docs_surface --check`도 통과했다. 이 작업 트리에는 `node_modules`가 없고 `npm run test:browser`는 `unknown command 'test'`로 실패하므로, 형제 작업 트리의 `@playwright/test` 1.58.2를 `NODE_PATH`로 빌려 실행했다. 그 버전이 요구하는 Chromium build 1208은 설치되어 있지 않아 설치된 build 1248을 가리키는 임시 `PLAYWRIGHT_BROWSERS_PATH` shim을 썼고, 그 조건에서 browser 69개 테스트가 모두 통과했다. 핀 build 1208이 아닌 1248로 구동한 결과이므로 pinned-browser CI 통과 주장은 아니다. 저장소 안의 파일·설정은 바꾸지 않았다.
 - 제공된 CI acceptance의 unit 단계는 300초 timeout이었다. 오래된 pack의 대용량 assertion diff는 재생성으로 제거하지만 이 환경의 loopback·browser 제한과 위 guard 충돌 때문에 전체 acceptance 통과·CI 시간 내 완료를 주장하지 않는다. 정상 loopback·Node Playwright 환경과 guard 소유자의 확인이 필요하다.
 - 이번 round의 실제 `python3 scripts/acceptance.py` 결과도 `ok=false`다. 최종 unit 실행은 730개 중 659개 통과·6 failures·65 errors이며, 남은 원인은 loopback 제한과 위 문서 guard다. pinned-vendor(7개)·upstream-claims(220개)·node-check·seeded-demo는 통과했고 browser·storage-conformance·packaged-smoke·integrated-journeys는 환경 제약으로 실패했다. 이 결과는 로컬 작업 트리 증거이며 exact-head CI 통과나 통합 수용이 아니다.
 - 요청 지정 모델 귀속을 기록했으나 Claude CLI 실행이나 해당 모델의 검토 영수증을 주장하지 않는다.

@@ -154,6 +154,16 @@
     },
     {
       "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "children": false,
+      "handler": "_get_portfolio_snapshot",
+      "permission": "projection:read",
+      "probes": [
+        "/api/portfolio/snapshot?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/risk",
       "children": false,
       "handler": "_get_risk",
@@ -793,6 +803,57 @@
     {
       "method": "GET",
       "route": "/api/overlay",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {

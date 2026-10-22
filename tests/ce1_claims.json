@@ -1,0 +1,754 @@
+{
+  "format": "KIX_CAPITAL_CE1_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "note": "CLAIM_CONFORMANCE binding of Capital canonical JSON and digest framing to the pinned CANONICAL_ENCODING_V1 byte rules. Rows recompute Capital canonical bytes and digest framing for ASCII inputs; non-ASCII escaping divergence is recorded as DOCUMENTED_DIVERGENCE, not failure. Results are SIMULATED. A missing protocol checkout is SKIPPED and is not a pass.",
+  "claims": [
+    {
+      "id": "ce1-compact-separators",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Capital canonical_bytes emits compact JSON with no whitespace separators.",
+      "check_id": "ce1.encode",
+      "needle": "BOM 없는 UTF-8 JSON, 공백 없는 구분자",
+      "input": {
+        "value": {
+          "b": 1,
+          "a": [
+            true,
+            null
+          ]
+        }
+      },
+      "expected": "{\"a\":[true,null],\"b\":1}"
+    },
+    {
+      "id": "ce1-whitespace-input-canonical",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An input carrying whitespace is accepted and normalized to canonical bytes before hashing; the hash covers the canonical form, not the input bytes.",
+      "check_id": "ce1.encode",
+      "needle": "입력의 공백이나 동등한 JSON 이스케이프는 받아들일 수 있다",
+      "input": {
+        "payload": "{ \"b\" : 2 , \"a\" : 1 }"
+      },
+      "expected": "{\"a\":1,\"b\":2}"
+    },
+    {
+      "id": "ce1-escaped-input-canonical",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An equivalent JSON escape on input is accepted; the canonical bytes carry the decoded character.",
+      "check_id": "ce1.encode",
+      "needle": "입력의 공백이나 동등한 JSON 이스케이프는 받아들일 수 있다",
+      "input": {
+        "payload": "{\"s\":\"\\u0041\"}"
+      },
+      "expected": "{\"s\":\"A\"}"
+    },
+    {
+      "id": "ce1-sorted-keys-numeric-strings",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "ASCII lexicographic key order puts \"10\" before \"2\".",
+      "check_id": "ce1.encode",
+      "needle": "객체 키가 `\"10\"`, `\"2\"`이면 `\"10\"`이 먼저다",
+      "input": {
+        "value": {
+          "2": 0,
+          "10": 0
+        }
+      },
+      "expected": "{\"10\":0,\"2\":0}"
+    },
+    {
+      "id": "ce1-sorted-keys-ascii-order",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Object keys sort in ASCII order across digits, upper- and lowercase.",
+      "check_id": "ce1.encode",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "value": {
+          "b": 1,
+          "A": 2,
+          "a": 3,
+          "B": 4,
+          "1": 5,
+          "0": 6
+        }
+      },
+      "expected": "{\"0\":6,\"1\":5,\"A\":2,\"B\":4,\"a\":3,\"b\":1}"
+    },
+    {
+      "id": "ce1-key-grammar-boundary",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "One-character and 128-character visible-ASCII keys (incl. ! and ~) are in grammar.",
+      "check_id": "ce1.encode",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "value": {
+          "!": 1,
+          "~": 2,
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 3
+        }
+      },
+      "expected": "{\"!\":1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":3,\"~\":2}"
+    },
+    {
+      "id": "ce1-array-order-preserved",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Arrays keep their original order; canonicalization never sorts arrays.",
+      "check_id": "ce1.encode",
+      "needle": "원래 순서를 보존",
+      "input": {
+        "value": {
+          "path": [
+            3,
+            1,
+            2
+          ],
+          "k": "z"
+        }
+      },
+      "expected": "{\"k\":\"z\",\"path\":[3,1,2]}"
+    },
+    {
+      "id": "ce1-integer-boundary-high",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "2^53-1 is the largest integer the encoding accepts.",
+      "check_id": "ce1.encode",
+      "needle": "−(2^53−1)부터 2^53−1까지의 정수만 허용",
+      "input": {
+        "value": {
+          "n": 9007199254740991
+        }
+      },
+      "expected": "{\"n\":9007199254740991}"
+    },
+    {
+      "id": "ce1-integer-boundary-low",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "-(2^53-1) is the smallest integer the encoding accepts.",
+      "check_id": "ce1.encode",
+      "needle": "−(2^53−1)부터 2^53−1까지의 정수만 허용",
+      "input": {
+        "value": {
+          "n": -9007199254740991
+        }
+      },
+      "expected": "{\"n\":-9007199254740991}"
+    },
+    {
+      "id": "ce1-bool-null-literals",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "JSON true, false and null round-trip unchanged.",
+      "check_id": "ce1.encode",
+      "needle": "JSON의 `true`/`false`/`null`",
+      "input": {
+        "value": {
+          "t": true,
+          "f": false,
+          "n": null
+        }
+      },
+      "expected": "{\"f\":false,\"n\":null,\"t\":true}"
+    },
+    {
+      "id": "ce1-escape-control-chars",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Quotes, backslashes and JSON control characters are escaped; ASCII text is not.",
+      "check_id": "ce1.encode",
+      "needle": "따옴표·역슬래시와 JSON 제어문자만 이스케이프. 나머지 Unicode는 UTF-8로 기록",
+      "input": {
+        "value": {
+          "s": "a\nb\t\"q\"\\d"
+        }
+      },
+      "expected": "{\"s\":\"a\\nb\\t\\\"q\\\"\\\\d\"}"
+    },
+    {
+      "id": "ce1-depth-boundary",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Nesting at the 64-deep input limit is accepted and encoded.",
+      "check_id": "ce1.encode",
+      "needle": "UTF-8 262,144바이트 이하, 중첩 깊이 64 이하",
+      "input": {
+        "payload_nest": 65
+      },
+      "expected": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+    },
+    {
+      "id": "ce1-size-boundary",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A 262,144-byte input at the size limit is accepted; its digest is the canonical-bytes SHA-256.",
+      "check_id": "ce1.plain_digest",
+      "needle": "UTF-8 262,144바이트 이하, 중첩 깊이 64 이하",
+      "input": {
+        "payload_repeat": {
+          "char": "a",
+          "count": 262142
+        }
+      },
+      "expected": "38a529ffa4f3253631e18b2c7832a11a2689ef5bbd3dbf3a390bf1706ca84761"
+    },
+    {
+      "id": "ce1-reject-duplicate-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A duplicate object key is rejected at JSON interpretation, never overwritten.",
+      "check_id": "ce1.reject",
+      "needle": "JSON 해석 시 거절. 마지막 값으로 덮어쓰지 않음",
+      "input": {
+        "payload": "{\"a\":1,\"a\":2}"
+      },
+      "expected": "REJECTED:DUPLICATE_KEY"
+    },
+    {
+      "id": "ce1-reject-escaped-duplicate-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A duplicate key reached through an equivalent escape is still a duplicate.",
+      "check_id": "ce1.reject",
+      "needle": "JSON 해석 시 거절. 마지막 값으로 덮어쓰지 않음",
+      "input": {
+        "payload": "{\"a\":1,\"\\u0061\":2}"
+      },
+      "expected": "REJECTED:DUPLICATE_KEY"
+    },
+    {
+      "id": "ce1-reject-nan",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "NaN is a nonstandard JSON constant and is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "소수·지수 표기·NaN·Infinity 거절",
+      "input": {
+        "payload": "{\"n\":NaN}"
+      },
+      "expected": "REJECTED:NONSTANDARD_CONSTANT"
+    },
+    {
+      "id": "ce1-reject-infinity",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Infinity is a nonstandard JSON constant and is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "소수·지수 표기·NaN·Infinity 거절",
+      "input": {
+        "payload": "{\"n\":Infinity}"
+      },
+      "expected": "REJECTED:NONSTANDARD_CONSTANT"
+    },
+    {
+      "id": "ce1-reject-neg-infinity",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "-Infinity is a nonstandard JSON constant and is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "소수·지수 표기·NaN·Infinity 거절",
+      "input": {
+        "payload": "{\"n\":-Infinity}"
+      },
+      "expected": "REJECTED:NONSTANDARD_CONSTANT"
+    },
+    {
+      "id": "ce1-reject-fraction",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A fractional JSON number is rejected; only integers are numbers.",
+      "check_id": "ce1.reject",
+      "needle": "소수·지수 표기·NaN·Infinity 거절",
+      "input": {
+        "payload": "{\"n\":1.5}"
+      },
+      "expected": "REJECTED:NON_INTEGER_NUMBER"
+    },
+    {
+      "id": "ce1-reject-exponent",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Exponent notation is rejected even when it names an integer.",
+      "check_id": "ce1.reject",
+      "needle": "소수·지수 표기·NaN·Infinity 거절",
+      "input": {
+        "payload": "{\"n\":1e3}"
+      },
+      "expected": "REJECTED:NON_INTEGER_NUMBER"
+    },
+    {
+      "id": "ce1-reject-negative-zero",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "-0 is rejected as a number token.",
+      "check_id": "ce1.reject",
+      "needle": "소수·지수 표기·NaN·Infinity 거절",
+      "input": {
+        "payload": "{\"n\":-0}"
+      },
+      "expected": "REJECTED:NEGATIVE_ZERO"
+    },
+    {
+      "id": "ce1-reject-integer-high",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An integer above 2^53-1 is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "−(2^53−1)부터 2^53−1까지의 정수만 허용",
+      "input": {
+        "payload": "{\"n\":9007199254740992}"
+      },
+      "expected": "REJECTED:UNSAFE_INTEGER"
+    },
+    {
+      "id": "ce1-reject-integer-low",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An integer below -(2^53-1) is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "−(2^53−1)부터 2^53−1까지의 정수만 허용",
+      "input": {
+        "payload": "{\"n\":-9007199254740992}"
+      },
+      "expected": "REJECTED:UNSAFE_INTEGER"
+    },
+    {
+      "id": "ce1-reject-integer-digits",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A 17-digit literal can exceed the safe range and is rejected.",
+      "check_id": "ce1.reject",
+      "needle": "−(2^53−1)부터 2^53−1까지의 정수만 허용",
+      "input": {
+        "payload": "{\"n\":10000000000000000}"
+      },
+      "expected": "REJECTED:UNSAFE_INTEGER"
+    },
+    {
+      "id": "ce1-reject-nonascii-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A non-ASCII object key is outside the key grammar and is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "payload": "{\"é\":1}"
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-reject-escaped-nonascii-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A non-ASCII key written through a JSON escape is still out of grammar.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "payload": "{\"\\u00e9\":1}"
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-reject-empty-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The empty key violates the 1-128 length rule.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "payload": "{\"\":1}"
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-reject-space-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A space (U+0020) is below the visible-ASCII key grammar.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "payload": "{\"a b\":1}"
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-reject-del-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "DEL (U+007F) is above the visible-ASCII key grammar.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "payload": "{\"\\u007f\":1}"
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-reject-long-key",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A 129-character key exceeds the key grammar length bound.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "payload": "{\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":1}"
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-reject-non-nfc-string",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A non-NFC string (e + combining acute) is rejected; normalization is never implicit.",
+      "check_id": "ce1.reject",
+      "needle": "Unicode 15.0에서 배정된 scalar만 허용, 이미 NFC여야 함",
+      "input": {
+        "payload": "{\"s\":\"e\\u0301\"}"
+      },
+      "expected": "REJECTED:NON_NFC_STRING"
+    },
+    {
+      "id": "ce1-reject-lone-surrogate",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A lone surrogate scalar is rejected.",
+      "check_id": "ce1.reject",
+      "needle": "미배정 문자·noncharacter·surrogate·15.0 이후 문자는 거절하며",
+      "input": {
+        "payload": "{\"s\":\"\\ud800\"}"
+      },
+      "expected": "REJECTED:INVALID_SCALAR"
+    },
+    {
+      "id": "ce1-reject-oversize-input",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Input bytes beyond 262,144 are rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "UTF-8 262,144바이트 이하, 중첩 깊이 64 이하",
+      "input": {
+        "payload_repeat": {
+          "char": "a",
+          "count": 262143
+        }
+      },
+      "expected": "REJECTED:INPUT_TOO_LARGE"
+    },
+    {
+      "id": "ce1-reject-deep-input",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Nesting beyond depth 64 is rejected before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "UTF-8 262,144바이트 이하, 중첩 깊이 64 이하",
+      "input": {
+        "payload_nest": 66
+      },
+      "expected": "REJECTED:MAX_DEPTH"
+    },
+    {
+      "id": "ce1-reject-bom-input",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A UTF-8 byte-order mark is not CE1 input and is rejected before hashing (the same rejected-encoding guard the workspace reader applies).",
+      "check_id": "ce1.reject",
+      "needle": "BOM 없는 UTF-8 JSON, 공백 없는 구분자",
+      "input": {
+        "payload": "﻿{}"
+      },
+      "expected": "REJECTED:REJECTED_ENCODING"
+    },
+    {
+      "id": "ce1-reject-nul-byte",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A raw NUL byte in the input bytes is rejected before hashing (the same rejected-encoding guard the workspace reader applies).",
+      "check_id": "ce1.reject",
+      "needle": "BOM 없는 UTF-8 JSON, 공백 없는 구분자",
+      "input": {
+        "payload": "{\"s\":\"a\u0000b\"}"
+      },
+      "expected": "REJECTED:REJECTED_ENCODING"
+    },
+    {
+      "id": "ce1-reject-trailing-garbage",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Bytes after a complete JSON document are not JSON input and are rejected.",
+      "check_id": "ce1.reject",
+      "needle": "BOM 없는 UTF-8 JSON, 공백 없는 구분자",
+      "input": {
+        "payload": "{\"a\":1} x"
+      },
+      "expected": "REJECTED:INVALID_JSON"
+    },
+    {
+      "id": "ce1-reject-float-value",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A decoded float value never reaches canonicalization.",
+      "check_id": "ce1.reject",
+      "needle": "−(2^53−1)부터 2^53−1까지의 정수만 허용",
+      "input": {
+        "value": 1.5
+      },
+      "expected": "REJECTED:NON_INTEGER_NUMBER"
+    },
+    {
+      "id": "ce1-reject-nonascii-key-value",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A decoded non-ASCII key is rejected by the gate before hashing.",
+      "check_id": "ce1.reject",
+      "needle": "길이 1–128의 표시 가능한 ASCII(U+0021–U+007E), ASCII 사전순 정렬",
+      "input": {
+        "value": {
+          "é": 1
+        }
+      },
+      "expected": "REJECTED:INVALID_KEY"
+    },
+    {
+      "id": "ce1-digest-hex64",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 해시 영역과 버전",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The Capital digest over canonical bytes is a 64-character lowercase SHA-256.",
+      "check_id": "ce1.plain_digest",
+      "needle": "SHA-256 결과는 소문자 16진수 64자로 표시한다",
+      "input": {
+        "value": {
+          "a": 1
+        }
+      },
+      "expected": "015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862"
+    },
+    {
+      "id": "ce1-digest-canonical-bytes",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Digest sites (service.digest, export sha256_hex, the workspace checksum) all compute SHA-256 over the same validated canonical bytes.",
+      "check_id": "ce1.digest_family",
+      "needle": "검증 후 정규 직렬화한 바이트를 사용한다",
+      "input": {
+        "value": {
+          "a": 1
+        }
+      },
+      "expected": true
+    },
+    {
+      "id": "ce1-domain-tag-grammar",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 해시 영역과 버전",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Capital frames the overlay state digest with a domain tag (KIX_CAPITAL_OVERLAY_STATE_DIGEST_V1) that satisfies the machine-ID grammar: non-empty ASCII, no NUL, within the length bound.",
+      "check_id": "ce1.domain_tag",
+      "needle": "domain은 일반 기계 ID 문법·길이를 따르며 NUL과 빈 문자열을 허용하지 않는다",
+      "input": {
+        "value": "KIX_CAPITAL_OVERLAY_STATE_DIGEST_V1"
+      },
+      "expected": true
+    },
+    {
+      "id": "ce1-domain-tag-machine-id",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 기계 식별자와 배정 순서",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The digest domain tag matches the general machine-ID grammar [A-Za-z0-9][A-Za-z0-9:_./-]* at length <= 128.",
+      "check_id": "ce1.domain_tag",
+      "needle": "[A-Za-z0-9][A-Za-z0-9:_./-]*`, 길이 1–128",
+      "input": {
+        "value": "KIX_CAPITAL_OVERLAY_STATE_DIGEST_V1"
+      },
+      "expected": true
+    },
+    {
+      "id": "ce1-framed-digest-overlay",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 해시 영역과 버전",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The overlay state digest binds the domain tag into the hashed material as a canonical object field (the tag-as-field framing shape) and emits lowercase hex64. The KIX-CE1 prefix wire form is stage-7 adapter scope and not claimed.",
+      "check_id": "ce1.framed_digest",
+      "needle": "domain은 일반 기계 ID 문법·길이를 따르며 NUL과 빈 문자열을 허용하지 않는다",
+      "input": {
+        "value": {
+          "entry_count": 0,
+          "sim_day": 0
+        }
+      },
+      "expected": "96fabafcad1362fa514e324752b993ea34e672222157edf2a63b538acde167cb"
+    },
+    {
+      "id": "ce1-part-tag-digest",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 해시 영역과 버전",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The evidence-pack section seal frames each body under a part tag inside the canonical object and emits lowercase hex64.",
+      "check_id": "ce1.part_tag_digest",
+      "needle": "SHA-256 결과는 소문자 16진수 64자로 표시한다",
+      "input": {
+        "value": {
+          "part": "workspace_audit",
+          "document": {
+            "checks": []
+          }
+        }
+      },
+      "expected": "2a43f2c010c1ffa7a0c0b8f5e2592519cc7361e590e276f68488ce6d85bae83a"
+    },
+    {
+      "id": "ce1-divergence-ensure-ascii-latin",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "For a Latin-1 character, Capital canonical_bytes emits ensure_ascii escapes where CE1 writes UTF-8. DOCUMENTED_DIVERGENCE: Capital canonical_bytes/digests escape non-ASCII (ensure_ascii=True); CE1 writes UTF-8. The binding note docs/decisions/CAPITAL_UPSTREAM_BINDING.md section 3.4 defers alignment to kix-canonical-json/1 at the stage-7 adapter. This row records the divergence; it is not a conformance failure.",
+      "check_id": "ce1.divergence",
+      "needle": "따옴표·역슬래시와 JSON 제어문자만 이스케이프. 나머지 Unicode는 UTF-8로 기록",
+      "input": {
+        "value": {
+          "s": "café"
+        }
+      },
+      "expected": {
+        "capital_bytes": "{\"s\":\"caf\\u00e9\"}",
+        "ce1_bytes": "{\"s\":\"café\"}",
+        "divergent": true,
+        "note_cited": true
+      },
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": {
+        "binding_note": "docs/decisions/CAPITAL_UPSTREAM_BINDING.md",
+        "binding_section": "### 3.4 stage7_authenticated_export",
+        "rationale_needle": "ensure_ascii"
+      }
+    },
+    {
+      "id": "ce1-divergence-ensure-ascii-hangul",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "For Hangul syllables, Capital canonical_bytes emits ensure_ascii escapes where CE1 writes UTF-8. DOCUMENTED_DIVERGENCE: Capital canonical_bytes/digests escape non-ASCII (ensure_ascii=True); CE1 writes UTF-8. The binding note docs/decisions/CAPITAL_UPSTREAM_BINDING.md section 3.4 defers alignment to kix-canonical-json/1 at the stage-7 adapter. This row records the divergence; it is not a conformance failure.",
+      "check_id": "ce1.divergence",
+      "needle": "따옴표·역슬래시와 JSON 제어문자만 이스케이프. 나머지 Unicode는 UTF-8로 기록",
+      "input": {
+        "value": {
+          "s": "한국"
+        }
+      },
+      "expected": {
+        "capital_bytes": "{\"s\":\"\\ud55c\\uad6d\"}",
+        "ce1_bytes": "{\"s\":\"한국\"}",
+        "divergent": true,
+        "note_cited": true
+      },
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": {
+        "binding_note": "docs/decisions/CAPITAL_UPSTREAM_BINDING.md",
+        "binding_section": "### 3.4 stage7_authenticated_export",
+        "rationale_needle": "ensure_ascii"
+      }
+    },
+    {
+      "id": "ce1-divergence-ensure-ascii-astral",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "For an astral character, Capital canonical_bytes emits ensure_ascii escapes where CE1 writes UTF-8. DOCUMENTED_DIVERGENCE: Capital canonical_bytes/digests escape non-ASCII (ensure_ascii=True); CE1 writes UTF-8. The binding note docs/decisions/CAPITAL_UPSTREAM_BINDING.md section 3.4 defers alignment to kix-canonical-json/1 at the stage-7 adapter. This row records the divergence; it is not a conformance failure.",
+      "check_id": "ce1.divergence",
+      "needle": "따옴표·역슬래시와 JSON 제어문자만 이스케이프. 나머지 Unicode는 UTF-8로 기록",
+      "input": {
+        "value": {
+          "s": "𝄞"
+        }
+      },
+      "expected": {
+        "capital_bytes": "{\"s\":\"\\ud834\\udd1e\"}",
+        "ce1_bytes": "{\"s\":\"𝄞\"}",
+        "divergent": true,
+        "note_cited": true
+      },
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": {
+        "binding_note": "docs/decisions/CAPITAL_UPSTREAM_BINDING.md",
+        "binding_section": "### 3.4 stage7_authenticated_export",
+        "rationale_needle": "ensure_ascii"
+      }
+    },
+    {
+      "id": "ce1-divergence-digest",
+      "source_doc": "docs/CANONICAL_ENCODING_V1.md",
+      "section": "## 바이트 규칙",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The escaping divergence moves into digests: SHA-256 over Capital canonical bytes differs from SHA-256 over the CE1-form bytes for a non-ASCII value. DOCUMENTED_DIVERGENCE: Capital canonical_bytes/digests escape non-ASCII (ensure_ascii=True); CE1 writes UTF-8. The binding note docs/decisions/CAPITAL_UPSTREAM_BINDING.md section 3.4 defers alignment to kix-canonical-json/1 at the stage-7 adapter. This row records the divergence; it is not a conformance failure.",
+      "check_id": "ce1.divergent_digest",
+      "needle": "따옴표·역슬래시와 JSON 제어문자만 이스케이프. 나머지 Unicode는 UTF-8로 기록",
+      "input": {
+        "value": {
+          "s": "café"
+        }
+      },
+      "expected": {
+        "capital_sha256": "339df16d5c73b968aaca8134185e0ae503d071e5b2aac45b1bc567b8f8a89053",
+        "ce1_bytes_sha256": "298ebe9dfd0022919780451da01d6ff22cd701ae9f614b77522b751906ac2784",
+        "divergent": true,
+        "note_cited": true
+      },
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": {
+        "binding_note": "docs/decisions/CAPITAL_UPSTREAM_BINDING.md",
+        "binding_section": "### 3.4 stage7_authenticated_export",
+        "rationale_needle": "ensure_ascii"
+      }
+    }
+  ]
+}

@@ -294,6 +294,13 @@ class HandbookTests(unittest.TestCase):
                 'CreditMachine', 'SettlementMachine', 'capital/vendor/manifest.json',
                 'VENDOR_HASH_MISMATCH', '--protocol-dir', 'SKIPPED',
                 'tests/test_fsm_contract_claims.py', 'upstream-claims'),
+            'ce1-canonical-claims': (
+                'tests/ce1_claims.json', 'KIX_CAPITAL_CE1_CLAIMS_V1',
+                'scripts/ce1_claims_check.py --execute', 'CLAIM_CONFORMANCE',
+                'CANONICAL_ENCODING_V1', 'DOCUMENTED_DIVERGENCE', 'ensure_ascii',
+                'capital/ce1_claims.py', 'capital/store.py',
+                '--protocol-dir', 'SKIPPED', 'tests/test_ce1_claims.py',
+                'upstream-claims'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')
@@ -314,7 +321,7 @@ class HandbookTests(unittest.TestCase):
         self.assertLess(
             unit_commands.index(next(c for c in unit_commands if 'discover' in c)),
             unit_commands.index(fence[0]))
-        self.assertEqual(len(upstream_commands), 3)
+        self.assertEqual(len(upstream_commands), 4)
         for argv in upstream_commands:
             self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
