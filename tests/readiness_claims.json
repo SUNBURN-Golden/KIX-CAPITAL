@@ -1,0 +1,247 @@
+{
+  "format": "KIX_CAPITAL_READINESS_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "pin_class": "EXECUTABLE_VENDOR",
+  "consumption_scope": "docs/contracts/READINESS_RUNTIME.md prose citations at the pinned SHA, bound to the loopback facade and LOCAL_FILE_WORKSPACE analogue surfaces only; the upstream readiness/ journal format is not vendored or implemented. New consumer of the existing pin per the repin policy consumer rule; the decision-note inventory records bound tables at its own update, which this table does not perform.",
+  "note": "CLAIM_CONFORMANCE analogue observations: each row runs on a live 127.0.0.1 loopback server and compares Capital behavior to the pinned READINESS_RUNTIME boundary prose. This is not journal-format conformance, not SEMANTIC_CONFORMANCE, not stage5 durable transactions, and no funds move. Fault injection rows are labeled SIMULATED. Divergence rows are DOCUMENTED_DIVERGENCE, not passes. A missing protocol checkout is SKIPPED and is not a pass.",
+  "claims": [
+    {
+      "id": "readiness-bind-loopback",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 통합 관문",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The facade binds only 127.0.0.1 on an ephemeral port and make_server takes no host parameter: the Capital analogue of the pinned default bind.",
+      "check_id": "readiness.bind_loopback",
+      "needle": "기본 바인드는 `127.0.0.1`이다",
+      "surface": "server bind",
+      "expected": {
+        "bound_host": "127.0.0.1",
+        "host_parameter_present": false
+      }
+    },
+    {
+      "id": "readiness-host-rejected",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 통합 관문",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A request whose Host header is not the loopback authority is refused 403 LOOPBACK_HOST_REQUIRED; 0.0.0.0 and a DNS name are both rejected (Capital analogue).",
+      "check_id": "readiness.host_rejected",
+      "needle": "`0.0.0.0`과 그 밖의 호스트는 거절한다",
+      "surface": "GET /api/state",
+      "expected": {
+        "probe_results": [
+          {"host": "0.0.0.0", "status": 403, "error": "LOOPBACK_HOST_REQUIRED"},
+          {"host": "not-loopback.example", "status": 403, "error": "LOOPBACK_HOST_REQUIRED"}
+        ]
+      }
+    },
+    {
+      "id": "readiness-replay-first-result",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A second POST with the same operation_id returns the stored first result flagged transport_duplicate, and the operation lookup returns the original receipt unchanged (Capital analogue of the stored-result rule).",
+      "check_id": "readiness.replay_first_result",
+      "needle": "같은 멱등 키나 같은 `operationId` 지문은 저장된 결과를 다시 준다",
+      "surface": "POST /api/commands",
+      "expected": {
+        "first_status": 200,
+        "second_status": 200,
+        "duplicate_flag": true,
+        "result_equal": true,
+        "lookup_status": 200,
+        "lookup_equal": true
+      }
+    },
+    {
+      "id": "readiness-replay-journal-once",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The replayed command does not apply economic effect twice: the F04 journal stays at one entry and operation_count stays 1 (Capital analogue).",
+      "check_id": "readiness.replay_journal_once",
+      "needle": "경제 효과와 소유 이전을 두 번 적용하지 않는다",
+      "surface": "POST /api/commands",
+      "expected": {
+        "journal_entries": 1,
+        "operation_count": 1
+      }
+    },
+    {
+      "id": "readiness-reads-do-not-grow",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Reads are not journal commits: state, operation lookup, health, readiness, reconciliation, export and metrics reads leave journal length, operation_count, canonical state, state digest and workspace bytes unchanged (Capital analogue; the journal holds one record per committed machine call).",
+      "check_id": "readiness.reads_do_not_grow",
+      "needle": "FSM 레코드는 그 기계의 `export_journal` 항목 하나다",
+      "surface": "GET /api/state",
+      "expected": {
+        "reads": 7,
+        "all_200": true,
+        "journal_entries": true,
+        "operation_count": 1,
+        "canonical_state_equal": true,
+        "state_digest_equal": true,
+        "workspace_bytes_equal": true
+      }
+    },
+    {
+      "id": "readiness-lock-contention",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "One writer per directory: a second FileWorkspace.open raises WORKSPACE_LOCKED and a second server on that directory reports WORKSPACE_LOCKED and refuses commands 503 (Capital analogue of the pinned JOURNAL_LOCKED close; the code name differs).",
+      "check_id": "readiness.lock_contention",
+      "needle": "잠금을 못 얻으면 `JOURNAL_LOCKED`로 닫는다",
+      "surface": "FileWorkspace.open",
+      "expected": {
+        "open_error": "WORKSPACE_LOCKED",
+        "workspace_status": "WORKSPACE_LOCKED",
+        "post_status": 503,
+        "post_error": "WORKSPACE_LOCKED"
+      }
+    },
+    {
+      "id": "readiness-lock-loss-fails-closed",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "SIMULATED storage fault: when the record write fails, the process stops taking commands — both the failed command and the next one answer 503, health degrades and the file bytes stay unchanged (Capital analogue of the no-more-commands rule).",
+      "check_id": "readiness.lock_loss_fails_closed",
+      "needle": "메모리만 앞서고 기록이 실패하면 그 프로세스는 더 이상 명령을 받지 않는다",
+      "surface": "POST /api/commands",
+      "expected": {
+        "first_status": 503,
+        "first_error": "WORKSPACE_WRITE_FAILED",
+        "second_status": 503,
+        "second_error": "WORKSPACE_WRITE_FAILED",
+        "health_status": "degraded",
+        "file_bytes_unchanged": true
+      }
+    },
+    {
+      "id": "readiness-failed-save-lookup",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "SIMULATED storage fault: the failed save does not return success (503), but the in-memory receipt was already stored and the operation lookup answers ACCEPTED — divergent from record-first semantics; the rationale is cited in the operator handbook, not counted as conformance.",
+      "check_id": "readiness.failed_save_lookup",
+      "needle": "응답을 돌려주기 전에 기록이 내구성 있게 끝나지 않았으면 성공으로 반환하지 않는다",
+      "surface": "GET /api/operations/{id}",
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": {
+        "capital_note": "docs/OPERATOR_HANDBOOK_KO.md",
+        "note_section": "### readiness-runtime-claims",
+        "rationale_needle": "저장 실패 뒤 조회는 메모리의 ACCEPTED receipt를 돌려준다",
+        "upstream_behavior": "응답 전에 기록이 내구성 있게 끝나지 않았으면 성공으로 반환하지 않는다",
+        "capital_behavior": "POST는 503으로 성공을 반환하지 않지만 receipt는 persist 전에 메모리에 저장되어 조회가 ACCEPTED를 돌려준다"
+      },
+      "expected": {
+        "post_status": 503,
+        "post_error": "WORKSPACE_WRITE_FAILED",
+        "lookup_status": 200,
+        "lookup_outcome": "ACCEPTED",
+        "divergent": true,
+        "note_cited": true
+      }
+    },
+    {
+      "id": "readiness-lost-response-unknown",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "SIMULATED transport loss: the lost response is not a durable record, so no success is reported — the command returns outcome UNKNOWN with retry_authorized false, stores no journal entry or receipt, lookups keep reporting UNKNOWN on this and a fresh server, and the command is never resent.",
+      "check_id": "readiness.lost_response_unknown",
+      "needle": "응답을 돌려주기 전에 기록이 내구성 있게 끝나지 않았으면 성공으로 반환하지 않는다",
+      "surface": "POST /api/commands",
+      "expected": {
+        "post_status": 200,
+        "post_outcome": "UNKNOWN",
+        "retry_authorized": false,
+        "lookup_outcome": "UNKNOWN",
+        "absent_lookup_outcome": "UNKNOWN",
+        "fresh_lookup_outcome": "UNKNOWN",
+        "journal_entries": true,
+        "operation_count": 0
+      }
+    },
+    {
+      "id": "readiness-durable-false",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "| 표식 | 값 | 의미 |",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "FSM durable stays false: case views carry durable false and the state durable field is a storage label (LOCAL_FILE_WORKSPACE), never a true durability claim.",
+      "check_id": "readiness.durable_false",
+      "needle": "FSM `durable` | `false`",
+      "surface": "GET /api/state",
+      "expected": {
+        "memory_durable": false,
+        "workspace_durable": "LOCAL_FILE_WORKSPACE",
+        "case_durable": [false]
+      }
+    },
+    {
+      "id": "readiness-durable-not-claimed",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 통합 관문",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The durable-across-restart analogue stays false: durable-finance and producer-binding groups stay UPSTREAM_REQUIRED and export, statement and reconciliation durable fields never claim durability.",
+      "check_id": "readiness.durable_not_claimed",
+      "needle": "`x-kix-limits.durableAcrossRestart`의 기본 표식은 `false`다",
+      "surface": "GET /api/readiness",
+      "expected": {
+        "durable_finance_group": "UPSTREAM_REQUIRED",
+        "producer_binding_group": "UPSTREAM_REQUIRED",
+        "export_durable": "LOCAL_FILE_WORKSPACE",
+        "statement_durable": false,
+        "reconciliation_durable": false
+      }
+    },
+    {
+      "id": "readiness-torn-tail",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 파일 저널",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "SIMULATED torn tail: a truncated workspace file does not salvage the valid prefix — the whole file fails closed WORKSPACE_UNREADABLE, cases are empty and commands are refused; divergent from the pinned drop-the-tail replay rule, cited in the handbook and not counted as conformance.",
+      "check_id": "readiness.torn_tail",
+      "needle": "그 꼬리만 버리고, 체크섬이 맞는 앞선 레코드는 재생한다",
+      "surface": "FileWorkspace.open",
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": {
+        "capital_note": "docs/OPERATOR_HANDBOOK_KO.md",
+        "note_section": "### readiness-runtime-claims",
+        "rationale_needle": "찢긴 꼬리를 버리지 않고 파일 전체를 WORKSPACE_UNREADABLE로 닫는다",
+        "upstream_behavior": "끝의 불완전한 프레임만 버리고 체크섬이 맞는 앞선 레코드는 재생한다",
+        "capital_behavior": "손상된 파일은 전체가 읽기 불가로 닫히고 앞선 상태를 부분 복원하지 않는다"
+      },
+      "expected": {
+        "workspace_status": "WORKSPACE_UNREADABLE",
+        "case_count": 0,
+        "post_status": 503,
+        "post_error": "WORKSPACE_UNREADABLE",
+        "bytes_unchanged": true,
+        "divergent": true,
+        "note_cited": true
+      }
+    },
+    {
+      "id": "readiness-not-bound",
+      "source_doc": "docs/contracts/READINESS_RUNTIME.md",
+      "section": "## 보류",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Held items stay unbound: production_authorized false, upstream_binding NOT_BOUND, the CAP-16 requirement note is present and the durable-finance (CAP-11) and producer-binding (CAP-16) groups are never AVAILABLE_LOCAL.",
+      "check_id": "readiness.not_bound",
+      "needle": "공개 배포, DNS, TLS 제품화, `0.0.0.0` 기본 노출",
+      "surface": "GET /api/readiness",
+      "expected": {
+        "production_authorized": false,
+        "upstream_binding": "NOT_BOUND",
+        "cap16_note": true,
+        "cap11_surface_not_local": true,
+        "cap16_surface_not_local": true
+      }
+    }
+  ]
+}
