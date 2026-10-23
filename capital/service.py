@@ -1573,13 +1573,12 @@ class CapitalService:
                 raise ApiError('DEFAULT_DAY_UNKNOWN', 409)
             payload['policy'] = a['policy']
             quotes = recovery.source_quotes(state, subject, {k: v for k, v in self.fixtures.rows.items() if self.fixtures.beneficiary(k) == subject['case']['beneficiary_role']}, self.setoff)
+            payload['source_quotes'] = [{k: q[k] for k in ('source_ref', 'quote_ref', 'available_krw', 'waterfall_step')} for q in quotes]
             if kind == 'RECOVERY':
                 quote = next((q for q in quotes if q['quote_ref'] == body['quote_ref'] and q['source_ref'] == body['source_ref']), None)
                 if quote is None:
                     raise ApiError('RECOVERY_QUOTE_STALE', 409)
                 payload['quote_witness'] = {k: quote[k] for k in ('source_ref', 'observed_eligible_krw', 'distributed_krw', 'recovery_due_krw', 'consumed_krw', 'state_digest', 'advance_id', 'claim_due_krw')}
-            else:
-                payload['source_quotes'] = [{k: q[k] for k in ('source_ref', 'quote_ref', 'available_krw', 'waterfall_step')} for q in quotes]
         try:
             return recovery.entry(body['operation_id'], kind, state, len(self.machine.export_journal()), payload)
         except recovery.RecoveryError as exc:
@@ -1675,12 +1674,10 @@ class CapitalService:
                         if item['advance_id'] == ref), None)
         if subject is None:
             raise ApiError('REPAYMENT_ADVANCE_STATE', 409, {'reason': 'NOT_DRAWN'})
-        # Post-default cash routes through the recovery ledger once a set-off source is
-        # observed; the asserted-cash memo cannot bypass the waterfall (no anchor or no
-        # observed source keeps the decided POSTINGS_ACCEPTED_SAME_ALLOCATION path).
-        views = {key: view for key, view in self.fixtures.rows.items()
-                 if self.fixtures.beneficiary(key) == subject['case']['beneficiary_role']}
-        if recovery.source_quotes(state, subject, views, self.setoff):
+        # A dated default permanently routes cash through recovery, including when
+        # sources are absent or exhausted and after write-off. Historical defaults
+        # without an anchor retain their recorded repayment behavior.
+        if recovery.anchor(state, ref) is not None:
             raise ApiError('REPAYMENT_ADVANCE_STATE', 409,
                            {'reason': 'RECOVERY_LEDGER_ONLY', 'phase': subject['case']['phase']})
         terms = self._ledger_terms(subject)

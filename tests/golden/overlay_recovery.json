@@ -11,7 +11,7 @@
   "label": "SIMULATED_DISPOSABLE_BOOK",
   "late_residual_claim_krw": 43283,
   "manifest_verified": true,
-  "overlay_digest": "9d4ea3736dcd6ea13f246531868e2628310ff580deefb5a6f6683757ce2c1499",
+  "overlay_digest": "bf96b75107a1b0e60c883345302e7a72f9c6665260cc532d7e2eac9147bfb766",
   "overlay_fold_check": "MATCHED",
   "policy_version": "DEFAULT_RECOVERY_V1",
   "reconciliation": "RECON_MISMATCH",
@@ -47,14 +47,14 @@
             "observed_eligible_krw": 95000,
             "proposal_kind": "RECOVERY_SETOFF",
             "proposal_only": true,
-            "quote_ref": "2c60e7546111db5e7281788139ac57d67a227636517f7ec9db353160714848c9",
+            "quote_ref": "1b48735f22755dd0116b31543de87d0217cc23a1e5dd22be413b290529d6461d",
             "recovery_due_krw": 0,
             "source_ref": {
               "claim_id": "sim-pending",
               "payee_label": "organizer",
               "source_cut": "49e2f423f4c9953af9983aa9ebf5d9a7f96be227d771d35881cebff3f5caec0e"
             },
-            "state_digest": "9d4ea3736dcd6ea13f246531868e2628310ff580deefb5a6f6683757ce2c1499",
+            "state_digest": "bf96b75107a1b0e60c883345302e7a72f9c6665260cc532d7e2eac9147bfb766",
             "waterfall_step": "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY"
           }
         ],
@@ -153,6 +153,18 @@
           "state_digest": "baaa494c5ec73989c97a1c0ce9c4b2e90251cee9fa87a21b2e3b157e5c967563"
         },
         "sim_day": 19,
+        "source_quotes": [
+          {
+            "available_krw": 95000,
+            "quote_ref": "61f05453d7ed7d1033d85118e8361a4186406db6de148109dce6daea32f38c4a",
+            "source_ref": {
+              "claim_id": "sim-pending",
+              "payee_label": "organizer",
+              "source_cut": "49e2f423f4c9953af9983aa9ebf5d9a7f96be227d771d35881cebff3f5caec0e"
+            },
+            "waterfall_step": "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY"
+          }
+        ],
         "source_ref": {
           "claim_id": "sim-pending",
           "payee_label": "organizer",
@@ -233,7 +245,7 @@
         "source_quotes": [
           {
             "available_krw": 90000,
-            "quote_ref": "83b7445705c4e1d878d80a00a62aa432b3eff319081a92ed5f474662b86c0eb4",
+            "quote_ref": "7ce7f3a150f8a6ca840ca9a765b48145e9c83d6886ea8137611a53da6f6a308d",
             "source_ref": {
               "claim_id": "sim-pending",
               "payee_label": "organizer",
@@ -285,7 +297,7 @@
           "approvals": [],
           "at_sim_day": 110,
           "op": "post_recovery",
-          "quote_ref": "725fc4599653f109d3a0733c29b9b17926d2eee6d15e610a14996bcdd10bd122",
+          "quote_ref": "27f079f25dda77bd819dab674322cd7b999b22f751c055f6bd79fd2509fdcf7f",
           "source_ref": {
             "claim_id": "sim-pending",
             "payee_label": "organizer",
@@ -336,7 +348,7 @@
           },
           "writeoff_days_after_default": 90
         },
-        "quote_ref": "725fc4599653f109d3a0733c29b9b17926d2eee6d15e610a14996bcdd10bd122",
+        "quote_ref": "27f079f25dda77bd819dab674322cd7b999b22f751c055f6bd79fd2509fdcf7f",
         "quote_witness": {
           "advance_id": "sim-recovery",
           "claim_due_krw": 44283,
@@ -349,10 +361,22 @@
             "payee_label": "organizer",
             "source_cut": "49e2f423f4c9953af9983aa9ebf5d9a7f96be227d771d35881cebff3f5caec0e"
           },
-          "state_digest": "c6a419ceee98a38fd470abb54c4d8c82877034cf92345b02d465be81ac202ba1"
+          "state_digest": "0cf8149023de8e08a065b52285942faacd618dc19f44803234792ca9a49bfc50"
         },
         "residual_claim_krw": 43283,
         "sim_day": 110,
+        "source_quotes": [
+          {
+            "available_krw": 90000,
+            "quote_ref": "27f079f25dda77bd819dab674322cd7b999b22f751c055f6bd79fd2509fdcf7f",
+            "source_ref": {
+              "claim_id": "sim-pending",
+              "payee_label": "organizer",
+              "source_cut": "49e2f423f4c9953af9983aa9ebf5d9a7f96be227d771d35881cebff3f5caec0e"
+            },
+            "waterfall_step": "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY"
+          }
+        ],
         "source_ref": {
           "claim_id": "sim-pending",
           "payee_label": "organizer",

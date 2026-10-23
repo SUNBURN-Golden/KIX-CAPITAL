@@ -397,6 +397,8 @@ def _fold_repayment(state, entry):
     if entry['sim_day'] != state['sim_day']:
         raise OverlayError('repayment day')
     ref, split, stamped = payload['advance_ref'], payload['allocation'], payload['witness']
+    if ref in state.get('default_anchors', {}):
+        raise OverlayError('anchored default requires recovery ledger')
     witness, default_due, interest_due, held = repayment_position(state, ref, stamped['denominator'])
     if {key: stamped[key] for key in witness} != witness:
         raise OverlayError('repayment witness does not match the folded accrual and payments')

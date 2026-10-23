@@ -1,5 +1,6 @@
 """Independent SIMULATED recovery amounts, replay, authority and failure fences."""
 import copy
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -167,12 +168,46 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.s.overlay_state('wo')['operation']['op'], 'post_writeoff')
 
     def test_other_claim_sources_require_same_beneficiary(self):
-        seed.distribute(self.source, 'sim-pending')
-        seed.distribute(self.source, 'demo-alpha-arena')
-        quotes = self.s.overlay_state()['recovery']['advances'][0]['quotes']
+        source, s = book()
+        run(s, 'default', 'sim-a', 'default')
+        seed.distribute(source, 'sim-pending')
+        seed.distribute(source, 'demo-alpha-arena')
+        quotes = s.overlay_state()['recovery']['advances'][0]['quotes']
         self.assertNotIn('demo-alpha-arena', {q['source_ref']['claim_id'] for q in quotes})
-        p = self.s.overlay_command(recover(self.s, 1000, claim='sim-pending'))['entry']
+        p = s.overlay_command(recover(s, 1000, claim='sim-pending'))['entry']
         self.assertEqual(p['waterfall_step'], 'SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY')
+
+    def test_secondary_recovery_waits_for_primary_exhaustion_before_and_after_writeoff(self):
+        for after_writeoff in (False, True):
+            with self.subTest(after_writeoff=after_writeoff):
+                source, s = book(amount=95000)
+                run(s, 'default', 'sim-a', 'default')
+                seed.distribute(source, 'sim-committed')
+                seed.distribute(source, 'sim-pending')
+                if after_writeoff:
+                    tick(s, 'stop', 10, 100)
+                    s.overlay_command(cmd(s, 'post_writeoff', 'wo', setoff_declined_reason='SIMULATED_DECLINED'))
+                primary = quote(s)
+                secondary = recover(s, 1000, 'secondary', claim='sim-pending')
+                before = s._frozen()
+                self.assert_code('RECOVERY_WATERFALL_ORDER', lambda: s.overlay_command(secondary))
+                self.assertEqual(before, s._frozen())
+                s.overlay_command(recover(s, 1000, 'partial-primary'))
+                self.assert_code('RECOVERY_WATERFALL_ORDER', lambda: s.overlay_command(
+                    recover(s, 1000, 'secondary', claim='sim-pending')))
+                s.overlay_command(recover(s, primary['available_krw'] - 1000, 'exhaust-primary'))
+                self.assert_code('RECOVERY_QUOTE_STALE', lambda: s.overlay_command(secondary))
+                result = s.overlay_command(recover(s, 1000, 'secondary', claim='sim-pending'))['entry']
+                self.assertEqual(result['waterfall_step'], 'SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY')
+                self.assertEqual(result['phase'], 'POST_WRITEOFF' if after_writeoff else 'POST_DEFAULT')
+                self.assertTrue(verify_manifest(s.export_manifest())['ok'])
+                # Replaying a secondary entry with an observed primary balance is invalid.
+                forged = copy.deepcopy(s.overlay_entries)
+                forged[-1]['payload']['source_quotes'].append({
+                    'source_ref': primary['source_ref'], 'quote_ref': primary['quote_ref'],
+                    'available_krw': 1, 'waterfall_step': primary['waterfall_step']})
+                with self.assertRaises(overlay.OverlayError):
+                    overlay.fold(forged)
 
     def test_capacity_and_failed_save_do_not_append(self):
         before = copy.deepcopy(self.s.overlay_entries)
@@ -206,6 +241,43 @@ class RecoveryTests(unittest.TestCase):
         self.assert_code('RECOVERY_EXCEEDS_CLAIM', lambda: self.s.overlay_command(recover(self.s, 1, 'overflow')))
         tick(self.s, 'later', 10, 100)
         self.assert_code('WRITEOFF_NOT_ELIGIBLE', lambda: self.s.overlay_command(cmd(self.s, 'post_writeoff', 'wo')))
+
+    def test_anchored_default_repayment_stays_blocked_without_available_sources(self):
+        source, s = book()
+        run(s, 'default', 'sim-a', 'default')
+        self.assertEqual(s.overlay_state()['recovery']['advances'][0]['quotes'], [])
+        before = s._frozen()
+        self.assert_code('REPAYMENT_ADVANCE_STATE', lambda: s.overlay_command(
+            cmd(s, 'post_repayment', 'before-source', amount_krw=1)))
+        self.assertEqual(before, s._frozen())
+        seed.distribute(source, 'sim-committed')
+        tick(s, 'stop', 10, 100)
+        s.overlay_command(recover(s, quote(s)['available_krw'], 'exhaust'))
+        self.assertEqual(s.overlay_state()['recovery']['advances'][0]['quotes'], [])
+        self.assertGreater(s.overlay_state()['recovery']['advances'][0]['claim_krw'], 0)
+        for after_writeoff in (False, True):
+            with self.subTest(after_writeoff=after_writeoff):
+                if after_writeoff:
+                    s.overlay_command(cmd(s, 'post_writeoff', 'wo'))
+                before = s._frozen()
+                exc = self.assert_code('REPAYMENT_ADVANCE_STATE', lambda: s.overlay_command(
+                    cmd(s, 'post_repayment', 'double-interest', amount_krw=1)))
+                self.assertEqual(exc.detail['reason'], 'RECOVERY_LEDGER_ONLY')
+                self.assertEqual(before, s._frozen())
+                row = s.overlay_state()['advances'][0]
+                self.assertEqual((row['interest_due_krw'], row['default_interest_due_krw']), (0, 0))
+                self.assertEqual(s.machine.view('sim-a')['phase'], 'DEFAULTED')
+
+    def test_fold_refuses_legacy_interest_payment_after_default_anchor(self):
+        state = overlay.fold(self.s.overlay_entries)
+        entry = overlay.repayment_entry('bypass', state, journal_index=len(self.s.machine.export_journal()),
+            advance_ref='sim-a', amount=1, denominator=self.s.terms.ledger_denominator(),
+            principal_before=90000, terms_version=state['terms_binding']['terms_version'],
+            split={'to_default_interest': 0, 'to_interest': 1, 'to_principal': 0, 'unapplied_cash': 0})
+        # The same payment remains replayable on the historical, unanchored path.
+        overlay.fold([e for e in self.s.overlay_entries if e['kind'] != 'default_anchor'] + [entry])
+        with self.assertRaises(overlay.OverlayError):
+            overlay.fold(self.s.overlay_entries + [entry])
 
     def test_default_anchor_link_is_checked_even_when_the_fold_is_resealed(self):
         entries = copy.deepcopy(self.s.overlay_entries)
@@ -375,8 +447,14 @@ class ReplayJourneyTests(unittest.TestCase):
         producer = PinnedFsmProducer(fixtures=source).restored(history['journal'])
         self.assertEqual(producer.state_digest(), history['f04_digest'])
         self.assertNotIn('recovery', state)
-        self.assertEqual((ROOT / 'tests/historical/journey_t05_sim.json').read_bytes(),
-                         subprocess.check_output(['git', 'show', 'HEAD:tests/golden/journey_t05_sim.json'], cwd=ROOT))
+        # Pin the preserved pre-rebase bytes independently of the current golden and git HEAD.
+        historical_bytes = (ROOT / 'tests/historical/journey_t05_sim.json').read_bytes()
+        self.assertEqual(hashlib.sha256(historical_bytes).hexdigest(),
+                         'db705e134214c09d4f3d6ca23538124eab46d1fca5baa56d3b48b8739bc24cb4')
+        journey = json.loads(historical_bytes)
+        self.assertEqual(journey['digest'], hashlib.sha256(canonical_bytes(journey['steps'])).hexdigest())
+        final = next(step for step in journey['steps'] if step['name'] == 'final phases')
+        self.assertEqual(final['facts']['state_digest'], history['f04_digest'])
 
     def test_file_restart_receipts_and_offline_manifest_workspace_verification(self):
         with tempfile.TemporaryDirectory() as directory:

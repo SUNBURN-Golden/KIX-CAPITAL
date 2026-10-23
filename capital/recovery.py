@@ -245,11 +245,20 @@ def plan_payload(state, entry):
             raise RecoveryError('RECOVERY_QUOTE_STALE')
         if amount > max(0, q['observed_eligible_krw'] - consumed):
             raise RecoveryError('RECOVERY_SOURCE_EXCEEDED')
+        steps = waterfall(state, ref)
+        step = steps[0 if source['claim_id'] == a['claim_id'] else 1]
+        available = p['source_quotes']
+        # Stamp the observed sources so replay also enforces the decided order.
+        # Secondary set-off opens only after the bound-claim sources are exhausted.
+        if step == steps[1] and any(q['waterfall_step'] == steps[0] and q['available_krw'] > 0
+                                    for q in available):
+            raise RecoveryError('RECOVERY_WATERFALL_ORDER')
         cumulative = amount + sum(e['amount_krw'] for e in state['sections']['recovery_ledger']
                                   if e['entry_kind'] == 'RECOVERY' and e['advance_id'] == ref and e['sim_day'] == day)
         base.update(amount_krw=amount, source_ref=source, quote_ref=command['quote_ref'], quote_witness=q,
+                    source_quotes=available,
                     phase='POST_WRITEOFF' if r['writeoff_sim_day'] is not None else 'POST_DEFAULT',
-                    waterfall_step=waterfall(state, ref)[0 if source['claim_id'] == a['claim_id'] else 1])
+                    waterfall_step=step)
         if r['writeoff_sim_day'] is not None:
             base['residual_claim_krw'] = pos['claim_krw'] - amount
         else:

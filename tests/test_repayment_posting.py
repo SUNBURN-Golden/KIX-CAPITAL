@@ -210,9 +210,14 @@ class F04CouplingTests(unittest.TestCase):
         fresh = drawn()
         self.assertEqual(pay(fresh, 'p-1', 9000)['outcome'], 'APPLIED')
 
-    def test_a_defaulted_advance_takes_interest_only_because_f04_is_terminal(self):
-        service = drawn()
+    def test_a_historical_unanchored_default_takes_interest_only_because_f04_is_terminal(self):
+        # A default recorded before the overlay exists has no dated recovery anchor.
+        # Anchored defaults permanently use recovery (covered in test_recovery).
+        service = CapitalService()
+        draw_book(service)
         run(service, 'default', 'sim-a', 'd-1')
+        tick(service, 'c-1', 0, 60)
+        self.assertNotIn('default_anchors', overlay.fold(service.overlay_entries))
         before = whole(service)
         error = refused(self, lambda: pay(service, 'p-1', 9000))
         self.assertEqual((error.code, error.status), ('REPAYMENT_ADVANCE_STATE', 409))
