@@ -924,3 +924,82 @@ Commands actually run after the second merge:
 - `npm run test:browser` (Chromium from the default `~/.cache/ms-playwright` install): exit 0, **62 passed** (1.8m); no server left running.
 - `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 733, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
+
+## lifecycle-claims-conformance — builder evidence (2026-10-23)
+
+Completed the interrupted implementation with twelve executable local lifecycle
+analogues in `capital/lifecycle_claims.py`, `tests/lifecycle_claims.json`, and
+`scripts/lifecycle_claims_check.py`. Every row and report carries
+CLAIM_CONFORMANCE / SIMULATED / funds_executed false. State, receipt and scenario
+non-execution flags are asserted against actual responses. The harness uses
+stdlib HTTP on disposable 127.0.0.1 servers, temporary workspaces, an event barrier
+for dropped replies, explicit shutdown/close/join, and no external services.
+
+| Contract mapping | Executed observation |
+|---|---|
+| LC-TERM first results | Accepted and business-rejected first receipts survive duplicate submissions; after the rejected command the missing case is successfully created. Changed arguments return IDEMPOTENCY_CONFLICT. Duplicates/conflicts invoke the producer zero times. |
+| LC-TERM UNKNOWN | A lost reply remains unresolved across synthetic elapsed time and state reads; only receipt lookup resolves it, returning the exact dropped receipt. Producer TransportLost remains UNKNOWN across repeated absent-receipt reads. |
+| LC-CUT retry boundary | The SIMULATED client fences resubmission and emits one original POST; recovery uses GET only. This is client-owned fencing, not a global server prohibition. |
+| LC-TERM absent receipt | Repeated lookup of a never-submitted ID returns UNKNOWN and retry_authorized false, with no command POST, journal, receipt or overlay change. |
+| LC-CUT local fences | Stale instance command/lookup fail; after restart the old token fails and a fresh token cannot bypass the old instance fence. Local instance IDs are not distributed lease generations or C_g/H_g. |
+| LC-CUT restoration | Workspace replay restores the original writer receipt, journal, overlay and state in a new instance with zero producer applications and zero new command POSTs. |
+| LC-FACT late facts | The existing late-cash READ_ONLY_FIXTURE retains confirmed but unallocated cash after cancellation, preserves cancelled obligations, and leaves the active book unchanged. This is not provider evidence custody or ingestion. |
+
+The read-only Protocol checkout currently has HEAD
+`d84cc50f78a37420ca9d12752ac23f9f9b51c5fc`. The lifecycle source pin from the
+interrupted attempt, `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`, exists, and
+`git -C /workspace/capital-run/kixproto-ro diff e2313ab473ea1b5a7b5b9246a564749188c1c2c8 -- docs/contracts/STATE_LIFECYCLE.md`
+returned exit 0 with no diff. The checker verifies the file against that commit's
+exact Git blob, then checks headings and section-local needles. A missing
+checkout reports citation SKIPPED even when behavior execution passes. This
+source pin is separate from the unchanged 7481b0e FSM vendor pin.
+
+The existing upstream-claims stage runs lifecycle checks fourth and aggregates
+failures. Existing stage-count tests, README, integration/requirements/handbook
+docs, and the docs-surface registry were extended accordingly. The claim table
+lives outside tests/vectors. No facade semantics, routes, golden fixtures, CI
+requirements, vendor files, Protocol/Commerce, or .aiops files were changed.
+CAP-11/CAP-16, operational closure, provider custody, distributed fencing and
+stage5 durability remain NOT_BOUND/out of scope.
+
+The first narrow run exposed two failures and one error caused by the harness
+sending an empty token header on bootstrap; the existing facade rejects that
+header. The fix omits the token until the normal state response supplies it.
+No facade behavior or expectation was weakened. Prior socket-denial evidence
+from the interrupted attempt is superseded by this environment's actual loopback
+execution below. No financial product values or external access were required.
+Baseline integration now requires supervisor action, recorded in root `DECISION_REQUIRED.md`; the
+existing byte guard and overlay implementation remain unchanged.
+
+Commands actually run in this continuation (all local simulation):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_lifecycle_claims tests.test_acceptance tests.test_docs_surface -v` | Initial exit 1: 29 tests, two failures and one error from the bootstrap bug. After the fix: exit 0, 29 passed. After strengthening duplicate and dropped-receipt observations: exit 0, 29 passed again. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund --cache /tmp/capital-dossier-npm-cache` | Exit 0; three pinned packages installed from the existing local cache; lockfile unchanged. Existing Chromium was available. |
+| `python3 scripts/lifecycle_claims_check.py` | Exit 0; citation SKIPPED, verified=0/12, no behavior success count. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; behavior passed=12 total=12 failed=0; citation SKIPPED. |
+| `python3 scripts/lifecycle_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behavior 12/12 and pinned citations verified=12/12. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 29 routes, 38 artifacts, nine stages. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| Python SHA256 and `git show HEAD:capital/vendor/<file>` byte comparisons for every manifest entry and manifest.json | Exit 0; all five SHA256 locks and baseline bytes match; manifest unchanged. |
+| `git diff --check` | Exit 0. |
+| `python3 -m unittest discover -s tests -v` | Exit 1; 821 run, 820 passed, one existing baseline-guard failure: capital/overlay.py differs from origin/main despite being unchanged from this worktree HEAD. |
+| `python3 -m unittest tests.test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 1; import error because this existing test imports test_overlay as a sibling. The corrected invocation below reaches the guard. |
+| `PYTHONPATH=tests:. python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 1; independently reproduces the same baseline-guard failure. |
+| `npm run test:browser` | Exit 0; all 62 Chromium browser tests passed (1.6m). |
+| `python3 scripts/build_release.py --out build/lifecycle-dist-a` and `python3 scripts/build_release.py --out build/lifecycle-dist-b` | Both exit 0; identical SHA256 079b6720ae1ee1ba2c53e38eb023c0d035bd7a4073b8b7b153801a62e975abf0. |
+| `cmp build/lifecycle-dist-a/capital-*.pyz build/lifecycle-dist-b/capital-*.pyz` | Exit 0; reproducible package bytes. |
+| `python3 scripts/smoke_release.py build/lifecycle-dist-a/capital-*.pyz` | Exit 0; all eight smoke checks passed. |
+| `python3 -m unittest tests.test_lifecycle_claims tests.test_acceptance tests.test_docs_surface tests.test_agent_claims tests.test_read_model_claims tests.test_handbook -v` | Exit 0; 64 passed after final README and documentation updates. |
+| `python3 scripts/acceptance.py` | Exit 1; evidence.ok=false solely from the unchanged baseline guard (unit 820/821). All remaining stages passed: storage 19, vendor 7, upstream claims 232, node syntax, browser 62, packaged smoke 8, seeded demo 1 and integrated journeys 4. |
+| Python /proc command-line check restricted to Python Capital/fake-gate servers | Exit 0; no servers remain after verification. |
+
+`build/acceptance-evidence.json` contains the actual commands, captured results
+and nonzero unit-stage status. It is an ignored local artifact. The independent
+full-suite run and acceptance rerun both reproduce the same sole baseline guard
+failure. Root `DECISION_REQUIRED.md` gives the evidence, integration options,
+recommendation and decision owner. No tests or guards were weakened, no refs were
+moved, and no commits or remote actions were performed.

@@ -314,7 +314,7 @@ class HandbookTests(unittest.TestCase):
         self.assertLess(
             unit_commands.index(next(c for c in unit_commands if 'discover' in c)),
             unit_commands.index(fence[0]))
-        self.assertEqual(len(upstream_commands), 3)
+        self.assertEqual(len(upstream_commands), 4)
         for argv in upstream_commands:
             self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)

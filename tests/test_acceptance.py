@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +47,8 @@ class AcceptanceTests(unittest.TestCase):
             commands['upstream-claims'][0][1:],
             ['scripts/upstream_claims_check.py', '--execute'],
         )
+        self.assertEqual(commands['upstream-claims'][3][1:],
+                         ['scripts/lifecycle_claims_check.py', '--execute'])
         self.assertEqual(commands['node-check'][0][1:], ['--check', 'capital/static/app.js'])
         self.assertEqual(commands['browser'][0], ['npm', 'run', 'test:browser'])
         self.assertEqual(commands['packaged-smoke'][0][1:], ['scripts/build_release.py', '--out', 'build/acceptance-dist'])
@@ -66,6 +69,21 @@ class AcceptanceTests(unittest.TestCase):
             self.assertIn(name, spec)
         self.assertIn('375', spec)
         self.assertIn('console', spec)
+
+    def test_lifecycle_failure_propagates_and_counts_are_aggregated(self):
+        stage = next(s for s in acceptance.build_plan() if s['id'] == 'upstream-claims')
+        replies = [(0, 'CLAIM_CONFORMANCE passed=2 total=2 failed=0', '')] * 3
+        replies += [(1, 'CLAIM_CONFORMANCE passed=11 total=12 failed=1', '')]
+        with patch.object(acceptance, 'run_argv', side_effect=replies) as run:
+            records, code = acceptance._run_stage(stage, ROOT)
+        self.assertEqual(run.call_args_list[-1].args[0][1:],
+                         ['scripts/lifecycle_claims_check.py', '--execute'])
+        self.assertEqual(code, 1)
+        self.assertEqual(acceptance._merge_counts(records), {'ran': 18, 'passed': 17, 'failed': 1})
+        body = {'test_count': acceptance._merge_counts(records), 'exit_code': code}
+        acceptance._annotate_upstream(stage, body)
+        self.assertEqual(body['status'], 'failed')
+        self.assertEqual(body['label'], 'CLAIM_CONFORMANCE')
 
     def test_injected_failing_stage_writes_evidence_and_exits_nonzero(self):
         plan = acceptance.inject_failure([_ok_stage(stage_id) for stage_id in acceptance.REQUIRED_STAGES], 'node-check')

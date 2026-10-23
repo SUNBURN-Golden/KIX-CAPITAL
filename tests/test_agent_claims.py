@@ -343,7 +343,10 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(plan[0]['commands'][0][1:], ['scripts/upstream_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][1][1:], ['scripts/agent_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py', '--execute'])
+        from capital.lifecycle_claims import load_table as load_lifecycle
+        self.assertEqual(plan[0]['commands'][3][1:], ['scripts/lifecycle_claims_check.py', '--execute'])
         expected_total = (
+            len(load_lifecycle()['claims']) +
             len(load_upstream()['claims'])
             + len(load_table()['claims'])
             + len(load_read_model()['claims']))

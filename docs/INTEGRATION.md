@@ -221,3 +221,24 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+Lifecycle claim mappings (`tests/lifecycle_claims.json`,
+`scripts/lifecycle_claims_check.py --execute`) exercise the unchanged
+`POST /api/commands`, `GET /api/operations/{operation_id}?instance_id=...`,
+`GET /api/state` and `GET /api/scenarios/late-cash` routes over loopback.
+The SIMULATED stdlib client suppresses an actual HTTP reply after application,
+keeps UNKNOWN unresolved across a synthetic elapsed-time advance and state reads,
+and resolves only by receipt lookup; it emits no automatic retry. This documents
+client-owned fencing, not a server-wide prohibition on submitting an arbitrary
+new command. The existing browser UNKNOWN regressions remain the UI evidence.
+An injected producer TransportLost separately exercises absent receipts. Restart
+checks use disposable LOCAL_FILE_WORKSPACE directories, retain original writer
+receipts, and count producer applications during restore. Local instance IDs do
+not implement lease generations or C_g/H_g. The late-cash READ_ONLY_FIXTURE keeps
+synthetic cash unallocated after cancellation without changing the active book;
+it does not implement provider evidence custody, ingestion, or ACK durability.
+Results are CLAIM_CONFORMANCE / SIMULATED with funds_executed false, not full
+lifecycle compliance. Lifecycle source pin e2313ab473ea1b5a7b5b9246a564749188c1c2c8
+is separate from the unchanged FSM vendor pin. Missing Protocol means citation
+SKIPPED; supplied checkouts must match the pinned document blob and each cited
+section-local needle. No route or lifecycle behavior changes.
