@@ -78,6 +78,7 @@ ROUTE_NEEDLES = {
         '`GET /api/terms/portfolio/forecast',
     ),
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
+    ('GET', '/api/portfolio/snapshot'): ('- `GET /api/portfolio/snapshot`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
     ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
     ('GET', '/api/policy'): (
@@ -108,11 +109,14 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
     'pack/': ('tests/vectors/pack/', 'scripts/pack_vectors.py --check'),
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
+    'closeout_digest.json': (
+        'tests/vectors/closeout_digest.json', 'scripts/closeout_digest.py --check'),
     'gate_faults.json': (
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
     'forecast_vectors.json': (

@@ -1,5 +1,12 @@
 # Capital 청사진 요구사항과 구현·선행 매핑
 
+CAP-14 observation seam: `ObservationPort` / `LocalFakeObservation` now supplies a
+SIMULATED, read-only fixture fold only. CAP-14 and CAP-16 remain NOT_BOUND. The
+fixture separately pins ADAPTER_EVENT_IDENTITY draft 0.1 at `e2a029d8ac3af7575888dac22fc4bf173ebec232`,
+SHA256 `e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`,
+as cited in CAPITAL_UPSTREAM_BINDING section 2. This is not the FSM pin or an
+adoption of production identity, aliasing, authenticated queries, or wire layout.
+
 2026-10-18. Capital 구현 기준 main `f1c5651b40bf9a15077a37a9769276dc28b8e1a1`.
 실행·참조 소비자가 고정하는 Protocol 기준은 셋이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. (3) **`e2313ab473ea1b5a7b5b9246a564749188c1c2c8`**: STATE_LIFECYCLE.md LC-TERM/LC-FACT/LC-CUT 인용 핀(`tests/lifecycle_claims.json`); FSM vendor 핀과 별개다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 위 고정은 나열한 실행·참조 소비자에만 묶는다. (1)은 FSM 원본·vendor 바이트와 그 FSM·읽기 모델 클레임 표(`tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`)의 인용에, (2)는 AI 위임 초안 인용과 `tests/agent_claims.json`에, (3)은 수명 계약 인용과 `tests/lifecycle_claims.json`에 적용된다. `docs/decisions/`의 각 결정 노트는 `기준`·`bases` 칸에 그 노트 작성 시점의 역사적 연구 체크아웃을 따로 기록한다(예: [CAPITAL_CLAIM_SLICE_REGISTRY.md](decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md)의 kix-protocol `9eb6b9f`). 그 값은 노트의 출처 증명이며 실행·참조 구속이 아니므로 위 고정의 범위 밖이다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
@@ -66,3 +73,5 @@ CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입
 같은 PR에서 DB 없이 가능한 CAP-05/06의 참조 시나리오를 9개·35단계로 구현했다. 모든 배정·환불 수치는 고정한 upstream 목에서 계산한다. 클라이언트는 수치를 재계산하지 않는다. 다섯 읽기 전용 보존식·예상 거절·거절 시 상태 보존은 별도로 검사한다. CAP-08의 인출 사전점검은 현재 저널의 별도 복제본만 변경하므로 활성 제안·예약·receipt에 효과가 없다. CAP-16의 파일 무결성 표시는 source byte 일치에만 한정된다. 로컬 부분은 `capital-local-facade/1` 계약과 ProducerPort vectors이며, SEMANTIC_CONFORMANCE exact tuple은 NOT_BOUND다.
 
 나머지는 화면에서 제품 행동별로 구분한다. CAP-13의 로컬 후보는 `SYNTHETIC_UNADOPTED` 표식의 읽기 전용 투영이며 계정·수익인식·세무를 정하지 않고 `fin-ledger-contract`를 채택하지 않는다. CAP-09의 다섯 구분 명세서와 CAP-14의 대사 예외는 로컬 진단이다. 은행 대사·제공자 인증 완전성·실지급을 주장하지 않고, 최초 판매와 리셀 매출을 합산하지 않는다. 수익참여·채권매입·외부담보 실행은 금융 조건 결정이 필요하다. 실제 주문/리셀/권리 연결은 exact producer/SDK/profile이, 내구 원장·채택 복식·인증 export는 stage5/6/7과 Finance 후보 채택이 필요하다. 로컬 manifest와 SignaturePort는 그 채택을 대체하지 않는다. 공유 HMAC 키는 무결성일 뿐 인증이 아니다. 다중 자산·권리 규모·비공개·AI 권한은 해당 upstream 계약이 필요하다. 실서비스 실행은 현재 승인되지 않았다. 이 차단점을 가상 계산이나 자체 backend로 대체하지 않는다. 각 행은 계속 전체 Capital 범위에 남는다.
+
+- portfolio-consistent-read: `GET /api/portfolio/snapshot` / `capital/portfolio_snapshot.py` / `tests/test_portfolio_snapshot.py`: one lock-held SIMULATED local diagnostic cut of terms, risk, covenants and forecast; explicit completeness, current instance and projection:read. Authenticated/cross-process cuts and historical storage remain NOT_BOUND/out of scope.

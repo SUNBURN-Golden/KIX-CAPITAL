@@ -99,3 +99,16 @@ class ProducerPort(Protocol):
 
     def preview_draw(self, advance_id):
         """Draw on a disposable copy. Diagnostic idempotency key only."""
+
+
+@runtime_checkable
+class ObservationPort(Protocol):
+    """Read-only synthetic fact fold. No recording or provider authentication."""
+
+    def fold(self, facts, *, bindings) -> dict:
+        """Return detached SIMULATED diagnostics without applying any effects.
+
+        Facts and explicit fixture bindings are lists. Calls are independent;
+        transmission metadata never determines event identity or evidence hashes.
+        A replacement must pass tests/test_observation_port.py's factory gate.
+        """

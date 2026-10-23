@@ -1,5 +1,14 @@
 # Local port seams
 
+`tests/test_observation_port.py` exposes `run_observation_vectors(factory)` for a
+fresh no-argument ObservationPort factory. Local replay is a fixture gate only,
+not SEMANTIC_CONFORMANCE. `LOCAL_SYNTHETIC_JSON_SHA256_V1` uses full SHA256 local
+JSON diagnostic IDs, retains full scoped keys and rejects alias collisions. No
+16-byte alias, KIX-BCS encoding, domain/schema allocation or provider key is adopted.
+The contract document is pinned separately at `e2a029d8ac3af7575888dac22fc4bf173ebec232`
+with SHA256 `e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`;
+`7481b0e` is the FSM pin and does not contain this document.
+
 Registry of Capital facade ports. A later node adds its port as a new row here and a `typing.Protocol` in `capital/ports.py`. The test in `tests/test_seams.py` fails when a Protocol has no row, or when a row says `ADOPTED` without an upstream receipt reference.
 
 `ADOPTED` means an upstream contract has actually replaced the local implementation and a receipt (commit, review URL, or profile digest) is cited in **Upstream receipt**. None of the rows below are `ADOPTED`. Local classes are stand-ins. They are not SEMANTIC_CONFORMANCE, and they do not bind the CAP-16 exact producer/SDK tuple. That tuple stays `NOT_BOUND`.
@@ -12,6 +21,7 @@ Registry of Capital facade ports. A later node adds its port as a new row here a
 
 | Port | Local implementation | Upstream contract | Readiness | Status | Upstream receipt |
 | --- | --- | --- | --- | --- | --- |
+| ObservationPort | `LocalFakeObservation` in `capital/observation.py`; pure synthetic fold, no recording | `docs/contracts/ADAPTER_EVENT_IDENTITY.md` draft 0.1; local diagnostic profile only, not production identity or wire encoding | CAP-14 | NOT_BOUND | NONE |
 | StoragePort | `InMemoryStorage` and opt-in `FileWorkspace` in `capital/store.py` | `k-stage5-durable-tx` adopted backend. The local JSON file is not that contract. | CAP-11 | NOT_BOUND | NONE |
 | ProjectionPort | `SimulationProjection` in `capital/projection.py`; additive `CoaCandidateProjection` in `capital/coa.py` (`SIMULATION_FIXED_V2`, `mode=coa-candidate` only, `SYNTHETIC_UNADOPTED`) | `fin-ledger-contract` and an adopted finance chart. `SIMULATION_FIXED_V1` is `SYNTHETIC_UNADOPTED`. | CAP-13 | NOT_BOUND | NONE |
 | AuthorizerPort | `LocalRoleAuthorizer` in `capital/auth.py` | Identity provider plus AgentGrant/ActionPermit. Synthetic loopback roles are not authentication. | CAP-19 | NOT_BOUND | NONE |

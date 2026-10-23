@@ -76,6 +76,13 @@ class MutatedDocTests(unittest.TestCase):
         self.assertIn('GET /api/statement', err)
         self.assertIn('- `GET /api/statement`:', err)
 
+    def test_missing_portfolio_snapshot_bullet_fails(self):
+        tmp, copy = _mutated_copy(INTEGRATION, lambda text: _drop_line(text, '- `GET /api/portfolio/snapshot`:'))
+        self.addCleanup(tmp.cleanup)
+        code, _out, err = _run(['--check', '--integration', str(copy)])
+        self.assertEqual(code, 1)
+        self.assertIn('GET /api/portfolio/snapshot', err)
+
     def test_agent_routes_in_generated_block_do_not_count(self):
         # The agent POST names also sit in the generated auth-matrix table; only
         # the prose sentence is the hand enumeration, so deleting it must fail.

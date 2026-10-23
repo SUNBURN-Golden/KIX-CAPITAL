@@ -1,5 +1,5 @@
 {
-  "digest": "48ba521a0f2809c9a9d56bb32e6827aa0958818c1be015a0c66d389de86738c4",
+  "digest": "3f1b9a11b24fffa6e0c4bda50800638d4ff84b952793f05f884b276d9f72ad43",
   "funds_executed": false,
   "integrated": false,
   "journey": "T05-sim",
@@ -558,7 +558,7 @@
     {
       "expect": [
         true,
-        "NOT_RECORDED"
+        "NONE_YET"
       ],
       "facts": {
         "cash": 5000,
@@ -573,10 +573,10 @@
       },
       "kind": "HTTP",
       "n": 24,
-      "name": "late cash splits interest first; interest payments stay NOT_RECORDED",
+      "name": "late cash splits interest first; interest payments stay NONE_YET",
       "status": [
         true,
-        "NOT_RECORDED"
+        "NONE_YET"
       ]
     },
     {
@@ -630,14 +630,14 @@
     {
       "expect": [
         false,
-        "NOT_RECORDED"
+        "NONE_YET"
       ],
       "kind": "HTTP",
       "n": 28,
       "name": "interest payments are not recorded, so the overlay is not close-ready",
       "status": [
         false,
-        "NOT_RECORDED"
+        "NONE_YET"
       ]
     },
     {

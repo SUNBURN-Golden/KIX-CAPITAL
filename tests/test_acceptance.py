@@ -47,7 +47,10 @@ class AcceptanceTests(unittest.TestCase):
             commands['upstream-claims'][0][1:],
             ['scripts/upstream_claims_check.py', '--execute'],
         )
+        self.assertEqual(len(commands['upstream-claims']), 5)
         self.assertEqual(commands['upstream-claims'][3][1:],
+                         ['scripts/ce1_claims_check.py', '--execute'])
+        self.assertEqual(commands['upstream-claims'][4][1:],
                          ['scripts/lifecycle_claims_check.py', '--execute'])
         self.assertEqual(commands['node-check'][0][1:], ['--check', 'capital/static/app.js'])
         self.assertEqual(commands['browser'][0], ['npm', 'run', 'test:browser'])
@@ -73,13 +76,14 @@ class AcceptanceTests(unittest.TestCase):
     def test_lifecycle_failure_propagates_and_counts_are_aggregated(self):
         stage = next(s for s in acceptance.build_plan() if s['id'] == 'upstream-claims')
         replies = [(0, 'CLAIM_CONFORMANCE passed=2 total=2 failed=0', '')] * 3
+        replies += [(0, 'CLAIM_CONFORMANCE passed=49 total=49 failed=0', '')]
         replies += [(1, 'CLAIM_CONFORMANCE passed=11 total=12 failed=1', '')]
         with patch.object(acceptance, 'run_argv', side_effect=replies) as run:
             records, code = acceptance._run_stage(stage, ROOT)
         self.assertEqual(run.call_args_list[-1].args[0][1:],
                          ['scripts/lifecycle_claims_check.py', '--execute'])
         self.assertEqual(code, 1)
-        self.assertEqual(acceptance._merge_counts(records), {'ran': 18, 'passed': 17, 'failed': 1})
+        self.assertEqual(acceptance._merge_counts(records), {'ran': 67, 'passed': 66, 'failed': 1})
         body = {'test_count': acceptance._merge_counts(records), 'exit_code': code}
         acceptance._annotate_upstream(stage, body)
         self.assertEqual(body['status'], 'failed')
