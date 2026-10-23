@@ -1,10 +1,13 @@
-"""Overlay ledger: the sim_day clock and ACT/365 simple-interest memo postings.
+"""Overlay ledger: the sim_day clock, ACT/365 simple-interest memo postings and repayment postings.
 
 SIMULATED memo ledger. Nothing here is a payment, a receivable or a bank record.
-The F04 journal is never written and the FSM is never gated: the overlay is a
+This module never writes the F04 journal and never gates the FSM: the overlay is a
 separate append-only journal inside the one workspace envelope, and its authority
 is the deterministic fold of its entries (docs/decisions/CAPITAL_OVERLAY_STATE.md).
 Digest, clock and golden policy follow docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md.
+A `repayment` entry records an operator-asserted payment and its split over the posted
+dues (docs/decisions/CAPITAL_REPAYMENT_POSTING.md); the service, not this module, issues
+the matching F04 repay in the same save.
 
 Pure functions only. The fold reads no note and no wall clock: rates, day counts and
 bounds are stamped into each entry by the writer, and replay folds what was recorded.
@@ -28,19 +31,24 @@ LABEL = 'SIMULATED'
 CLOCK_SOURCE = 'SIM_LOGICAL_CLOCK'
 ACTOR = 'LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED'
 COMMAND_OP = 'advance_day'
+COMMAND_REPAY = 'post_repayment'
+BASIS = 'SIM_REPAY_MEMO'
+PAYMENT_BASIS = 'UNVERIFIED_ASSERTED'
 STATE_NOTE = 'CAPITAL_OVERLAY_STATE.md'
 EXPORT_NOTE = 'CAPITAL_OVERLAY_DIGEST_EXPORT.md'
+REPAYMENT_NOTE = 'CAPITAL_REPAYMENT_POSTING.md'
 
 KIND_TERMS = 'terms_binding'
 KIND_CLOCK = 'clock'
 KIND_INTEREST = 'interest_posting'
+KIND_REPAYMENT = 'repayment'
 KIND_MARGIN_CALL = 'margin_call'
 KIND_MARGIN_CURE = 'margin_cure'
 KIND_MARGIN_ACCELERATION = 'margin_acceleration'
 KIND_DEFAULT_PROPOSAL = 'default_eligible_proposal'
 MARGIN_KINDS = (KIND_MARGIN_CALL, KIND_MARGIN_CURE, KIND_MARGIN_ACCELERATION, KIND_DEFAULT_PROPOSAL)
 # entry kind -> the section of the decided storage shape it belongs to
-SECTION_OF = {KIND_CLOCK: 'clock', KIND_INTEREST: 'interest_ledger', KIND_TERMS: 'decision_records',
+SECTION_OF = {KIND_CLOCK: 'clock', KIND_INTEREST: 'interest_ledger', KIND_REPAYMENT: 'interest_ledger', KIND_TERMS: 'decision_records',
               **{kind: 'decision_records' for kind in MARGIN_KINDS}}
 SECTIONS = ('clock', 'interest_ledger', 'recovery_ledger', 'decision_records', 'agent_proposals')
 ENTRY_KEYS = frozenset({'overlay_id', 'after_journal_index', 'sim_day', 'kind', 'payload'})
@@ -77,6 +85,17 @@ _PAYLOAD_TYPES = {
     },
 }
 _EXACT = re.compile(r'\A(0|[1-9][0-9]*)/([1-9][0-9]*)\Z')
+_DECIMAL = re.compile(r'\A(0|[1-9][0-9]*)\Z')
+EVIDENCE_REF = re.compile(r'\A[A-Za-z0-9._:-]{1,64}\Z')
+_ALLOCATION_KEYS = ('default_interest_krw', 'interest_krw', 'principal_krw', 'unapplied_after_krw')
+_WITNESS_INTS = ('denominator', 'paid_interest_krw', 'paid_default_krw', 'principal_before_krw')
+_WITNESS_NUMERATORS = ('accrued_interest_num', 'accrued_default_num')
+_REPAYMENT_REQUIRED = frozenset({
+    'advance_ref', 'amount_krw', 'unapplied_before_krw', 'allocation', 'witness', 'terms_binding',
+    'f04_operation_id', 'f04_receipt_ref', 'label', 'basis'})
+_REPAYMENT_OPTIONAL = frozenset({'evidence_ref', 'proposal_id'})
+_NO_PAYMENTS = {'paid_default_krw': 0, 'paid_interest_krw': 0, 'principal_krw': 0,
+                'unapplied_cash_krw': 0, 'postings': 0}
 
 
 class OverlayError(ValueError):
@@ -140,6 +159,28 @@ def load_bounds(state_note=None, export_note=None):
     return bounds
 
 
+REPAYMENT_BOUND_NAMES = ('amount_max_krw', 'entries_per_advance_max', 'entry_canonical_bytes_max',
+                         'unapplied_max_krw_per_advance')
+
+
+def load_repayment_bounds(note=None):
+    """Repayment posting bounds, read from the ADOPTED entries of the note. None means NOT_BOUND."""
+    block = read_decision_block(default_note_path(REPAYMENT_NOTE) if note is None else note)
+    capacity = _adopted(block, 'capacity_and_envelope_effect')
+    unapplied = _adopted(block, 'unapplied_cash_handling')
+    if capacity is None or unapplied is None:
+        return None
+    bounds = {}
+    for name in REPAYMENT_BOUND_NAMES:
+        value = capacity.get(name)
+        if type(value) is not int or value < 1:
+            return None
+        bounds[name] = value
+    if unapplied.get('max_krw_per_advance') != bounds['unapplied_max_krw_per_advance']:
+        return None
+    return bounds
+
+
 # ---------------------------------------------------------------- fold
 
 def empty_state():
@@ -162,6 +203,9 @@ def validate_entry(entry):
         raise OverlayError('overlay_id')
     if not _int(entry['after_journal_index']) or not _int(entry['sim_day']):
         raise OverlayError('entry index')
+    if entry['kind'] == KIND_REPAYMENT:
+        _validate_repayment(entry['payload'])
+        return
     shape = _PAYLOAD_TYPES.get(entry['kind']) if type(entry['kind']) is str else None
     payload = entry['payload']
     if shape is None or type(payload) is not dict or set(payload) != set(shape):
@@ -170,6 +214,49 @@ def validate_entry(entry):
         value = payload[key]
         if type(value) is not kind or (kind is int and value < 0) or (kind is str and not value):
             raise OverlayError(f'payload {key}')
+
+
+def _decimal(text):
+    match = _DECIMAL.fullmatch(text) if type(text) is str else None
+    if match is None:
+        raise OverlayError('decimal string')
+    return int(text)
+
+
+def _flat_ints(block, keys):
+    if type(block) is not dict or set(block) != set(keys) or not all(_int(block[key]) for key in keys):
+        raise OverlayError('repayment integers')
+
+
+def _validate_repayment(payload):
+    """Exact shape of a repayment payload: optional citations, nested blocks, nullable F04 refs."""
+    if type(payload) is not dict or not _REPAYMENT_REQUIRED <= set(payload) <= _REPAYMENT_REQUIRED | _REPAYMENT_OPTIONAL:
+        raise OverlayError('payload keys')
+    if type(payload['advance_ref']) is not str or not payload['advance_ref']:
+        raise OverlayError('payload advance_ref')
+    if not _int(payload['amount_krw']) or not _int(payload['unapplied_before_krw']):
+        raise OverlayError('payload amounts')
+    _flat_ints(payload['allocation'], _ALLOCATION_KEYS)
+    witness = payload['witness']
+    if type(witness) is not dict or set(witness) != set(_WITNESS_INTS) | set(_WITNESS_NUMERATORS):
+        raise OverlayError('witness keys')
+    _flat_ints({key: witness[key] for key in _WITNESS_INTS}, _WITNESS_INTS)
+    for key in _WITNESS_NUMERATORS:
+        _decimal(witness[key])
+    binding = payload['terms_binding']
+    if type(binding) is not dict or set(binding) != {'terms_version'} or type(binding['terms_version']) is not str \
+            or not binding['terms_version']:
+        raise OverlayError('payload terms_binding')
+    for key in ('f04_operation_id', 'f04_receipt_ref'):
+        if payload[key] is not None and (type(payload[key]) is not str or not payload[key]):
+            raise OverlayError(f'payload {key}')
+    if 'evidence_ref' in payload and (type(payload['evidence_ref']) is not str
+                                      or EVIDENCE_REF.fullmatch(payload['evidence_ref']) is None):
+        raise OverlayError('payload evidence_ref')
+    if 'proposal_id' in payload and (type(payload['proposal_id']) is not str or not payload['proposal_id']):
+        raise OverlayError('payload proposal_id')
+    if payload['label'] != LABEL or payload['basis'] != BASIS:
+        raise OverlayError('repayment labels')
 
 
 def _fold_terms(state, entry):
@@ -242,6 +329,102 @@ def _fold_interest(state, entry):
         'contractual_days': payload['contractual_days'], 'default_days': payload['default_days'],
         'posted_contract_krw': payload['posted_contract_krw'],
         'posted_default_krw': payload['posted_default_krw']})
+
+
+def _numerator(value, denominator):
+    scaled = value * denominator
+    if scaled.denominator != 1:
+        raise OverlayError('accrual is not an integer numerator over the denominator')
+    return scaled.numerator
+
+
+def _payments(state, advance_ref):
+    return state.get('repayment', {}).get('advances', {}).get(advance_ref, _NO_PAYMENTS)
+
+
+def repayment_position(state, advance_ref, denominator):
+    """(witness without the F04 principal, default due, interest due, held cash) of one advance.
+
+    The numerators are the cumulative exact accrual times the denominator; a due is the floor of
+    its numerator over the denominator minus what is already paid, so a sub-won carry is derived
+    and never lost. Pure: the writer stamps this, the fold recomputes it.
+    """
+    if not denominator:
+        raise OverlayError('denominator')
+    record = state['advances'].get(advance_ref)
+    paid = _payments(state, advance_ref)
+    numerators = {}
+    for key, source in (('accrued_interest_num', 'cumulative_contract_exact'),
+                        ('accrued_default_num', 'cumulative_default_exact')):
+        numerators[key] = _numerator(parse_exact(record[source]) if record else Fraction(0), denominator)
+    witness = {'denominator': denominator,
+               'accrued_interest_num': str(numerators['accrued_interest_num']),
+               'accrued_default_num': str(numerators['accrued_default_num']),
+               'paid_interest_krw': paid['paid_interest_krw'], 'paid_default_krw': paid['paid_default_krw']}
+    default_due = numerators['accrued_default_num'] // denominator - paid['paid_default_krw']
+    interest_due = numerators['accrued_interest_num'] // denominator - paid['paid_interest_krw']
+    return witness, default_due, interest_due, paid['unapplied_cash_krw']
+
+
+def _fold_repayment(state, entry):
+    payload = entry['payload']
+    binding = state['terms_binding']
+    if binding is None or payload['terms_binding']['terms_version'] != binding['terms_version']:
+        raise OverlayError('repayment without matching terms binding')
+    if entry['sim_day'] != state['sim_day']:
+        raise OverlayError('repayment day')
+    ref, split, stamped = payload['advance_ref'], payload['allocation'], payload['witness']
+    witness, default_due, interest_due, held = repayment_position(state, ref, stamped['denominator'])
+    if {key: stamped[key] for key in witness} != witness:
+        raise OverlayError('repayment witness does not match the folded accrual and payments')
+    if payload['unapplied_before_krw'] != held:
+        raise OverlayError('repayment unapplied_before')
+    if split['default_interest_krw'] > default_due or split['interest_krw'] > interest_due \
+            or split['principal_krw'] > stamped['principal_before_krw']:
+        raise OverlayError('repayment allocation exceeds a due')
+    applied = split['default_interest_krw'] + split['interest_krw'] + split['principal_krw']
+    if payload['amount_krw'] + held != applied + split['unapplied_after_krw']:
+        raise OverlayError('repayment allocation invariant')
+    if split['unapplied_after_krw'] and (split['default_interest_krw'] != default_due or split['interest_krw'] != interest_due
+                                         or split['principal_krw'] != stamped['principal_before_krw']):
+        raise OverlayError('cash held while a bucket is still due')
+    refs = (payload['f04_operation_id'], payload['f04_receipt_ref'])
+    if (split['principal_krw'] > 0) != (refs[0] is not None) or (refs[0] is None) != (refs[1] is None):
+        raise OverlayError('repayment F04 reference')
+    paid = _payments(state, ref)
+    state.setdefault('repayment', {'advances': {}, 'close_gate': None})['advances'][ref] = {
+        'paid_default_krw': paid['paid_default_krw'] + split['default_interest_krw'],
+        'paid_interest_krw': paid['paid_interest_krw'] + split['interest_krw'],
+        'principal_krw': paid['principal_krw'] + split['principal_krw'],
+        'unapplied_cash_krw': split['unapplied_after_krw'],
+        'postings': paid['postings'] + 1}
+    state['sections']['interest_ledger'].append({
+        'overlay_id': entry['overlay_id'], 'record': 'REPAYMENT', 'advance_id': ref,
+        'sim_day': entry['sim_day'], 'amount_krw': payload['amount_krw'], **split})
+
+
+def _gate(default_due, interest_due, held):
+    status = 'INTEREST_DUE' if default_due + interest_due else ('UNAPPLIED_HELD' if held else 'CLEAR')
+    return {'status': status, 'default_interest_due_krw': default_due, 'interest_due_krw': interest_due,
+            'unapplied_cash_krw': held}
+
+
+def advance_gate(state, advance_ref):
+    """Advisory close_gate of one advance. Never rejects a close (close_gate_enforcement)."""
+    record = state['advances'].get(advance_ref)
+    paid = _payments(state, advance_ref)
+    return _gate((record['posted_default_krw'] if record else 0) - paid['paid_default_krw'],
+                 (record['posted_contract_krw'] if record else 0) - paid['paid_interest_krw'],
+                 paid['unapplied_cash_krw'])
+
+
+def close_gates(state):
+    """Aggregate close_gate over every advance the overlay knows."""
+    ids = set(state['advances']) | set(state.get('repayment', {}).get('advances', {}))
+    gates = [advance_gate(state, advance_ref) for advance_ref in sorted(ids)]
+    return _gate(sum(gate['default_interest_due_krw'] for gate in gates),
+                 sum(gate['interest_due_krw'] for gate in gates),
+                 sum(gate['unapplied_cash_krw'] for gate in gates))
 
 
 def _margin_record(state, entry, *, expect):
@@ -326,7 +509,7 @@ def _fold_default_proposal(state, entry):
                   ('proposal_kind', 'authority', 'default_eligible_day', 'outstanding_krw'))
 
 
-_FOLDERS = {KIND_TERMS: _fold_terms, KIND_CLOCK: _fold_clock, KIND_INTEREST: _fold_interest,
+_FOLDERS = {KIND_TERMS: _fold_terms, KIND_CLOCK: _fold_clock, KIND_INTEREST: _fold_interest, KIND_REPAYMENT: _fold_repayment,
             KIND_MARGIN_CALL: _fold_margin_call, KIND_MARGIN_CURE: _fold_margin_cure,
             KIND_MARGIN_ACCELERATION: _fold_margin_acceleration, KIND_DEFAULT_PROPOSAL: _fold_default_proposal}
 
@@ -356,6 +539,8 @@ def fold(entries, journal_length=None):
         _FOLDERS[entry['kind']](state, entry)
         state['entry_count'] += 1
         state['last_after_journal_index'] = entry['after_journal_index']
+    if 'repayment' in state:
+        state['repayment']['close_gate'] = close_gates(state)
     return state
 
 
@@ -488,8 +673,62 @@ def advance_entries(operation_id, state, journal_length, *, to_day, reason, bind
     return entries
 
 
+def repayment_entry(operation_id, state, *, journal_index, advance_ref, amount, denominator, principal_before,
+                    terms_version, split, f04=None, evidence_ref=None, proposal_id=None):
+    """The one entry a post_repayment command appends. Pure; nothing is stored here.
+
+    `split` is the shared allocation (terms.allocate); `f04` is (operation id, receipt ref) of the
+    principal repay the service issues in the same save, None when no principal is applied.
+    `journal_index` is the F04 journal length after that repay.
+    """
+    witness, _default_due, _interest_due, held = repayment_position(state, advance_ref, denominator)
+    payload = {
+        'advance_ref': advance_ref, 'amount_krw': amount, 'unapplied_before_krw': held,
+        'allocation': {'default_interest_krw': split['to_default_interest'], 'interest_krw': split['to_interest'],
+                       'principal_krw': split['to_principal'], 'unapplied_after_krw': split['unapplied_cash']},
+        'witness': {**witness, 'principal_before_krw': principal_before},
+        'terms_binding': {'terms_version': terms_version},
+        'f04_operation_id': None if f04 is None else f04[0],
+        'f04_receipt_ref': None if f04 is None else f04[1],
+        'label': LABEL, 'basis': BASIS}
+    if evidence_ref is not None:
+        payload['evidence_ref'] = evidence_ref
+    if proposal_id is not None:
+        payload['proposal_id'] = proposal_id
+    return {'overlay_id': operation_id, 'after_journal_index': journal_index, 'sim_day': state['sim_day'],
+            'kind': KIND_REPAYMENT, 'payload': payload}
+
+
+def _repayment_receipt(position, entry):
+    """Receipt of a recorded repayment, a pure function of its entry (a duplicate matches after a reload)."""
+    payload = entry['payload']
+    split, witness = payload['allocation'], payload['witness']
+    denominator = witness['denominator']
+    gate = _gate(_decimal(witness['accrued_default_num']) // denominator - witness['paid_default_krw']
+                 - split['default_interest_krw'],
+                 _decimal(witness['accrued_interest_num']) // denominator - witness['paid_interest_krw']
+                 - split['interest_krw'],
+                 split['unapplied_after_krw'])
+    receipt = {
+        'operation_id': entry['overlay_id'], 'op': COMMAND_REPAY, 'outcome': 'APPLIED',
+        'advance_ref': payload['advance_ref'], 'at_sim_day': entry['sim_day'], 'sim_day': entry['sim_day'],
+        'amount_krw': payload['amount_krw'], 'unapplied_before_krw': payload['unapplied_before_krw'],
+        'entry_no': position + 1, 'allocation': dict(split),
+        'f04': None if payload['f04_operation_id'] is None else {
+            'operation_id': payload['f04_operation_id'], 'receipt_ref': payload['f04_receipt_ref']},
+        'unapplied_after_krw': split['unapplied_after_krw'], 'close_gate': gate,
+        'payment_basis': PAYMENT_BASIS, 'basis': BASIS}
+    for key in ('evidence_ref', 'proposal_id'):
+        if key in payload:
+            receipt[key] = payload[key]
+    return receipt
+
+
 def operation_receipt(entries, operation_id):
     """Rebuild a recorded command's receipt from its entries, or None when never applied."""
+    for position, entry in enumerate(entries):
+        if entry['overlay_id'] == operation_id and entry['kind'] == KIND_REPAYMENT:
+            return _repayment_receipt(position, entry)
     clock = next((entry for entry in entries if entry['kind'] == KIND_CLOCK and entry['overlay_id'] == operation_id), None)
     if clock is None:
         return None

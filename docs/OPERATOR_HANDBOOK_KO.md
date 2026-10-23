@@ -71,7 +71,7 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진 명령(`POST /api/overlay/commands`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
 | auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
 | observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
@@ -97,9 +97,11 @@ python3 scripts/acceptance.py
 - `evidence.tool_versions.*` (`python`, `node`, `npm`, `playwright`, `capital`)
 - `evidence.vendor_hashes.verified`
 - `evidence.golden_digests.status`
-- `evidence.stages[*].status` — stage id는 `unit`, `storage-conformance`, `pinned-vendor`, `upstream-claims`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo` 여덟이다.
+- `evidence.stages[*].status` — stage id는 `unit`, `storage-conformance`, `pinned-vendor`, `upstream-claims`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo`, `integrated-journeys` 아홉이다.
 
 합격·불합격 문장은 [수용 점검표](ACCEPTANCE_KO.md)에 있다. 그 점검표를 사람이 채우기 전에는 수용이 아니다.
+
+`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `storage-conformance` 단계도 벡터 discovery 다음에 `python3 -m unittest tests.test_crash_replay -v`를 둘째 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute`, `python3 scripts/ce1_claims_check.py --execute` 넷을 순서대로 실행할 뿐이다. FSM 계약 클레임 표(`tests/fsm_contract_claims.json`)는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하고, 단독 명령 `python3 scripts/fsm_contract_claims_check.py --execute`로도 돌린다. 그 표는 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`다.
 
 결정 노트 색인:
 
@@ -245,7 +247,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -363,7 +365,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 | `manifest_section_digests` | `fin-consistent-accounting-export` | manifest v2 섹션 sha256과 `content_digest` |
 | `facade_read_model` | `fin-catalogue-read-model` | `capital/contract/facade-v1.json`의 모든 GET 경로 응답 정의 digest |
 
-`fin-finance-closeout`은 벡터가 없다. 그 입력인 `build/acceptance-evidence.json`은 실행마다 달라지고 커밋하지 않는 파일이라 고정할 바이트가 없다. 후보 색인의 그 행은 `vectors`가 null이고 이유를 적어 둔다.
+여덟 번째 그룹 `closeout_digest` → `fin-finance-closeout`은 커밋된 클로즈아웃 다이제스트 `tests/vectors/closeout_digest.json`을 그대로 내장한다. 그 원천 `build/acceptance-evidence.json`은 실행마다 달라지고 커밋하지 않는 파일이라 직접은 고정할 수 없고, 결정론적 부분집합만 다이제스트로 고정한다(아래 `closeout-evidence-vector` 절). 후보 색인은 여덟 행 모두 `vectors`가 null이 아니고 `reason`이 null이다.
 
 `python3 scripts/finance_vectors.py --check`는 메모리에서 다시 만들어 파일과 비교하고, 다르거나 파일이 없으면 1로 끝난다. 통과는 고정된 로컬 코드가 아직 이 바이트를 만든다는 말뿐이다. 투영, 계정과목, 회계 정책을 바꾸지 않는다. 원본 산출물이 바뀌어 검사가 실패하면 `--write`로 다시 쓴다. 파일은 `semantic_conformance` false, `funds_executed` false, `upstream_nodes_completed` 빈 목록을 스스로 적는다. SEMANTIC_CONFORMANCE가 아니고 어떤 업스트림 노드도 끝내지 않으며 회계·정산 정책을 채택하지 않는다. 후보가 이 벡터를 쓰려면 그 후보 자신의 업스트림 완료 증거가 있어야 한다. 병합은 JunTae가 한다.
 
@@ -381,7 +383,23 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 ### terms-portfolio-rollup
 
-`GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 노출 버킷·집중도 한도·준비금·환불 충격 스트레스는 범위 밖이다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
+`GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이 롤업은 노출 버킷·집중도 한도·준비금·환불 충격 스트레스를 계산하지 않는다. 그것들은 `GET /api/risk`와 아래 `portfolio-risk-analytics` 절이 다룬다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:portfolio-risk-analytics -->
+
+### portfolio-risk-analytics
+
+`GET /api/risk`는 읽기 전용 포트폴리오 위험 분석이다. 라벨은 `SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy`이고 `mode`는 `SIMULATED_RISK_ANALYTICS`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 수락된 저널, 오버레이 시계 `sim_day`, `CAPITAL-TERMS-V1` 노트를 정수 나눗셈으로만 접으며 영수증·저널·오버레이 항목을 쓰지 않는다. 등급별 노출, 만기 버킷(표준 만기까지 남은 일수 0-30, 31-60, 61-90, >90; 만기일 당일과 연체 노출은 0-30), 연체 경과(`NOT_DUE`, 만기 후 1-30, 31-60, 61-90, >90일, `DEFAULTED`)의 합은 총 미상환과 같고 `reconciliation`이 로컬 투영의 advance 미상환과 맞춘다. 집중도는 수익자(`beneficiary_role`)별 정수 permille HHI와 `underwriting_depth` U4 세 한도(단일 건, 수익자 합계, 포트폴리오)에 대한 사용률(permille)이다. 준비금 요구액은 노트 `reserve.provision_bps_of_outstanding` 표(현재 150/500/2500/10000 bps)를 건별로 적용해 `floor(미상환 × bps / 10000)`을 더한 값이며 회계 정책이 아니고 `applied`는 false다. 스트레스는 마진 조건이 있는 `DRAWN` 건의 `eligible_face`를 고정 정수 충격 `[500, 1000, 2500, 5000]` bps만큼 줄여 다시 재고, 충격이 클수록 마진콜 건수는 줄지 않는다. 이 마진콜은 가정이며 오버레이에 기록되지 않는다. 장부가 알고 있는 만기는 표준 60일뿐이라 실제 데이터에서는 61-90, >90 버킷이 비어 있고 순수 함수 시험으로만 확인한다. 마진 가속 후의 만기 재기준은 반영하지 않는다. 연체이자·상각일을 가속 만기로 다시 잡는 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`(`acceleration_interest_rebase`)가 잠정 제품 결정(PROVISIONAL)으로 정했지만 아직 구현되지 않았고(`overlay-recovery-writeoff` 노드 소유) 그때까지 `interest_rebased`는 false다. 노트가 없으면 `NOT_BOUND`이고 숫자가 없다. 브라우저 패널 `#risk`는 `textContent`만 쓴다. 확률 모형, 부동소수점, 외부 데이터, 회계 채택은 범위 밖이다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:cashflow-forecast -->
+
+### cashflow-forecast
+
+`GET /api/terms/portfolio/forecast`는 읽기 전용 현금 사다리 예측이다. 라벨은 `SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement`이고 `mode`는 `SIMULATED_CASH_FORECAST`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 오버레이 원장의 `sim_day`·건별 `draw_day`와 `CAPITAL-TERMS-V1`을 접어, 인출된 건마다 세 레그를 낸다: `expected_settlement_cash_day`의 `SETTLEMENT_CASH_IN`(미상환 원금, 가정 `SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`; 인자가 없으면 `day`/`bucket`이 null이고 상태는 `EXPECTED_DAY_NOT_PROVIDED`), 만기일의 `CONTRACT_INTEREST`(ACT/365 단리 정확 유리수, 가정 `NO_DEFAULT_CONTRACTUAL_SCHEDULE`), 만기일의 `PRINCIPAL`(가정 `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`). 정산일을 주면 기간은 노트의 settlement-linked 클램프(`term_source` `settlement_linked`)를 따른다. 버킷은 sim_day 이후 0-7/8-30/31-60/61-90/91+일이고 과거 날짜는 0-7에 놓인다. 버킷마다 성분별 유리수 합(`settlement_exact`, `repayment_exact`, `expected_exact`)과 한 번만 내린 `expected_cash_krw`를 담는다 — 레그별 내림이 아니다. `reconciliation.matched`는 상환 레그가 미상환 원금+만기 계약 이자와 정확히 같을 때만 true이고, `posted_accrued_interest_krw`는 오버레이 계상 메모를 참고로만 보여 준다. 미상환 0이거나 티어가 없는 건은 숫자 없이 `NOT_APPLICABLE`이고, 노트가 없거나 쓸 수 없으면 `NOT_BOUND`/`terms not bound`에 숫자 절이 없다. 이 경로만 문서화된 질의 인자(`instance_id`, `expected_settlement_cash_day`) 외에는 `400 INVALID_ARGUMENTS`로 거절한다. 리터럴 경로라 `{advance_id}` 폴스루보다 먼저 매치된다. receipt·저널·오버레이·작업공간 바이트는 바뀌지 않는다. 확률 가중, 할인/NPV, FX, 자금 이동은 범위 밖이다. 시드 데모 장부의 결과는 `tests/vectors/forecast_vectors.json`에 고정되고 `python3 scripts/forecast_vectors.py --check`가 바이트를 비교한다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
 
@@ -401,7 +419,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 `python3 -m capital.verify --workspace DIR`은 서버를 띄우지 않고 `DIR/workspace.json`을 감사한다. 바이트를 직접 읽을 뿐 `workspace.json.lock`을 열지도 잠그지도 않고 아무것도 쓰지 않아서, 살아 있는 서버가 잠금을 잡고 있는 동안에도 읽기만 한다. 출력은 한 줄 JSON이고 `mode`는 `OFFLINE_WORKSPACE_AUDIT`, `label`은 `SIMULATED`, `diagnostic`은 `LOCAL_ONLY`다.
 
-검사는 순서대로 `workspace_file`, `strict_json`(절단·BOM/NUL·NaN·중복 키), `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay`(스크래치 기계로 재생), `state_digest`, `service_restore`(서버가 쓰는 `verify_document`/`_validated_restore` 경로 그대로), `receipt_journal_fingerprints`(저널 항목마다 지문 재계산; REJECTED와 reconcile receipt는 args가 저장되지 않아 모양과 유일성만 본다), `recon`(`GET /api/reconciliation`과 같은 여섯 검사를 그대로 싣는다)다. 첫 어긋남이 이유를 정한다: `WORKSPACE_UNREADABLE`이거나, 봉투는 온전한데 대사 검사가 어긋나면 `RECON_MISMATCH`다. 종료 코드는 `ok`면 0, 첫 불일치면 1, 인자 오용이면 2다. 파일을 고치거나 교체하지 않고 가져오기·재개 경로도 없다.
+검사는 순서대로 `workspace_file`, `strict_json`(절단·BOM/NUL·NaN·중복 키), `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay`(스크래치 기계로 재생), `state_digest`, `service_restore`(서버가 쓰는 `verify_document`/`_validated_restore` 경로 그대로), `receipt_journal_fingerprints`(저널 항목마다 지문 재계산; REJECTED와 reconcile receipt는 args가 저장되지 않아 모양과 유일성만 본다), `recon`(`GET /api/reconciliation`과 같은 여섯 검사를 그대로 싣고, overlay가 비어 있지 않으면 `overlay_fold_digest_equals_persisted` 검사와 `scope.overlay_state_digest`도 싣는다)다. 첫 어긋남이 이유를 정한다: `WORKSPACE_UNREADABLE`이거나, 봉투는 온전한데 대사 검사가 어긋나면 `RECON_MISMATCH`다. 종료 코드는 `ok`면 0, 첫 불일치면 1, 인자 오용이면 2다. 파일을 고치거나 교체하지 않고 가져오기·재개 경로도 없다.
 
 고정 변조 코퍼스는 `tests/vectors/workspace/` 아래 여섯 파일이다: `clean.json`, 중간에서 잘린 `truncated.json`, payload 한 바이트를 뒤집은 `payload-byte.json`, `payload_sha256`의 16진 한 글자를 뒤집은 `digest.json`, 최상위 `format` 키를 하나 더 넣은 `duplicate-key.json`, `state_digest`만 바꾸고 `payload_sha256`은 다시 계산한 `stale-digest.json`. `python3 scripts/workspace_vectors.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다. 이것은 로컬 진단이지 stage5 내구 거래 증거가 아니고 CAP-11은 `NOT_BOUND`다. 병합은 JunTae가 한다.
 
@@ -457,7 +475,181 @@ U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `sin
 
 `advance_day`마다 `additional_margin` 규칙을 평가하고 같은 원자 저장 안에 `margin_call`, `margin_cure`, `margin_acceleration`, `default_eligible_proposal` 항목을 쓴다. `GET /api/overlay`에는 최상위와 행마다 `margin` 블록이 붙는다.
 
-workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 이자와 상각은 다시 기준을 잡지 않으며(`interest_rebased` false, `NOT_REBASED / DECISION_REQUIRED`) 재산정은 재무 조건 소유자가 정한다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
+workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 가속 뒤 이자와 상각일은 아직 다시 기준을 잡지 않는다(`interest_rebased` false). 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`가 잠정 제품 결정(PROVISIONAL)으로 정했고 구현은 `overlay-recovery-writeoff`가 맡는다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:audit70-fix1 -->
+
+### audit70-fix1
+
+`default-recovery-decision`(`docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`)과 `repayment-posting-decision`(`docs/decisions/CAPITAL_REPAYMENT_POSTING.md`)은 잠정 제품 결정(PROVISIONAL PRODUCT DECISION) 노트다. 시뮬레이션 전용이고 production은 `NOT_AUTHORIZED`이며 법무·회계 항목은 작업 가정이다.
+
+`overlay-repayment-posting`은 `post_repayment` 명령과 오버레이 납부 기록을 구현한다. `GET /api/overlay`의 `interest_payments.status`는 기장 여부에 따라 `NONE_YET` 또는 `RECORDED`다. 재기준·회수·상각은 아직 구현 전이며 `interest_rebased`는 false다. 후속 구현은 `overlay-recovery-writeoff`, `coa-payment-writeoff-postings` 노드가 맡는다. COA 납부 기장은 이 오버레이 기능의 범위 밖이다.
+
+이 절은 바로 위 `margin-cure-default` 절의 재기준 문장을 대체한다. 재기준은 잠정 결정됐지만 구현 전이다. 이율·일수·한도 같은 수치는 여기에 옮기지 않으며 `CAPITAL-TERMS-V1`에 둔다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:coa-candidate-projection -->
+
+### coa-candidate-projection
+
+`GET /api/projection?mode=coa-candidate`는 `projection:read`, `GET /api/reconciliation?mode=coa-candidate`는 `reconciliation:read` 권한이 필요하다. 두 경로 모두 organizer와 auditor만 읽고 observer와 agent는 `403 ROLE_FORBIDDEN`을 받는다. 읽기 전용이라 영수증, 저널, `state_digest`, `operation_count`는 바뀌지 않는다. `mode`를 생략하거나 `mode=simulation`이면 기존대로 `SIMULATION_FIXED_V1`(`LOCAL_PROJECTION_CANDIDATE`)이 나온다. 후보 모드는 `mode=LOCAL_PROJECTION_COA_CANDIDATE`, `chart=SIMULATION_FIXED_V2`, `coa_version=CAPITAL-COA-V1`을 돌려준다. 그 밖의 `mode`(`operating`, `ledger` 등)나 `mode` 키 중복은 `400 NOT_BOUND`다.
+
+후보 계정표는 `accounting_policy=SYNTHETIC_UNADOPTED`다. `tax`, `legal`, `operating_ledger`는 `NOT_BOUND`이고 `policy_adopted`, `funds_executed`, `workspace_mutated`는 false다. `fin-ledger-contract`나 수익 인식 정책을 채택한 것이 아니며 공식 원장도 아니다. 모든 계정 코드에는 `chart_status`(`NOT_RECORDED`, `DERIVED_MEMO` 등)가 붙고 조용히 빠지는 계정은 없다. 이자 납부의 COA 기장은 여전히 `NOT_RECORDED`라서 1110 계정은 감소하지 않는다. 오버레이의 `post_repayment` 납부 메모와 COA 기장은 별개다.
+
+`9790 MEMO_SUSPENDED_INTEREST_CONTRA`는 계정 노트에 없는(`adopted_in_note=false`) 후보 전용 메모 계정이다. 수락된 `default` 이후의 이자 발생은 수익 계정 4100/4110이 아니라 `9700` 차변 메모와 `9790` 대변 상대 메모로 기록된다. 자체 금액 가치는 없으며 유지·개명·삭제는 회계 담당자가 정한다. 대사 모드는 `coa_candidate_totals_vs_v1`, `interest_ledger_vs_projection` 검사와 `coa_candidate` 라벨 블록을 추가한다. 오버레이가 비어 있지 않으면 `overlay_fold_digest_equals_persisted`도 나온다(`audit60-fix2` 절 참고). 기본 대사 보고서와 매니페스트의 `reconciliation` 절에는 이 두 COA 검사가 없다. 세무 신고는 범위 밖이다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:audit60-fix2 -->
+
+### audit60-fix2
+
+오버레이 저널이 비어 있으면 내보내기는 `KIX_CAPITAL_EXPORT_MANIFEST_V2`이며 `tests/golden/demo.json`과 바이트가 같다. 첫 `advance_day` 이후 오버레이가 비어 있지 않으면 `KIX_CAPITAL_EXPORT_MANIFEST_V3`가 되어 기존 일곱 절에 `overlay` 절(파트 태그 `overlaypart`)이 더해진다. `GET /api/overlay`의 `export`는 `INCLUDED_IN_MANIFEST_V3` 또는 `ABSENT_WHEN_EMPTY`로 표시된다. 매니페스트 읽기는 `export:read`(organizer, auditor)가 필요하다. 서명 방식은 그대로이며 단일 `content_digest`를 서명한다. 인증된 내보내기가 아니다.
+
+`python3 -m capital.verify FILE`은 V2와 V3를 모두 받는다. V3에 `overlay`가 없거나 V2에 `overlay`가 있으면 `SECTION_SET`을, 그 밖의 절 구성 차이는 `MANIFEST_SHAPE`를 돌려준다. `overlay` 절의 바이트가 바뀌면 `SECTION_HASH_MISMATCH:overlay`다. 대사 검사 `overlay_fold_digest_equals_persisted`와 `scope.overlay_state_digest`는 오버레이가 비어 있지 않을 때만 나타나며, 불일치하면 매니페스트가 `INCOMPLETE`(`RECONCILIATION_NOT_CLEAN`)가 된다. 빈 오버레이는 기존 여섯 검사를 유지한다.
+
+`tests/golden/overlay_demo.json`은 `SIMULATED` 라벨, `overlay_schema` 1이며 `export_manifest_v3_content_digest`, `overlay_state_digest`, `entry_count`, `sim_day`, `interest_krw`, `scenario`를 고정한다. 시나리오는 고정된 F04 `repay` 명령을 쓴다. `tests/test_overlay.py`의 `GoldenTests`가 비교만 하며 재생성하지 않는다. `CAPITAL_REPAYMENT_POSTING.md`에 따라 재생성은 repayment-posting 노드만 한 번 할 수 있다. 운영자가 다이제스트 불일치를 보면 골든을 고칠 일이 아니라 드리프트로 취급한다. `demo.json`과 `overlay_empty.json`은 바이트가 그대로다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:t05-t06-sim-journeys -->
+
+### t05-t06-sim-journeys
+
+`python3 scripts/sim_journeys.py`는 이름 붙은 합성 여정 `T05-sim`과 `T06-sim`을 루프백 HTTP API로 끝까지 돌린다. 둘 다 `label`은 `SIMULATED`, `funds_executed`는 false, `integrated`는 false다. `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`가 말하듯 T05/T06의 합성 변형을 Q0 안에 이름 붙이는 일이며, 통합 수용(Q3)도 T01–T06 자격 주장도 아니다. 사람 점검표 칸은 이 여정이 채우지 않는다. 고정 operation id와 고정 시드(`CAPITAL-SIM-JOURNEYS-V1`)로 돌고 시계·무작위 값·instance id·토큰·포트·경로를 기록하지 않는다.
+
+`T05-sim`(35단계)은 한 서버 프로세스 안의 일회용 정산 장부(`ScenarioReplaySource`) 위에서 돈다. 마진 규칙은 이 장부에서만 저널에 남기 때문이다. `--workspace` 서버의 fixture는 읽기 전용이다. 순서: 두 건의 advance가 정산채권의 주최자 줄 일부만 점유(부분 배정) → 상환 → 상환 중 부분 환불. Capital에는 정산 이벤트 HTTP 경로가 없으므로 환불은 장부에서 직접 재생하고, 그 단계에 `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT`를 붙인다. 이어서 고정 거절 `REFUND_OBLIGATION_OPEN`과 `DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED` 옆에 `GET /api/policy/shadow`의 환불 분할(`UNSUPPORTED_BY_PINNED_FSM`인 pinned 쪽과 `SHADOW_COMPUTED`인 shadow 쪽, `applied_to_fsm` false)을 나란히 기록한다. shadow 벡터는 고정 입력(`partial-after`)이지 이 장부가 아니다. 그 뒤 마진 콜 → 기한일 포함 → 하루 뒤 가속(`NOT_REBASED`, 이자·상각 기준일은 그대로) → 늦은 현금. 환불로 기준이 낮아져 할당 조회는 `NOT_APPLICABLE`이고, 사람이 `post_repayment` 대신 직접 F04 `repay`를 써서 `interest_payments.status`가 `NONE_YET`인 채 이자 우선 순서로 원금 몫만 상환한다. 가속은 되돌려지지 않는다. 다른 advance는 0까지 상환 후 `close`. 마지막으로 `DEFAULT_ELIGIBLE` 제안이 한 건 생기고(`f04_default_called` false) 사람이 `default` 명령을 낸다.
+
+`T06-sim`(33단계)은 `python3 -m capital.server --port 0 --workspace TMP` 하위 프로세스를 쓴다. agent가 `query_grant`와 `propose_action`을 부르고, `POST /api/agent/execute`와 `kind: EXECUTE` 제안은 `403 EXECUTE_AUTHORITY_DISABLED`, agent 토큰의 명령은 `403 ROLE_FORBIDDEN`이며 digest와 operation 수는 그대로다. 사람(organizer)이 `proposal_id`를 인용해 `repay`하면 receipt에 `proposal_id`와 `role`이 남고 제안은 여전히 `HUMAN_PENDING`이다. 응답을 일부러 버린 요청은 UNKNOWN으로 막힌다: 하네스는 그동안 어떤 쓰기도 네트워크로 보내지 않고, operation id 조회만 한다. 조회 결과가 `UNKNOWN`이어도 `retry_authorized`는 false다. 그 다음 하위 프로세스를 SIGKILL로 죽이고 같은 작업공간으로 다시 띄운다. 옛 토큰은 `LOCAL_TOKEN_REQUIRED`, 새 토큰에 옛 `instance_id`를 쓰면 `SESSION_CHANGED`(명령과 조회 모두)다. `state_digest`·operation 수·오버레이 digest가 같고, receipt는 원래 `instance_id`와 `proposal_id` 그대로 복원되며, 새 프로세스의 명령 카운터는 0이다. 제안 등록부는 프로세스 메모리라 재시작 뒤 옛 `proposal_id` 인용은 `404 UNKNOWN_PROPOSAL`이다. 하네스는 같은 operation id를 두 번 보내지 않았음을 마지막에 확인한다.
+
+핀은 `tests/golden/journey_t05_sim.json`과 `tests/golden/journey_t06_sim.json`이다. 여정이 어긋나거나 핀이 없으면 1로 끝난다. 의도한 변경일 때만 사람이 확인한 뒤 `python3 scripts/sim_journeys.py --update-golden`으로 다시 쓴다. 핀은 결정 노트(`CAPITAL-TERMS-V1`)의 수치에 의존하므로 노트가 바뀌면 같이 바뀐다. `scripts/acceptance.py`의 `integrated-journeys` 단계가 이 스크립트를 돌리고 evidence의 `stages[*].journeys.items`에 `T05-sim`·`T06-sim`의 단계 수와 `SIMULATED` 라벨과 digest를 싣는다. evidence 최상위의 `integrated`는 false이고 `qualification.claimed`도 false다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:operator-console-ux -->
+
+### operator-console-ux
+
+운영 데스크는 `http://127.0.0.1:<port>/#desk`로 연다. 왼쪽 메뉴의 `10 운영 데스크`도 같은 주소다. 열면 다른 패널은 숨고, 다른 메뉴를 누르면 원래 화면으로 돌아간다. 서버 경로, 권한, 역할은 바뀌지 않았다. 화면은 계산하지 않고 서버가 준 숫자와 사유 문장을 그대로 보여 준다. 예외는 `to_sim_day = from_sim_day + 진행 일수`뿐이며, 이는 요청 형식이 요구하는 논리 시계 정수다. 단계 상한과 낡은 시계 판정은 서버가 한다.
+
+영역은 위에서 아래로 다섯이다.
+
+- **위험 요약 타일**: `GET /api/risk`의 미상환, 열린·기록된 노출, 준비금 요구액(기장 안 함), HHI, 마지막 충격 행의 부족액, sim_day. 조건이 `NOT_BOUND`이면 라벨과 사유만 나온다.
+- **sim_day 제어**: `진행 일수`를 넣고 `sim_day 진행`을 누르면 `POST /api/overlay/commands`(`advance_day`)를 한 번 보낸다. 같은 탭 간 쓰기 잠금(`kix-capital-writer`)과 대기 기록을 쓴다. 응답을 잃으면 `UNKNOWN`이며 자동 재시도하지 않는다. `원 요청 결과 조회`는 `GET /api/overlay?operation_id=`만 읽고, 서버에 반영돼 있을 때만 대기 기록을 지운다. `SIM_CLOCK_STALE`, `SIM_CLOCK_NOT_ADVANCING`, `SIM_CLOCK_STEP`, `SIMULATION_CAPACITY`는 서버 거절이다.
+- **다음 작업**: 선택한 사례에서 보낼 수 있는 F04 명령. 활성·비활성과 사유는 서버 값이다. 노출 기록은 `GET /api/preview`의 `WOULD_REJECT` 사유, 종결은 `close_ready`와 원금·이자 필드, 미이행 메모는 마진 `default_eligible` 제안과 `margin.state`, `margin.limit`, `default_eligible_day`, 권한은 역할 권한 사유다. 심사 기록(`GET /api/underwrite`)의 `DECLINE`은 승인 옆에 자문 문장으로만 나오고 승인을 막지 않는다. 비활성 항목은 `aria-disabled`이며 눌러도 명령을 보내지 않는다.
+- **조건 오버레이 원장**: `GET /api/overlay`의 `interest_due_krw`, `default_interest_due_krw`, `close_ready`.
+- **사례 타임라인**: 내보내기 매니페스트의 F04 저널과 오버레이 저널을 `after_journal_index` 기준으로 합친다. 같은 위치에서는 오버레이가 F04 행 앞에 온다. F04 행에는 sim_day를 만들어 붙이지 않는다. 시계와 조건 연결 행은 `오버레이 · 전역`으로 표시한다.
+
+역할별 모습은 다음과 같다. organizer는 전부 본다. auditor는 타일, 원장, 타임라인만 보고 명령 조작은 숨겨지며 사유가 한 줄 나온다. observer는 `projection:read` 사유가 담긴 금지 안내만 보고 데스크용 요청을 보내지 않는다.
+
+키보드만으로 쓰려면 Tab 순서가 `데스크 새로고침` → `사례` → `진행 일수` → `sim_day 진행` → 다음 작업 버튼 → 오버레이 원장 → 타임라인이다. 일수를 넣고 `sim_day 진행`에서 Enter 또는 Space를 누른다. 완료 후 초점은 `sim_day 진행`에 남는다. 375px 폭에서 가로 넘침이 없고, 표는 자체 영역 안에서만 가로로 스크롤된다.
+
+스크린샷은 `npm run test:browser` 실행이 `test-results/operator-desk/desktop/`와 `test-results/operator-desk/mobile/`에 `organizer.png`, `auditor.png`, `observer.png`로 저장한다(데스크톱 1280px, 모바일 375px). 합성 데모 작업공간(`scripts/seed_demo.py`)에서 찍은 `SIMULATED` 화면이며 실제 자금·승인 화면이 아니다. 저장소에 커밋하지 않는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:closeout-evidence-vector -->
+
+### closeout-evidence-vector
+
+`tests/vectors/closeout_digest.json`(형식 `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`)은 수용 사다리 evidence의 결정론적 다이제스트다. 단계마다 단계 id, 명령, `status`, 기대 종료 코드, `test_count`, 라벨 `SIMULATED`, `funds_executed` false를 싣고, seeded-demo `state_digest`·`content_digest`·`debit`·`credit`, vendor pin commit과 다섯 파일 `verified`, 패키지 `sha256`을 더한다. git `head_sha`, 도구 버전, 시각, instance id, 경로·호스트는 `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`가 정한 제거 키 목록대로 빠지고, 그 목록은 파일 안 `stripped_keys`에 적힌다. 그래서 같은 코드는 어느 기계에서나 같은 바이트를 낸다.
+
+명령은 세 가지다. 먼저 `python3 scripts/acceptance.py`로 새 evidence를 만든다.
+- `python3 scripts/closeout_digest.py --write`: evidence가 `ok:true`, `SIMULATED`, `funds_executed` false이고 아홉 단계가 모두 통과했을 때만 다시 쓴다. 아니면 1로 끝나고 파일을 건드리지 않는다. 손으로 고치지 않는다.
+- `python3 scripts/closeout_digest.py --check`: evidence 없이 깨끗한 체크아웃에서 돈다. 형식·바이트 형태·정직 라벨·제거 키 부재와 금융 벡터 팩 그룹 `closeout_digest`의 내장 사본이 다이제스트와 바이트 일치하는지 본다. 어긋나거나 파일이 없으면 1이다.
+- `python3 scripts/closeout_digest.py --check-evidence`: 새 evidence에서 다시 만들어 비교하고 첫 번째로 다른 JSON 경로를 말한다. 커버 면(단계 결과, 카운트, golden digest, 패키지 `sha256`, vendor pin)을 건드린 작업 뒤에 쓴다. 새 `head_sha`나 다른 도구 버전만 다르면 어긋남이 아니다.
+
+재생성 순서는 `acceptance.py`, `closeout_digest.py --write`, `finance_vectors.py --write`, 다시 `acceptance.py`이고 두 번째 evidence가 같은 다이제스트를 내야 한다. 수용 사다리에는 이 다이제스트용 단계를 더하지 않았다. evidence가 사다리를 설명하고 다이제스트는 그 아래쪽이라 사다리 안에 넣으면 자기참조가 되기 때문이다.
+
+다이제스트는 `SEMANTIC_CONFORMANCE`가 아니고 어떤 upstream 노드도 완료하지 않는다. `fin-finance-closeout`은 PENDING 후보로 남고 분모는 여덟이다. 이 저장소 도구가 스스로 낸 증거이지 독립 리뷰도 CI도 사람 수용도 아니다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:overlay-repayment-posting -->
+
+### overlay-repayment-posting
+
+상환 기장은 `POST /api/overlay/commands`의 `op: post_repayment` 하나다. 권한은 `overlay:command`이고 organizer만 쓴다. auditor, observer, agent는 `403 ROLE_FORBIDDEN`이다. 본문은 `operation_id`, `advance_ref`, `at_sim_day`, `amount_krw`와 선택 `evidence_ref`(영문·숫자와 `._:-`만, 64자까지, 계좌·성명 금지)·`proposal_id`다. 분할, 시각, 납부자는 보내지 않는다. 모르는 키는 `400 INVALID_COMMAND`다. `at_sim_day`는 현재 `sim_day`와 같아야 하며 다르면 `409 SIM_CLOCK_STALE`이니 `GET /api/overlay`를 다시 읽는다. 첫 `advance_day`로 terms가 바인딩되기 전에는 `409 REPAYMENT_TERMS_NOT_BOUND`다.
+
+금액은 operator가 주장한 값(`UNVERIFIED_ASSERTED`)이지 은행 관측이 아니다. 서버가 `GET /api/terms/{advance_id}/allocation`과 같은 함수로 연체이자, 이자, 원금 순서로 나누고, 이자는 정확한 분자(분모 3,650,000)로 쌓아 1원 미만 이월을 잃지 않는다. 원금 몫이 있을 때만 같은 저장 안에서 핀 F04 `repay`를 발행하고 F04 id는 `rp-`로 시작한다. 이자만 있는 납부는 F04를 부르지 않는다. F04가 거절하면(`DEFAULTED`·`CLOSED` 포함) `409 REPAYMENT_ADVANCE_STATE`이고 쓰기는 없다. 이때 이자 몫만 낸다. 원금 몫이 있는데 producer가 in-process 핀이 아니면 `409 REPAYMENT_PRODUCER_UNSUPPORTED`다. 금액이 0이면 보류분이 있을 때만 허용하고 아니면 `400 REPAYMENT_AMOUNT`다.
+
+초과분은 광고별 `SIM_UNAPPLIED_MEMO`로 한도까지 보류하고(`409 REPAYMENT_UNAPPLIED_CAP`) 다음 기장 때 먼저 적용한다. 환급·지급 명령은 없다. 한도(`SIMULATION_CAPACITY`)는 결정 노트에서 읽는다. 같은 `operation_id`와 같은 본문은 저장된 receipt를 `transport_duplicate: true`로 돌려주고, 시계가 전진한 뒤에도 같다. 다른 본문은 `409 IDEMPOTENCY_CONFLICT`다. 응답을 잃으면 `GET /api/overlay?operation_id=…`로 조회하고 `UNKNOWN`은 재시도 허락이 아니다.
+
+`GET /api/overlay`의 `interest_payments.status`는 `RECORDED` 또는 `NONE_YET`이며 납입 금액과 남은 `interest_due_krw`를 보인다. `close_gate`(`CLEAR`, `INTEREST_DUE`, `UNAPPLIED_HELD`)는 경고일 뿐 F04 `close`를 막지 않는다. `UNPOSTED_F04_REPAY` 경고는 기장 없이 직접 낸 F04 repay이고 읽는 순간 계산하며 digest에 들어가지 않는다. 기장은 마진 cure·default 상태를 쓰지 않고 다음 `advance_day` fold가 읽을 뿐이며 보류 현금은 인정하지 않는다. 회수 폭포, 상각, 면제, 은행 관측, 실자금은 없다. 모든 값은 `SIMULATED`이고 `funds_executed`는 false다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:read-model-claims-conformance -->
+
+### read-model-claims-conformance
+
+`tests/read_model_claims.json`(`KIX_CAPITAL_READ_MODEL_CLAIMS_V1`, 39행)은 고정된 upstream 초안 `docs/contracts/READ_MODEL_QUERIES.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 `get_credit_advance`(§2.12)·`get_credit_claim`(§2.13)·비변경 술어(§8)를 기존 읽기 표면에 비춰 고정한 클레임 표다. 각 행은 `route` 필드로 매핑을 명시한다: `get_credit_advance`는 `GET /api/state`의 case 뷰(그대로 `CreditMachine.view` dict)에, `get_credit_claim`은 in-process `CreditMachine.view_claim`에 대응한다. `GET /api/evidence`는 §2.11 정산 claim 객체라 §2.13이 합치지 못하는 객체라 대응하지 않는다. `python3 scripts/read_model_claims_check.py --execute`가 `CLAIM_CONFORMANCE passed=39 total=39 failed=0`을 낸다. 모든 검사는 §8 비변경 가드(canonical_state·저널 길이·오버레이 fold digest·operation_count가 호출 전후 동일) 아래 읽기를 실행하고, 어긋나면 그 클레임이 실패한다.
+
+수용 사다리의 `upstream-claims` 단계는 이제 명령을 셋 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행)다. 단계의 `passed`와 `total`은 세 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39=220이고 label은 그대로 `CLAIM_CONFORMANCE`다. 인자 없이 실행하면 `SKIPPED`이며 통과가 아니다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인한다. 위 절들의 옛 합계 문장은 표가 적었을 때의 문장이며 고치지 않는다. 결과는 SIMULATED이고 upstream 쿼리 이름의 구현·카탈로그 승격·새 경로가 아니다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:t03-t04-sim-journeys -->
+
+### t03-t04-sim-journeys
+
+`python3 scripts/sim_journeys.py`에 두 여정이 더 붙는다. `T03-sim`(22단계)은 한 advance(`sim-t03-a`, 30,000 합성 fixture 단위)가 인프로세스 서버에서 예외 없이 `offer → approve → bind_settlement → draw → advance_day 0→15→30` 이자 발생 → `repay` 전액 → `close`를 지나는 수명주기다. 이자는 ACT/365 메모로만 남는다: `interest_payments.status`는 `NONE_YET`이고 이 여정은 `post_repayment` 대신 직접 F04 `repay`를 쓰므로 원금이 0이어도 `close_ready`는 false이며, 사람의 `close` 명령이 `CLOSED`를 만든다. 종결 뒤 `advance_day 30→45`는 새 이자 게시물을 만들지 않는다. 도중에 `GET /api/reconciliation`의 일곱 검사(`overlay_fold_digest_equals_persisted` 포함)가 전부 `MATCHED`이고 `GET /api/risk`가 `BOUND`다.
+
+`T04-sim`(38단계)은 `python3 -m capital.server --workspace TMP` 하위 프로세스 위의 감사인 경로다. 데모 장부(`scripts/seed_demo.py`의 고정 operation id 스물한 건, `SETTLEMENT_NOT_COMMITTED`로 거절되는 draw 포함)를 HTTP로 다시 넣고 `state_digest`가 `tests/golden/demo.json` 핀과 같은지 본다. organizer가 `POST /api/session`으로 `auditor`를 결합하면, auditor 토큰으로 `/api/overlay`·`/api/risk`·`/api/terms/portfolio`·`/api/reconciliation`을 읽고 `/api/export/manifest`로 `KIX_CAPITAL_EXPORT_MANIFEST_V3`(status `COMPLETE`, signature `UNSIGNED`/`NOT_BOUND`)를 받아 파일로 쓴다. 그 파일을 `python3 -m capital.verify FILE`가 하위 프로세스로 다시 검사하고, `python3 -m capital.verify --workspace DIR`가 살아 있는 작업공간을 잠금 없이 읽기 전용으로 감사한다(`OFFLINE_WORKSPACE_AUDIT`, 열 개 검사 `MATCHED`, `writes` false, `stage5_durable_transactions` `NOT_BOUND`). auditor 토큰의 `advance_day`와 `POST /api/commands`는 `403 ROLE_FORBIDDEN`이고 observer 토큰은 manifest를 받지 못한다.
+
+둘 다 `label`은 `SIMULATED`, `funds_executed`와 `integrated`는 false이며 T01–T06 자격 주장이 아니다. 실제 증적 주장도 아니다. 핀은 `tests/golden/journey_t03_sim.json`과 `tests/golden/journey_t04_sim.json`이고 어긋나거나 없으면 1로 끝난다. 의도한 변경일 때만 `python3 scripts/sim_journeys.py --update-golden`으로 다시 쓴다. `scripts/acceptance.py`의 `integrated-journeys` 단계는 네 여정을 돌리고 evidence의 `stages[*].journeys.items`에 넷의 단계 수·`SIMULATED` 라벨·digest를 싣는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:covenant-watch -->
+
+### covenant-watch
+
+`GET /api/risk/covenants`는 읽기 전용 코버넌트 감시 투영이다. 라벨은 `SIMULATED covenant watch — read-only, not an enforcement gate`이고 `mode`는 `SIMULATED_COVENANT_WATCH`다. 권한은 `projection:read`라 organizer와 auditor가 읽고 observer·agent는 `403 ROLE_FORBIDDEN`이다. 수락된 F04 저널, 오버레이 시계 `sim_day`, `CAPITAL-TERMS-V1` 노트만 접어 건별 `CLEAR`/`WATCH`/`BREACH` 상태와 서버가 만든 사유(`code`, `severity`, `detail`)를 낸다. 사유 코드는 `MATURITY_WINDOW`, `PAST_MATURITY`, `RESERVE_CLASS_ESCALATED`, `U4_CAP_BREACHED`, `MARGIN_CALL_ACTIVE`, `CURE_DEADLINE_PASSED`, `MARGIN_BREACH_PENDING`, `MARGIN_ACCELERATED`, `DEFAULT_ELIGIBLE`, `DEFAULTED`다. `watch_list`는 `CLEAR`가 아닌 행만 모은다. `totals.outstanding_krw`는 `GET /api/risk`와 `reconciliation.matched`로 맞춘다. 건별 `applied`와 `enforced`는 항상 false이고 `reserve`의 `funding_source`와 `coverage`는 `NOT_BOUND`, `policy_adopted`는 false, `accounting_policy`는 `SYNTHETIC_UNADOPTED`다. 노트가 없거나 쓸 수 없으면 숫자 감시 절 없이 `NOT_BOUND`다. 명령을 막지 않고 코버넌트를 집행하지 않으며 채택된 회계 정책도 아니다. `tests/test_covenant_watch.py`가 고정 벡터·합계 대사·역할 거절을 확인한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:gate-fake-fault-corpus -->
+
+### gate-fake-fault-corpus
+
+`tests/vectors/gate_faults.json`(`KIX_CAPITAL_GATE_FAULTS_V1`, 라벨 `LOCAL_FAKE_GATE`, `mode` SIMULATED)은 옵트인 `--producer gate-fake` 경로의 결함 주입 코퍼스다. `scripts/fake_gate.py`는 127.0.0.1에만 묶이는 stdlib 가짜 게이트이고 일곱 케이스를 고정한다: 정상 수락, `error-5xx`(502 `GATE_FAILED`), `malformed-json`(502 `INVALID_JSON`, 원 receipt 유지), `drop-before`·`drop-after`·`timeout`(유실 응답은 `retry_authorized` false인 `UNKNOWN`, 자동 재전송 없음, 나중 GET은 원 receipt), 같은 `operationId`의 다른 본문 재전송(파사드와 게이트 모두 `409 IDEMPOTENCY_CONFLICT`). 5xx와 깨진 본문은 전송 오류이지 업무 거절이 아니다. `python3 scripts/gate_faults.py --check`가 실제 루프백 파사드를 통해 코퍼스를 다시 돌려 어긋나면 0이 아닌 코드로 끝나고 아무것도 다시 쓰지 않는다. `tests/test_gate_faults.py`가 같은 코퍼스를 단위 시험으로도 확인한다. ProducerPort와 CAP-16 exact tuple은 `NOT_BOUND`이고 이 코퍼스는 SEMANTIC_CONFORMANCE가 아니다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:crash-replay-matrix -->
+
+### crash-replay-matrix
+
+`tests/crash_matrix.py`와 핀 `tests/vectors/workspace_crash.json`(`KIX_CAPITAL_WORKSPACE_CRASH_V1`)은 `LOCAL_FILE_WORKSPACE`의 크래시 경계 재생 행렬이다. 고정 일곱 저장 명령열(F04 저널 추가 `journal-append`와 오버레이 항목 `overlay-entry`)을 재생하면서 각 쓰기 경계의 앞·뒤에 크래시를 넣고, 임시 파일 rename 경계(`replace`·`dir-fsync`)와 잘린 payload, payload·overlay 절 바이트 뒤집기, 남은 `.workspace.json.*.tmp`, `python3 -m capital.server --workspace` 하위 프로세스의 격리된 SIGKILL 칸을 돌린다. 재시작은 핀에 박힌 `state_digest`·`overlay_state_digest`를 바이트 그대로 복원하거나 `WORKSPACE_UNREADABLE`로 닫혀야 하고, 조용한 빈 장부나 찢긴 바이트 덮어쓰기는 실패다. 비행 중 SIGKILL 칸은 결과가 양쪽 모두 정당하므로 핀이 `overlay_state_digest_one_of`로 인접한 두 완전 digest만 허용한다. `python3 tests/crash_matrix.py --check`는 표 드리프트에 1로 끝나고 `--write`만 다시 쓴다. 실행은 unit discovery의 `tests/test_crash_replay.py`와 수용 사다리 `storage-conformance` 단계의 둘째 명령 두 길로 된다. 라벨은 `SIMULATED`이고 `stage5_durable_transactions`·`cross_host_fencing`은 `NOT_BOUND`/`NOT_CLAIMED`이며 CAP-11은 `NOT_BOUND`다. SEMANTIC_CONFORMANCE가 아니다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:decision-binding-fence -->
+
+### decision-binding-fence
+
+`tests/decision_bindings.json`(스키마 `capital-decision-bindings-v1`)은 `capital-decision-v1` 노트의 ADOPTED 항목마다 소비 지점을 고정한 표다. `python3 scripts/decision_bindings.py --check`는 모든 ADOPTED 항목이 표에 있는지, 각 바인딩이 기존 모듈(`capital/`·`scripts/`의 .py), 시험 모듈(`tests/test_*.py`), 살아 있는 (method, route) 쌍을 가리키는지 본다. 상태는 `CONSUMED` 또는 `PENDING_CONSUMER`뿐이고 대기 바인딩은 `consumer_node`와 `reason` 메타가 필요하다. 스크립트는 소스를 AST로 훑어 `entries.get`·`entries[...]`·`_value`·`_ready`·`_adopted`·`_USABLE`의 리터럴 사용을 찾아 표에 없는 `CONSUMED` 모듈을 발견하면 실패한다. 인식 범위가 제한된 선언 참조 fence일 뿐이다: 금융 정확성의 증거가 아니고, 일반 열거·동적 접근의 완전한 소비도 증명하지 못하며, `PENDING_CONSUMER` 앵커는 구현 주장이 아니라 기존 통합 앵커다. 수용 사다리에서 이 명령은 `unit` 단계의 추가 명령으로 discovery(`python3 -m unittest discover -s tests -v`) 뒤에 실행된다. `tests/test_decision_bindings.py`가 표와 변이 케이스를 시험한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:fsm-contract-claims -->
+
+### fsm-contract-claims
+
+`tests/fsm_contract_claims.json`(`KIX_CAPITAL_FSM_CONTRACT_CLAIMS_V1`, 라벨 `CLAIM_CONFORMANCE`, pinned_sha `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`)는 vendored `CreditMachine`과 `SettlementMachine`에 대한 결정적 클레임 표다. 각 행은 고정 계약 문서의 절과 needle을 인용하고 `check_id`로 등록된 검사 하나를 부른다: 공유 액면 예약(`shared_face`), 환불·회수 의미(`refund`, `recovery`), 재생·멱등(`restore_digest`, `restore_duplicate`, `idempotent_replay`), 대사(`reconcile`), 거절 시 저널 비증가, vendor 정체(`vendor.commit`, `vendor.hashes`, 파일별 SHA). `python3 scripts/fsm_contract_claims_check.py --execute`는 먼저 `capital/vendor/manifest.json`의 다섯 파일 SHA256을 모두 맞추고(`VENDOR_HASH_MISMATCH`면 1) 그 다음 표를 실행해 `CLAIM_CONFORMANCE passed=N total=N failed=0`을 찍는다. 결과는 SIMULATED `CLAIM_CONFORMANCE`이지 SEMANTIC_CONFORMANCE도 제품 채택도 아니다. `--protocol-dir`는 인용된 제목과 needle을 읽기 전용으로만 확인하고 체크아웃에 쓰지 않으며 실제 연동을 세우지 않는다. `--execute`도 `--protocol-dir`도 없으면 `SKIPPED`이고 통과가 아니다. 이 표는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하며 `upstream-claims` 단계의 네 번째 명령이 아니다 — 그 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute` 셋뿐이다.
+
+<!-- /handbook-section -->
+<!-- handbook-section:ce1-canonical-claims -->
+
+### ce1-canonical-claims
+
+`tests/ce1_claims.json`(`KIX_CAPITAL_CE1_CLAIMS_V1`, 라벨 `CLAIM_CONFORMANCE`, pinned_sha `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일, 49행)은 pinned `docs/CANONICAL_ENCODING_V1.md`(CE1)의 바이트 규칙을 Capital의 canonical JSON(`capital/store.py`의 `canonical_bytes`)과 digest 프레이밍에 비춰 고정한 클레임 표다. 각 행은 규격의 절·needle·`pinned_sha`를 인용하고 `input`으로 `capital/ce1_claims.py`의 `ce1.*` 검사 하나를 부른다: `ce1.encode`는 canonical 바이트를 재계산하고(키는 ASCII 사전순, 배열은 순서 보존, 구분자에 공백 없음), `ce1.reject`는 중복 키·비표준 상수(NaN·Infinity)·범위 밖 정수·비ASCII 키·비NFC 문자열·깊이·크기 초과가 해시 전에 거절됨을 확인하며, `ce1.plain_digest`·`ce1.framed_digest`·`ce1.part_tag_digest`·`ce1.domain_tag`·`ce1.digest_family`는 domain/part 태그를 품은 프레이밍 형상과 소문자 64자 hex 출력을 재계산한다. 비ASCII 이스케이프(`ensure_ascii=True`, 규격은 UTF-8 기록)는 실패가 아니라 `DOCUMENTED_DIVERGENCE` 행으로 기록하고 검사가 `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.4의 `ensure_ascii` 근거 인용을 다시 확인한다. `python3 scripts/ce1_claims_check.py --execute`가 `CLAIM_CONFORMANCE passed=49 total=49 failed=0`을 낸다. 인코더 동작 변경은 없고 `KIX-CE1` 접두 wire 프레임은 stage-7 어댑터 범위다. 결과는 SIMULATED이지 SEMANTIC_CONFORMANCE도 채택도 아니다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인하고, `--execute`도 `--protocol-dir`도 없으면 `SKIPPED`이고 통과가 아니다. `tests/test_ce1_claims.py`가 표 검증·변이·드리프트·단계 배치를 시험한다.
+
+수용 사다리의 `upstream-claims` 단계는 이제 명령을 넷 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행), 넷째가 `scripts/ce1_claims_check.py --execute`(49행)다. 단계의 `passed`와 `total`은 네 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39+49=269이고 label은 그대로 `CLAIM_CONFORMANCE`다. 위 절들(`read-model-claims-conformance`의 "셋"과 220 합계, `fsm-contract-claims`의 "셋뿐이다" 문장 포함)의 옛 열거는 표가 적었을 때의 문장이며 고치지 않는다.
 
 <!-- /handbook-section -->
 

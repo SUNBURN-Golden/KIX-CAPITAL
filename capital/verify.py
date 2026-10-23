@@ -21,23 +21,8 @@ from capital.export import (
 _HEX = frozenset('0123456789abcdef')
 
 
-def _strict_object(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError('duplicate key')
-        result[key] = value
-    return result
-
-
-def loads(raw):
-    if raw.startswith(b'\xef\xbb\xbf') or b'\x00' in raw:
-        raise ValueError('rejected encoding')
-    text = raw.decode('utf-8')
-    return json.loads(
-        text, object_pairs_hook=_strict_object,
-        parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
-    )
+from capital.strict_json import loads
+from capital.keyset import DEV_KEYSET_ALG, load_dev_keyset, validate_dev_keyset, keyset_mac
 
 
 def _hex_equal(expected, actual):
@@ -70,7 +55,7 @@ def _fail(reason, sections, digest_status='NOT_CHECKED', signature_status='NOT_C
     )
 
 
-def verify_manifest(document, key=None, key_error=None):
+def verify_manifest(document, key=None, key_error=None, *, keyset=None, keyset_error=None):
     """Check section hashes, then the content digest, then the signature.
 
     The first failing part supplies the reason. Later parts stay NOT_CHECKED
@@ -104,10 +89,10 @@ def verify_manifest(document, key=None, key_error=None):
         return _fail('CONTENT_DIGEST_MISMATCH', pending, 'CONTENT_DIGEST_MISMATCH')
     if not _hex_equal(document.get('content_digest'), expected):
         return _fail('CONTENT_DIGEST_MISMATCH', pending, 'CONTENT_DIGEST_MISMATCH')
-    return _check_signature(document, key, key_error, pending)
+    return _check_signature(document, key, key_error, pending, keyset, keyset_error)
 
 
-def _check_signature(document, key, key_error, sections):
+def _check_signature(document, key, key_error, sections, keyset, keyset_error):
     signature = document.get('signature')
     if type(signature) is not dict or signature.get('port') != 'SignaturePort':
         return _fail('SIGNATURE_SHAPE', sections, 'MATCHED', 'SIGNATURE_SHAPE')
@@ -117,12 +102,37 @@ def _check_signature(document, key, key_error, sections):
     if algorithm == 'UNSIGNED':
         if signature.get('status') != 'NOT_BOUND' or signature.get('value') is not None:
             return _fail('SIGNATURE_SHAPE', sections, 'MATCHED', 'SIGNATURE_SHAPE')
-        if key_error is not None:
-            return _fail(key_error, sections, 'MATCHED', key_error)
+        error = key_error or keyset_error
+        if error is not None:
+            return _fail(error, sections, 'MATCHED', error)
         return _report(
             ok=True, reason=None, sections=sections,
             digest_status='MATCHED', signature_status='NOT_BOUND',
         )
+    if algorithm == DEV_KEYSET_ALG:
+        def fail(reason):
+            return _fail(reason, sections, 'MATCHED', reason)
+        if set(signature) != {'port', 'alg', 'kid', 'status', 'label', 'purpose', 'authentication', 'value'} or type(signature.get('kid')) is not str:
+            return fail('SIGNATURE_SHAPE')
+        if signature['label'] != 'DEV_ONLY' or signature['status'] != 'DEV_ONLY' or signature['purpose'] != 'INTEGRITY_ONLY':
+            return fail('SIGNATURE_LABEL')
+        if keyset_error is not None:
+            return fail(keyset_error)
+        if keyset is None:
+            return fail('SIGNATURE_KEYSET_REQUIRED')
+        try:
+            validate_dev_keyset(keyset)
+        except ExportError as exc:
+            return fail(exc.code)
+        entry = next((entry for entry in keyset['keys'] if entry['kid'] == signature['kid']), None)
+        if entry is None:
+            return fail('UNKNOWN_KID')
+        if entry['status'] == 'RETIRED':
+            return fail('KEY_RETIRED')
+        if not _hex_equal(signature['value'], keyset_mac(entry, document['content_digest'])):
+            return fail('SIGNATURE_MISMATCH')
+        return _report(ok=True, reason=None, sections=sections, digest_status='MATCHED',
+                       signature_status='VERIFIED_DEV_ONLY_INTEGRITY')
     if algorithm != 'DEV_HMAC_SHA256':
         return _fail('SIGNATURE_ALG', sections, 'MATCHED', 'SIGNATURE_ALG')
     if signature.get('label') != 'DEV_ONLY' or signature.get('purpose') != 'INTEGRITY_ONLY':
@@ -146,7 +156,7 @@ def _check_signature(document, key, key_error, sections):
     )
 
 
-def verify_path(path, key_file=None):
+def verify_path(path, key_file=None, *, keyset_file=None):
     try:
         raw = Path(path).read_bytes()
         document = loads(raw)
@@ -160,7 +170,15 @@ def verify_path(path, key_file=None):
             key = load_dev_key(key_file, create=False)
         except ExportError as exc:
             key_error = exc.code
-    return verify_manifest(document, key, key_error)
+    keyset, keyset_error = None, None
+    if keyset_file is not None:
+        try:
+            keyset = load_dev_keyset(keyset_file)
+        except ExportError as exc:
+            keyset_error = exc.code
+    if key_file is not None and keyset_file is not None:
+        keyset_error = key_error = 'SIGNATURE_KEYSET_CONFLICT'
+    return verify_manifest(document, key, key_error, keyset=keyset, keyset_error=keyset_error)
 
 
 def main(argv=None):
@@ -171,21 +189,23 @@ def main(argv=None):
         'This is not stage7 authenticated export.'
     ))
     parser.add_argument('file', nargs='?', help='Manifest JSON written by GET /api/export/manifest')
-    parser.add_argument('--key-file', default=None, help='DEV_ONLY HMAC key. Required for a signed manifest. Not a credential.')
+    keys = parser.add_mutually_exclusive_group()
+    keys.add_argument('--key-file', default=None, help='DEV_ONLY HMAC key. Required for a signed manifest. Not a credential.')
+    keys.add_argument('--keyset-file', default=None, help='Pinned DEV_ONLY local keyset. Integrity only.')
     parser.add_argument('--workspace', default=None,
                         help='Audit DIR/workspace.json read-only. No lock, no write, no repair. Not stage5 durability evidence.')
     args = parser.parse_args(argv)
     if args.workspace is not None:
         if args.file is not None:
             parser.error('file and --workspace are mutually exclusive')
-        if args.key_file is not None:
-            parser.error('--key-file does not apply to --workspace')
+        if args.key_file is not None or args.keyset_file is not None:
+            parser.error('--key-file/--keyset-file does not apply to --workspace')
         from capital.audit import audit_workspace
         report = audit_workspace(args.workspace)
     else:
         if args.file is None:
             parser.error('file or --workspace is required')
-        report = verify_path(args.file, args.key_file)
+        report = verify_path(args.file, args.key_file, keyset_file=args.keyset_file)
     sys.stdout.write(json.dumps(report, sort_keys=True, separators=(',', ':')) + '\n')
     return 0 if report['ok'] else 1
 
