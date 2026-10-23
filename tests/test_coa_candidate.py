@@ -153,7 +153,9 @@ class V1UnchangedTests(unittest.TestCase):
             base = 'HEAD'
         # Keep main's live byte guard as well as the original COA change's historical guard.
         # The closeout decision explicitly requires the reviewed binding-note update. Guard that
-        # note against this branch's HEAD and every other decision note against main.
+        # note against the incoming reviewed commit during a merge (otherwise HEAD)
+        # and every other decision note against main. A pending merge keeps HEAD at
+        # the old branch tip, before main's reviewed closeout wording was adopted.
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
@@ -164,7 +166,9 @@ class V1UnchangedTests(unittest.TestCase):
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
             self.assertEqual(guarded.stdout.split(), [])
             binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
-            reviewed = self._git('show', f'HEAD:{binding_note}')
+            reviewed_ref = ('MERGE_HEAD' if self._git(
+                'rev-parse', '--verify', '-q', 'MERGE_HEAD').returncode == 0 else 'HEAD')
+            reviewed = self._git('show', f'{reviewed_ref}:{binding_note}')
             self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
             self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
         # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
