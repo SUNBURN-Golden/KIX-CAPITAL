@@ -267,17 +267,37 @@
       "code": "SIM_CLOCK_STALE",
       "status": 409
     },
-{
+    {
       "code": "SIM_CLOCK_NOT_ADVANCING",
       "status": 400
     },
-{
+    {
       "code": "SIM_CLOCK_STEP",
       "status": 400
     },
-{
+    {
       "code": "OVERLAY_VOLATILE_KEY",
       "status": 400
+    },
+    {
+      "code": "REPAYMENT_AMOUNT",
+      "status": 400
+    },
+    {
+      "code": "REPAYMENT_TERMS_NOT_BOUND",
+      "status": 409
+    },
+    {
+      "code": "REPAYMENT_ADVANCE_STATE",
+      "status": 409
+    },
+    {
+      "code": "REPAYMENT_PRODUCER_UNSUPPORTED",
+      "status": 409
+    },
+    {
+      "code": "REPAYMENT_UNAPPLIED_CAP",
+      "status": 409
     }
   ],
   "commands": {
@@ -1333,6 +1353,14 @@
         "SIM_CLOCK_NOT_ADVANCING",
         "SIM_CLOCK_STEP",
         "OVERLAY_VOLATILE_KEY",
+        "UNKNOWN_ADVANCE",
+        "UNKNOWN_PROPOSAL",
+        "PROPOSAL_BINDING_CONFLICT",
+        "REPAYMENT_AMOUNT",
+        "REPAYMENT_TERMS_NOT_BOUND",
+        "REPAYMENT_ADVANCE_STATE",
+        "REPAYMENT_PRODUCER_UNSUPPORTED",
+        "REPAYMENT_UNAPPLIED_CAP",
         "SIMULATION_CAPACITY",
         "READ_ONLY_INVARIANT",
         "WORKSPACE_UNREADABLE",
@@ -2743,196 +2771,679 @@
       ]
     },
     "shadow_status": {
-      "enum": ["SHADOW_COMPUTED", "SHADOW_DEFERRED", "SHADOW_NOT_BOUND", "SHADOW_INPUT_UNKNOWN", "SHADOW_INCONSISTENT"]
+      "enum": [
+        "SHADOW_COMPUTED",
+        "SHADOW_DEFERRED",
+        "SHADOW_NOT_BOUND",
+        "SHADOW_INPUT_UNKNOWN",
+        "SHADOW_INCONSISTENT"
+      ]
     },
     "shadow_reconciliation": {
-      "enum": ["MATCHES_PINNED_FSM", "DIVERGES_PINNED_FSM_BY_DESIGN", "NOT_COMPARABLE"]
+      "enum": [
+        "MATCHES_PINNED_FSM",
+        "DIVERGES_PINNED_FSM_BY_DESIGN",
+        "NOT_COMPARABLE"
+      ]
     },
     "shadow_line": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["payee", "shadow_reversal", "shadow_cancelled_unpaid", "shadow_recovery_due"],
+      "required": [
+        "payee",
+        "shadow_reversal",
+        "shadow_cancelled_unpaid",
+        "shadow_recovery_due"
+      ],
       "properties": {
-        "payee": {"type": "string"},
-        "shadow_reversal": {"type": "integer"},
-        "shadow_cancelled_unpaid": {"type": "integer"},
-        "shadow_recovery_due": {"type": "integer"}
+        "payee": {
+          "type": "string"
+        },
+        "shadow_reversal": {
+          "type": "integer"
+        },
+        "shadow_cancelled_unpaid": {
+          "type": "integer"
+        },
+        "shadow_recovery_due": {
+          "type": "integer"
+        }
       }
     },
     "shadow_resale_line": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["line", "shadow_reversal"],
+      "required": [
+        "line",
+        "shadow_reversal"
+      ],
       "properties": {
-        "line": {"type": "string"},
-        "shadow_reversal": {"type": "integer"}
+        "line": {
+          "type": "string"
+        },
+        "shadow_reversal": {
+          "type": "integer"
+        }
       }
     },
     "shadow_recovery_line": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["line", "shadow_recovery_due"],
+      "required": [
+        "line",
+        "shadow_recovery_due"
+      ],
       "properties": {
-        "line": {"type": "string"},
-        "shadow_recovery_due": {"type": "integer"}
+        "line": {
+          "type": "string"
+        },
+        "shadow_recovery_due": {
+          "type": "integer"
+        }
       }
     },
     "shadow_false_flags": {
-      "applied_to_fsm": {"const": false},
-      "funds_executed": {"const": false},
-      "policy_adopted": {"const": false},
-      "bank_debit_observed": {"const": false},
-      "right_cancelled": {"const": false},
-      "external_return_closed": {"const": false},
-      "legal_debtor_bound": {"const": false},
-      "admission_granted": {"const": false},
-      "workspace_mutated": {"const": false}
+      "applied_to_fsm": {
+        "const": false
+      },
+      "funds_executed": {
+        "const": false
+      },
+      "policy_adopted": {
+        "const": false
+      },
+      "bank_debit_observed": {
+        "const": false
+      },
+      "right_cancelled": {
+        "const": false
+      },
+      "external_return_closed": {
+        "const": false
+      },
+      "legal_debtor_bound": {
+        "const": false
+      },
+      "admission_granted": {
+        "const": false
+      },
+      "workspace_mutated": {
+        "const": false
+      }
     },
     "shadow_refund_entry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["refund_id", "reason_class", "adjudicated_platform_fault", "status", "detail", "routed_to", "shadow_refund_amount", "lines", "shadow_platform_pool_obligation", "shadow_carry", "working_assumption", "auto_reclassified", "reconciliation"],
+      "required": [
+        "refund_id",
+        "reason_class",
+        "adjudicated_platform_fault",
+        "status",
+        "detail",
+        "routed_to",
+        "shadow_refund_amount",
+        "lines",
+        "shadow_platform_pool_obligation",
+        "shadow_carry",
+        "working_assumption",
+        "auto_reclassified",
+        "reconciliation"
+      ],
       "properties": {
-        "refund_id": {"type": "string"},
-        "reason_class": {"type": "string"},
-        "adjudicated_platform_fault": {"type": "boolean"},
-        "status": {"$ref": "#/definitions/shadow_status"},
-        "detail": {"type": ["string", "null"]},
-        "routed_to": {"type": ["string", "null"]},
-        "shadow_refund_amount": {"type": "integer"},
-        "lines": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_line"}}]},
-        "shadow_platform_pool_obligation": {"type": ["integer", "null"]},
-        "shadow_carry": {"type": ["integer", "null"]},
-        "working_assumption": {"type": "boolean"},
-        "auto_reclassified": {"const": false},
-        "reconciliation": {"anyOf": [{"$ref": "#/definitions/shadow_reconciliation"}, {"type": "null"}]}
+        "refund_id": {
+          "type": "string"
+        },
+        "reason_class": {
+          "type": "string"
+        },
+        "adjudicated_platform_fault": {
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/definitions/shadow_status"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "routed_to": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shadow_refund_amount": {
+          "type": "integer"
+        },
+        "lines": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/shadow_line"
+              }
+            }
+          ]
+        },
+        "shadow_platform_pool_obligation": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shadow_carry": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "working_assumption": {
+          "type": "boolean"
+        },
+        "auto_reclassified": {
+          "const": false
+        },
+        "reconciliation": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/shadow_reconciliation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
       }
     },
     "shadow_cumulative": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["shadow_cumulative_refund", "shadow_platform_pool_obligation", "auto_reclassified", "lines", "reconciliation"],
+      "required": [
+        "shadow_cumulative_refund",
+        "shadow_platform_pool_obligation",
+        "auto_reclassified",
+        "lines",
+        "reconciliation"
+      ],
       "properties": {
-        "shadow_cumulative_refund": {"type": "integer"},
-        "shadow_platform_pool_obligation": {"type": "integer"},
-        "auto_reclassified": {"const": false},
-        "lines": {"type": "array", "items": {"$ref": "#/definitions/shadow_line"}},
-        "reconciliation": {"$ref": "#/definitions/shadow_reconciliation"}
+        "shadow_cumulative_refund": {
+          "type": "integer"
+        },
+        "shadow_platform_pool_obligation": {
+          "type": "integer"
+        },
+        "auto_reclassified": {
+          "const": false
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/shadow_line"
+          }
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/shadow_reconciliation"
+        }
       }
     },
     "shadow_result": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "detail", "mode", "label", "provenance", "shadow_rules_version", "note_digest", "input_digest", "result_digest", "applied_to_fsm", "funds_executed", "policy_adopted", "bank_debit_observed", "right_cancelled", "external_return_closed", "legal_debtor_bound", "admission_granted", "workspace_mutated"],
+      "required": [
+        "status",
+        "detail",
+        "mode",
+        "label",
+        "provenance",
+        "shadow_rules_version",
+        "note_digest",
+        "input_digest",
+        "result_digest",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated"
+      ],
       "properties": {
-        "status": {"$ref": "#/definitions/shadow_status"},
-        "detail": {"type": ["string", "null"]},
-        "mode": {"const": "SHADOW_NOT_APPLIED"},
-        "label": {"const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"},
-        "provenance": {"const": "SHADOW_ARITHMETIC_ONLY"},
-        "shadow_rules_version": {"type": ["string", "null"]},
-        "note_digest": {"type": ["string", "null"]},
-        "input_digest": {"type": "string"},
-        "result_digest": {"type": "string"},
-        "refunds": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_refund_entry"}}]},
-        "cumulative": {"anyOf": [{"$ref": "#/definitions/shadow_cumulative"}, {"type": "null"}]},
-        "trigger": {"type": "string"},
-        "vector_id": {"type": "string"},
-        "missing_inputs": {"type": "array", "items": {"type": "string"}},
-        "shadow_holder_entitlement": {"type": ["integer", "null"]},
-        "shadow_holder_market_risk": {"type": ["integer", "null"]},
-        "shadow_seller_receives": {"type": ["integer", "null"]},
-        "shadow_seller_kept": {"type": ["integer", "null"]},
-        "shadow_primary_refund_by_line": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_line"}}]},
-        "shadow_resale_line_reversal": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_resale_line"}}]},
-        "shadow_recovery_due": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/definitions/shadow_recovery_line"}}]},
-        "reconciliation": {"anyOf": [{"$ref": "#/definitions/shadow_reconciliation"}, {"type": "null"}]},
-        "primary_refund_reconciliation": {"anyOf": [{"$ref": "#/definitions/shadow_reconciliation"}, {"type": "null"}]},
-        "applied_to_fsm": {"const": false},
-        "funds_executed": {"const": false},
-        "policy_adopted": {"const": false},
-        "bank_debit_observed": {"const": false},
-        "right_cancelled": {"const": false},
-        "external_return_closed": {"const": false},
-        "legal_debtor_bound": {"const": false},
-        "admission_granted": {"const": false},
-        "workspace_mutated": {"const": false}
+        "status": {
+          "$ref": "#/definitions/shadow_status"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "label": {
+          "const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"
+        },
+        "provenance": {
+          "const": "SHADOW_ARITHMETIC_ONLY"
+        },
+        "shadow_rules_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input_digest": {
+          "type": "string"
+        },
+        "result_digest": {
+          "type": "string"
+        },
+        "refunds": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/shadow_refund_entry"
+              }
+            }
+          ]
+        },
+        "cumulative": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/shadow_cumulative"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "vector_id": {
+          "type": "string"
+        },
+        "missing_inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shadow_holder_entitlement": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shadow_holder_market_risk": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shadow_seller_receives": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shadow_seller_kept": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shadow_primary_refund_by_line": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/shadow_line"
+              }
+            }
+          ]
+        },
+        "shadow_resale_line_reversal": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/shadow_resale_line"
+              }
+            }
+          ]
+        },
+        "shadow_recovery_due": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/shadow_recovery_line"
+              }
+            }
+          ]
+        },
+        "reconciliation": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/shadow_reconciliation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_refund_reconciliation": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/shadow_reconciliation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        }
       }
     },
     "shadow_verdict": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "detail", "mode", "label", "provenance", "shadow_rules_version", "note_digest", "applied_to_fsm", "funds_executed", "policy_adopted", "bank_debit_observed", "right_cancelled", "external_return_closed", "legal_debtor_bound", "admission_granted", "workspace_mutated"],
+      "required": [
+        "status",
+        "detail",
+        "mode",
+        "label",
+        "provenance",
+        "shadow_rules_version",
+        "note_digest",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated"
+      ],
       "properties": {
-        "status": {"$ref": "#/definitions/shadow_status"},
-        "detail": {"type": ["string", "null"]},
-        "mode": {"const": "SHADOW_NOT_APPLIED"},
-        "label": {"const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"},
-        "provenance": {"const": "SHADOW_ARITHMETIC_ONLY"},
-        "shadow_rules_version": {"type": ["string", "null"]},
-        "note_digest": {"type": ["string", "null"]},
+        "status": {
+          "$ref": "#/definitions/shadow_status"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "label": {
+          "const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"
+        },
+        "provenance": {
+          "const": "SHADOW_ARITHMETIC_ONLY"
+        },
+        "shadow_rules_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "source": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": {"type": "string"},
-            "claim_id": {"type": "string"},
-            "scenario": {"type": "string"},
-            "note": {"type": "string"},
-            "primary_claim_id": {"type": "string"}
+            "kind": {
+              "type": "string"
+            },
+            "claim_id": {
+              "type": "string"
+            },
+            "scenario": {
+              "type": "string"
+            },
+            "note": {
+              "type": "string"
+            },
+            "primary_claim_id": {
+              "type": "string"
+            }
           }
         },
-        "per_class": {"type": "array", "items": {"$ref": "#/definitions/shadow_result"}},
-        "triggers": {"type": "array", "items": {"$ref": "#/definitions/shadow_result"}},
-        "applied_to_fsm": {"const": false},
-        "funds_executed": {"const": false},
-        "policy_adopted": {"const": false},
-        "bank_debit_observed": {"const": false},
-        "right_cancelled": {"const": false},
-        "external_return_closed": {"const": false},
-        "legal_debtor_bound": {"const": false},
-        "admission_granted": {"const": false},
-        "workspace_mutated": {"const": false}
+        "per_class": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/shadow_result"
+          }
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/shadow_result"
+          }
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        }
       }
     },
     "shadow_item": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["item", "pinned", "shadow"],
+      "required": [
+        "item",
+        "pinned",
+        "shadow"
+      ],
       "properties": {
-        "item": {"type": "string"},
-        "pinned": {"$ref": "#/definitions/policy_unsupported_item"},
-        "shadow": {"$ref": "#/definitions/shadow_verdict"}
+        "item": {
+          "type": "string"
+        },
+        "pinned": {
+          "$ref": "#/definitions/policy_unsupported_item"
+        },
+        "shadow": {
+          "$ref": "#/definitions/shadow_verdict"
+        }
       }
     },
     "policy_shadow": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label", "mode", "provenance", "provisional", "shadow_rules_version", "policy_version", "note_digest", "outcome", "reason", "items", "applied_to_fsm", "funds_executed", "policy_adopted", "bank_debit_observed", "right_cancelled", "external_return_closed", "legal_debtor_bound", "admission_granted", "workspace_mutated", "write_authorized", "instance_id", "observed_state_digest"],
+      "required": [
+        "label",
+        "mode",
+        "provenance",
+        "provisional",
+        "shadow_rules_version",
+        "policy_version",
+        "note_digest",
+        "outcome",
+        "reason",
+        "items",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
       "properties": {
-        "label": {"const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"},
-        "mode": {"const": "SHADOW_NOT_APPLIED"},
-        "provenance": {"const": "SHADOW_ARITHMETIC_ONLY"},
-        "provisional": {"const": true},
-        "shadow_rules_version": {"type": ["string", "null"]},
-        "policy_version": {"type": ["string", "null"]},
-        "note_digest": {"type": ["string", "null"]},
-        "outcome": {"$ref": "#/definitions/shadow_status"},
-        "reason": {"type": ["string", "null"]},
-        "items": {"type": "array", "items": {"$ref": "#/definitions/shadow_item"}},
-        "applied_to_fsm": {"const": false},
-        "funds_executed": {"const": false},
-        "policy_adopted": {"const": false},
-        "bank_debit_observed": {"const": false},
-        "right_cancelled": {"const": false},
-        "external_return_closed": {"const": false},
-        "legal_debtor_bound": {"const": false},
-        "admission_granted": {"const": false},
-        "workspace_mutated": {"const": false},
-        "write_authorized": {"const": false},
-        "instance_id": {"type": "string"},
-        "observed_state_digest": {"type": "string"}
+        "label": {
+          "const": "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "provenance": {
+          "const": "SHADOW_ARITHMETIC_ONLY"
+        },
+        "provisional": {
+          "const": true
+        },
+        "shadow_rules_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/definitions/shadow_status"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/shadow_item"
+          }
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
       }
     },
     "policy_status": {
@@ -4473,6 +4984,9 @@
         },
         "fixtures": {
           "$ref": "#/definitions/fixture_map"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
         },
         "state_digest": {
           "type": "string"
@@ -9002,7 +9516,10 @@
       ],
       "properties": {
         "format": {
-          "enum": ["KIX_CAPITAL_EXPORT_MANIFEST_V2", "KIX_CAPITAL_EXPORT_MANIFEST_V3"]
+          "enum": [
+            "KIX_CAPITAL_EXPORT_MANIFEST_V2",
+            "KIX_CAPITAL_EXPORT_MANIFEST_V3"
+          ]
         },
         "label": {
           "const": "SIMULATED"
@@ -10484,172 +11001,315 @@
     "command_outcome_counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ACCEPTED", "REJECTED"],
+      "required": [
+        "ACCEPTED",
+        "REJECTED"
+      ],
       "properties": {
-        "ACCEPTED": {"type": "integer"},
-        "REJECTED": {"type": "integer"}
+        "ACCEPTED": {
+          "type": "integer"
+        },
+        "REJECTED": {
+          "type": "integer"
+        }
       }
     },
     "http_class_counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["2xx", "4xx", "5xx"],
+      "required": [
+        "2xx",
+        "4xx",
+        "5xx"
+      ],
       "properties": {
-        "2xx": {"type": "integer"},
-        "4xx": {"type": "integer"},
-        "5xx": {"type": "integer"}
+        "2xx": {
+          "type": "integer"
+        },
+        "4xx": {
+          "type": "integer"
+        },
+        "5xx": {
+          "type": "integer"
+        }
       }
     },
     "latency_histogram": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["le_5", "le_25", "le_100", "le_500", "le_2500", "gt_2500", "count", "max_ms"],
+      "required": [
+        "le_5",
+        "le_25",
+        "le_100",
+        "le_500",
+        "le_2500",
+        "gt_2500",
+        "count",
+        "max_ms"
+      ],
       "properties": {
-        "le_5": {"type": "integer"},
-        "le_25": {"type": "integer"},
-        "le_100": {"type": "integer"},
-        "le_500": {"type": "integer"},
-        "le_2500": {"type": "integer"},
-        "gt_2500": {"type": "integer"},
-        "count": {"type": "integer"},
-        "max_ms": {"type": "integer"}
+        "le_5": {
+          "type": "integer"
+        },
+        "le_25": {
+          "type": "integer"
+        },
+        "le_100": {
+          "type": "integer"
+        },
+        "le_500": {
+          "type": "integer"
+        },
+        "le_2500": {
+          "type": "integer"
+        },
+        "gt_2500": {
+          "type": "integer"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "max_ms": {
+          "type": "integer"
+        }
       }
     },
     "event_log_counters": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "written", "errors", "dropped", "max_bytes"],
+      "required": [
+        "enabled",
+        "written",
+        "errors",
+        "dropped",
+        "max_bytes"
+      ],
       "properties": {
-        "enabled": {"type": "boolean"},
-        "written": {"type": "integer"},
-        "errors": {"type": "integer"},
-        "dropped": {"type": "integer"},
-        "max_bytes": {"type": "integer"}
+        "enabled": {
+          "type": "boolean"
+        },
+        "written": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "integer"
+        },
+        "dropped": {
+          "type": "integer"
+        },
+        "max_bytes": {
+          "type": "integer"
+        }
       }
     },
     "metrics_workspace": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "status"],
+      "required": [
+        "kind",
+        "status"
+      ],
       "properties": {
-        "kind": {"type": "string"},
-        "status": {"type": "string"}
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
       }
     },
     "metrics": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "mode", "label", "instance_id", "version", "uptime_seconds", "workspace",
-        "counters", "latency_ms", "external_exporters", "tracing", "alerting",
-        "network_sinks", "funds_executed"
+        "mode",
+        "label",
+        "instance_id",
+        "version",
+        "uptime_seconds",
+        "workspace",
+        "counters",
+        "latency_ms",
+        "external_exporters",
+        "tracing",
+        "alerting",
+        "network_sinks",
+        "funds_executed"
       ],
       "properties": {
-        "mode": {"const": "LOCAL_OBSERVABILITY"},
-        "label": {"const": "SIMULATED"},
-        "instance_id": {"type": "string"},
-        "version": {"type": "string"},
-        "uptime_seconds": {"type": "integer"},
-        "workspace": {"$ref": "#/definitions/metrics_workspace"},
+        "mode": {
+          "const": "LOCAL_OBSERVABILITY"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "uptime_seconds": {
+          "type": "integer"
+        },
+        "workspace": {
+          "$ref": "#/definitions/metrics_workspace"
+        },
         "counters": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["commands", "rejections", "operation_lookups", "http_requests", "event_log"],
+          "required": [
+            "commands",
+            "rejections",
+            "operation_lookups",
+            "http_requests",
+            "event_log"
+          ],
           "properties": {
             "commands": {
               "type": "object",
               "additionalProperties": false,
               "required": [
-                "offer", "approve", "reject", "cancel", "bind_settlement",
-                "draw", "repay", "close", "default", "reconcile", "other"
+                "offer",
+                "approve",
+                "reject",
+                "cancel",
+                "bind_settlement",
+                "draw",
+                "repay",
+                "close",
+                "default",
+                "reconcile",
+                "other"
               ],
               "properties": {
-                "offer": {"$ref": "#/definitions/command_outcome_counts"},
-                "approve": {"$ref": "#/definitions/command_outcome_counts"},
-                "reject": {"$ref": "#/definitions/command_outcome_counts"},
-                "cancel": {"$ref": "#/definitions/command_outcome_counts"},
-                "bind_settlement": {"$ref": "#/definitions/command_outcome_counts"},
-                "draw": {"$ref": "#/definitions/command_outcome_counts"},
-                "repay": {"$ref": "#/definitions/command_outcome_counts"},
-                "close": {"$ref": "#/definitions/command_outcome_counts"},
-                "default": {"$ref": "#/definitions/command_outcome_counts"},
-                "reconcile": {"$ref": "#/definitions/command_outcome_counts"},
-                "other": {"$ref": "#/definitions/command_outcome_counts"}
+                "offer": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "approve": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "reject": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "cancel": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "bind_settlement": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "draw": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "repay": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "close": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "default": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "reconcile": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                },
+                "other": {
+                  "$ref": "#/definitions/command_outcome_counts"
+                }
               }
             },
             "rejections": {
               "type": "object",
-              "additionalProperties": {"type": "integer"}
+              "additionalProperties": {
+                "type": "integer"
+              }
             },
             "operation_lookups": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["KNOWN", "UNKNOWN"],
+              "required": [
+                "KNOWN",
+                "UNKNOWN"
+              ],
               "properties": {
-                "KNOWN": {"type": "integer"},
-                "UNKNOWN": {"type": "integer"}
+                "KNOWN": {
+                  "type": "integer"
+                },
+                "UNKNOWN": {
+                  "type": "integer"
+                }
               }
             },
             "http_requests": {
               "type": "object",
-              "additionalProperties": {"$ref": "#/definitions/http_class_counts"}
+              "additionalProperties": {
+                "$ref": "#/definitions/http_class_counts"
+              }
             },
-            "event_log": {"$ref": "#/definitions/event_log_counters"}
+            "event_log": {
+              "$ref": "#/definitions/event_log_counters"
+            }
           }
         },
         "latency_ms": {
           "type": "object",
-          "additionalProperties": {"$ref": "#/definitions/latency_histogram"}
+          "additionalProperties": {
+            "$ref": "#/definitions/latency_histogram"
+          }
         },
-        "external_exporters": {"const": "NOT_BOUND"},
-        "tracing": {"const": "NOT_BOUND"},
-        "alerting": {"const": "NOT_BOUND"},
-        "network_sinks": {"const": "NOT_BOUND"},
-        "funds_executed": {"const": false}
+        "external_exporters": {
+          "const": "NOT_BOUND"
+        },
+        "tracing": {
+          "const": "NOT_BOUND"
+        },
+        "alerting": {
+          "const": "NOT_BOUND"
+        },
+        "network_sinks": {
+          "const": "NOT_BOUND"
+        },
+        "funds_executed": {
+          "const": false
+        }
       }
     },
     "health": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "uptime_seconds", "workspace_status", "mode"],
+      "required": [
+        "status",
+        "uptime_seconds",
+        "workspace_status",
+        "mode"
+      ],
       "properties": {
-        "status": {"enum": ["ok", "degraded"]},
-        "uptime_seconds": {"type": "integer"},
-        "workspace_status": {"type": "string"},
-        "mode": {"const": "LOCAL_OBSERVABILITY"}
+        "status": {
+          "enum": [
+            "ok",
+            "degraded"
+          ]
+        },
+        "uptime_seconds": {
+          "type": "integer"
+        },
+        "workspace_status": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "LOCAL_OBSERVABILITY"
+        }
       }
     },
     "overlay_command_request": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "instance_id",
-        "operation_id",
-        "op",
-        "from_sim_day",
-        "to_sim_day",
-        "reason"
-      ],
-      "properties": {
-        "instance_id": {
-          "type": "string"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/overlay_advance_request"
         },
-        "operation_id": {
-          "type": "string"
-        },
-        "op": {
-          "const": "advance_day"
-        },
-        "from_sim_day": {
-          "type": "integer"
-        },
-        "to_sim_day": {
-          "type": "integer"
-        },
-        "reason": {
-          "type": "string"
+        {
+          "$ref": "#/definitions/overlay_repayment_request"
         }
-      }
+      ]
     },
     "overlay_export_section": {
       "description": "V3 overlay section body: a pure function of the overlay journal (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2). The journal entries and folded state are loose objects here; their shape is enforced by the overlay fold.",
@@ -10832,6 +11492,9 @@
         "principal_outstanding_krw",
         "interest_due_krw",
         "default_interest_due_krw",
+        "interest_paid_krw",
+        "default_interest_paid_krw",
+        "unapplied_cash_krw",
         "accrued_through_sim_day",
         "allocation",
         "fsm_repay",
@@ -10862,6 +11525,18 @@
         },
         "default_interest_due_krw": {
           "type": "integer"
+        },
+        "interest_paid_krw": {
+          "type": "integer"
+        },
+        "default_interest_paid_krw": {
+          "type": "integer"
+        },
+        "unapplied_cash_krw": {
+          "type": "integer"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
         },
         "accrued_through_sim_day": {
           "type": "integer"
@@ -11105,51 +11780,14 @@
       }
     },
     "overlay_recorded_operation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "operation_id",
-        "op",
-        "outcome",
-        "from_sim_day",
-        "to_sim_day",
-        "reason",
-        "sim_day",
-        "terms_bound_by_this_command",
-        "postings"
-      ],
-      "properties": {
-        "operation_id": {
-          "type": "string"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/overlay_recorded_advance"
         },
-        "op": {
-          "const": "advance_day"
-        },
-        "outcome": {
-          "const": "APPLIED"
-        },
-        "from_sim_day": {
-          "type": "integer"
-        },
-        "to_sim_day": {
-          "type": "integer"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "sim_day": {
-          "type": "integer"
-        },
-        "terms_bound_by_this_command": {
-          "type": "boolean"
-        },
-        "postings": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/overlay_posting"
-          }
+        {
+          "$ref": "#/definitions/overlay_recorded_repayment"
         }
-      }
+      ]
     },
     "overlay_unknown_operation": {
       "type": "object",
@@ -11192,6 +11830,7 @@
         "f04_journal_written",
         "capacity",
         "advances",
+        "warnings",
         "funds_executed",
         "workspace_mutated",
         "write_authorized",
@@ -11242,10 +11881,22 @@
           "type": "integer"
         },
         "interest_payments": {
-          "const": "NOT_RECORDED"
+          "$ref": "#/definitions/overlay_interest_payments"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_warning"
+          }
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
         },
         "export": {
-          "enum": ["INCLUDED_IN_MANIFEST_V3", "ABSENT_WHEN_EMPTY"]
+          "enum": [
+            "INCLUDED_IN_MANIFEST_V3",
+            "ABSENT_WHEN_EMPTY"
+          ]
         },
         "workspace_status": {
           "type": "string"
@@ -11296,94 +11947,14 @@
       }
     },
     "overlay_command_receipt": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "operation_id",
-        "op",
-        "outcome",
-        "from_sim_day",
-        "to_sim_day",
-        "reason",
-        "sim_day",
-        "terms_bound_by_this_command",
-        "postings",
-        "label",
-        "instance_id",
-        "clock_source",
-        "actor",
-        "role",
-        "role_provenance",
-        "funds_executed",
-        "f04_journal_written",
-        "economic_finality_claimed",
-        "transport_duplicate"
-      ],
-      "properties": {
-        "operation_id": {
-          "type": "string"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/overlay_advance_receipt"
         },
-        "op": {
-          "const": "advance_day"
-        },
-        "outcome": {
-          "const": "APPLIED"
-        },
-        "from_sim_day": {
-          "type": "integer"
-        },
-        "to_sim_day": {
-          "type": "integer"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "sim_day": {
-          "type": "integer"
-        },
-        "terms_bound_by_this_command": {
-          "type": "boolean"
-        },
-        "postings": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/overlay_posting"
-          }
-        },
-        "label": {
-          "const": "SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry"
-        },
-        "instance_id": {
-          "type": "string"
-        },
-        "clock_source": {
-          "const": "SIM_LOGICAL_CLOCK"
-        },
-        "actor": {
-          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
-        },
-        "role": {
-          "const": "organizer"
-        },
-        "role_provenance": {
-          "const": "SYNTHETIC_LOCAL_ROLE"
-        },
-        "funds_executed": {
-          "const": false
-        },
-        "f04_journal_written": {
-          "const": false
-        },
-        "economic_finality_claimed": {
-          "const": false
-        },
-        "transport_duplicate": {
-          "type": "boolean"
-        },
-        "overlay_state_digest": {
-          "type": "string"
+        {
+          "$ref": "#/definitions/overlay_repayment_receipt"
         }
-      }
+      ]
     },
     "risk_count_row": {
       "type": "object",
@@ -11995,16 +12566,40 @@
         "observed_state_digest"
       ],
       "properties": {
-        "label": {"const": "SIMULATED covenant watch — read-only, not an enforcement gate"},
-        "mode": {"const": "SIMULATED_COVENANT_WATCH"},
-        "status": {"enum": ["BOUND", "PARTIAL", "NOT_BOUND"]},
-        "sim_day": {"type": "integer"},
-        "enforced": {"const": false},
-        "funds_executed": {"const": false},
-        "workspace_mutated": {"const": false},
-        "write_authorized": {"const": false},
-        "instance_id": {"type": "string"},
-        "observed_state_digest": {"type": "string"}
+        "label": {
+          "const": "SIMULATED covenant watch — read-only, not an enforcement gate"
+        },
+        "mode": {
+          "const": "SIMULATED_COVENANT_WATCH"
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL",
+            "NOT_BOUND"
+          ]
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "enforced": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
       }
     },
     "risk_state": {
@@ -13133,6 +13728,555 @@
           "$ref": "#/definitions/portfolio_snapshot_incomplete"
         }
       ]
+    },
+    "overlay_advance_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "from_sim_day",
+        "to_sim_day",
+        "reason"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "advance_day"
+        },
+        "from_sim_day": {
+          "type": "integer"
+        },
+        "to_sim_day": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_close_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "default_interest_due_krw",
+        "interest_due_krw",
+        "unapplied_cash_krw"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "CLEAR",
+            "INTEREST_DUE",
+            "UNAPPLIED_HELD"
+          ]
+        },
+        "default_interest_due_krw": {
+          "type": "integer"
+        },
+        "interest_due_krw": {
+          "type": "integer"
+        },
+        "unapplied_cash_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_interest_payments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "payments_recorded",
+        "paid_default_interest_krw",
+        "paid_interest_krw",
+        "default_interest_due_krw",
+        "interest_due_krw",
+        "unapplied_cash_krw",
+        "basis",
+        "amounts"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "RECORDED",
+            "NONE_YET",
+            "NOT_BOUND"
+          ]
+        },
+        "payments_recorded": {
+          "type": "integer"
+        },
+        "paid_default_interest_krw": {
+          "type": "integer"
+        },
+        "paid_interest_krw": {
+          "type": "integer"
+        },
+        "default_interest_due_krw": {
+          "type": "integer"
+        },
+        "interest_due_krw": {
+          "type": "integer"
+        },
+        "unapplied_cash_krw": {
+          "type": "integer"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "amounts": {
+          "const": "UNVERIFIED_ASSERTED"
+        }
+      }
+    },
+    "overlay_warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "advance_id",
+        "journal_index",
+        "amount_krw",
+        "attributed_sim_day"
+      ],
+      "properties": {
+        "code": {
+          "const": "UNPOSTED_F04_REPAY"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "journal_index": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "attributed_sim_day": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_repayment_split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default_interest_krw",
+        "interest_krw",
+        "principal_krw",
+        "unapplied_after_krw"
+      ],
+      "properties": {
+        "default_interest_krw": {
+          "type": "integer"
+        },
+        "interest_krw": {
+          "type": "integer"
+        },
+        "principal_krw": {
+          "type": "integer"
+        },
+        "unapplied_after_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_repayment_f04": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "receipt_ref"
+          ],
+          "properties": {
+            "operation_id": {
+              "type": "string"
+            },
+            "receipt_ref": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "overlay_repayment_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "advance_ref",
+        "at_sim_day",
+        "amount_krw"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_repayment"
+        },
+        "advance_ref": {
+          "type": "string"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_recorded_repayment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "advance_ref",
+        "at_sim_day",
+        "sim_day",
+        "amount_krw",
+        "unapplied_before_krw",
+        "entry_no",
+        "allocation",
+        "f04",
+        "unapplied_after_krw",
+        "close_gate",
+        "payment_basis",
+        "basis"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_repayment"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "advance_ref": {
+          "type": "string"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "unapplied_before_krw": {
+          "type": "integer"
+        },
+        "entry_no": {
+          "type": "integer"
+        },
+        "allocation": {
+          "$ref": "#/definitions/overlay_repayment_split"
+        },
+        "f04": {
+          "$ref": "#/definitions/overlay_repayment_f04"
+        },
+        "unapplied_after_krw": {
+          "type": "integer"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
+        },
+        "payment_basis": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_repayment_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "advance_ref",
+        "at_sim_day",
+        "sim_day",
+        "amount_krw",
+        "unapplied_before_krw",
+        "entry_no",
+        "allocation",
+        "f04",
+        "unapplied_after_krw",
+        "close_gate",
+        "payment_basis",
+        "basis",
+        "label",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate",
+        "f04_journal_written"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_repayment"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "advance_ref": {
+          "type": "string"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "unapplied_before_krw": {
+          "type": "integer"
+        },
+        "entry_no": {
+          "type": "integer"
+        },
+        "allocation": {
+          "$ref": "#/definitions/overlay_repayment_split"
+        },
+        "f04": {
+          "$ref": "#/definitions/overlay_repayment_f04"
+        },
+        "unapplied_after_krw": {
+          "type": "integer"
+        },
+        "close_gate": {
+          "$ref": "#/definitions/overlay_close_gate"
+        },
+        "payment_basis": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "label": {
+          "const": "SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        },
+        "f04_journal_written": {
+          "type": "boolean"
+        }
+      }
+    },
+    "overlay_recorded_advance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "from_sim_day",
+        "to_sim_day",
+        "reason",
+        "sim_day",
+        "terms_bound_by_this_command",
+        "postings"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "advance_day"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "from_sim_day": {
+          "type": "integer"
+        },
+        "to_sim_day": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_bound_by_this_command": {
+          "type": "boolean"
+        },
+        "postings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_posting"
+          }
+        }
+      }
+    },
+    "overlay_advance_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "from_sim_day",
+        "to_sim_day",
+        "reason",
+        "sim_day",
+        "terms_bound_by_this_command",
+        "postings",
+        "label",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "f04_journal_written",
+        "economic_finality_claimed",
+        "transport_duplicate"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "advance_day"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "from_sim_day": {
+          "type": "integer"
+        },
+        "to_sim_day": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_bound_by_this_command": {
+          "type": "boolean"
+        },
+        "postings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overlay_posting"
+          }
+        },
+        "label": {
+          "const": "SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        }
+      }
     }
   }
 }
