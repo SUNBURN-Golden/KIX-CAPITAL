@@ -39,6 +39,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from capital.export import DEV_KEY_NAME, PART_TAGS, SECTION_IDS, DevHmacSigner
+from capital.keyset import DevKeysetSigner, DEV_KEYSET_NAME, DEV_KEYSET_FORMAT, DEV_KEYSET_ALG
 from capital.service import CapitalService
 
 DEFAULT_DIR = ROOT / 'tests' / 'vectors'
@@ -148,6 +149,24 @@ def build_vectors() -> dict:
     files['malformed.json'] = truncate(raw)
     vectors = {f'{MANIFEST_DIR}/{name}': data for name, data in files.items()}
     vectors[KEY_FILE] = KEY_BYTES
+    keyset = {'format': DEV_KEYSET_FORMAT, 'label': 'DEV_ONLY', 'active_kid': 'kid-1',
+              'keys': [{'kid': f'kid-{i}', 'alg': DEV_KEYSET_ALG, 'status': 'ACTIVE',
+                        'key_hex': bytes([i] * 32).hex()} for i in (1, 2)]}
+    vectors['dev-keyset-active.json'] = dump(keyset)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / DEV_KEYSET_NAME
+        for kid in ('kid-1', 'kid-2'):
+            keyset['active_kid'] = kid
+            path.write_bytes(dump(keyset))
+            path.chmod(0o600)
+            manifest = {**unsigned, 'signature': DevKeysetSigner(tmp).sign(unsigned['content_digest'])}
+            vectors[f'{MANIFEST_DIR}/dev-keyset-{kid}.json'] = dump(manifest)
+            if kid == 'kid-1':
+                vectors[f'{MANIFEST_DIR}/retired-key.json'] = dump(manifest)
+                unknown = {**manifest, 'signature': {**manifest['signature'], 'kid': 'unknown'}}
+                vectors[f'{MANIFEST_DIR}/unknown-kid.json'] = dump(unknown)
+    keyset['keys'][0]['status'] = 'RETIRED'
+    vectors['dev-keyset-retired.json'] = dump(keyset)
     return vectors
 
 

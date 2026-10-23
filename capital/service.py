@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, margin, overlay, risk
+from capital import coa, covenants, forecast, margin, overlay, risk, portfolio_snapshot
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -20,6 +20,7 @@ from capital.auth import (
 from capital.observability import Observability
 from capital.decisions import DecisionIndex
 from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manifest_status
+from capital.gate_producer import GateProtocolError, TransportLost
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
 from capital.protocol import VENDOR
@@ -1072,6 +1073,19 @@ class CapitalService:
                 receipt.update(outcome='ACCEPTED', result=result)
             except CreditError as exc:
                 receipt.update(outcome='REJECTED', error=exc.code)
+            except TransportLost:
+                # The gate may or may not have applied the command. No false
+                # rejection is stored and the command is never resent; the
+                # receipt lookup keeps reporting UNKNOWN.
+                self.observability.record_command(op, 'UNKNOWN', 'UNKNOWN')
+                return self._unknown(operation_id)
+            except GateProtocolError as exc:
+                # The gate answered with a non-command response (5xx, invalid
+                # JSON, label mismatch). Controlled gateway error, not a
+                # business rejection and not a retry authorization.
+                code = exc.code if type(exc.code) is str else 'GATE_FAILED'
+                self.observability.record_command(op, 'UNKNOWN', code)
+                raise ApiError(code, 502)
             self.receipts[operation_id] = {'fingerprint': fingerprint, 'receipt': copy.deepcopy(receipt)}
             try:
                 self._persist()
@@ -1091,6 +1105,14 @@ class CapitalService:
                 code = error
         self.observability.record_command(op, outcome, code)
 
+    def _unknown(self, operation_id):
+        """The honest UNKNOWN envelope. Gate-backed commands keep the label."""
+        envelope = {'outcome': 'UNKNOWN', 'operation_id': operation_id,
+                    'instance_id': self.instance_id, 'retry_authorized': False}
+        if getattr(self.producer, 'label', None) == 'LOCAL_FAKE_GATE':
+            envelope['label'] = 'LOCAL_FAKE_GATE'
+        return envelope
+
     def operation(self, operation_id, instance_id):
         with self.lock:
             if instance_id != self.instance_id:
@@ -1098,8 +1120,7 @@ class CapitalService:
             stored = self.receipts.get(operation_id)
             if stored is None:
                 self.observability.record_lookup('UNKNOWN')
-                return {'outcome': 'UNKNOWN', 'operation_id': operation_id,
-                        'instance_id': self.instance_id, 'retry_authorized': False}
+                return self._unknown(operation_id)
             self.observability.record_lookup('KNOWN')
             return copy.deepcopy(stored['receipt'])
 
@@ -1408,6 +1429,57 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def portfolio_snapshot(self, instance_id):
+        """One lock-held, detached local diagnostic cut. No persistence or remote reads."""
+        with self.lock:
+            if not instance_id or instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            body = portfolio_snapshot.diagnostic(self.instance_id)
+            marks = body['completeness']
+            # Reject before touching machines on remote/unknown adapters.
+            from capital.gate_producer import GateHttpProducer
+            if type(self.producer) is not PinnedFsmProducer or not callable(getattr(self.producer, 'snapshot_inputs', None)):
+                marks['producer'] = 'UNSUPPORTED'
+                marks['reasons'].append('GATE_FAKE_UNSUPPORTED' if isinstance(self.producer, GateHttpProducer)
+                                        else 'COHERENT_SNAPSHOT_UNSUPPORTED')
+                return portfolio_snapshot.finish(body)
+            marks['producer'] = 'SUPPORTED'
+            try:
+                captured = self.producer.snapshot_inputs()
+            except ValueError as exc:
+                reason = str(exc)
+                marks['producer' if reason == 'COHERENT_SNAPSHOT_UNSUPPORTED' else 'fixtures'] = 'UNSUPPORTED'
+                marks['reasons'].append(reason)
+                return portfolio_snapshot.finish(body)
+            marks['fixtures'] = 'IMMUTABLE'
+            if type(self.terms) is not DecisionNoteTermsPolicy:
+                marks['terms'] = 'UNSUPPORTED'
+                marks['reasons'].append('FROZEN_TERMS_UNSUPPORTED')
+                return portfolio_snapshot.finish(body)
+            frozen = portfolio_snapshot.FrozenInputs.capture(
+                captured, self.receipts, self.case_fixtures, self.overlay_entries, self.terms, self.overlay_bounds)
+            data = frozen.detached()
+            error = portfolio_snapshot.storage_health(self.storage, self.workspace_status, data)
+            if error:
+                marks['storage'] = 'DEGRADED'
+                marks['reasons'].append(error)
+                return portfolio_snapshot.finish(body)
+            marks['storage'] = 'HEALTHY'
+            before = (self._frozen(), copy.deepcopy(self.case_fixtures), copy.deepcopy(self.terms.__dict__),
+                      copy.deepcopy(self.overlay_bounds))
+            try:
+                try:
+                    return portfolio_snapshot.compose(frozen, body)
+                except (CreditError, ProjectionError, ValueError, KeyError, TypeError, ArithmeticError):
+                    for name in portfolio_snapshot.SECTIONS:
+                        body[name] = None
+                        marks['sections'][name] = 'UNAVAILABLE'
+                    marks['reasons'].append('CAPTURE_RECONCILIATION_FAILED')
+                    return portfolio_snapshot.finish(body)
+            finally:
+                if before != (self._frozen(), self.case_fixtures, self.terms.__dict__, self.overlay_bounds):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def risk(self):
         """Read-only portfolio risk analytics. Nothing is accrued, journaled or written here."""
         with self.lock:
@@ -1421,6 +1493,60 @@ class CapitalService:
                 outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
                 body = risk.build(drawn, self._margin_subjects(drawn), terms=self.terms, sim_day=sim_day,
                                   projection_outstanding_krw=outstanding)
+                return self._terms_envelope(body)
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def covenants(self):
+        """Read-only covenant and watch-list projection. No command or enforcement is applied."""
+        with self.lock:
+            frozen = self._frozen()
+            try:
+                sim_day = overlay.fold(self.overlay_entries)['sim_day']
+                status = self._overlay_terms()
+                if status is None or not risk.usable(self.terms):
+                    return self._terms_envelope(covenants.not_bound(
+                        self.terms.status()['terms_version'], sim_day))
+                drawn = self._overlay_subjects(self.overlay_entries)
+                margin_subjects = self._margin_subjects(drawn)
+                overlay_state = overlay.fold(self.overlay_entries)
+                mutable = margin.views_mutable(self.fixtures)
+                margin_rows = margin.row_blocks(overlay_state, margin_subjects, mutable=mutable)
+                margin_block = margin.status_block(
+                    overlay_state, margin_rows, mutable=mutable, bound=True,
+                    cure_terms=margin_subjects[0]['margin'] if margin_subjects else None)
+                outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
+                risk_body = risk.build(drawn, margin_subjects, terms=self.terms, sim_day=sim_day,
+                                       projection_outstanding_krw=outstanding)
+                return self._terms_envelope(covenants.build(
+                    drawn, margin_rows, margin_block, risk_body, terms=self.terms, sim_day=sim_day))
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def forecast(self, instance_id, *, expected_settlement_cash_day=None):
+        """Read-only expected-cash ladder over the overlay ledger. Nothing is posted or written."""
+        with self.lock:
+            if instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if expected_settlement_cash_day is not None:
+                self._require_day(expected_settlement_cash_day)
+            frozen = self._frozen()
+            try:
+                state = overlay.fold(self.overlay_entries)
+                sim_day = state['sim_day']
+                status = self._overlay_terms()
+                if status is None or not forecast.usable(self.terms):
+                    return self._terms_envelope(forecast.not_bound(
+                        self.terms.status()['terms_version'], sim_day,
+                        expected_settlement_cash_day=expected_settlement_cash_day))
+                drawn = self._overlay_subjects(self.overlay_entries)
+                posted = {advance_id: row['posted_contract_krw'] + row['posted_default_krw']
+                          for advance_id, row in state['advances'].items()}
+                body = forecast.build(drawn, terms=self.terms, sim_day=sim_day,
+                                      expected_settlement_cash_day=expected_settlement_cash_day,
+                                      posted_interest=posted)
                 return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):

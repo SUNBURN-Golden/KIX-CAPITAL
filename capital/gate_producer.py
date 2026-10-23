@@ -37,9 +37,14 @@ class GateUnavailable(Exception):
 class GateProtocolError(Exception):
     """The gate answered, and the answer is not a simulated command result."""
 
-    def __init__(self, code):
+    def __init__(self, code, status=None):
         super().__init__(code)
         self.code = code
+        self.status = status
+
+
+class GateConflict(CreditError):
+    """A replayed ``operationId`` whose body conflicts with the first."""
 
 
 class TransportLost(Exception):
@@ -186,8 +191,12 @@ class GateHttpProducer:
             status, payload = self._request('POST', '/v1/commands', envelope, operation_id)
         except TransportLost as exc:
             raise ProducerUnknown(operation_id) from exc
+        if status == 409:
+            raise GateConflict(
+                payload.get('error') if type(payload) is dict else 'IDEMPOTENCY_CONFLICT')
         if status != 200:
-            raise GateProtocolError(payload.get('error') if type(payload) is dict else 'GATE_FAILED')
+            raise GateProtocolError(
+                payload.get('error') if type(payload) is dict else 'GATE_FAILED', status)
         payload = _honest(payload)
         if payload.get('outcome') == 'REJECTED':
             raise CreditError(payload.get('error'))

@@ -8,7 +8,7 @@ Registry of Capital facade ports. A later node adds its port as a new row here a
 
 `tests/storage_conformance.py` runs storage vectors through any `StoragePort` factory (`run_storage_vectors(factory)`). `InMemoryStorage` and `FileWorkspace` pass them. A future adapter must pass the same vectors. Passing them is a local gate. It is not SEMANTIC_CONFORMANCE, and it does not bind stage5 durable transactions. CAP-11 stays `NOT_BOUND`.
 
-`GateHttpProducer` is an opt-in stand-in (`--producer gate-fake`) for that future adapter. It speaks `{operationId, actor, action, body}` to `scripts/fake_gate.py` on `127.0.0.1`. The label is `LOCAL_FAKE_GATE`. `actor` is not authentication. A lost response is `UNKNOWN` and is not retried. Passing the vectors through it is still not a SEMANTIC_CONFORMANCE profile. ProducerPort stays `NOT_BOUND`.
+`GateHttpProducer` is an opt-in stand-in (`--producer gate-fake`) for that future adapter. It speaks `{operationId, actor, action, body}` to `scripts/fake_gate.py` on `127.0.0.1`. The label is `LOCAL_FAKE_GATE`. `actor` is not authentication. A lost response is `UNKNOWN` and is not retried. `scripts/gate_faults.py --check` replays the pinned fault corpus `tests/vectors/gate_faults.json` (accept, gate 5xx, malformed JSON, dropped connection, delayed-then-lost, and a conflicting same-`operationId` replay answered `409 IDEMPOTENCY_CONFLICT`) through the real loopback facade. Passing the vectors through it is still not a SEMANTIC_CONFORMANCE profile. ProducerPort stays `NOT_BOUND`.
 
 | Port | Local implementation | Upstream contract | Readiness | Status | Upstream receipt |
 | --- | --- | --- | --- | --- | --- |

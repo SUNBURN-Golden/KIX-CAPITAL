@@ -1,0 +1,436 @@
+{
+  "digest": "2d88e8d3c3c331611193dad6428dbe387e7f6521b500d4998ccfdebd2344ff60",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "T03-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 22,
+  "steps": [
+    {
+      "expect": [
+        "MEMORY",
+        false
+      ],
+      "facts": {
+        "label": "SIMULATED"
+      },
+      "kind": "PROCESS",
+      "n": 1,
+      "name": "organizer session on an in-process server",
+      "status": [
+        "MEMORY",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t03-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "offer sim-t03-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t03-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "approve sim-t03-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t03-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "bind_settlement sim-t03-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t03-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "draw sim-t03-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        "DRAWN",
+        30000,
+        0,
+        0,
+        0
+      ],
+      "facts": {
+        "contract_bps": 700,
+        "margin_state": "FIXTURE_LIMIT",
+        "maturity_day": 60,
+        "tier": "T1"
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "the advance is DRAWN from sim_day 0",
+      "status": [
+        "DRAWN",
+        30000,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 7,
+      "name": "the draw receipt is queryable by operation id",
+      "status": [
+        200,
+        "ACCEPTED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 15
+      },
+      "kind": "HTTP",
+      "n": 8,
+      "name": "advance_day 0->15",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "DRAWN",
+        15,
+        true,
+        0,
+        false
+      ],
+      "facts": {
+        "carried_remainder_contract": "22/73",
+        "cumulative_exact_contract": "6300/73",
+        "interest_due_krw": 86
+      },
+      "kind": "HTTP",
+      "n": 9,
+      "name": "ACT/365 memo interest accrues through sim_day 15",
+      "status": [
+        "DRAWN",
+        15,
+        true,
+        0,
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 30
+      },
+      "kind": "HTTP",
+      "n": 10,
+      "name": "advance_day 15->30",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        30,
+        true,
+        0,
+        false
+      ],
+      "facts": {
+        "carried_remainder_contract": "44/73",
+        "cumulative_exact_contract": "12600/73",
+        "interest_due_krw": 172
+      },
+      "kind": "HTTP",
+      "n": 11,
+      "name": "ACT/365 memo interest accrues through sim_day 30",
+      "status": [
+        30,
+        true,
+        0,
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "MATCHED",
+        [
+          "MATCHED"
+        ]
+      ],
+      "facts": {
+        "checks": [
+          "receipts_vs_journal_keys",
+          "rejected_receipts_absent_from_journal",
+          "replay_digest_equals_state_digest",
+          "case_fixture_map_vs_journal_offers",
+          "projection_totals_vs_case_views",
+          "fixtures_digest",
+          "overlay_fold_digest_equals_persisted"
+        ]
+      },
+      "kind": "HTTP",
+      "n": 12,
+      "name": "reconciliation is clean including the overlay fold check",
+      "status": [
+        200,
+        "MATCHED",
+        [
+          "MATCHED"
+        ]
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "BOUND",
+        true,
+        30000
+      ],
+      "facts": {
+        "risk_digest": "3196a78eb3262ebffc64ecb8676e67d476ddfa60d6dec773bc90a02c2579b25a",
+        "sim_day": 30
+      },
+      "kind": "HTTP",
+      "n": 13,
+      "name": "the risk rollup is bound and reconciles to the projection",
+      "status": [
+        200,
+        "BOUND",
+        true,
+        30000
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "BOUND",
+        true
+      ],
+      "facts": {
+        "cash": 30172,
+        "fsm_repay": {
+          "amount": 30000,
+          "sequence": 1
+        },
+        "order": [
+          "DEFAULT_INTEREST",
+          "INTEREST",
+          "PRINCIPAL"
+        ],
+        "tier": "T1",
+        "to_interest": 172,
+        "to_principal": 30000
+      },
+      "kind": "HTTP",
+      "n": 14,
+      "name": "the full-repayment allocation quote",
+      "status": [
+        200,
+        "BOUND",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t03-a",
+        "op": "repay"
+      },
+      "kind": "HTTP",
+      "n": 15,
+      "name": "repay the outstanding principal in full",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        "DRAWN",
+        0,
+        false,
+        "NOT_RECORDED"
+      ],
+      "facts": {
+        "interest_due_krw": 172
+      },
+      "kind": "HTTP",
+      "n": 16,
+      "name": "principal is zero; the unpaid interest memo keeps it not close-ready",
+      "status": [
+        "DRAWN",
+        0,
+        false,
+        "NOT_RECORDED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-t03-a",
+        "op": "close"
+      },
+      "kind": "HTTP",
+      "n": 17,
+      "name": "close sim-t03-a",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": {
+        "sim-t03-a": "CLOSED"
+      },
+      "kind": "HTTP",
+      "n": 18,
+      "name": "the advance is CLOSED",
+      "status": {
+        "sim-t03-a": "CLOSED"
+      }
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 45
+      },
+      "kind": "HTTP",
+      "n": 19,
+      "name": "advance_day 30->45 after close",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        [],
+        30,
+        "CLOSED"
+      ],
+      "facts": {
+        "interest_due_krw": 172
+      },
+      "kind": "HTTP",
+      "n": 20,
+      "name": "no interest accrues after close",
+      "status": [
+        [],
+        30,
+        "CLOSED"
+      ]
+    },
+    {
+      "expect": {
+        "sim-t03-a": "CLOSED"
+      },
+      "facts": {
+        "funds_executed": false,
+        "interest_payments": "NOT_RECORDED",
+        "operation_count": 6,
+        "overlay_state_digest": "a54dc45838b21c848c3201d8752d85904617e10765fd709a696a9feb4afba23e",
+        "risk_digest": "b66a67f5903378210d2a790eb040066b7044c21468fea609204c2b4d31702477",
+        "sim_day": 45,
+        "state_digest": "680d8180075083a7c216127bdf6c9aabb74696b0ca885b323fd954ffa221cadd"
+      },
+      "kind": "HTTP",
+      "n": 21,
+      "name": "final phases and digests",
+      "status": {
+        "sim-t03-a": "CLOSED"
+      }
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 9
+      },
+      "kind": "AUDIT",
+      "n": 22,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}

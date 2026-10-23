@@ -75,9 +75,12 @@ ROUTE_NEEDLES = {
         '`GET /api/terms/{advance_id}/allocation',
         '`GET /api/terms/{advance_id}/setoff',
         '`GET /api/terms/portfolio',
+        '`GET /api/terms/portfolio/forecast',
     ),
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
+    ('GET', '/api/portfolio/snapshot'): ('- `GET /api/portfolio/snapshot`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
+    ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
     ('GET', '/api/policy'): (
         '`GET /api/policy` and `GET /api/policy/simulation`',
         '`GET /api/policy/shadow`',),
@@ -108,11 +111,20 @@ ROUTE_NEEDLES = {
 VECTOR_NEEDLES = {
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
+    'pack/': ('tests/vectors/pack/', 'scripts/pack_vectors.py --check'),
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
     'closeout_digest.json': (
         'tests/vectors/closeout_digest.json', 'scripts/closeout_digest.py --check'),
+    'gate_faults.json': (
+        'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
+    'forecast_vectors.json': (
+        'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
+    'workspace_crash.json': (
+        'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
+    'dev-keyset-active.json': ('tests/vectors/dev-keyset-active.json', 'scripts/manifest_vectors.py --check'),
+    'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),
 }
 
 

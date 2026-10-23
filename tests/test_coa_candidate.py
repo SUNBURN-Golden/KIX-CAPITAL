@@ -150,6 +150,21 @@ class V1UnchangedTests(unittest.TestCase):
                 self.skipTest('git unavailable')
             self.assertEqual(status.stdout.split(), [])
             base = 'HEAD'
+        # Keep main's live byte guard as well as the original COA change's historical guard.
+        # The closeout decision explicitly requires the reviewed binding-note update. Guard that
+        # note against this branch's HEAD and every other decision note against main.
+        probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
+        if probe.returncode == 0:
+            base = 'origin/main'
+            guarded = self._git('diff', '--name-only', base, '--',
+                                *[name for name in self.GUARDED if name != 'tests/golden'],
+                                ':(exclude)docs/decisions/CAPITAL_UPSTREAM_BINDING.md')
+            self.assertEqual(guarded.returncode, 0, guarded.stderr)
+            self.assertEqual(guarded.stdout.split(), [])
+            binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
+            reviewed = self._git('show', f'HEAD:{binding_note}')
+            self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
+            self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
         # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
         # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
         # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.

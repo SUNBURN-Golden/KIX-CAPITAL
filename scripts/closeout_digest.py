@@ -54,7 +54,7 @@ BUILT_ARTIFACT = '<built-zipapp>'
 # The acceptance ladder, in order. Written here so a dropped or added stage is drift, not silently followed.
 REQUIRED_STAGES = (
     'unit', 'storage-conformance', 'pinned-vendor', 'upstream-claims',
-    'node-check', 'browser', 'packaged-smoke', 'seeded-demo',
+    'node-check', 'browser', 'packaged-smoke', 'seeded-demo', 'integrated-journeys',
 )
 PACKAGED_STAGE = 'packaged-smoke'
 GOLDEN_KEYS = ('status', 'state_digest', 'content_digest')

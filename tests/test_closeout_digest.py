@@ -43,18 +43,23 @@ def _load(name, path):
 script = _load('closeout_digest', SCRIPT)
 acceptance_ladder = _load('acceptance_for_closeout', ROOT / 'scripts' / 'acceptance.py')
 
-# Written by hand: the acceptance ladder and the one command text per stage.
+# Written by hand: the acceptance ladder and the exact command texts per stage.
 STAGES = (
-    ('unit', ['python3 -m unittest discover -s tests -v']),
-    ('storage-conformance', ['python3 -m unittest discover -s tests -p test_storage_conformance.py -v']),
+    ('unit', ['python3 -m unittest discover -s tests -v',
+              'python3 scripts/decision_bindings.py --check']),
+    ('storage-conformance', ['python3 -m unittest discover -s tests -p test_storage_conformance.py -v',
+                             'python3 -m unittest tests.test_crash_replay -v']),
     ('pinned-vendor', ['python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v']),
     ('upstream-claims', ['python3 scripts/upstream_claims_check.py --execute',
-                         'python3 scripts/agent_claims_check.py --execute']),
+                         'python3 scripts/agent_claims_check.py --execute',
+                         'python3 scripts/read_model_claims_check.py --execute',
+                         'python3 scripts/ce1_claims_check.py --execute']),
     ('node-check', ['node --check capital/static/app.js']),
     ('browser', ['npm run test:browser']),
     ('packaged-smoke', ['python3 scripts/build_release.py --out build/acceptance-dist',
                         'python3 scripts/smoke_release.py <built-zipapp>']),
     ('seeded-demo', ['python3 scripts/seed_demo.py']),
+    ('integrated-journeys', ['python3 scripts/sim_journeys.py']),
 )
 STRIP_KEYS = [
     'head_sha', 'instance_id', 'created_at', 'saved_at', 'timestamp', 'timestamps', 'recorded_at',
@@ -165,9 +170,9 @@ class StageTableTests(unittest.TestCase):
         self.raw = self.work.write()
         self.digest = json.loads(self.raw)
 
-    def test_the_ladder_is_the_eight_stages_in_order(self):
+    def test_the_ladder_is_the_nine_stages_in_order(self):
         self.assertEqual(tuple(acceptance_ladder.REQUIRED_STAGES), tuple(stage for stage, _ in STAGES))
-        self.assertEqual(len(STAGES), 8)
+        self.assertEqual(len(STAGES), 9)
         self.assertEqual([row['stage_id'] for row in self.digest['stages']], [stage for stage, _ in STAGES])
 
     def test_every_stage_row_is_a_simulated_clean_pass(self):
@@ -349,7 +354,7 @@ class WriteGateTests(unittest.TestCase):
         self.refuses(mutate, 'pinned-vendor did not pass')
 
     def test_a_missing_stage_is_refused(self):
-        self.refuses(lambda e: e['stages'].pop(), 'lacks stage seeded-demo')
+        self.refuses(lambda e: e['stages'].pop(), 'lacks stage integrated-journeys')
 
     def test_an_extra_stage_is_refused(self):
         def mutate(evidence):
@@ -596,7 +601,7 @@ class CommittedArtifactTests(unittest.TestCase):
         self.raw.decode('ascii')
         self.assertEqual(script.dump(self.digest), self.raw)
 
-    def test_the_committed_digest_is_an_honest_clean_pass_of_the_eight_stage_ladder(self):
+    def test_the_committed_digest_is_an_honest_clean_pass_of_the_nine_stage_ladder(self):
         digest = self.digest
         self.assertEqual(digest['format'], 'KIX_CAPITAL_CLOSEOUT_DIGEST_V1')
         self.assertEqual(digest['label'], 'INPUT_VECTOR_CANDIDATE')
@@ -773,7 +778,7 @@ class DocsTests(unittest.TestCase):
         self.assertNotIn('"fin-finance-closeout": "build/acceptance-evidence.json as consumer-side evidence candidate"', text)
 
     def test_the_ladder_gained_no_closeout_stage(self):
-        self.assertEqual(len(acceptance_ladder.REQUIRED_STAGES), 8)
+        self.assertEqual(len(acceptance_ladder.REQUIRED_STAGES), 9)
         self.assertEqual([stage['id'] for stage in acceptance_ladder.build_plan()],
                          list(acceptance_ladder.REQUIRED_STAGES))
         self.assertNotIn('closeout', ' '.join(acceptance_ladder.REQUIRED_STAGES))
