@@ -62,8 +62,7 @@ class BindingTests(unittest.TestCase):
 
     def test_each_parked_entry_is_pending_with_node_and_anchor(self):
         nodes = {'default-recovery-decision': 'overlay-recovery-writeoff',
-                 'claim-slice-registry-decision': 'claim-slice-registry',
-                 'closeout-artifact-decision': 'closeout-evidence-vector'}
+                 'claim-slice-registry-decision': 'claim-slice-registry'}
         for row in self.data['entries']:
             if row['decision_id'] in nodes:
                 for binding in row['bindings']:
@@ -71,6 +70,22 @@ class BindingTests(unittest.TestCase):
                     self.assertEqual(binding['consumer_node'], nodes[row['decision_id']])
                     self.assertTrue(binding['reason'])
                     self.assertTrue((ROOT / binding['path']).is_file())
+
+    def test_closeout_policy_has_built_consumers(self):
+        expected = {
+            'check_wiring': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
+            'committed_artifact_choice': {'scripts/closeout_digest.py', 'scripts/finance_vectors.py'},
+            'honesty_label_policy': {'scripts/closeout_digest.py', 'scripts/finance_vectors.py'},
+            'regeneration_trigger_policy': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
+            'stripped_fields_policy': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
+        }
+        rows = {row['entry']: row['bindings'] for row in self.data['entries']
+                if row['decision_id'] == 'closeout-artifact-decision'}
+        self.assertEqual(set(rows), set(expected))
+        for entry, bindings in rows.items():
+            with self.subTest(entry=entry):
+                self.assertEqual({binding['path'] for binding in bindings}, expected[entry])
+                self.assertTrue(all(binding['status'] == 'CONSUMED' for binding in bindings))
 
     def test_repayment_posting_is_consumed_with_live_code_and_test_bindings(self):
         rows = [row for row in self.data['entries'] if row['decision_id'] == 'repayment-posting-decision']

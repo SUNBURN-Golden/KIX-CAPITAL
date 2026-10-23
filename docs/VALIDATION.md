@@ -45,6 +45,34 @@ one conflict in the guard list resolved to preserve current main's guards and th
 authorized ObservationPort exception. `git restore --staged .` left all changes
 unstaged. COA re-run: 36 passed. No upstream repository was modified.
 
+### Merge conflict verification, round 1 (2026-10-23)
+
+Combined `c0f85f3` with main `68c8896` in `tests/test_coa_candidate.py`.
+Main's historical COA guard and live byte guards remain, with the reviewed
+append-only ObservationPort structural check for `capital/ports.py`. The merged
+closeout binding note is byte-guarded against main's reviewed version. Both the
+observation corpus and main's closeout/finance artifacts and documentation survive.
+All results below use local SIMULATED fixtures; CAP-14/CAP-16 remain NOT_BOUND.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | 956 passed, including observation isolation and drift controls |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | 30 routes, 40 artifacts, 9 stages; zero findings |
+| `python3 scripts/observation_vectors.py --check` | PASS; applied=false; funds_executed=false |
+| `python3 scripts/closeout_digest.py --check` | 4401 bytes match, embedded in finance vectors |
+| `python3 scripts/finance_vectors.py --check` | 97125 bytes match |
+| `npm run test:browser -- --config /tmp/provider-observation-browser-2ch96cd0/playwright.config.cjs` | 69 Chromium tests passed |
+| Vendor SHA256 and merge-parent byte comparison | All five pinned reference files and manifest unchanged |
+
+The first default browser invocation could not start because existing listeners
+occupied ports 8765/8766. Dependencies were installed from the local npm cache with
+`npm ci --offline --no-audit --no-fund`. A temporary configuration moved only the
+four suite servers/base URLs to loopback ports 18865–18868; all tests and the tracked
+Playwright configuration stayed unchanged. No commit or push was performed.
+
 ## DEV_ONLY keyset coverage
 
 `tests/test_dev_keyset.py` covers secure creation/restart, strict schema and encoding,
@@ -548,7 +576,7 @@ Commands actually run, in order:
 
 ## finance-vector-pack
 
-Deterministic, SIMULATED input vectors for FINANCE_PENDING_NODES candidates, in `tests/vectors/finance_vectors.json` (format `KIX_CAPITAL_FINANCE_VECTORS_V1`, canonical ASCII JSON, no clock, no instance id, no path). This is the vector-supplier role of `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` (entry `stage6_finance_candidates`). Every group carries the label `INPUT_VECTOR_CANDIDATE` and names one candidate id:
+Deterministic, SIMULATED input vectors for FINANCE_PENDING_NODES candidates, in `tests/vectors/finance_vectors.json` (format `KIX_CAPITAL_FINANCE_VECTORS_V1`, canonical ASCII JSON, no clock, no instance id, no path). This is the vector-supplier role of `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` (entry `stage6_finance_candidates`). Every group carries the label `INPUT_VECTOR_CANDIDATE` and names one candidate id (eight groups, one per candidate):
 
 - `scenario_obligations` → `fin-multi-payee-refund-proof`: all 9 F01-F03 scenarios of `capital/scenarios.py` and their 35 steps. Each step records op, args, outcome, error, duplicate flag, the per-payee obligation rows (`face`, `distributed`, `cancelled_unpaid`, `recovery_due`, `outstanding`), the cash and refund totals, the predicate results and a digest of the whole settlement view. No settlement policy is chosen; the fixture orders and the undefined refund bearer are replayed as they are.
 - `f04_command_outcomes` → `fin-ledger-contract`: the 22 `seed_demo` commands run through `CapitalService.execute` (21 `ACCEPTED`, one `REJECTED` `SETTLEMENT_NOT_COMMITTED` that leaves the journal at 21 entries), each with phase, exposure and `state_digest` after, plus the 21 journal entries (scalar body fields and a body digest). The final `state_digest` is the `tests/golden/demo.json` value.
@@ -559,7 +587,9 @@ Deterministic, SIMULATED input vectors for FINANCE_PENDING_NODES candidates, in 
 - `manifest_section_digests` → `fin-consistent-accounting-export`: for the v2 manifest of the same seed book, the seven section ids, each stored section `sha256` (it covers a body that carries the seed's instance id), each instance-free section hash that `content_digest` covers, and `content_digest` itself, which equals `tests/golden/demo.json`. The manifest body is not copied; `status` is `COMPLETE`, the signature is `UNSIGNED` / `NOT_BOUND`.
 - `facade_read_model` → `fin-catalogue-read-model`: for each of the 21 GET api routes of `capital/contract/facade-v1.json`, the permission, the response definitions with their sha256 digests, and the transitive `$ref` closure with its digest, plus a digest of the whole contract. It is the local `capital-local-facade/1` read shape, not a catalogue, and `semantic_conformance` stays false.
 
-Seven of the eight candidates now have vectors. `fin-finance-closeout` appears in the artifact's `candidates` index with `vectors: null` and a `reason`: its named input `build/acceptance-evidence.json` is an untracked per-run file (it records the git `head_sha` and the local tool versions), so no stable bytes exist to pin, and it stays named in the binding note only. The eight ids are the ones the note copies from `docs/aiops/FINANCE_PENDING_NODES.json` in kix-protocol, which stays the source of truth; the test reads them from the note.
+- `closeout_digest` → `fin-finance-closeout`: the committed digest `tests/vectors/closeout_digest.json` (format `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`), embedded as it is. It is derived from `build/acceptance-evidence.json` by `scripts/closeout_digest.py` and is the only way it is written; see the `closeout-evidence-vector` section. Regenerate it before `finance_vectors.py --write`.
+
+All eight candidates now have vectors. The `candidates` index shows `vectors` non-null and `reason` null for each of the eight ids, `fin-finance-closeout` now pointing at `closeout_digest`. The eight ids are the ones the binding note copies from `docs/aiops/FINANCE_PENDING_NODES.json` in kix-protocol, which stays the source of truth; the test reads them from the note.
 
 This is not SEMANTIC_CONFORMANCE, and it completes no upstream node. `semantic_conformance` is `false` and `upstream_nodes_completed` is `[]` inside the artifact. `--check` says only that the pinned local code still produces these bytes. No candidate becomes DONE, the denominator does not shrink, no accounting policy or settlement policy is adopted, and an upstream node can use these vectors only with its own completion proof.
 
@@ -856,6 +886,263 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+## closeout-evidence-vector
+
+The `closeout-evidence-vector` node supplies the eighth finance input vector, so all eight `FINANCE_PENDING_NODES` candidates now carry vectors. It implements the decided artifact of `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md` (provisional product decision; its ADOPTED entries are the policy, and the generator reads the strip keys, labels and non-claims from that note instead of copying them).
+
+- `scripts/closeout_digest.py --write` emits `tests/vectors/closeout_digest.json` (format `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`, label `INPUT_VECTOR_CANDIDATE`, data label `SIMULATED`, canonical ASCII JSON) from `build/acceptance-evidence.json`. Per acceptance stage it keeps `stage_id`, `command`, `status`, `expected_exit` (0), `test_count` (including the parser-intentional null of `node-check`), `label` `SIMULATED` and `funds_executed` false, plus the seeded-demo `state_digest`, `content_digest`, `debit`, `credit`, the vendor pin commit with its five `verified` flags, and the packaged zipapp `sha256`. The git `head_sha`, tool versions, timestamps, instance ids, paths and hosts are not carried: the digest is an allowlist projection, the 18 strip keys are also deleted at every depth, and they are listed in `stripped_keys`. The interpreter path becomes `python3` and the built zipapp path (it names the capital version) a placeholder. The write gate refuses (exit 1, no file written) unless the evidence is `ok:true`, `SIMULATED`, `funds_executed` false and holds exactly the nine ladder stages (including main's `integrated-journeys`), each passed and not injected.
+- `scripts/closeout_digest.py --check` needs no evidence: canonical bytes, format, labels, `semantic_conformance` false, `upstream_nodes_completed` `[]`, `ok:true`, the stage table, no strip key at any depth, and byte equality with the copy embedded in `tests/vectors/finance_vectors.json` group `closeout_digest` (whose candidates-index row must name it). The vendor summary must match the manifest pin, contain exactly the pinned files, and set every file flag and `verified` to boolean `true`, even when the two copies match. Exit 1 on drift or a missing file. `--check-evidence` regenerates from fresh evidence, byte-compares, and names the first differing JSON path.
+- `scripts/finance_vectors.py` gained the group `closeout_digest` → `fin-finance-closeout`, which embeds the committed digest as it is. The `candidates` index now has `vectors` non-null and `reason` null for 8 of 8 ids. `semantic_conformance` stays `false` and `upstream_nodes_completed` stays `[]`. `finance_vectors.json` was regenerated only with `--write`; the digest is regenerated first.
+- `scripts/docs_surface.py` gained the `VECTOR_NEEDLES` entry for `closeout_digest.json`, and the binding note (`CAPITAL_UPSTREAM_BINDING.md` §3.3 prose and `artifact_map`) now maps `fin-finance-closeout` to `tests/vectors/closeout_digest.json (derived from that evidence)` as the decision's `binding_note` directs; `candidate_ids` and every status token are unchanged. The acceptance ladder is unchanged (no closeout stage: the evidence describes the ladder, so a stage inside it would self-reference).
+
+This is not SEMANTIC_CONFORMANCE, and it completes no upstream node. It is self-asserted evidence from this repository's own tooling, not independent review, CI or human acceptance. `fin-finance-closeout` stays a PENDING candidate and the denominator stays eight. Because `head_sha` and tool versions are stripped by design, the run that produced this digest is recorded here instead. The committed digest comes from the merge-with-main run below: Python 3.13.5, node v20.19.2, npm 11.21.0, Playwright 1.58.2 with Chromium headless shell 145.0.7632.6, on the merge worktree of branch `agent/capital-closeout-evidence-vector` before the merge commit. The pre-merge run that first produced it was Python 3.13.5, node v20.19.2, npm 9.2.0, on a clean worktree of the same branch before any commit.
+
+`tests/test_closeout_digest.py` writes its expectations by hand (the nine stage ids and the exact command text per stage, the strip list, the four non-claims, the labels) and builds its own evidence, so it needs no browser. Mutation checks: an evidence with `ok:false`, a non-`SIMULATED` label, `funds_executed` true, a failed, unrun, missing, extra or injected stage, no printed sha256, unverified vendor files or unrecorded golden digests is refused with no artifact written; an injected `head_sha`, `instance_id`, `host`, `path`, `cwd` or `elapsed_s` key is absent from the bytes; reordered evidence keys, a new `head_sha`, other tool versions and other timestamps give identical bytes, while a changed test count, packaged sha256, golden digest or debit changes them. On temp copies, `--check` exits 1 for an edited stage status (`unit`, `browser`, `seeded-demo`), a removed file, a tampered embedded copy (path named), a stale embedded copy, non-canonical bytes, a dishonest label, a strip key at any depth, a changed strip list, a dropped or reordered stage, a missing group and a candidates index that no longer names the group. A byte scan of the committed file finds no 40-hex head sha (the only 40-hex string is the decided vendor pin commit), no UUID, no timestamp, no host path, no tool version, and `instance_id` only inside `stripped_keys`.
+
+Commands actually run, in order:
+
+- Bootstrap: because the unit stage verifies the committed digest, the first acceptance run needs one to exist. A placeholder digest was generated through `closeout_digest.py --write --evidence <temp file>` from hand-built evidence (in `/tmp`, plausible counts), then `finance_vectors.py --write`. It was replaced by the real one below; nothing of it is committed.
+- `python3 scripts/acceptance.py` (placeholder in place): exit 0, `ok=true`. unit 549, storage-conformance 7, pinned-vendor 7, upstream-claims 181 (`CLAIM_CONFORMANCE`), node-check (no count), browser 48, packaged-smoke 8, seeded-demo 1; about 3 min.
+- `python3 scripts/closeout_digest.py --write`: 3995 bytes. `python3 scripts/finance_vectors.py --write`: 92748 bytes. `--check` of both: exit 0.
+- `python3 scripts/acceptance.py` (second pass): exit 0, `ok=true`, same counts. `python3 scripts/closeout_digest.py --check-evidence`: exit 0, the covered fields byte-match the first pass (`cmp` of the digest written from pass 1 against the file: identical).
+- Two `closeout_digest.py --write --file` runs into a temp directory: `cmp` identical to each other and to the committed file. sha256 of `tests/vectors/closeout_digest.json` is `def9f63f…4c54`.
+- `closeout_digest.py --check` on temp copies: edited stage status exit 1 (`stage unit is not a clean SIMULATED pass`), removed file exit 1; `--write --evidence <absent>` exit 1.
+- `git diff --stat -- capital tests/vectors/manifest tests/vectors/export-dev.key tests/golden .aiops .github`: empty. The five vendored files and `manifest.json` are byte-identical (the pinned-vendor stage and `closeout_digest.py` both verify the pin).
+
+### Merge with main (2026-10-17)
+
+The branch was merged with `origin/main` at `b442b6a` (sim-clock-ledger, margin-cure-default, the audit@60 fixes, coa-candidate-projection, event-log-summary and the repayment-posting decision had landed). Conflicts in `docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md` and `tests/vectors/finance_vectors.json` were resolved by keeping both sides: main's handbook role table, `overlay:command` row and five node sections next to this node's `closeout-evidence-vector` section and its rewritten `finance-vector-pack` sentence; main's four VALIDATION sections next to this one. The generated files were not hand-merged. `tests/vectors/finance_vectors.json` and `tests/vectors/closeout_digest.json` were rebuilt on the merged tree through the `CAPITAL-CLOSEOUT-REGEN-V1` procedure, because main changed two covered fields: the unit stage count (the merged suite has 680 tests, the pre-merge one had 549) and the packaged zipapp `sha256` (main changed `capital/`). The golden `state_digest`, `content_digest` and totals are unchanged, as is every other stage count. `python3 scripts/closeout_digest.py --check-evidence --file <pre-merge digest>` against fresh evidence exited 1 naming exactly `$.packaged.sha256`, `$.stages[0].test_count.passed`, `$.stages[0].test_count.ran`: the drift detector worked as decided.
+
+One test from main was changed, not weakened: `tests/test_coa_candidate.py` `test_v1_and_golden_files_are_untouched` diffed the working tree against `origin/main` over `capital/projection.py`, `capital/ports.py`, `capital/overlay.py`, `capital/export.py`, `tests/golden`, `capital/vendor`, `.aiops` and `docs/decisions`. On main that comparison is empty; on any branch that edits a decision note it fails, and this node must edit `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` (the closeout decision's `binding_note`). Here it also reported `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`, which `origin/main` had gained after the merged commit. The test now checks the same guarded paths against the commit that introduced `capital/coa.py` (`40e2a1c` on main, compared with its own parent), which is the claim the test makes, so edits other nodes make on main or on a later branch do not count; where that history is unavailable (a shallow CI clone) it falls back to the previous working-tree-against-`HEAD` check. Exercised on throwaway histories: a clean coa commit passes although a later commit edits a decision note; a coa commit that touches `docs/decisions` fails; a shallow clone falls back (clean passes, an uncommitted guarded edit fails); a merge in progress whose `MERGE_HEAD` holds the commit passes. In CI (`actions/checkout` depth 1, no `origin/main`) the behaviour is unchanged.
+
+Commands actually run on the merged tree, in order:
+
+- `npx playwright install chromium`: Chromium headless shell 145.0.7632.6 (build 1208) installed into the user cache; it was absent on this machine.
+- Quick gates before regeneration: `docs_surface.py --check` (`27 routes, 21 artifacts, 8 stages`), `decision_ledger.py`, `not_bound_checklist.py --check`, `auth_matrix.py --check`, `manifest_vectors.py --check` (13 files), `workspace_vectors.py --check` (6 files), `finance_vectors.py --check`, `closeout_digest.py --check`: all exit 0 with the pre-merge digest still in place.
+- `python3 scripts/acceptance.py` (first): `ok=false`, the one failure being the `test_v1_and_golden_files_are_untouched` case above (679 passed, 1 failed). After the test change: `ok=true`; unit 680, storage-conformance 7, pinned-vendor 7, upstream-claims 181 (`CLAIM_CONFORMANCE`), node-check (no count), browser 48, packaged-smoke 8, seeded-demo 1; 3m13s. Two intermediate ladder runs failed only in the browser stage with `http://127.0.0.1:8765 is already used`: another worktree on the same machine (`t05-t06-sim-journeys`) was running its own Playwright servers on 8765-8768; its processes were left alone and the ladder was rerun once the ports were free.
+- `python3 scripts/closeout_digest.py --write`: 3995 bytes. `python3 scripts/finance_vectors.py --write`: 93806 bytes. `--check` of both: exit 0.
+- `python3 scripts/acceptance.py` (second pass): exit 0, `ok=true`, same counts; only `stages` differs between the two evidence files (`head_sha` and `tool_versions` were equal, output tails and timings were not). `python3 scripts/closeout_digest.py --check-evidence`: exit 0 (`matches the evidence: 3995 bytes`); a digest written from the second-pass evidence into a temp directory is `cmp`-identical to the committed file.
+- Two `closeout_digest.py --write --file` runs from the first-pass evidence: `cmp` identical to each other and to the committed file; the same evidence with its top-level keys reversed: identical bytes; evidence with `head_sha` keys injected at the top level and inside a stage: exit 0, neither value in the bytes, identical to the committed file. sha256 of `tests/vectors/closeout_digest.json` is `dabb3d48…74f0`.
+- Byte scan of the committed digest: the only 40-hex string is the vendor pin commit, no UUID, no timestamp, no `/home` `/tmp` `/workspace` `/usr` `/opt` path, no Python, node or Playwright version string, `instance_id` only inside `stripped_keys`, no strip key as a dict key at any depth, bytes canonical.
+- `closeout_digest.py --check` on temp copies: edited stage status exit 1 (`stage unit is not a clean SIMULATED pass` and `group closeout_digest differs from the digest: $.stages[0].status`), removed file exit 1, tampered embedded copy in a temp pack exit 1 (`$.stages[5].test_count.ran`). `--write --evidence <absent>` exit 1, no file written; `--write` on `ok:false` evidence exit 1 (`evidence ok is not true`), no file written.
+- `python3 -m unittest discover -s tests -v`: exit 0, **680 passed** (87.9s). `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, 7 passed. `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0. `npm run test:browser`: exit 0, **48 passed** (1.6m); no `capital.server` from this worktree left running. All eight drift scripts above: exit 0 on the final tree.
+- `git diff --stat HEAD -- capital/vendor tests/vectors/manifest tests/vectors/export-dev.key tests/golden/demo.json .aiops .github scripts/acceptance.py` and the same against `MERGE_HEAD`: empty. The five vendored files SHA256-match `manifest.json` (commit `7481b0e1…3cfe`). `origin/main` had moved two further commits (`2acd625`, `614ba7c`) past the merged `b442b6a` while this resolution ran; they are not part of this merge.
+
+No `DECISION_REQUIRED.md` was written: the decision note ADOPTS every item this node needs, and no rate, fee, limit, allocation priority, refund burden, provider, credential or upstream change was needed.
+
+### Second merge with main (2026-10-17, `origin/main` at `2acd2a0`)
+
+Main's `audit70-fix5` and the external-gate and release-acceptance decision notes landed meanwhile. The only conflict was this file (main's `audit70-fix5` section is kept before this node's section; both sides kept). `python3 scripts/acceptance.py` on the merged tree: `ok=true`, unit 684, storage-conformance 7, pinned-vendor 7, upstream-claims 181, browser 48, packaged-smoke 8, seeded-demo 1. `python3 scripts/closeout_digest.py --write` and `python3 scripts/finance_vectors.py --write` regenerated the digest (3995 bytes) and the finance pack (93806 bytes); both `--check` and `closeout_digest.py --check-evidence`: exit 0. No code, test or golden file conflicted.
+
+### PR fix round 1 (2026-10-21)
+
+The blocking review finding was reproduced and fixed: `_vendor()` now compares
+every evidence hash to the locked manifest before returning a verified summary.
+`verified:true` alone cannot authorize a mismatched hash. The evidence-free
+`--check` also requires the manifest commit, exactly the pinned file set, and
+boolean `true` for every file flag and the summary, even if the digest and its
+embedded copy match. Regression mutations cover each of the five hashes while
+retaining `verified:true`, preserve an existing artifact on refusal, and leave no
+new artifact when refused. Matching-copy mutations cover each false flag, a
+changed commit, missing/extra files, an unverified summary and a non-boolean flag.
+Before the fix, these checks produced 16 failing subcases; afterward all 61
+closeout tests pass.
+
+Actual local verification from HEAD `e771368`, Python 3.13.5, node v20.19.2,
+npm 11.21.0, Playwright 1.58.2 (installed offline from the existing cache):
+
+- `python3 -m unittest discover -s tests -v`: 674 reported, 2 failures, 55 errors.
+  All errors report `PermissionError: [Errno 1] Operation not permitted` creating
+  sockets. The failures concern server startup and packaged server smoke;
+  failed class setups also prevent dependent tests from running. Full log:
+  `/tmp/closeout-review-unit.log`.
+- `python3 scripts/acceptance.py`: exits 1, `ok:false`. Unit, storage HTTP fuzz,
+  browser server startup and packaged smoke fail under the socket restriction;
+  pinned-vendor (7), upstream-claims (181), node-check and seeded-demo (1) pass.
+  Log: `/tmp/closeout-review-acceptance-pass1.log`.
+- Pinned MockCredit discovery: 7 pass. `python3 -m compileall -q capital`,
+  `node --check capital/static/app.js`, `scripts/docs_surface.py --check`,
+  `scripts/closeout_digest.py --check` and `scripts/finance_vectors.py --check`:
+  exit 0.
+- `npm run test:browser`: exits 1 before tests run because the configured
+  `127.0.0.1` web server cannot create a socket, despite Chromium being available.
+  Log: `/tmp/closeout-review-browser.log`.
+- `closeout_digest.py --write` against the failed evidence: exit 1,
+  `evidence ok is not true`; existing digest bytes preserved. The digest and
+  finance pack remain unchanged. A fresh successful two-pass regeneration is
+  pending a loopback-capable runner; the structural checks above do not claim
+  fresh acceptance. See root `DECISION_REQUIRED.md` for the runner options and
+  completion procedure. This is historical evidence from the restricted runner;
+  the conflict-fix round below records the current runner and supersedes that pending status.
+
+The five vendored files SHA256-match the locked manifest; those files, the
+manifest itself, manifest vectors, export development key, golden demo,
+acceptance ladder, `.aiops/` and CI definitions remain byte-identical to HEAD.
+No commit, push or post was made. All data and acceptance remain SIMULATED;
+there is no SEMANTIC_CONFORMANCE or upstream-completion claim.
+
+### Conflict-fix round 1 (2026-10-23)
+
+This round merges `origin/main` / `MERGE_HEAD` `5c23989` into branch
+`agent/capital-closeout-evidence-vector` at pre-merge HEAD `39261c5`.
+All six conflict resolutions preserve both sides: the README feature descriptions
+and commands; both sets of handbook and validation sections; all four conflicting
+`VECTOR_NEEDLES` entries; the historical COA guard plus main's live code/vendor/
+decision-note byte guard (the closeout decision's required binding-note update is
+byte-guarded against reviewed pre-merge HEAD); and the finance pack, regenerated only with `--write`.
+The golden-value comparison includes all pins on main, including its journey pins.
+
+Main already has nine acceptance stages. The digest's explicit stage table and
+hand-written command expectations now include `integrated-journeys`, the unit
+stage's decision-binding command, storage's crash-replay command, and all four
+upstream claim commands. `scripts/acceptance.py` is byte-identical to main; no
+stage was added or changed here. Main's new `tests/decision_bindings.json` now
+records the five implemented closeout policies as `CONSUMED`, with concrete
+module/test consumers and a hand-written regression assertion. Other pending
+consumers remain pending.
+
+The old restricted-runner result above is historical. This runner supports
+loopback sockets and has cached Chromium. An explicitly SIMULATED, hand-built
+temporary evidence fixture bootstraps the nine-stage artifact so unit discovery
+can validate its new shape; it is not fresh acceptance evidence. The successful
+acceptance run and two-pass regeneration results below replace that bootstrap.
+Python 3.13.5, node v20.19.2, npm 11.21.0 and Playwright 1.58.2 are the local tools;
+versions stay in this prose and per-run evidence, outside the digest.
+
+Actual round-1 verification (all data SIMULATED):
+
+| Check | Result |
+|---|---|
+| First `python3 scripts/acceptance.py` | Exit 0, `ok:true`; unit 902, storage 19, pinned vendor 7, upstream claims 269, browser 69, packaged smoke 8, seeded demo 1, integrated journeys 4; node syntax passed with its intentional null count. Log: `/tmp/closeout-merge-acceptance-pass1.log`. |
+| `closeout_digest.py --write`, then `finance_vectors.py --write` | Replaced the bootstrap with fresh successful acceptance evidence: 4401-byte digest, 96931-byte finance pack. |
+| Two `closeout_digest.py --write --file <temp>` reruns | Byte-identical to each other and the artifact. Digest SHA256 `52ecad56dc0ad3653fd3e3cee442bd1267e8b21c314d232b13f06b4052ffd2b7`. |
+| Digest `--check`, `--check-evidence`; finance `--check` | Exit 0; eight of eight candidates have vectors and null reasons. |
+| Mutations on temporary copies | Edited unit status and removed artifact each exit 1; changed evidence count exits 1 naming `$.stages[0].test_count.ran`. No committed file mutated by these checks. |
+| Fresh artifact byte scan | No run head SHA, tool version, timestamp, instance id or host path; no stripped key at any object depth. The vendor pin and the policy's `stripped_keys`/non-claims disclosures remain as required. |
+| Local commands | Pinned vendor discovery: 7 pass; `compileall -q capital` and `node --check capital/static/app.js`: exit 0. Documentation surface: 30 routes, 39 artifacts, 9 stages. Decision ledger/bindings, not-bound checklist, auth matrix, manifest/workspace/pack/forecast vectors, gate faults and crash matrix: all exit 0. Log: `/tmp/closeout-merge-local-checks.log`. |
+
+The first post-regeneration rerun (pass 2) exited 1 solely in the browser stage:
+68 passed and one policy-page label expectation timed out. All other stages
+passed with the same counts. Its trace records HTTP 200 on the page and API
+requests, while the five-second text expectation took 37.4 seconds and the test
+hit its 30-second timeout, suggesting a scheduling stall. The evidence is retained
+at `build/closeout-acceptance-pass2-failed.json`, with its trace at
+`build/closeout-pass2-policy-trace.zip` (both ignored local outputs). A write using
+that failed evidence exited 1 (`evidence ok is not true`) and preserved the
+successful digest. An isolated, unchanged
+`npm run test:browser -- tests/browser/policy-simulator.spec.cjs --project=workspace`
+then passed both tests in 4.1 seconds. No timeout, test assertion, CI setting or
+production code was changed to obtain a pass.
+
+The final COA guard additionally compares the authorized binding note byte for
+byte with this branch's reviewed HEAD. Its focused discovery passed all 35 tests
+(`/tmp/closeout-merge-coa-final.log`); other decision notes stay guarded against
+main, and the original COA introduction guard and main's golden-value guards
+remain. The final full ladder rerun includes this strengthened guard.
+
+The final full rerun (pass 3, `/tmp/closeout-merge-acceptance-pass3.log`) exited 0
+with `ok:true`: unit 902, storage 19, pinned vendor 7, upstream claims 269,
+browser **69 passed / 0 failed**, packaged smoke 8, seeded demo 1 and integrated
+journeys 4; node syntax passed with its intentional null count. Final
+`closeout_digest.py --check-evidence`, digest `--check` and finance `--check` all
+exit 0. Two additional `--write --file <temp>` regenerations from this final
+evidence are byte-identical to each other, the committed digest, and the digest
+saved after successful pass 1. Thus the two successful acceptance passes have
+identical covered bytes despite the intermediate failed run. The final digest
+is still 4401 bytes with the SHA256 above, and the finance pack is 96931 bytes.
+The transient timeout is recorded rather than hidden; no failing evidence was
+used for a committed artifact.
+
+Vendor files and `manifest.json`, `capital/export.py`, the export development key,
+golden demo, `.aiops/` and CI definitions are byte-identical to both pre-merge
+HEAD and main. Manifest vectors and the acceptance script are byte-identical to
+main, preserving main's new DEV_ONLY keyset fixtures and its nine-stage ladder.
+Every main handbook section and validation heading survives. All six conflicts
+have been staged as resolved, with no conflict markers. No commit, push or post
+is made; merge completion belongs to the supervisor. No SEMANTIC_CONFORMANCE,
+real-funds execution, human acceptance or upstream completion is claimed.
+
+### Conflict-fix round 2 (2026-10-23)
+
+This round combines pre-merge HEAD `ab7572c` with `MERGE_HEAD` / `origin/main`
+`8c5ad10`. All four conflicts retain both features: the handbook has separate
+`closeout-evidence-vector` and `overlay-repayment-posting` sections; decision
+bindings test both implemented consumers as `CONSUMED` and retain only the
+recovery/writeoff and claim-slice policies as pending; the COA test preserves
+its historical guard and main's golden checks, with live byte guards on the
+projection, ports, overlay, export, vendor, locked demo/empty goldens and
+decision notes. The authorized binding-note change stays pinned to reviewed
+HEAD. Every test method from both parents survives. The finance pack is
+regenerated through `scripts/finance_vectors.py --write`, retaining main's
+updated facade definitions and this node's eighth `closeout_digest` group.
+The handbook's stale eight-stage wording now names the existing nine stages;
+`scripts/acceptance.py` remains byte-identical to both parents.
+
+The first plain `npm run test:browser` exited 1 before tests because unrelated
+workspace services already occupied loopback ports 8765 and 8766. Those services
+were left running. Browser and acceptance checks instead run in a private
+network namespace, with only its loopback interface enabled:
+`unshare --user --map-root-user --net bash -c 'ip link set lo up && COMMAND'`.
+The npm command, Playwright config, assertions, timeouts and acceptance stages
+are unchanged. `npm ci --no-audit --no-fund` installed the locked dependencies;
+`npx playwright install chromium` installed the matching free local browser.
+
+Local verification (SIMULATED only):
+
+| Check | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0, 949 tests; `/tmp/closeout-round2-unit.log`. |
+| Pinned MockCredit discovery | Exit 0, 7 tests. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Exit 0. |
+| Documentation surface, decision ledger/bindings, not-bound checklist, auth matrix, manifest/workspace/forecast vectors | Exit 0; documentation inventory: 30 routes, 39 artifacts, 9 stages. |
+| Isolated `npm run test:browser` | Exit 0, 69 passed; `/tmp/closeout-round2-browser-isolated.log`. |
+| First isolated `python3 scripts/acceptance.py --evidence build/closeout-round2-pass1.json` | Exit 0, `ok:true`; unit 949, storage 19, vendor 7, upstream claims 269, browser 69, packaged smoke 8, seeded demo 1, journeys 4; node syntax has its intentional null count. `/tmp/closeout-round2-acceptance-pass1.log`. |
+| Gate-fault corpus and crash matrix `--check` | Exit 0; 7 fault cases and 23 crash cells match. |
+| Digest and finance pack regeneration | Only `--write` used. Digest: 4401 bytes, SHA256 `a82a4665b2f0e3d3d45e8f81684b07e14f5266ee016296e32fd0228a9f118ca1`; finance pack: 97125 bytes. |
+| Two additional digest `--write --file <temp>` runs | Byte-identical to each other and the artifact. Digest `--check` / `--check-evidence` and finance `--check` exit 0. |
+| Temporary-copy mutations | Edited stage status and removed artifact each make `--check` exit 1; edited evidence count makes `--check-evidence` exit 1 naming `$.stages[0].test_count.ran`; `ok:false` evidence refuses `--write` and preserves existing bytes. |
+| Artifact scan and candidate index | No run SHA, tool version, timestamp, instance id, host path or stripped object key. Policy disclosures and vendor pin remain. Eight of eight candidates have vectors, null reasons, `semantic_conformance:false`, `upstream_nodes_completed:[]`. |
+
+Before regeneration, fresh evidence correctly produced exit 1 naming only
+`$.packaged.sha256` and the unit stage's passed/ran counts (902 to 949). After
+regeneration those bytes match. Actual tools were Python 3.13.5, node v20.19.2,
+npm 11.21.1, Playwright 1.58.2 and Chromium headless shell 145.0.7632.6;
+the run HEAD was `ab7572cec1930b91b40143f89c44ae993e09bbcb`. These per-run values
+remain in this prose and ignored evidence, outside the digest.
+
+The first post-regeneration pass (`build/closeout-round2-pass2.json`, log
+`/tmp/closeout-round2-acceptance-pass2.log`) exited 1 solely in the browser stage:
+68 passed and one 30-second timeout in `command-fence.spec.cjs`'s manual-refresh
+case. Every other stage passed with the same counts. Its preserved trace is
+`build/closeout-round2-pass2-command-fence-trace.zip`: the browser's expected-text
+assertion matched in about 110 ms (`16177.502` to `16287.089`), but its test-runner
+completion arrived around 149 seconds later (`165602.579`). This suggests a
+scheduling stall, without establishing its cause. The failed evidence is refused
+by `--write` (exit 1, no new artifact); the successful digest remains unchanged.
+An isolated, unchanged
+`npm run test:browser -- tests/browser/command-fence.spec.cjs --project=workspace`
+then passed all five tests in 8.3 seconds, including the timed-out case in 943 ms
+(`/tmp/closeout-round2-command-fence-rerun.log`). No assertion, timeout, stage,
+configuration or product code was changed to obtain the rerun pass.
+
+The final full rerun (`python3 scripts/acceptance.py` in the same private network
+namespace; `/tmp/closeout-round2-acceptance-pass3.log`) exited 0 with `ok:true`:
+unit 949, storage 19, vendor 7, upstream claims 269, browser 69, packaged smoke 8,
+seeded demo 1 and journeys 4; node syntax passed with its intentional null count.
+The default `build/acceptance-evidence.json` is this successful final evidence,
+also preserved as `build/closeout-round2-pass3.json`. Its covered bytes are
+identical to successful pass 1 and the regenerated artifact. Final digest
+`--check-evidence` (default evidence), digest `--check` and finance `--check` all
+exit 0. Both additional temporary `--write` runs remain byte-identical, and the
+artifact SHA256 and sizes above are unchanged. This completes the required
+two-successful-pass regeneration, with the intermediate failure retained.
+
+The five vendored files verify against their SHA256 locks. Vendor and manifest,
+manifest vectors, the development export key, golden demo, `.aiops/` and the
+acceptance script are byte-identical to both parents. Main's repayment code and
+goldens are preserved exactly. All data remains SIMULATED, with no real funds,
+SEMANTIC_CONFORMANCE, upstream completion or human-acceptance claim. No commit,
+push or external post is made; the supervisor owns the merge commit.
 
 ## crash-replay-matrix
 
