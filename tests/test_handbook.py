@@ -255,6 +255,7 @@ class HandbookTests(unittest.TestCase):
             'audit70-fix1': ('interest_rebased', 'overlay-recovery-writeoff', 'overlay-repayment-posting', 'CAPITAL_DEFAULT_RECOVERY.md', 'CAPITAL_REPAYMENT_POSTING.md'),
             'coa-candidate-projection': ('GET /api/projection?mode=coa-candidate', 'GET /api/reconciliation?mode=coa-candidate', 'SIMULATION_FIXED_V2', 'SYNTHETIC_UNADOPTED', '9790', 'coa_candidate_totals_vs_v1', 'interest_ledger_vs_projection'),
             'audit60-fix2': ('KIX_CAPITAL_EXPORT_MANIFEST_V2', 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'overlaypart', 'SECTION_SET', 'overlay_fold_digest_equals_persisted', 'tests/golden/overlay_demo.json'),
+            'overlay-repayment-posting': ('post_repayment', 'REPAYMENT_ADVANCE_STATE', 'REPAYMENT_UNAPPLIED_CAP', 'SIM_UNAPPLIED_MEMO', 'UNPOSTED_F04_REPAY'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')

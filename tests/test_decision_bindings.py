@@ -61,8 +61,7 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(identities, sorted(set(identities)))
 
     def test_each_parked_entry_is_pending_with_node_and_anchor(self):
-        nodes = {'repayment-posting-decision': 'overlay-repayment-posting',
-                 'default-recovery-decision': 'overlay-recovery-writeoff',
+        nodes = {'default-recovery-decision': 'overlay-recovery-writeoff',
                  'claim-slice-registry-decision': 'claim-slice-registry'}
         for row in self.data['entries']:
             if row['decision_id'] in nodes:
@@ -87,6 +86,20 @@ class BindingTests(unittest.TestCase):
             with self.subTest(entry=entry):
                 self.assertEqual({binding['path'] for binding in bindings}, expected[entry])
                 self.assertTrue(all(binding['status'] == 'CONSUMED' for binding in bindings))
+
+    def test_repayment_posting_is_consumed_with_live_code_and_test_bindings(self):
+        rows = [row for row in self.data['entries'] if row['decision_id'] == 'repayment-posting-decision']
+        self.assertEqual(len(rows), 9)
+        for row in rows:
+            with self.subTest(entry=row['entry']):
+                self.assertTrue(all(binding['status'] == 'CONSUMED' for binding in row['bindings']))
+                self.assertTrue(any(binding['kind'] == 'module' for binding in row['bindings']))
+                self.assertIn({'kind': 'test_module', 'path': 'tests/test_repayment_posting.py',
+                               'status': 'CONSUMED'}, row['bindings'])
+        for name in ('capacity_and_envelope_effect', 'unapplied_cash_handling'):
+            row = next(row for row in rows if row['entry'] == name)
+            self.assertIn({'kind': 'module', 'path': 'capital/overlay.py', 'status': 'CONSUMED'},
+                          row['bindings'])
 
     def test_partial_builds_do_not_claim_future_bundling_or_seed_budget(self):
         expected = {
@@ -138,7 +151,7 @@ class BindingTests(unittest.TestCase):
                 self.assertDrift('invalid binding shape')
 
     def test_pending_metadata_required(self):
-        row = next(row for row in self.data['entries'] if row['decision_id'] == 'repayment-posting-decision')
+        row = next(row for row in self.data['entries'] if row['decision_id'] == 'default-recovery-decision')
         for key in ('consumer_node', 'reason'):
             old = row['bindings'][0].pop(key)
             self.assertDrift('pending consumer metadata')

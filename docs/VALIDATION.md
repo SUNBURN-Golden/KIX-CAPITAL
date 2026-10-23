@@ -989,6 +989,88 @@ have been staged as resolved, with no conflict markers. No commit, push or post
 is made; merge completion belongs to the supervisor. No SEMANTIC_CONFORMANCE,
 real-funds execution, human acceptance or upstream completion is claimed.
 
+### Conflict-fix round 2 (2026-10-23)
+
+This round combines pre-merge HEAD `ab7572c` with `MERGE_HEAD` / `origin/main`
+`8c5ad10`. All four conflicts retain both features: the handbook has separate
+`closeout-evidence-vector` and `overlay-repayment-posting` sections; decision
+bindings test both implemented consumers as `CONSUMED` and retain only the
+recovery/writeoff and claim-slice policies as pending; the COA test preserves
+its historical guard and main's golden checks, with live byte guards on the
+projection, ports, overlay, export, vendor, locked demo/empty goldens and
+decision notes. The authorized binding-note change stays pinned to reviewed
+HEAD. Every test method from both parents survives. The finance pack is
+regenerated through `scripts/finance_vectors.py --write`, retaining main's
+updated facade definitions and this node's eighth `closeout_digest` group.
+The handbook's stale eight-stage wording now names the existing nine stages;
+`scripts/acceptance.py` remains byte-identical to both parents.
+
+The first plain `npm run test:browser` exited 1 before tests because unrelated
+workspace services already occupied loopback ports 8765 and 8766. Those services
+were left running. Browser and acceptance checks instead run in a private
+network namespace, with only its loopback interface enabled:
+`unshare --user --map-root-user --net bash -c 'ip link set lo up && COMMAND'`.
+The npm command, Playwright config, assertions, timeouts and acceptance stages
+are unchanged. `npm ci --no-audit --no-fund` installed the locked dependencies;
+`npx playwright install chromium` installed the matching free local browser.
+
+Local verification (SIMULATED only):
+
+| Check | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0, 949 tests; `/tmp/closeout-round2-unit.log`. |
+| Pinned MockCredit discovery | Exit 0, 7 tests. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Exit 0. |
+| Documentation surface, decision ledger/bindings, not-bound checklist, auth matrix, manifest/workspace/forecast vectors | Exit 0; documentation inventory: 30 routes, 39 artifacts, 9 stages. |
+| Isolated `npm run test:browser` | Exit 0, 69 passed; `/tmp/closeout-round2-browser-isolated.log`. |
+| First isolated `python3 scripts/acceptance.py --evidence build/closeout-round2-pass1.json` | Exit 0, `ok:true`; unit 949, storage 19, vendor 7, upstream claims 269, browser 69, packaged smoke 8, seeded demo 1, journeys 4; node syntax has its intentional null count. `/tmp/closeout-round2-acceptance-pass1.log`. |
+| Gate-fault corpus and crash matrix `--check` | Exit 0; 7 fault cases and 23 crash cells match. |
+| Digest and finance pack regeneration | Only `--write` used. Digest: 4401 bytes, SHA256 `a82a4665b2f0e3d3d45e8f81684b07e14f5266ee016296e32fd0228a9f118ca1`; finance pack: 97125 bytes. |
+| Two additional digest `--write --file <temp>` runs | Byte-identical to each other and the artifact. Digest `--check` / `--check-evidence` and finance `--check` exit 0. |
+| Temporary-copy mutations | Edited stage status and removed artifact each make `--check` exit 1; edited evidence count makes `--check-evidence` exit 1 naming `$.stages[0].test_count.ran`; `ok:false` evidence refuses `--write` and preserves existing bytes. |
+| Artifact scan and candidate index | No run SHA, tool version, timestamp, instance id, host path or stripped object key. Policy disclosures and vendor pin remain. Eight of eight candidates have vectors, null reasons, `semantic_conformance:false`, `upstream_nodes_completed:[]`. |
+
+Before regeneration, fresh evidence correctly produced exit 1 naming only
+`$.packaged.sha256` and the unit stage's passed/ran counts (902 to 949). After
+regeneration those bytes match. Actual tools were Python 3.13.5, node v20.19.2,
+npm 11.21.1, Playwright 1.58.2 and Chromium headless shell 145.0.7632.6;
+the run HEAD was `ab7572cec1930b91b40143f89c44ae993e09bbcb`. These per-run values
+remain in this prose and ignored evidence, outside the digest.
+
+The first post-regeneration pass (`build/closeout-round2-pass2.json`, log
+`/tmp/closeout-round2-acceptance-pass2.log`) exited 1 solely in the browser stage:
+68 passed and one 30-second timeout in `command-fence.spec.cjs`'s manual-refresh
+case. Every other stage passed with the same counts. Its preserved trace is
+`build/closeout-round2-pass2-command-fence-trace.zip`: the browser's expected-text
+assertion matched in about 110 ms (`16177.502` to `16287.089`), but its test-runner
+completion arrived around 149 seconds later (`165602.579`). This suggests a
+scheduling stall, without establishing its cause. The failed evidence is refused
+by `--write` (exit 1, no new artifact); the successful digest remains unchanged.
+An isolated, unchanged
+`npm run test:browser -- tests/browser/command-fence.spec.cjs --project=workspace`
+then passed all five tests in 8.3 seconds, including the timed-out case in 943 ms
+(`/tmp/closeout-round2-command-fence-rerun.log`). No assertion, timeout, stage,
+configuration or product code was changed to obtain the rerun pass.
+
+The final full rerun (`python3 scripts/acceptance.py` in the same private network
+namespace; `/tmp/closeout-round2-acceptance-pass3.log`) exited 0 with `ok:true`:
+unit 949, storage 19, vendor 7, upstream claims 269, browser 69, packaged smoke 8,
+seeded demo 1 and journeys 4; node syntax passed with its intentional null count.
+The default `build/acceptance-evidence.json` is this successful final evidence,
+also preserved as `build/closeout-round2-pass3.json`. Its covered bytes are
+identical to successful pass 1 and the regenerated artifact. Final digest
+`--check-evidence` (default evidence), digest `--check` and finance `--check` all
+exit 0. Both additional temporary `--write` runs remain byte-identical, and the
+artifact SHA256 and sizes above are unchanged. This completes the required
+two-successful-pass regeneration, with the intermediate failure retained.
+
+The five vendored files verify against their SHA256 locks. Vendor and manifest,
+manifest vectors, the development export key, golden demo, `.aiops/` and the
+acceptance script are byte-identical to both parents. Main's repayment code and
+goldens are preserved exactly. All data remains SIMULATED, with no real funds,
+SEMANTIC_CONFORMANCE, upstream completion or human-acceptance claim. No commit,
+push or external post is made; the supervisor owns the merge commit.
+
 ## crash-replay-matrix
 
 Test-only change: `tests/crash_matrix.py` replays a fixed seven-save command script (offer → approve → bind_settlement → draw → advance_day 0→3 → repay → advance_day 3→4 on `sim-cr-a`, fixture `sim-committed` 40000/10000 units) through `FileWorkspace` wrapped in the save-counted `CrashInjectingStorage`. Each of the 23 cells injects a crash before and after a workspace write boundary — journal-append, overlay-entry, temp-file rename (`replace` and `dir-fsync` reuse the `tests/storage_conformance.py` os injector) — plus three torn-payload cells (truncated, payload-byte flip with intact JSON, overlay-section digest-byte flip with intact `payload_sha256`), a stale `.workspace.json.*.tmp` leftover, and one real SIGKILL on the `python3 -m capital.server --workspace` subprocess via the T06-sim `ServerProcess`/`Session` harness with a fire-and-forget overlay write in flight. Every cell restarts (`FileWorkspace.open` → `CapitalService`) and must restore the pinned `state_digest`/`overlay_state_digest` or fail closed `WORKSPACE_UNREADABLE` — never a silent empty book, never a rewrite of torn bytes, writes stay 503 after the boundary. The mid-flight SIGKILL is bivalent by nature, so the pin names the two complete overlay digests it may restore (`overlay_state_digest_one_of`); a torn value can never match. Each restarted cell also runs `capital.audit.audit_workspace` (workspace-offline-audit dep): ok for restored cells, `WORKSPACE_UNREADABLE` with the pinned failing check for torn ones. Outcomes are pinned in `tests/vectors/workspace_crash.json` (format `KIX_CAPITAL_WORKSPACE_CRASH_V1`, label `SIMULATED`, `semantic_conformance` false, `stage5_durable_transactions`/`cross_host_fencing` NOT_BOUND/NOT_CLAIMED; digests only — no instance id, token, port or timestamp). `scripts/acceptance.py` joins the matrix to the `storage-conformance` stage as a second command; `scripts/docs_surface.py` gains the `workspace_crash.json` VECTOR_NEEDLES entry and README keeps its artifact plus `--check` needles. No production code changed; no new file format or schema; envelope v2 only.
