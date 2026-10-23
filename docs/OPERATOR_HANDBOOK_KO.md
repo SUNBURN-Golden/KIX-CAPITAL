@@ -652,3 +652,23 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 수용 사다리의 `upstream-claims` 단계는 이제 명령을 넷 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행), 넷째가 `scripts/ce1_claims_check.py --execute`(49행)다. 단계의 `passed`와 `total`은 네 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39+49=269이고 label은 그대로 `CLAIM_CONFORMANCE`다. 위 절들(`read-model-claims-conformance`의 "셋"과 220 합계, `fsm-contract-claims`의 "셋뿐이다" 문장 포함)의 옛 열거는 표가 적었을 때의 문장이며 고치지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:adapter-identity-claims -->
+
+### adapter-identity-claims
+
+`tests/adapter_identity_claims.json` (`KIX_CAPITAL_ADAPTER_IDENTITY_CLAIMS_V1`, 30행)은 별도 pinned_sha `e2a029d8ac3af7575888dac22fc4bf173ebec232`의 `docs/contracts/ADAPTER_EVENT_IDENTITY.md` §2·§3·§5를 인용한다. `capital/adapter_identity_claims.py`가 ObservationPort fake의 재전달·충돌 보존·UNMATCHED 결합·역순·늦은 사실을 검사하고 같은 행에서 loopback facade를 실행한다. facade는 명령 영수증 또는 읽기/시나리오의 analogue이며 이벤트 정체성 구현 주장이 아니다. `COMMAND_BOUNDARY_ANALOGUE`에는 `COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY`가 붙는다. provider/account/profile-version의 facade 증거는 `ISOLATION_ONLY`다. 수단은 `METHOD_IS_CONTENT_NOT_SCOPE_IN_LOCAL_PROFILE` divergence로 남긴다. 별도의 isolation guard는 fake가 facade의 상태·저널 길이·overlay digest·영수증을 바꾸면 실패한다. 모두 SIMULATED, CLAIM_CONFORMANCE이며 커널·실제 제공자·SEMANTIC_CONFORMANCE가 아니다.
+
+`upstream-claims` 단계는 이제 다음 다섯 명령을 순서대로 실행한다. 위 절의 이전 열거와 합계는 당시 기록이다.
+
+```bash
+python3 scripts/upstream_claims_check.py --execute
+python3 scripts/agent_claims_check.py --execute
+python3 scripts/read_model_claims_check.py --execute
+python3 scripts/ce1_claims_check.py --execute
+python3 scripts/adapter_identity_claims_check.py --execute
+```
+
+87+94+39+49+30=299행을 합산한다. `tests/test_adapter_identity_claims.py`는 표 변이·잘못된 함수·fake drift·isolation·드리프트를 검증한다. `--execute`는 SIMULATED 실행이며 체크아웃이 없고 실행 옵션도 없으면 `SKIPPED` (통과 아님)다. `--protocol-dir`는 절과 needle을 읽기 전용으로 확인하고 전체 파일 해시는 `SOURCE_SHA256 match|differs`로 별도 보고한다. `differs`이면 전체 고정 원문과 동일하다는 뜻이 아니며, 절·needle 검증과 구분한다. 새 route, stage, durable alias 또는 EventItemId 원천 선택은 없다.
+
+<!-- /handbook-section -->
