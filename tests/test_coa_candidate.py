@@ -103,6 +103,36 @@ class ChartFenceTests(unittest.TestCase):
 
 
 class V1UnchangedTests(unittest.TestCase):
+    def assert_ports_append_only(self, baseline, current):
+        # Supervisor-authorized compatibility check: preserve every existing AST
+        # node (including Protocol bodies/imports), permitting only the new port.
+        import ast
+        pinned = ast.parse(baseline).body
+        actual = ast.parse(current).body
+        self.assertEqual([ast.dump(node) for node in actual[:len(pinned)]],
+                         [ast.dump(node) for node in pinned])
+        additions = actual[len(pinned):]
+        self.assertLessEqual(len(additions), 1)
+        for node in additions:
+            self.assertIsInstance(node, ast.ClassDef)
+            self.assertEqual(node.name, 'ObservationPort')
+            self.assertEqual([ast.dump(base) for base in node.bases],
+                             [ast.dump(ast.Name(id='Protocol', ctx=ast.Load()))])
+            self.assertEqual([ast.dump(item) for item in node.decorator_list],
+                             [ast.dump(ast.Name(id='runtime_checkable', ctx=ast.Load()))])
+
+    def test_ports_compatibility_check_rejects_existing_definition_changes(self):
+        baseline = 'from typing import Protocol\nclass StoragePort(Protocol):\n    def load(self): ...\n'
+        addition = ('\n@runtime_checkable\nclass ObservationPort(Protocol):\n'
+                    '    def fold(self, facts, *, bindings) -> dict: ...\n')
+        self.assert_ports_append_only(baseline, baseline + addition)
+        for changed in (baseline.replace('load(self)', 'load(self, changed)'),
+                        baseline.replace('Protocol', 'object'), '',
+                        baseline + addition.replace('ObservationPort', 'OtherPort'),
+                        addition + baseline):
+            with self.subTest(changed=changed), self.assertRaises(AssertionError):
+                self.assert_ports_append_only(baseline, changed)
+
     def test_v1_response_bytes_do_not_move_across_candidate_calls_and_ticks(self):
         service = CapitalService()
         draw_book(service)
@@ -152,21 +182,20 @@ class V1UnchangedTests(unittest.TestCase):
             self.assertEqual(status.stdout.split(), [])
             base = 'HEAD'
         # Keep main's live byte guard as well as the original COA change's historical guard.
-        # The closeout decision explicitly requires the reviewed binding-note update. Guard that
-        # note against this branch's HEAD and every other decision note against main.
+        # Only ports.py uses the authorized append-only ObservationPort check below. The merged
+        # closeout binding note is guarded against main's reviewed bytes with every other note.
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
             guarded = self._git('diff', '--name-only', base, '--',
-                                *[name for name in self.GUARDED if name != 'tests/golden'],
-                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json',
-                                ':(exclude)docs/decisions/CAPITAL_UPSTREAM_BINDING.md')
+                                *[name for name in self.GUARDED if name not in ('tests/golden', 'capital/ports.py')],
+                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
             self.assertEqual(guarded.stdout.split(), [])
-            binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
-            reviewed = self._git('show', f'HEAD:{binding_note}')
-            self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
-            self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
+        ports_ref = 'origin/main' if probe.returncode == 0 else 'HEAD'
+        ports_base = self._git('show', f'{ports_ref}:capital/ports.py')
+        self.assertEqual(ports_base.returncode, 0, ports_base.stderr)
+        self.assert_ports_append_only(ports_base.stdout, (ROOT / 'capital/ports.py').read_text())
         # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
         # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
         # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.

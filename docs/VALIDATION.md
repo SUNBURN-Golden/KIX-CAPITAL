@@ -1,5 +1,78 @@
 # Validation scope
 
+## Provider observation adapter
+
+`tests/test_observation_port.py` exposes `run_observation_vectors(factory)` for a
+fresh no-argument `ObservationPort` factory. The 27-case synthetic corpus pins
+scoped item identity, separate delivery metadata, normalized-fact dedup, original
+content retention after conflicts and original replays, explicit binding conflicts,
+UNMATCHED retention, capture/cancellation coexistence, reverse delivery order,
+null/supplied offsets, and every normalized content field. Complete output SHA256
+expectations supplement explicit identity, evidence, status and diagnostic-index
+assertions. The corpus itself is byte-pinned; the checker has no regeneration path.
+Negative controls cover malformed/missing/drifted corpus files, a drifting factory,
+invalid inputs and synthetic alias collisions. Every output and diagnostic is
+SIMULATED with applied=false/funds_executed=false and no applied effects.
+
+A populated disposable service with a nonempty overlay journal is snapshotted after
+every fold (canonical state, state_digest, journal, receipts/count, overlay and its
+overlay_state_digest). No recording path, provider call or HTTP surface was added.
+CAP-14/CAP-16 remain NOT_BOUND. Fixture replay does not authenticate evidence or
+establish production identity, kernel quarantine, or SEMANTIC_CONFORMANCE.
+
+Plan deviations: the draft is pinned to the existing upstream-binding decision's
+`e2a029d8ac3af7575888dac22fc4bf173ebec232` citation, separately from the FSM-only
+`7481b0e` pin. Read-only `git show` verified document SHA256
+`e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`.
+The corpus uses base facts and explicit patches with complete output digests instead
+of repeated full output JSON. Item `binding_status` preserves UNMATCHED even when
+its diagnostic `status` becomes CONFLICT. The supervisor-authorized append-only
+structural check replaces only the ports.py whole-file byte guard; every original
+AST node, Protocol signature/body and import remains intact. Negative controls
+reject edits/removal/reordering of original definitions or unrelated added classes.
+All other current-main byte guards remain unchanged.
+
+### Builder verification (2026-10-23)
+
+The resumed worktree started at `4cf1de3` with interrupted implementation edits.
+Initial observation (6 tests), seam (6 tests), vector and documentation checks passed.
+The initial COA run (36 tests) failed solely because the worktree lagged five merges
+behind locally available `origin/main`: the preexisting overlay guard compared old
+source to main's repayment implementation. Tracked edits were backed up under
+`/tmp/provider-observation-resume-vk6mkzqe`; `git merge --ff-only origin/main` advanced
+to `8c5ad10` without creating a commit. `git apply --3way` reapplied the work, with
+one conflict in the guard list resolved to preserve current main's guards and the
+authorized ObservationPort exception. `git restore --staged .` left all changes
+unstaged. COA re-run: 36 passed. No upstream repository was modified.
+
+### Merge conflict verification, round 1 (2026-10-23)
+
+Combined `c0f85f3` with main `68c8896` in `tests/test_coa_candidate.py`.
+Main's historical COA guard and live byte guards remain, with the reviewed
+append-only ObservationPort structural check for `capital/ports.py`. The merged
+closeout binding note is byte-guarded against main's reviewed version. Both the
+observation corpus and main's closeout/finance artifacts and documentation survive.
+All results below use local SIMULATED fixtures; CAP-14/CAP-16 remain NOT_BOUND.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | 956 passed, including observation isolation and drift controls |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | 30 routes, 40 artifacts, 9 stages; zero findings |
+| `python3 scripts/observation_vectors.py --check` | PASS; applied=false; funds_executed=false |
+| `python3 scripts/closeout_digest.py --check` | 4401 bytes match, embedded in finance vectors |
+| `python3 scripts/finance_vectors.py --check` | 97125 bytes match |
+| `npm run test:browser -- --config /tmp/provider-observation-browser-2ch96cd0/playwright.config.cjs` | 69 Chromium tests passed |
+| Vendor SHA256 and merge-parent byte comparison | All five pinned reference files and manifest unchanged |
+
+The first default browser invocation could not start because existing listeners
+occupied ports 8765/8766. Dependencies were installed from the local npm cache with
+`npm ci --offline --no-audit --no-fund`. A temporary configuration moved only the
+four suite servers/base URLs to loopback ports 18865–18868; all tests and the tracked
+Playwright configuration stayed unchanged. No commit or push was performed.
+
 ## DEV_ONLY keyset coverage
 
 `tests/test_dev_keyset.py` covers secure creation/restart, strict schema and encoding,

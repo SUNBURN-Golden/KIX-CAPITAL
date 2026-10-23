@@ -1,5 +1,38 @@
 # Capital local API and future integration
 
+## Observation fixture seam
+
+`ObservationPort` exposes `fold(facts, *, bindings) -> dict`; `LocalFakeObservation`
+is an in-process read-only stand-in, not a service constructor argument or HTTP route.
+Inputs require SYNTHETIC_FIXTURE provenance and explicit synthetic bindings. It does
+not authenticate facts or infer orders. Every result is SIMULATED, applied=false,
+funds_executed=false; no storage, recording, producer calls or network access occurs.
+Transmission metadata is separate from normalized item content. Same scoped item
+key/content dedups; changed content retains the original and flags CONFLICT.
+UNMATCHED stays diagnostic with no effects. CAP-14/CAP-16 remain NOT_BOUND.
+
+The fixture profile `LOCAL_SYNTHETIC_JSON_SHA256_V1` derives `sim-event-<sha256>`
+from canonical local JSON `{profile, key}`, where `key` contains provider, account
+alias, environment, profile_version and the stable synthetic item_key. JSON uses
+sorted keys, UTF-8, compact separators and no NaN. The full scoped key is retained;
+an alias collision is rejected. This is a full 256-bit diagnostic, not a kernel ID.
+Payment/order/operation references, kind, integer KRW amount, currency, method,
+status, original occurred_at text, nullable offset, api_version and product remain
+in each normalized fact with its scope; their local JSON SHA256 excludes transmission
+ID, raw_evidence_ref and received_at. No timezone, provider status meaning or order
+binding is inferred. A state transition or partial cancellation needs a distinct
+synthetic item_key; reusing a key with changed content yields CONFLICT.
+
+Items and delivery diagnostics retain input encounter order. A conflicted item keeps
+its first normalized fact/digest, and replay of that original cannot clear CONFLICT.
+Its separate `binding_status` retains UNMATCHED/MATCHED_FIXTURE/BINDING_CONFLICT.
+Each conflict carries the incoming fact/digest and delivery_index; every delivery,
+including duplicates, retains its transmission metadata. Missing bindings yield
+UNMATCHED; a fact that disagrees with a scoped operation's explicit payment/order
+binding yields BINDING_CONFLICT. Malformed facts/bindings and contradictory binding
+configuration raise ValueError. Nothing in this profile chooses production identity,
+16-byte aliases, durable binding storage or a wire layout.
+
 `/api/*` is **Capital's local simulation facade**, not a promoted KIX Protocol catalogue, generated SDK, lending endpoint, or live provider adapter. No fallback to `offer_gift`, `settle_capture`, bank, PG or chain exists.
 
 ## DEV_ONLY keyset

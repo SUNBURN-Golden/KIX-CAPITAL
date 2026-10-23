@@ -1,5 +1,12 @@
 # Capital 청사진 요구사항과 구현·선행 매핑
 
+CAP-14 observation seam: `ObservationPort` / `LocalFakeObservation` now supplies a
+SIMULATED, read-only fixture fold only. CAP-14 and CAP-16 remain NOT_BOUND. The
+fixture separately pins ADAPTER_EVENT_IDENTITY draft 0.1 at `e2a029d8ac3af7575888dac22fc4bf173ebec232`,
+SHA256 `e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`,
+as cited in CAPITAL_UPSTREAM_BINDING section 2. This is not the FSM pin or an
+adoption of production identity, aliasing, authenticated queries, or wire layout.
+
 2026-10-18. Capital 구현 기준 main `f1c5651b40bf9a15077a37a9769276dc28b8e1a1`.
 실행·참조 소비자가 고정하는 Protocol 기준은 둘이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 위 두 고정은 나열한 실행·참조 소비자에만 묶는다. (1)은 FSM 원본·vendor 바이트와 그 FSM·읽기 모델 클레임 표(`tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`)의 인용에, (2)는 AI 위임 초안 인용과 `tests/agent_claims.json`에 적용된다. `docs/decisions/`의 각 결정 노트는 `기준`·`bases` 칸에 그 노트 작성 시점의 역사적 연구 체크아웃을 따로 기록한다(예: [CAPITAL_CLAIM_SLICE_REGISTRY.md](decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md)의 kix-protocol `9eb6b9f`). 그 값은 노트의 출처 증명이며 실행·참조 구속이 아니므로 위 두 고정의 범위 밖이다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
