@@ -256,3 +256,5 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
