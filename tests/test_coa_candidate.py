@@ -103,6 +103,36 @@ class ChartFenceTests(unittest.TestCase):
 
 
 class V1UnchangedTests(unittest.TestCase):
+    def assert_ports_append_only(self, baseline, current):
+        # Supervisor-authorized compatibility check: preserve every existing AST
+        # node (including Protocol bodies/imports), permitting only the new port.
+        import ast
+        pinned = ast.parse(baseline).body
+        actual = ast.parse(current).body
+        self.assertEqual([ast.dump(node) for node in actual[:len(pinned)]],
+                         [ast.dump(node) for node in pinned])
+        additions = actual[len(pinned):]
+        self.assertLessEqual(len(additions), 1)
+        for node in additions:
+            self.assertIsInstance(node, ast.ClassDef)
+            self.assertEqual(node.name, 'ObservationPort')
+            self.assertEqual([ast.dump(base) for base in node.bases],
+                             [ast.dump(ast.Name(id='Protocol', ctx=ast.Load()))])
+            self.assertEqual([ast.dump(item) for item in node.decorator_list],
+                             [ast.dump(ast.Name(id='runtime_checkable', ctx=ast.Load()))])
+
+    def test_ports_compatibility_check_rejects_existing_definition_changes(self):
+        baseline = 'from typing import Protocol\nclass StoragePort(Protocol):\n    def load(self): ...\n'
+        addition = ('\n@runtime_checkable\nclass ObservationPort(Protocol):\n'
+                    '    def fold(self, facts, *, bindings) -> dict: ...\n')
+        self.assert_ports_append_only(baseline, baseline + addition)
+        for changed in (baseline.replace('load(self)', 'load(self, changed)'),
+                        baseline.replace('Protocol', 'object'), '',
+                        baseline + addition.replace('ObservationPort', 'OtherPort'),
+                        addition + baseline):
+            with self.subTest(changed=changed), self.assertRaises(AssertionError):
+                self.assert_ports_append_only(baseline, changed)
+
     def test_v1_response_bytes_do_not_move_across_candidate_calls_and_ticks(self):
         service = CapitalService()
         draw_book(service)
@@ -120,7 +150,7 @@ class V1UnchangedTests(unittest.TestCase):
         # one regeneration cited in CAPITAL_REPAYMENT_POSTING.md 3.9); demo.json and overlay_empty.json stay locked.
         # Other goldens are compared key by key below; the T05-sim/T06-sim pins are new files owned by
         # scripts/sim_journeys.py (--update-golden) and compared to a live run by tests/test_sim_journeys.py.
-        guarded = ['capital/projection.py', 'capital/ports.py', 'capital/export.py',
+        guarded = ['capital/projection.py', 'capital/export.py',
                    'tests/golden/demo.json', 'tests/golden/overlay_empty.json',
                    'capital/vendor', '.aiops', 'docs/decisions']
         probe = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT,
@@ -146,6 +176,10 @@ class V1UnchangedTests(unittest.TestCase):
                     absent = set(added_on_main.stdout.split())
                     changed = [path for path in changed if path not in absent or (ROOT / path).exists()]
         self.assertEqual(changed, [])
+        ports_base = subprocess.run(['git', 'show', f'{base}:capital/ports.py'], cwd=ROOT,
+                                    capture_output=True, text=True)
+        self.assertEqual(ports_base.returncode, 0)
+        self.assert_ports_append_only(ports_base.stdout, (ROOT / 'capital/ports.py').read_text())
         # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
         # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
         # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.

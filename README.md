@@ -1,5 +1,14 @@
 # KIX Capital
 
+## Synthetic provider observation fold
+
+`tests/vectors/provider_facts.json` pins synthetic identity cases. Run
+`python3 scripts/observation_vectors.py --check` (read-only; exit 1 on drift).
+`LocalFakeObservation` implements `ObservationPort.fold(facts, *, bindings)` in process.
+All outputs are SIMULATED, applied=false, funds_executed=false. There are no network
+calls, recording commands, or state effects. CAP-14 and CAP-16 remain NOT_BOUND;
+this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
+
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
 ## DEV_ONLY keyset integrity

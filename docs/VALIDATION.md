@@ -1,5 +1,50 @@
 # Validation scope
 
+## Provider observation adapter
+
+`tests/test_observation_port.py` exposes `run_observation_vectors(factory)` for a
+fresh no-argument `ObservationPort` factory. The 27-case synthetic corpus pins
+scoped item identity, separate delivery metadata, normalized-fact dedup, original
+content retention after conflicts and original replays, explicit binding conflicts,
+UNMATCHED retention, capture/cancellation coexistence, reverse delivery order,
+null/supplied offsets, and every normalized content field. Complete output SHA256
+expectations supplement explicit identity, evidence, status and diagnostic-index
+assertions. The corpus itself is byte-pinned; the checker has no regeneration path.
+Negative controls cover malformed/missing/drifted corpus files, a drifting factory,
+invalid inputs and synthetic alias collisions. Every output and diagnostic is
+SIMULATED with applied=false/funds_executed=false and no applied effects.
+
+A populated disposable service with a nonempty overlay journal is snapshotted after
+every fold (canonical state, state_digest, journal, receipts/count, overlay and its
+overlay_state_digest). No recording path, provider call or HTTP surface was added.
+CAP-14/CAP-16 remain NOT_BOUND. Fixture replay does not authenticate evidence or
+establish production identity, kernel quarantine, or SEMANTIC_CONFORMANCE.
+
+Plan deviations: the draft is pinned to the existing upstream-binding decision's
+`e2a029d8ac3af7575888dac22fc4bf173ebec232` citation, separately from the FSM-only
+`7481b0e` pin. Read-only `git show` verified document SHA256
+`e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`.
+The corpus uses base facts and explicit patches with complete output digests instead
+of repeated full output JSON. Item `binding_status` preserves UNMATCHED even when
+its diagnostic `status` becomes CONFLICT. The supervisor-authorized append-only
+structural check replaces only the ports.py whole-file byte guard; every original
+AST node, Protocol signature/body and import remains intact. Negative controls
+reject edits/removal/reordering of original definitions or unrelated added classes.
+All other current-main byte guards remain unchanged.
+
+### Builder verification (2026-10-23)
+
+The resumed worktree started at `4cf1de3` with interrupted implementation edits.
+Initial observation (6 tests), seam (6 tests), vector and documentation checks passed.
+The initial COA run (36 tests) failed solely because the worktree lagged five merges
+behind locally available `origin/main`: the preexisting overlay guard compared old
+source to main's repayment implementation. Tracked edits were backed up under
+`/tmp/provider-observation-resume-vk6mkzqe`; `git merge --ff-only origin/main` advanced
+to `8c5ad10` without creating a commit. `git apply --3way` reapplied the work, with
+one conflict in the guard list resolved to preserve current main's guards and the
+authorized ObservationPort exception. `git restore --staged .` left all changes
+unstaged. COA re-run: 36 passed. No upstream repository was modified.
+
 ## DEV_ONLY keyset coverage
 
 `tests/test_dev_keyset.py` covers secure creation/restart, strict schema and encoding,
