@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, forecast, margin, overlay, risk, portfolio_snapshot
+from capital import coa, covenants, forecast, margin, overlay, recovery, risk, portfolio_snapshot
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -137,6 +137,7 @@ class CapitalService:
         self.workspace_status = 'ACTIVE'
         self.overlay_entries = []
         self.overlay_bounds = overlay_bounds if overlay_bounds is not None else overlay.load_bounds()
+        self.recovery_policy = recovery.load_policy(self.terms)
         self.repayment_bounds = repayment_bounds if repayment_bounds is not None else overlay.load_repayment_bounds()
         self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
@@ -213,6 +214,10 @@ class CapitalService:
             mapping_copy = copy.deepcopy(mapping)
             entries = self._restore_overlay(document, len(journal))
             self._require_repayment_links(entries, journal, receipts)
+            try:
+                recovery.validate_links(entries, journal)
+            except ValueError as exc:
+                raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
         except Exception:
             if restored is not None and restored is not self.producer:
                 _release_producer(restored)
@@ -1021,12 +1026,14 @@ class CapitalService:
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             allowed = {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}
-            if set(body) - {'proposal_id', 'asset'} != allowed or not allowed <= set(body):
+            if set(body) - {'proposal_id', 'asset', 'approvals'} != allowed or not allowed <= set(body):
                 raise ApiError('INVALID_COMMAND')
             # Before instance and idempotency lookups, so a denied role cannot read
             # another role's receipt by replaying its operation_id.
             principal = Principal(role if type(role) is str else '')
             op = body['op']
+            if op == 'default' and principal.role == 'agent':
+                raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
             if type(op) is str and op in OP_PERMISSIONS:
                 require(self.authorizer, principal, OP_PERMISSIONS[op])
             else:
@@ -1050,8 +1057,16 @@ class CapitalService:
             # operation_id, op, advance_id, and args. Observability counters are not inputs.
             if 'proposal_id' in body and not agent_ident(body['proposal_id']):
                 raise ApiError('INVALID_ARGUMENTS')
-            fingerprint = digest({'operation_id': operation_id, 'op': body['op'],
-                                  'advance_id': body['advance_id'], 'args': body['args']})
+            if op == 'default' and (type(body['args']) is not dict or body['args'] != {} or type(body['advance_id']) is not str or not _ADVANCE_REF.fullmatch(body['advance_id'])):
+                raise ApiError('INVALID_ARGUMENTS')
+            if 'approvals' in body and op != 'default':
+                raise ApiError('INVALID_COMMAND')
+            labels = self._recovery_approvals(body.get('approvals', [])) if op == 'default' else []
+            identity = {'operation_id': operation_id, 'op': body['op'],
+                        'advance_id': body['advance_id'], 'args': body['args']}
+            if labels:
+                identity['approvals'] = labels
+            fingerprint = digest(identity)
             prior = self.receipts.get(operation_id)
             if prior:
                 if prior['fingerprint'] != fingerprint:
@@ -1082,6 +1097,40 @@ class CapitalService:
                        'role': principal.role, 'role_provenance': ROLE_PROVENANCE}
             if cited is not None:
                 receipt['proposal_id'] = cited
+            default_entry = None
+            before_journal = self.machine.export_journal()
+            if op == 'default':
+                if self.recovery_policy is None:
+                    raise self._overlay_not_bound('default recovery policy not bound')
+                if case in self.case_fixtures:
+                    view = self.machine.view(case)
+                    self._recovery_authorize(principal.role, labels, view['outstanding_exposure'], body.get('proposal_id'))
+                    if self.overlay_entries and view['phase'] == 'DRAWN':
+                        if type(self.producer) is not PinnedFsmProducer:
+                            raise self._overlay_not_bound('atomic default requires pinned local producer')
+                        state = overlay.fold(self.overlay_entries)
+                        subject = next(x for x in self._overlay_subjects(self.overlay_entries) if x['advance_id'] == case)
+                        command = {'op': 'default', 'approvals': labels}
+                        if 'proposal_id' in body:
+                            command['proposal_id'] = body['proposal_id']
+                        authority = self._recovery_authorize(principal.role, labels, subject['principal'], body.get('proposal_id'))
+                        default_entry = recovery.entry(operation_id + ':default', 'default_anchor', state, len(before_journal) + 1, {
+                            **self._recovery_identity(subject), 'principal_krw': subject['principal'],
+                            'authority': authority, 'command': command, 'f04_operation_id': operation_id})
+                        self._overlay_check_capacity(self.overlay_entries, [default_entry], state['sim_day'], {
+                            'journal': before_journal, 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+                        scratch = self.producer.restored(copy.deepcopy(before_journal))
+                        projected_result = scratch.apply(op, case, idempotency_key=operation_id, args=args, bound_settlement_id=None)
+                        projected_receipt = {**receipt, 'outcome': 'ACCEPTED', 'result': projected_result,
+                                             'approvals': labels, 'recovery_authority': {
+                                                 'principal_krw': view['outstanding_exposure'],
+                                                 'two_person_threshold_krw': self.recovery_policy['two_person_threshold_krw'],
+                                                 'policy_digest': self.recovery_policy['policy_digest']}}
+                        self._overlay_check_capacity(self.overlay_entries, [default_entry], state['sim_day'], {
+                            'journal': scratch.export_journal(),
+                            'receipts': {**self.receipts, operation_id: {'fingerprint': fingerprint, 'receipt': projected_receipt}},
+                            'case_fixtures': self.case_fixtures, 'state_digest': scratch.state_digest()})
+                        overlay.fold(self.overlay_entries + [default_entry], len(scratch.export_journal()))
             try:
                 bound = None
                 if op == 'bind_settlement':
@@ -1093,6 +1142,13 @@ class CapitalService:
                 if op == 'offer':
                     self.case_fixtures[case] = args['fixture_id']
                 receipt.update(outcome='ACCEPTED', result=result)
+                if op == 'default' and (labels or default_entry is not None):
+                    receipt['approvals'] = labels
+                    receipt['recovery_authority'] = {
+                        'principal_krw': view['outstanding_exposure'],
+                        'two_person_threshold_krw': self.recovery_policy['two_person_threshold_krw'],
+                        'policy_digest': self.recovery_policy['policy_digest']}
+
             except CreditError as exc:
                 receipt.update(outcome='REJECTED', error=exc.code)
             except TransportLost:
@@ -1110,10 +1166,15 @@ class CapitalService:
                 raise ApiError(code, 502)
             self.receipts[operation_id] = {'fingerprint': fingerprint, 'receipt': copy.deepcopy(receipt)}
             try:
-                self._persist()
+                candidate = self.overlay_entries + [default_entry] if default_entry is not None and receipt['outcome'] == 'ACCEPTED' else self.overlay_entries
+                self._persist(candidate)
             except WorkspaceError as exc:
+                if default_entry is not None:
+                    self._rollback_machine(before_journal)
+                    self.receipts.pop(operation_id, None)
                 self.workspace_status = exc.code
                 raise ApiError(exc.code, 503)
+            self.overlay_entries = candidate
             self._note_receipt(op, receipt)
             return receipt
 
@@ -1222,6 +1283,14 @@ class CapitalService:
                              'draw_day': draw_day, 'principal': case['outstanding_exposure']})
         return subjects
 
+    def _ledger_terms(self, subject):
+        claim = subject['claim']
+        # Price at the frozen draw gate. A later refund changes collateral, not
+        # the rate already assigned to a drawn advance (same rule as margin).
+        if margin.views_mutable(self.fixtures):
+            claim = {**claim, 'refund_face': 0}
+        return self.terms.ledger_terms(subject['case'], claim, gate=subject['gate'], draw_day=subject['draw_day'])
+
     def _margin_subjects(self, drawn):
         """Drawn advances that carry margin terms; the rest are NOT_BOUND for the margin rules."""
         provider = getattr(self.terms, 'margin_terms', None)
@@ -1249,7 +1318,7 @@ class CapitalService:
 
     def _overlay_capacity(self, entries):
         bounds = self.overlay_bounds
-        records = sum(1 for entry in entries if entry['kind'] == overlay.KIND_TERMS)
+        records = sum(1 for entry in entries if entry['kind'] in (overlay.KIND_TERMS, *overlay.MARGIN_KINDS, 'default_anchor', 'acceleration_event'))
         return {
             'label': CAPACITY_LABEL,
             'entries': {'current': len(entries), 'max': bounds['OVERLAY_MAX_ENTRIES']},
@@ -1270,7 +1339,7 @@ class CapitalService:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'OVERLAY_MAX_ENTRIES'})
         if any(overlay.entry_size(entry) > bounds['OVERLAY_ENTRY_MAX_BYTES'] for entry in new):
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'OVERLAY_ENTRY_MAX_BYTES'})
-        if sum(1 for entry in merged if entry['kind'] == overlay.KIND_TERMS) > bounds['DECISION_RECORDS_MAX']:
+        if sum(1 for entry in merged if entry['kind'] in (overlay.KIND_TERMS, *overlay.MARGIN_KINDS, 'default_anchor', 'acceleration_event')) > bounds['DECISION_RECORDS_MAX']:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'DECISION_RECORDS_MAX'})
         if overlay.section_size(payload, merged) > bounds['ENVELOPE_MAX_BYTES']:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'ENVELOPE_MAX_BYTES'})
@@ -1282,15 +1351,20 @@ class CapitalService:
         """
         with self.lock:
             principal = Principal(role if type(role) is str else '')
+            if principal.role == 'agent' and type(body) is dict and (
+                    body.get('op') in recovery.COMMANDS or 'writeoff' in body):
+                raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
             require(self.authorizer, principal, OVERLAY_COMMAND)
             if self.workspace_status != 'ACTIVE':
                 raise ApiError(self.workspace_status, 503)
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             self._overlay_volatile(body)
+            if body.get('op') in recovery.COMMANDS:
+                return self._post_recovery_command(body, principal)
             if body.get('op') == overlay.COMMAND_REPAY:
                 return self._post_repayment(body, principal)
-            if set(body) != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
+            if set(body) - {'writeoff'} != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
                 raise ApiError('INVALID_COMMAND')
             if body['instance_id'] != self.instance_id:
                 raise ApiError('SESSION_CHANGED', 409)
@@ -1304,13 +1378,26 @@ class CapitalService:
             self._require_day(to_day)
             if type(reason) is not str or not reason.strip() or len(reason) > _REASON_MAX:
                 raise ApiError('INVALID_ARGUMENTS')
+            directive = body.get('writeoff')
+            if 'writeoff' in body:
+                if type(directive) is not dict or 'op' in directive or 'instance_id' in directive:
+                    raise ApiError('INVALID_COMMAND')
+                normalized = self._validate_recovery_command({**directive, 'op': 'post_writeoff', 'instance_id': self.instance_id}, principal)
+                directive = {k: v for k, v in normalized.items() if k != 'op'} | {'operation_id': directive['operation_id']}
+                if directive['operation_id'] == operation_id or directive['at_sim_day'] != to_day:
+                    raise ApiError('INVALID_ARGUMENTS')
             prior = overlay.operation_receipt(self.overlay_entries, operation_id)
             if prior is not None:
+                recorded_directive = next((e['payload'].get('tick_directive') for e in self.overlay_entries if e['overlay_id'] == operation_id), None)
+                if directive != recorded_directive:
+                    raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 if prior['op'] != overlay.COMMAND_OP or (
                         prior['from_sim_day'], prior['to_sim_day'], prior['reason']) != (from_day, to_day, reason):
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 prior.update(self._overlay_receipt_common(principal), transport_duplicate=True)
                 return prior
+            if any(e['overlay_id'] == operation_id for e in self.overlay_entries):
+                raise ApiError('IDEMPOTENCY_CONFLICT', 409)
             status = self._overlay_terms()
             if status is None:
                 raise self._overlay_not_bound()
@@ -1329,8 +1416,7 @@ class CapitalService:
             subjects = []
             drawn = self._overlay_subjects(self.overlay_entries)
             for subject in drawn:
-                terms = self.terms.ledger_terms(subject['case'], subject['claim'],
-                                                gate=subject['gate'], draw_day=subject['draw_day'])
+                terms = self._ledger_terms(subject)
                 if terms is not None:
                     subjects.append({**subject, 'terms': terms})
             binding = {'terms_version': status['terms_version'], 'status': status['status']}
@@ -1339,6 +1425,27 @@ class CapitalService:
             margin_subjects = self._margin_subjects(drawn) if margin.views_mutable(self.fixtures) else []
             cures = margin.plan_cures(state, margin_subjects, operation_id=operation_id,
                                       journal_length=len(journal), day=from_day)
+            scheduled = margin.plan_rules(state, margin_subjects, operation_id=operation_id,
+                                          journal_length=len(journal), day=to_day) if margin_subjects else []
+            for subject in subjects:
+                ref = subject['advance_id']
+                terms = dict(subject['terms'])
+                maturity = recovery.effective_maturity(state, ref, terms['maturity_day'])
+                for event in scheduled:
+                    if event['kind'] == overlay.KIND_MARGIN_ACCELERATION and event['payload']['advance_id'] == ref:
+                        maturity = min(maturity, event['payload']['maturity_after'])
+                a = recovery.anchor(state, ref)
+                if a:
+                    maturity = min(maturity, a['default_sim_day'])
+                terms.update(maturity_day=maturity, term_days=maturity - subject['draw_day'])
+                terms['writeoff_day'] = a['writeoff_eligible_sim_day'] if a else None
+                if a or maturity != subject['terms']['maturity_day']:
+                    terms['recovery_witness'] = {'policy_version': 'DEFAULT_RECOVERY_V1',
+                                                 'denominator': terms['denominator'],
+                                                 'stop_day': terms['writeoff_day']}
+                subject['terms'] = terms
+                r = recovery.recovered(state, ref)
+                subject['principal'] -= r['principal_recovered_krw'] + r['written_off_krw']
             new = overlay.advance_entries(
                 operation_id, state, len(journal), to_day=to_day, reason=reason,
                 binding=binding, subjects=subjects, margin_before=cures)
@@ -1349,6 +1456,14 @@ class CapitalService:
                     raise ApiError('READ_ONLY_INVARIANT', 500)
                 new += margin.plan_rules(stepped, margin_subjects, operation_id=operation_id,
                                          journal_length=len(journal), day=to_day)
+            if directive is not None:
+                if any(e['overlay_id'] == directive['operation_id'] for e in self.overlay_entries + new):
+                    raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+                clock = next(e for e in new if e['kind'] == overlay.KIND_CLOCK)
+                clock['payload']['tick_directive'] = copy.deepcopy(directive)
+                stepped = overlay.fold(self.overlay_entries + new, len(journal))
+                command = {**directive, 'op': 'post_writeoff', 'instance_id': self.instance_id}
+                new.append(self._plan_recovery_command(command, principal, stepped, self.overlay_entries + new))
             payload = {'receipts': self.receipts, 'journal': journal,
                        'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
             self._overlay_check_capacity(self.overlay_entries, new, to_day, payload)
@@ -1368,6 +1483,132 @@ class CapitalService:
             receipt.update(self._overlay_receipt_common(principal), transport_duplicate=False,
                            overlay_state_digest=overlay.state_digest(overlay.fold(candidate)))
             return receipt
+
+    def _invalid_recovery(self):
+        raise ApiError('INVALID_COMMAND')
+
+    def _recovery_approvals(self, labels):
+        try:
+            return recovery.approvals(labels)
+        except recovery.RecoveryError as exc:
+            raise ApiError(exc.code, exc.status) from exc
+
+    def _recovery_authorize(self, role, labels, amount, proposal=None):
+        try:
+            return recovery.authorize(role, labels, amount, self.recovery_policy, proposal)
+        except recovery.RecoveryError as exc:
+            raise ApiError(exc.code, exc.status) from exc
+
+    def _recovery_identity(self, subject):
+        terms = self.terms.margin_terms(subject['case'], subject['claim'], gate=subject['gate'],
+                                        draw_day=subject['draw_day'], refund_after_draw=margin.views_mutable(self.fixtures))
+        return {'advance_id': subject['advance_id'], 'claim_id': subject['case']['claim_id'],
+                'beneficiary_role': subject['case']['beneficiary_role'],
+                'tier': terms['tier'] if terms else 'NOT_APPLICABLE',
+                'policy': copy.deepcopy(self.recovery_policy)}
+
+    def _validate_recovery_command(self, body, principal):
+        common = {'instance_id', 'operation_id', 'op', 'advance_ref', 'at_sim_day'}
+        optional = {'approvals', 'proposal_id'}
+        if body.get('op') == 'post_recovery':
+            common |= {'amount_krw', 'source_ref', 'quote_ref'}
+        elif body.get('op') == 'post_writeoff':
+            optional |= {'setoff_declined_reason'}
+        elif body.get('op') == 'record_acceleration':
+            common |= {'event'}
+        else:
+            raise ApiError('UNSUPPORTED_OPERATION')
+        if not common <= set(body) <= common | optional:
+            raise ApiError('INVALID_COMMAND')
+        if body['instance_id'] != self.instance_id:
+            raise ApiError('SESSION_CHANGED', 409)
+        if type(body['operation_id']) is not str or not _OVERLAY_ID.fullmatch(body['operation_id']):
+            raise ApiError('INVALID_OPERATION_ID')
+        if type(body['advance_ref']) is not str or not _ADVANCE_REF.fullmatch(body['advance_ref']):
+            raise ApiError('INVALID_ARGUMENTS')
+        self._require_day(body['at_sim_day'])
+        labels = self._recovery_approvals(body.get('approvals', []))
+        for key in ('proposal_id', 'quote_ref', 'event'):
+            if key in body and (type(body[key]) is not str or not recovery.LABEL.fullmatch(body[key])):
+                raise ApiError('INVALID_ARGUMENTS')
+        if 'source_ref' in body:
+            source = body['source_ref']
+            if (type(source) is not dict or set(source) != {'claim_id', 'payee_label', 'source_cut'}
+                    or any(type(v) is not str or not recovery.LABEL.fullmatch(v) for v in source.values())):
+                raise ApiError('INVALID_ARGUMENTS')
+            if type(body['amount_krw']) is not int or body['amount_krw'] < 1:
+                raise ApiError('INVALID_ARGUMENTS')
+        reason = body.get('setoff_declined_reason')
+        if reason is not None and (type(reason) is not str or not recovery.LABEL.fullmatch(reason)):
+            raise ApiError('INVALID_ARGUMENTS')
+        return {k: copy.deepcopy(v) for k, v in body.items() if k not in ('instance_id', 'operation_id')} | {'approvals': labels}
+
+    def _plan_recovery_command(self, body, principal, state, entries):
+        command = self._validate_recovery_command(body, principal)
+        ref = body['advance_ref']
+        if state['sim_day'] != body['at_sim_day']:
+            raise ApiError('SIM_CLOCK_STALE', 409)
+        if ref not in self.case_fixtures:
+            raise ApiError('UNKNOWN_ADVANCE', 404)
+        if self.recovery_policy is None:
+            raise self._overlay_not_bound('recovery policy not bound')
+        subject = next((s for s in self._overlay_subjects(entries) if s['advance_id'] == ref), None)
+        if subject is None:
+            raise ApiError('RECOVERY_NOT_DEFAULTED', 409)
+        if body['op'] != 'record_acceleration' and subject['case']['phase'] != 'DEFAULTED':
+            raise ApiError('RECOVERY_NOT_DEFAULTED', 409)
+        kind = {'post_recovery': 'RECOVERY', 'post_writeoff': 'WRITEOFF', 'record_acceleration': 'acceleration_event'}[body['op']]
+        payload = {**self._recovery_identity(subject), 'command': command}
+        if kind == 'acceleration_event':
+            if subject['case']['phase'] != 'DRAWN':
+                raise ApiError('RECOVERY_NOT_DEFAULTED', 409)
+            terms = self.terms.margin_terms(subject['case'], subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'], refund_after_draw=margin.views_mutable(self.fixtures))
+            if terms is None:
+                raise self._overlay_not_bound()
+            payload.update(principal_krw=subject['principal'], maturity_before=terms['maturity_day'],
+                           authority=self._recovery_authorize(principal.role, command['approvals'], subject['principal'], command.get('proposal_id')))
+        else:
+            a = recovery.anchor(state, ref)
+            if a is None:
+                raise ApiError('DEFAULT_DAY_UNKNOWN', 409)
+            payload['policy'] = a['policy']
+            quotes = recovery.source_quotes(state, subject, {k: v for k, v in self.fixtures.rows.items() if self.fixtures.beneficiary(k) == subject['case']['beneficiary_role']}, self.setoff)
+            if kind == 'RECOVERY':
+                quote = next((q for q in quotes if q['quote_ref'] == body['quote_ref'] and q['source_ref'] == body['source_ref']), None)
+                if quote is None:
+                    raise ApiError('RECOVERY_QUOTE_STALE', 409)
+                payload['quote_witness'] = {k: quote[k] for k in ('source_ref', 'observed_eligible_krw', 'distributed_krw', 'recovery_due_krw', 'consumed_krw', 'state_digest', 'advance_id', 'claim_due_krw')}
+            else:
+                payload['source_quotes'] = [{k: q[k] for k in ('source_ref', 'quote_ref', 'available_krw', 'waterfall_step')} for q in quotes]
+        try:
+            return recovery.entry(body['operation_id'], kind, state, len(self.machine.export_journal()), payload)
+        except recovery.RecoveryError as exc:
+            raise ApiError(exc.code, exc.status) from exc
+
+    def _post_recovery_command(self, body, principal):
+        command = self._validate_recovery_command(body, principal)
+        prior = overlay.operation_receipt(self.overlay_entries, body['operation_id'])
+        if prior is not None:
+            if prior.get('entry', {}).get('command') != command:
+                raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+            return {**prior, **self._overlay_receipt_common(principal), 'transport_duplicate': True}
+        if any(e['overlay_id'] == body['operation_id'] for e in self.overlay_entries):
+            raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+        state = overlay.fold(self.overlay_entries)
+        if state['terms_binding'] is None:
+            raise self._overlay_not_bound('overlay not active')
+        entry = self._plan_recovery_command(body, principal, state, self.overlay_entries)
+        candidate = self.overlay_entries + [entry]
+        overlay.fold(candidate, len(self.machine.export_journal()))
+        self._overlay_check_capacity(self.overlay_entries, [entry], state['sim_day'], {
+            'journal': self.machine.export_journal(), 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+        try:
+            self._persist(candidate)
+        except WorkspaceError as exc:
+            self.workspace_status = exc.code
+            raise ApiError(exc.code, 503) from exc
+        self.overlay_entries = candidate
+        return {**recovery.receipt(entry), **self._overlay_receipt_common(principal), 'transport_duplicate': False}
 
     def _f04_repay_receipt(self, principal, f04_id, args, case_id, result):
         """The F04 receipt of the principal repay, stored under the derived id with the execute() shape."""
@@ -1434,8 +1675,15 @@ class CapitalService:
                         if item['advance_id'] == ref), None)
         if subject is None:
             raise ApiError('REPAYMENT_ADVANCE_STATE', 409, {'reason': 'NOT_DRAWN'})
-        terms = self.terms.ledger_terms(subject['case'], subject['claim'], gate=subject['gate'],
-                                        draw_day=subject['draw_day'])
+        # Post-default cash routes through the recovery ledger once a set-off source is
+        # observed; the asserted-cash memo cannot bypass the waterfall (no anchor or no
+        # observed source keeps the decided POSTINGS_ACCEPTED_SAME_ALLOCATION path).
+        views = {key: view for key, view in self.fixtures.rows.items()
+                 if self.fixtures.beneficiary(key) == subject['case']['beneficiary_role']}
+        if recovery.source_quotes(state, subject, views, self.setoff):
+            raise ApiError('REPAYMENT_ADVANCE_STATE', 409,
+                           {'reason': 'RECOVERY_LEDGER_ONLY', 'phase': subject['case']['phase']})
+        terms = self._ledger_terms(subject)
         # An advance with no matching tier accrues nothing, but its principal can still be repaid.
         denominator = terms['denominator'] if terms is not None else getattr(
             self.terms, 'ledger_denominator', lambda: None)()
@@ -1530,7 +1778,7 @@ class CapitalService:
     def _overlay_row(self, subject, state, status):
         case, advance_id = subject['case'], subject['advance_id']
         recorded = state['advances'].get(advance_id)
-        terms = (self.terms.ledger_terms(case, subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'])
+        terms = (self._ledger_terms(subject)
                  if status is not None else None)
         paid = state.get('repayment', {}).get('advances', {}).get(advance_id)
         paid_interest = paid['paid_interest_krw'] if paid else 0
@@ -1538,6 +1786,12 @@ class CapitalService:
         interest = (recorded['posted_contract_krw'] if recorded else 0) - paid_interest
         default = (recorded['posted_default_krw'] if recorded else 0) - paid_default
         outstanding = subject['principal']
+        recovered = recovery.recovered(state, advance_id)
+        interest -= recovered['paid_interest_krw']
+        default -= recovered['paid_default_krw']
+        outstanding -= recovered['principal_recovered_krw'] + recovered['written_off_krw']
+        if recovered['writeoff_sim_day'] is not None:
+            interest = default = 0
         row = {'advance_id': advance_id, 'phase': case['phase'], 'draw_day': subject['draw_day'],
                'tier': 'NOT_APPLICABLE' if terms is None else terms['tier'],
                'principal_outstanding_krw': outstanding,
@@ -1554,7 +1808,9 @@ class CapitalService:
             row['cumulative_exact_contract'] = recorded['cumulative_contract_exact']
             row['cumulative_exact_default'] = recorded['cumulative_default_exact']
         if terms is not None:
-            row.update(maturity_day=terms['maturity_day'], writeoff_day=terms['writeoff_day'],
+            maturity = recovery.effective_maturity(state, advance_id, terms['maturity_day'])
+            a = recovery.anchor(state, advance_id)
+            row.update(maturity_day=maturity, writeoff_day=a['writeoff_eligible_sim_day'] if a else None,
                        contract_bps=terms['contract_bps'], default_bps=terms['default_bps'])
         split = None
         if status is not None and callable(getattr(self.terms, 'allocate', None)):
@@ -1640,6 +1896,50 @@ class CapitalService:
                 else:
                     body['margin'] = margin.status_block(
                         state, {}, mutable=margin.views_mutable(self.fixtures), bound=False)
+                policy = self.recovery_policy
+                recovery_rows = []
+                for subject in self._overlay_subjects(self.overlay_entries) if status is not None else []:
+                    ref = subject['advance_id']
+                    terms = self.terms.margin_terms(subject['case'], subject['claim'], gate=subject['gate'], draw_day=subject['draw_day'], refund_after_draw=margin.views_mutable(self.fixtures))
+                    if terms is None or policy is None:
+                        continue
+                    maturity = recovery.effective_maturity(state, ref, terms['maturity_day'])
+                    a = recovery.anchor(state, ref)
+                    rebased = maturity < terms['maturity_day'] or ref in state.get('accelerations', {}) or state.get('margin', {}).get('advances', {}).get(ref, {}).get('status') == 'ACCELERATED'
+                    detail = {'advance_id': ref, 'status': 'REBASED' if rebased else 'NOT_ACCELERATED',
+                              'interest_rebased': rebased, 'accelerated_maturity_sim_day': maturity if rebased else None,
+                              'default_interest_from_sim_day': maturity + 1,
+                              'default_eligible_sim_day': maturity + terms['grace_days'] + 1,
+                              'earliest_writeoff_sim_day': maturity + terms['grace_days'] + 1 + policy['writeoff_days_after_default'],
+                              'default_sim_day': a['default_sim_day'] if a else None,
+                              'writeoff_sim_day': a['writeoff_eligible_sim_day'] if a else None,
+                              'writeoff_eligible': bool(a and state['sim_day'] >= a['writeoff_eligible_sim_day']),
+                              'default_day_status': 'KNOWN' if a else 'DEFAULT_DAY_UNKNOWN',
+                              'flags': []}
+                    # The note binds this display delay in prose; load it rather than inventing a term.
+                    overdue = policy['default_command_overdue_days']
+                    if subject['case']['phase'] == 'DRAWN' and overdue is not None and state['sim_day'] >= detail['default_eligible_sim_day'] + overdue:
+                        detail['flags'].append('DEFAULT_COMMAND_OVERDUE')
+                    if a:
+                        detail.update(recovery.position(state, ref))
+                        detail['outstanding_loss_krw'] = detail['principal_krw']
+                        detail['residual_claim_krw'] = recovery.recovered(state, ref)['residual_claim_krw']
+                        detail['quotes'] = recovery.source_quotes(state, subject, {k: v for k, v in self.fixtures.rows.items() if self.fixtures.beneficiary(k) == subject['case']['beneficiary_role']}, self.setoff)
+                    else:
+                        detail['quotes'] = []
+                    recovery_rows.append(detail)
+                    row = next(x for x in body['advances'] if x['advance_id'] == ref)
+                    row['interest_rebased'] = rebased
+                    row['interest_rebase'] = copy.deepcopy(detail)
+                    row['margin']['interest_rebased'] = rebased
+                body['margin']['interest_rebased'] = any(x['interest_rebased'] for x in recovery_rows)
+                body['interest_rebased'] = body['margin']['interest_rebased']
+                body['recovery'] = {'label': 'SIMULATED', 'provisional': True,
+                                    'status': 'BOUND' if policy else 'NOT_BOUND', 'proposal_only': True,
+                                    'f04_default_called': False, 'executionAuthorized': False,
+                                    'entries': copy.deepcopy(state['sections']['recovery_ledger']),
+                                    'advances': recovery_rows, 'reserve_binding': 'NOT_BOUND',
+                                    'reserve_step_version': 'UNBUILT_V1'}
                 if operation_id is not None:
                     receipt = overlay.operation_receipt(self.overlay_entries, operation_id)
                     body['operation'] = receipt if receipt is not None else {

@@ -640,7 +640,12 @@ class CloseAndMarginTests(unittest.TestCase):
         tick(service, 'c-2', 3, 4)
         self.assertNotIn(overlay.KIND_MARGIN_CURE, kinds(service))
         self.assertEqual(margin_state(service)['status'], 'CALLED')
-        self.assertEqual(service.machine.view('sim-a')['outstanding_exposure'], BASE + 3)
+        # Recovery decision keeps the draw tier after a refund; these two won
+        # pay posted contractual interest before principal, so the breach remains.
+        self.assertEqual(service.machine.view('sim-a')['outstanding_exposure'], BASE + 5)
+        entry = next(e for e in service.overlay_entries if e['kind'] == overlay.KIND_REPAYMENT)
+        self.assertEqual(entry['payload']['allocation']['interest_krw'], 2)
+        self.assertEqual(entry['payload']['allocation']['principal_krw'], 0)
 
 
 class DigestExportTests(unittest.TestCase):

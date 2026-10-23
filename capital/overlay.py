@@ -203,11 +203,19 @@ def validate_entry(entry):
         raise OverlayError('overlay_id')
     if not _int(entry['after_journal_index']) or not _int(entry['sim_day']):
         raise OverlayError('entry index')
+    from capital import recovery
+    if entry['kind'] in recovery.KINDS:
+        recovery.validate_entry(entry)
+        return
     if entry['kind'] == KIND_REPAYMENT:
         _validate_repayment(entry['payload'])
         return
     shape = _PAYLOAD_TYPES.get(entry['kind']) if type(entry['kind']) is str else None
     payload = entry['payload']
+    if entry['kind'] == KIND_INTEREST and type(payload) is dict and 'recovery_witness' in payload:
+        shape = {**shape, 'recovery_witness': dict}
+    if entry['kind'] == KIND_CLOCK and type(payload) is dict and 'tick_directive' in payload:
+        shape = {**shape, 'tick_directive': dict}
     if shape is None or type(payload) is not dict or set(payload) != set(shape):
         raise OverlayError('payload keys')
     for key, kind in shape.items():
@@ -310,6 +318,21 @@ def _fold_interest(state, entry):
             raise OverlayError('advance terms changed')
     if payload['from_day'] < before['last'] or cum_contract < before['cc'] or cum_default < before['cd']:
         raise OverlayError('accrual went backwards')
+    if 'recovery_witness' in payload:
+        witness = payload['recovery_witness']
+        if (set(witness) != {'policy_version', 'denominator', 'stop_day'}
+                or witness['policy_version'] != 'DEFAULT_RECOVERY_V1'
+                or type(witness['denominator']) is not int or witness['denominator'] <= 0):
+            raise OverlayError('recovery accrual witness')
+        if witness['stop_day'] is not None and payload['to_day'] > witness['stop_day']:
+            raise OverlayError('accrual after stop day')
+        contractual = max(0, min(payload['to_day'], payload['maturity_day']) - min(payload['from_day'], payload['maturity_day']))
+        default = payload['to_day'] - payload['from_day'] - contractual
+        if (payload['contractual_days'], payload['default_days']) != (contractual, default):
+            raise OverlayError('recovery accrual day split')
+        if (cum_contract != before['cc'] + Fraction(payload['principal'] * contractual * payload['contract_bps'], witness['denominator'])
+                or cum_default != before['cd'] + Fraction(payload['principal'] * default * payload['default_bps'], witness['denominator'])):
+            raise OverlayError('recovery exact accrual')
     # The remainder carries: what has been posted is always exactly the floor of the cumulative exact.
     if before['pc'] + payload['posted_contract_krw'] != floor(cum_contract):
         raise OverlayError('contract posting is not the cumulative floor')
@@ -536,7 +559,11 @@ def fold(entries, journal_length=None):
             raise OverlayError('dangling after_journal_index')
         if entry['after_journal_index'] < state['last_after_journal_index'] or entry['sim_day'] < state['sim_day']:
             raise OverlayError('entries not monotone')
-        _FOLDERS[entry['kind']](state, entry)
+        from capital import recovery
+        if entry['kind'] in recovery.KINDS:
+            recovery.fold_entry(state, entry)
+        else:
+            _FOLDERS[entry['kind']](state, entry)
         state['entry_count'] += 1
         state['last_after_journal_index'] = entry['after_journal_index']
     if 'repayment' in state:
@@ -623,7 +650,7 @@ def accrual_postings(state, to_day, subjects):
             continue
         prior = state['advances'].get(subject['advance_id'])
         start = draw_day if prior is None else prior['last_accrued_day']
-        end = min(to_day, terms['writeoff_day'])
+        end = min(to_day, terms['writeoff_day']) if terms['writeoff_day'] is not None else to_day
         if end <= start:
             continue
         before = _split(_elapsed(start, draw_day, terms['min_interest_days']), terms['term_days'])
@@ -634,6 +661,7 @@ def accrual_postings(state, to_day, subjects):
         cum_contract += Fraction(principal * contractual * terms['contract_bps'], terms['denominator'])
         cum_default += Fraction(principal * default * terms['default_bps'], terms['denominator'])
         out.append({
+            **({'recovery_witness': dict(terms['recovery_witness'])} if 'recovery_witness' in terms else {}),
             'advance_id': subject['advance_id'], 'tier': terms['tier'], 'principal': principal,
             'draw_day': draw_day, 'maturity_day': terms['maturity_day'],
             'from_day': start, 'to_day': end, 'contractual_days': contractual, 'default_days': default,
@@ -726,6 +754,10 @@ def _repayment_receipt(position, entry):
 
 def operation_receipt(entries, operation_id):
     """Rebuild a recorded command's receipt from its entries, or None when never applied."""
+    from capital import recovery
+    for entry in entries:
+        if entry['overlay_id'] == operation_id and entry['kind'] in recovery.KINDS:
+            return recovery.receipt(entry)
     for position, entry in enumerate(entries):
         if entry['overlay_id'] == operation_id and entry['kind'] == KIND_REPAYMENT:
             return _repayment_receipt(position, entry)

@@ -64,6 +64,11 @@ def _na_section(reason):
     return {'status': 'NOT_APPLICABLE', 'reason': reason}
 
 
+def observed_distribution(line):
+    """Unencumbered observed cash on one payee line, shared by recovery quotes."""
+    return max(0, line['distributed'] - line['recovery_due'])
+
+
 @runtime_checkable
 class SetoffQuotePort(Protocol):
     """Quote the decided primary recovery step on one bound settlement view. Not an execution."""
@@ -181,9 +186,7 @@ class DecisionNoteSetoff:
             cls = row['class'] if type(row) is dict else None
             mapped = payee in payees
             counted = mapped and cls is not None and cls == counterparty_class
-            eligible = values['distributed'] - values['recovery_due']
-            if eligible < 0:
-                eligible = 0
+            eligible = observed_distribution(values)
             rows.append({
                 'payee': payee,
                 'class': cls,

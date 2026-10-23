@@ -21,7 +21,7 @@ from capital.projection import ProjectionError
 from capital.server import make_server
 from capital.service import ApiError, CapitalService
 from capital.terms import read_decision_block
-from test_overlay import draw_book, formula, run, tick, tier, row
+from test_overlay import draw_book, formula, run, tick, tier, row, terms_value
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTE = ROOT / 'docs' / 'decisions' / 'CAPITAL_ACCOUNTS_TAX_LEGAL.md'
@@ -205,6 +205,35 @@ class V1UnchangedTests(unittest.TestCase):
                 pinned = payment_status(pinned)
                 pinned['digest'] = hashlib.sha256(
                     json.dumps(pinned['steps'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            if name == 'tests/golden/journey_t05_sim.json':
+                # CAPITAL_DEFAULT_RECOVERY.md §4.10: only these fresh-scenario fields
+                # change. Historical journals/golden stay byte-identical and replay below.
+                from capital.margin import ScenarioReplaySource
+                from capital.producer import PinnedFsmProducer
+                history = json.loads((ROOT / 'tests/historical/t05_replay.json').read_text())
+                source = ScenarioReplaySource()
+                for event in history['source_replay']:
+                    source.replay(event['fixture_id'], event['scenario_id'])
+                accelerated = pinned['steps'][21]
+                accelerated['name'] = 'sim-a accelerated; interest is re-based (CAPITAL_DEFAULT_RECOVERY.md §4.10)'
+                accelerated['facts'].update(interest_rebased=True, interest_basis='REBASED')
+                facts = pinned['steps'][23]['facts']
+                amount = accelerated['facts']['principal_outstanding_krw']
+                deadline = accelerated['facts']['cure_deadline']
+                contract = formula(amount * deadline, tier('T1')['all_in_bps_annual'])
+                default = formula(amount, tier('T1')['all_in_bps_annual'] + terms_value('interest_rate')['default_interest_add_bps_annual'])
+                principal = facts['cash'] - contract - default
+                facts.update(interest_due_krw=contract, default_interest_due_krw=default, principal_share_krw=principal)
+                pinned['steps'][25]['facts']['principal_outstanding_krw'] = amount - principal
+                journal = copy.deepcopy(history['journal'])
+                repayment = next(e for e in journal if e['idempotency_key'] == 'a-repay-late')
+                unchanged = repayment['body']['amount'] == principal
+                repayment['body']['amount'] = principal
+                f04_digest = PinnedFsmProducer(fixtures=source).restored(journal).state_digest()
+                if unchanged:
+                    self.assertEqual(f04_digest, history['f04_digest'])
+                pinned['steps'][33]['facts']['state_digest'] = f04_digest
+                pinned['digest'] = hashlib.sha256(json.dumps(pinned['steps'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             current = json.loads((ROOT / name).read_text(encoding='utf-8'))
             self.assertIsInstance(current, dict, name)
             for key, value in pinned.items():
@@ -400,7 +429,8 @@ class InterestTests(unittest.TestCase):
         body = candidate(service)
         bps = tier('T1')['all_in_bps_annual']
         first = formula(90000 * 10, bps)
-        second = row(service)['interest_due_krw'] - first
+        second = formula(90000 * 10, bps + terms_value('interest_rate')['default_interest_add_bps_annual'])
+        self.assertEqual(row(service)['default_interest_due_krw'], second)
         self.assertGreater(second, 0)
         accounts = by_code(body)
         # before DEFAULTED: income. After: the memo only, and income does not grow.

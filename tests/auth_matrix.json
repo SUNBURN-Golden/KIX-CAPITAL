@@ -2610,9 +2610,7 @@
       "outcome": "DENY",
       "expect": {
         "status": 403,
-        "error": "ROLE_FORBIDDEN",
-        "permission": "command:submit",
-        "role": "agent"
+        "error": "RECOVERY_AGENT_FORBIDDEN"
       }
     },
     {

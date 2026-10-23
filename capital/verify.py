@@ -89,6 +89,18 @@ def verify_manifest(document, key=None, key_error=None, *, keyset=None, keyset_e
         return _fail('CONTENT_DIGEST_MISMATCH', pending, 'CONTENT_DIGEST_MISMATCH')
     if not _hex_equal(document.get('content_digest'), expected):
         return _fail('CONTENT_DIGEST_MISMATCH', pending, 'CONTENT_DIGEST_MISMATCH')
+    if OVERLAY_SECTION in sections:
+        try:
+            from capital import overlay, recovery
+            body = sections[OVERLAY_SECTION]['body']
+            journal = sections['journal']['body']['entries']
+            state = overlay.fold(body['journal'], len(journal))
+            recovery.validate_links(body['journal'], journal)
+            if body['state'] != state or body['overlay_state_digest'] != overlay.state_digest(state):
+                raise ValueError('overlay fold differs')
+        except (ValueError, KeyError, TypeError, ArithmeticError):
+            pending[OVERLAY_SECTION] = 'OVERLAY_FOLD_MISMATCH'
+            return _fail('OVERLAY_FOLD_MISMATCH', pending, 'MATCHED')
     return _check_signature(document, key, key_error, pending, keyset, keyset_error)
 
 
