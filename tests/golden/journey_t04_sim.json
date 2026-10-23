@@ -1,5 +1,5 @@
 {
-  "digest": "116f602fd8458752465082a93b63d967b48e090e4d15fc0a6626792eca9e7666",
+  "digest": "89ab38c4600a5fb1451107f301dfb791534b3aca1549dfecf37e32a82c37599c",
   "funds_executed": false,
   "integrated": false,
   "journey": "T04-sim",
@@ -514,7 +514,7 @@
       ],
       "facts": {
         "advances": 3,
-        "interest_payments": "NOT_RECORDED",
+        "interest_payments": "NONE_YET",
         "overlay_state_digest": "aa59b818817d70509841678d930d85dc706f7150e9bbdbe18b38ed9f26f30033"
       },
       "kind": "HTTP",

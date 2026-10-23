@@ -63,6 +63,18 @@ class OperatorDeskStaticTests(unittest.TestCase):
         self.assertIn("original.op==='advance_day'", APP_JS)
         self.assertIn('operation_id=', APP_JS)
 
+    def test_auditor_panel_is_text_only_and_has_no_command_callbacks(self):
+        block = desk_block()
+        audit = block[block.index('function paintDeskAudit('):block.index('function renderDesk(')]
+        for forbidden in ('request(', 'fetch(', 'onclick', 'command(', 'Number(', *FORBIDDEN_MATHS):
+            self.assertNotIn(forbidden, audit)
+        for needle in ('after_journal_index', 'desk-audit-chain', 'desk-audit-checks',
+                       'READ_ONLY_FIXTURE', 'not executed here', 'python3 -m capital.verify'):
+            self.assertIn(needle, INDEX)
+        self.assertIn("check.detail??'—'", audit)
+        self.assertIn('report.scope.overlay_state_digest===overlay?.overlay_state_digest', audit)
+        self.assertIn("currentRole()!=='auditor'", audit)
+
     def test_markup_pins_focus_order_and_roles(self):
         order = ['desk-refresh', 'desk-case', 'desk-days', 'desk-advance', 'desk-overlay-region', 'desk-timeline-region']
         positions = [INDEX.index(f'id="{name}"') for name in order]
