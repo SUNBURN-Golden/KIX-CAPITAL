@@ -1777,3 +1777,49 @@ All evidence below is local **SIMULATED** verification; no funds executed, upstr
 | Merge hygiene | No conflict markers or unmerged index entries; `git diff origin/main --check` clean |
 
 The default browser ports 8765/8766 were occupied by unrelated services in other workspaces. The ignored temporary config imports the checked-in config and changes only the four configured server ports/base URLs to 18765–18768, setting the repository working directory explicitly. Test files, assertions and timeouts are unchanged. The first complete browser run had 68 passes and one repayment/close refresh timeout; the complete five-test command-fence file then passed, followed by the clean 69-test full rerun above. No application or test change was needed for that timeout.
+
+## shadow-participation-slice-uc — PR fix round 1 (2026-10-24)
+
+Investigated the supplied CI `TimeoutError` in the live authorization matrix at
+merged HEAD `001bae9`. It did not recur: the complete Python suite passed, the
+36-test authorization file passed separately, and 20 fresh-server repetitions of
+`LiveMatrixTests.test_every_cell` passed all 4,100 route/role requests. The reported
+agent request to `/api/scenarios` is denied by the existing authorization check
+before the scenario handler or shadow arithmetic runs. These observations do not
+establish the cause of the historical timeout; they provide no reproducible
+application or merge defect to repair. Application code, tests, CI settings,
+timeouts and golden artifacts are unchanged in this round.
+
+All results are local **SIMULATED** verification, with no external execution or
+upstream adoption claimed.
+
+| Command / check | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | 1,046 passed in 274.633s |
+| `python3 -m unittest discover -s tests -p test_auth_matrix.py -v` | 36 passed |
+| Twenty fresh-server live matrix sweeps | 20 passed; 205 requests each, including the reported denied agent request |
+| `python3 -m unittest discover -s tests -p 'test_shadow*.py' -v` | 57 passed; note vectors, runtime rates, missing inputs/notes, false flags and unchanged simulation golden |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0 |
+| `python3 scripts/docs_surface.py --check` | 30 routes, 40 artifacts, 9 stages |
+| Finance, forecast, closeout, decision-binding, auth-matrix and not-bound-checklist scripts with `--check` | All exit 0; existing combined-main artifacts match without regeneration |
+| Actual loopback `GET /api/policy/shadow` | Three added items computed under SHADOW_NOT_APPLIED; all nine flags false in items, vectors and deferred rows; state_digest, receipts and operation_count unchanged |
+| Actual loopback `GET /api/policy/simulation`, compared with a disposable `origin/main` archive | Byte-identical with the same synthetic instance_id: 6,110 bytes, SHA256 `e68616b02581d822964dc969cd05591bfa791f28e6ef43dfca3363c6f1a64d82` |
+| Vendor / manifest / legacy export | Five locked SHA256s match; five reference files, manifest and export.py byte-identical to HEAD and origin/main |
+| Focused Chromium journey and portfolio files | 21 passed in 32.1s, including both cases that timed out in earlier full runs |
+| `npm run test:browser -- --config=/tmp/shadow-fix-browser-tcyi1rdb/playwright.config.cjs` | Final full run: all 69 passed in 2.0m |
+
+The default browser invocation could not bind occupied loopback ports. The
+temporary `/tmp/shadow-fix-browser-tcyi1rdb/playwright.config.cjs` imports the
+tracked configuration, uses unused loopback ports and a disposable demo workspace,
+and relocates config-relative test/report paths. It retains all projects, tests,
+assertions and timeouts. Two full runs each passed 68/69 tests, with different
+timing failures: first the default journey, then mobile startup. Inspection of the
+first trace showed the browser resolving the expected DEFAULTED label at
+68,570ms, while the test worker recorded completion at 146,084ms and exceeded its
+30s test budget. The second trace showed a 5s startup assertion returning after
+about 13.9s. Runner scheduling delays are an inference from those timing gaps,
+not an established explanation of the original CI failure. Both affected files
+then passed together without code, assertion or timeout changes.
+The subsequent complete Chromium run passed all 69 tests. This round changes only
+this validation record; no commit, push or external post was made.
