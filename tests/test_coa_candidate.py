@@ -197,7 +197,24 @@ class V1UnchangedTests(unittest.TestCase):
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
         # Preserve the exact reviewed overlay bytes from a5b2e2d5b5ecfa820462298cf075cbc223ee60f0,
         # rather than main's earlier overlay. Export, V1 projection and vendor remain pinned to main.
-        self.assertEqual(hashlib.sha256((ROOT / 'capital/overlay.py').read_bytes()).hexdigest(),
+        overlay_bytes = (ROOT / 'capital/overlay.py').read_bytes()
+        self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
+                         '96542b38a60d00a2454038f496e5654efff05c7e80be92592070c15323eb5780')
+        # Claim slices add only these three exact dispatch extensions. Keep the
+        # reviewed recovery byte guard on every remaining byte, as well as the
+        # live exact-byte guard above; no legacy fold is exempted.
+        extensions = (
+            (b"    from capital import recovery, slices\n    if entry['kind'] in slices.KINDS:\n        slices.validate_entry(entry)\n        return\n",
+             b"    from capital import recovery\n"),
+            (b"        from capital import recovery, slices\n        if entry['kind'] in slices.KINDS:\n            slices.fold_entry(state, entry)\n        elif entry['kind'] in recovery.KINDS:\n",
+             b"        from capital import recovery\n        if entry['kind'] in recovery.KINDS:\n"),
+            (b"    from capital import recovery, slices\n    for entry in entries:\n        if entry['overlay_id'] == operation_id and entry['kind'] in slices.KINDS:\n            return slices.receipt(entry)\n",
+             b"    from capital import recovery\n    for entry in entries:\n"),
+        )
+        for extension, original in extensions:
+            self.assertEqual(overlay_bytes.count(extension), 1)
+            overlay_bytes = overlay_bytes.replace(extension, original)
+        self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
                          '26c8fcdbe6074e39ff3ad1344d92e9575597ee3ab60baf0a21eed17c55d724dd')
         ports_ref = 'origin/main' if probe.returncode == 0 else 'HEAD'
         ports_base = self._git('show', f'{ports_ref}:capital/ports.py')

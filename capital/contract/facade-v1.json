@@ -334,6 +334,78 @@
     {
       "code": "WRITEOFF_SETOFF_AVAILABLE",
       "status": 409
+    },
+    {
+      "code": "BASE_ALREADY_ENCUMBERED",
+      "status": 409
+    },
+    {
+      "code": "REGISTRY_STALE_CAS",
+      "status": 409
+    },
+    {
+      "code": "SLICE_AGENT_FORBIDDEN",
+      "status": 403
+    },
+    {
+      "code": "SLICE_CAP_EXCEEDED",
+      "status": 409
+    },
+    {
+      "code": "SLICE_DRAW_REFUSED",
+      "status": 409
+    },
+    {
+      "code": "SLICE_FIELD_NOT_ADOPTED",
+      "status": 400
+    },
+    {
+      "code": "SLICE_HOLDER_NOT_ADOPTED",
+      "status": 409
+    },
+    {
+      "code": "SLICE_NOT_IMPAIRABLE",
+      "status": 409
+    },
+    {
+      "code": "SLICE_NOT_RESOLVABLE",
+      "status": 409
+    },
+    {
+      "code": "SLICE_OPEN_EXISTS",
+      "status": 409
+    },
+    {
+      "code": "SLICE_PAYEE_NOT_SLICEABLE",
+      "status": 409
+    },
+    {
+      "code": "SLICE_QUOTE_MISMATCH",
+      "status": 409
+    },
+    {
+      "code": "SLICE_RECOURSE_SOURCE_INVALID",
+      "status": 409
+    },
+    {
+      "code": "SLICE_STATE_INVALID",
+      "status": 409
+    },
+    {
+      "code": "SLICE_U1_REFUSED",
+      "status": 409
+    },
+    {
+      "code": "SLICE_WOULD_BREACH_ADVANCE_BASE",
+      "status": 409
+    },
+    {
+      "code": "UNKNOWN_SETTLEMENT",
+      "status": 409
+    },
+    {
+      "code": "UNKNOWN_SLICE",
+      "status": 404
     }
   ],
   "commands": {
@@ -1113,7 +1185,8 @@
         "RECOVERY_EXCEEDS_CLAIM",
         "RECOVERY_QUOTE_STALE",
         "WRITEOFF_NOT_ELIGIBLE",
-        "WRITEOFF_SETOFF_AVAILABLE"
+        "WRITEOFF_SETOFF_AVAILABLE",
+        "SLICE_DRAW_REFUSED"
       ],
       "permission": "command:submit",
       "request": {
@@ -1318,6 +1391,34 @@
     },
     {
       "method": "GET",
+      "path": "/api/overlay/slices",
+      "operationId": "local_overlay_slices",
+      "dispatch": "/api/overlay/slices",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/slice_registry_listing"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND",
+        "INVALID_ARGUMENTS",
+        "UNKNOWN_SETTLEMENT",
+        "WORKSPACE_UNREADABLE",
+        "WORKSPACE_LOCKED"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/risk",
       "operationId": "local_risk",
       "dispatch": "/api/risk",
@@ -1419,7 +1520,25 @@
         "RECOVERY_EXCEEDS_CLAIM",
         "RECOVERY_QUOTE_STALE",
         "WRITEOFF_NOT_ELIGIBLE",
-        "WRITEOFF_SETOFF_AVAILABLE"
+        "WRITEOFF_SETOFF_AVAILABLE",
+        "BASE_ALREADY_ENCUMBERED",
+        "REGISTRY_STALE_CAS",
+        "SLICE_AGENT_FORBIDDEN",
+        "SLICE_CAP_EXCEEDED",
+        "SLICE_DRAW_REFUSED",
+        "SLICE_FIELD_NOT_ADOPTED",
+        "SLICE_HOLDER_NOT_ADOPTED",
+        "SLICE_NOT_IMPAIRABLE",
+        "SLICE_NOT_RESOLVABLE",
+        "SLICE_OPEN_EXISTS",
+        "SLICE_PAYEE_NOT_SLICEABLE",
+        "SLICE_QUOTE_MISMATCH",
+        "SLICE_RECOURSE_SOURCE_INVALID",
+        "SLICE_STATE_INVALID",
+        "SLICE_U1_REFUSED",
+        "SLICE_WOULD_BREACH_ADVANCE_BASE",
+        "UNKNOWN_SETTLEMENT",
+        "UNKNOWN_SLICE"
       ],
       "permission": "overlay:command",
       "request": {
@@ -3297,6 +3416,9 @@
         },
         "shadow_uc4": {
           "type": "integer"
+        },
+        "registry_check": {
+          "$ref": "#/definitions/slice_registry_check"
         }
       }
     },
@@ -6067,6 +6189,9 @@
           "type": "integer"
         },
         "base_krw": {
+          "type": "integer"
+        },
+        "slice_encumbered_krw": {
           "type": "integer"
         }
       }
@@ -11445,6 +11570,24 @@
         },
         {
           "$ref": "#/definitions/overlay_record_acceleration_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_register_slice_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_open_slice_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_impair_slice_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_post_slice_recourse_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_resolve_slice_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_void_slice_request"
         }
       ]
     },
@@ -11939,6 +12082,9 @@
         },
         {
           "$ref": "#/definitions/overlay_recorded_recovery"
+        },
+        {
+          "$ref": "#/definitions/overlay_recorded_slice"
         }
       ]
     },
@@ -12116,6 +12262,9 @@
         },
         {
           "$ref": "#/definitions/overlay_recovery_receipt"
+        },
+        {
+          "$ref": "#/definitions/overlay_slice_receipt"
         }
       ]
     },
@@ -14842,6 +14991,873 @@
         },
         "workspace_mutated": {
           "const": false
+        }
+      }
+    },
+    "overlay_register_slice_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "claim_id",
+        "expected_days",
+        "holder_role",
+        "payee_label",
+        "quote_ref",
+        "slice_face_krw"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "register_slice"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "approvals": {
+          "$ref": "#/definitions/recovery_approvals"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "expected_days": {
+          "type": "integer"
+        },
+        "holder_role": {
+          "type": "string"
+        },
+        "payee_label": {
+          "type": "string"
+        },
+        "quote_ref": {
+          "type": "string"
+        },
+        "slice_face_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "overlay_open_slice_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "expected_after_journal_index",
+        "slice_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "open_slice"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "approvals": {
+          "$ref": "#/definitions/recovery_approvals"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "expected_after_journal_index": {
+          "type": "integer"
+        },
+        "slice_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_impair_slice_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "reason",
+        "slice_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "impair_slice"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "approvals": {
+          "$ref": "#/definitions/recovery_approvals"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "slice_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_post_slice_recourse_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "amount_krw",
+        "quote_ref",
+        "slice_id",
+        "source_ref"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "post_slice_recourse"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "approvals": {
+          "$ref": "#/definitions/recovery_approvals"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "quote_ref": {
+          "type": "string"
+        },
+        "slice_id": {
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/definitions/recovery_source_ref"
+        }
+      }
+    },
+    "overlay_resolve_slice_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "resolution",
+        "slice_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "resolve_slice"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "approvals": {
+          "$ref": "#/definitions/recovery_approvals"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "slice_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_void_slice_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "reason",
+        "slice_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "const": "void_slice"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "approvals": {
+          "$ref": "#/definitions/recovery_approvals"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "slice_id": {
+          "type": "string"
+        }
+      }
+    },
+    "overlay_recorded_slice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "sim_day",
+        "entry",
+        "label",
+        "mode",
+        "application",
+        "offering",
+        "title_transferred",
+        "legal_effect",
+        "provisional",
+        "executionAuthorized",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "register_slice",
+            "open_slice",
+            "impair_slice",
+            "post_slice_recourse",
+            "resolve_slice",
+            "void_slice"
+          ]
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "entry": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "application": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "offering": {
+          "const": "SIMULATION_ONLY_NOT_OFFERED_V1"
+        },
+        "title_transferred": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "provisional": {
+          "const": true
+        },
+        "executionAuthorized": {
+          "const": false
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        }
+      }
+    },
+    "overlay_slice_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "sim_day",
+        "entry",
+        "label",
+        "mode",
+        "application",
+        "offering",
+        "title_transferred",
+        "legal_effect",
+        "provisional",
+        "executionAuthorized",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated",
+        "f04_journal_written",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "register_slice",
+            "open_slice",
+            "impair_slice",
+            "post_slice_recourse",
+            "resolve_slice",
+            "void_slice"
+          ]
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "entry": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "application": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "offering": {
+          "const": "SIMULATION_ONLY_NOT_OFFERED_V1"
+        },
+        "title_transferred": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "provisional": {
+          "const": true
+        },
+        "executionAuthorized": {
+          "const": false
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        },
+        "overlay_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "slice_capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "entries",
+        "slices",
+        "non_terminal",
+        "bounds"
+      ],
+      "properties": {
+        "scope": {
+          "const": "claim_slice_registry"
+        },
+        "entries": {
+          "type": "integer"
+        },
+        "slices": {
+          "type": "integer"
+        },
+        "non_terminal": {
+          "type": "integer"
+        },
+        "bounds": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "slice_registry_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "read_only",
+        "status",
+        "codes"
+      ],
+      "properties": {
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "read_only": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "ADMISSIBLE",
+            "REFUSED",
+            "NOT_BOUND"
+          ]
+        },
+        "codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sliceable": {
+          "type": "boolean"
+        },
+        "open_slice_exists": {
+          "type": "boolean"
+        },
+        "free_face_krw": {
+          "type": "integer"
+        },
+        "admissible_face_max_krw": {
+          "type": "integer"
+        },
+        "capacity": {
+          "$ref": "#/definitions/slice_capacity"
+        }
+      }
+    },
+    "slice_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "application",
+        "offering",
+        "title_transferred",
+        "legal_effect",
+        "provisional",
+        "executionAuthorized",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated",
+        "slice_id",
+        "claim_id",
+        "payee_label",
+        "beneficiary_role",
+        "holder_role",
+        "tier",
+        "quote_ref",
+        "slice_face_krw",
+        "recourse_received_krw",
+        "served_krw",
+        "outstanding_krw",
+        "eligible_line_krw",
+        "encumbered_face_krw",
+        "exposure_krw",
+        "shortfall_krw",
+        "shadow_discount",
+        "shadow_price",
+        "status",
+        "policy",
+        "SLICE_IMPAIRMENT_ELIGIBLE",
+        "SLICE_RESOLVABLE",
+        "holder_first",
+        "quotes"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "application": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "offering": {
+          "const": "SIMULATION_ONLY_NOT_OFFERED_V1"
+        },
+        "title_transferred": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "provisional": {
+          "const": true
+        },
+        "executionAuthorized": {
+          "const": false
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "slice_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "payee_label": {
+          "type": "string"
+        },
+        "beneficiary_role": {
+          "type": "string"
+        },
+        "holder_role": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "quote_ref": {
+          "type": "string"
+        },
+        "slice_face_krw": {
+          "type": "integer"
+        },
+        "recourse_received_krw": {
+          "type": "integer"
+        },
+        "served_krw": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "eligible_line_krw": {
+          "type": "integer"
+        },
+        "encumbered_face_krw": {
+          "type": "integer"
+        },
+        "exposure_krw": {
+          "type": "integer"
+        },
+        "shortfall_krw": {
+          "type": "integer"
+        },
+        "shadow_discount": {
+          "type": "integer"
+        },
+        "shadow_price": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "PROPOSED",
+            "OPEN",
+            "IMPAIRED",
+            "RESOLVED",
+            "VOID"
+          ]
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "baseline_distributed_krw": {
+          "type": "integer"
+        },
+        "resolution": {
+          "enum": [
+            "SERVED_IN_FULL",
+            "RECOURSE_SATISFIED"
+          ]
+        },
+        "SLICE_IMPAIRMENT_ELIGIBLE": {
+          "type": "boolean"
+        },
+        "SLICE_RESOLVABLE": {
+          "type": "boolean"
+        },
+        "holder_first": {
+          "const": true
+        },
+        "quotes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "slice_registry_listing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "application",
+        "offering",
+        "title_transferred",
+        "legal_effect",
+        "provisional",
+        "executionAuthorized",
+        "applied_to_fsm",
+        "funds_executed",
+        "policy_adopted",
+        "bank_debit_observed",
+        "right_cancelled",
+        "external_return_closed",
+        "legal_debtor_bound",
+        "admission_granted",
+        "workspace_mutated",
+        "status",
+        "slices"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "application": {
+          "const": "SHADOW_NOT_APPLIED"
+        },
+        "offering": {
+          "const": "SIMULATION_ONLY_NOT_OFFERED_V1"
+        },
+        "title_transferred": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "provisional": {
+          "const": true
+        },
+        "executionAuthorized": {
+          "const": false
+        },
+        "applied_to_fsm": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "bank_debit_observed": {
+          "const": false
+        },
+        "right_cancelled": {
+          "const": false
+        },
+        "external_return_closed": {
+          "const": false
+        },
+        "legal_debtor_bound": {
+          "const": false
+        },
+        "admission_granted": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "slices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/slice_row"
+          }
+        },
+        "read_only": {
+          "const": true
+        },
+        "holder_first": {
+          "const": true
+        },
+        "capacity": {
+          "$ref": "#/definitions/slice_capacity"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "after_journal_index": {
+          "type": "integer"
+        },
+        "quote": {
+          "$ref": "#/definitions/shadow_result"
         }
       }
     }

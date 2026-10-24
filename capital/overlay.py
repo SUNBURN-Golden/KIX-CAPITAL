@@ -203,7 +203,10 @@ def validate_entry(entry):
         raise OverlayError('overlay_id')
     if not _int(entry['after_journal_index']) or not _int(entry['sim_day']):
         raise OverlayError('entry index')
-    from capital import recovery
+    from capital import recovery, slices
+    if entry['kind'] in slices.KINDS:
+        slices.validate_entry(entry)
+        return
     if entry['kind'] in recovery.KINDS:
         recovery.validate_entry(entry)
         return
@@ -561,8 +564,10 @@ def fold(entries, journal_length=None):
             raise OverlayError('dangling after_journal_index')
         if entry['after_journal_index'] < state['last_after_journal_index'] or entry['sim_day'] < state['sim_day']:
             raise OverlayError('entries not monotone')
-        from capital import recovery
-        if entry['kind'] in recovery.KINDS:
+        from capital import recovery, slices
+        if entry['kind'] in slices.KINDS:
+            slices.fold_entry(state, entry)
+        elif entry['kind'] in recovery.KINDS:
             recovery.fold_entry(state, entry)
         else:
             _FOLDERS[entry['kind']](state, entry)
@@ -756,8 +761,10 @@ def _repayment_receipt(position, entry):
 
 def operation_receipt(entries, operation_id):
     """Rebuild a recorded command's receipt from its entries, or None when never applied."""
-    from capital import recovery
+    from capital import recovery, slices
     for entry in entries:
+        if entry['overlay_id'] == operation_id and entry['kind'] in slices.KINDS:
+            return slices.receipt(entry)
         if entry['overlay_id'] == operation_id and entry['kind'] in recovery.KINDS:
             return recovery.receipt(entry)
     for position, entry in enumerate(entries):

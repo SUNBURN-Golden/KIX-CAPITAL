@@ -35,6 +35,7 @@ GET_DISPATCH = (
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
     ('/api/overlay', False, 'overlay'),
+    ('/api/overlay/slices', False, 'overlay_slices'),
     ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
     ('/api/risk/covenants', False, 'covenants'),
@@ -321,6 +322,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             return self.reply(200, service.case_terms(
                 advance_id, instance, draw_day, as_of_day, expected))
 
+        def _get_overlay_slices(self, route, principal):
+            params = parse_qs(route.query, keep_blank_values=True)
+            if set(params) - {'quote_claim_id', 'quote_payee_label', 'expected_days'} or any(len(v) != 1 for v in params.values()):
+                raise ApiError('INVALID_ARGUMENTS')
+            expected = query_day(route.query, 'expected_days', False)
+            return self.reply(200, service.overlay_slices(
+                params.get('quote_claim_id', [None])[0], params.get('quote_payee_label', [None])[0], expected))
+
         def _get_overlay(self, route, principal):
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
             lookup = values[0] if values and len(values) == 1 else None
@@ -471,6 +480,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                     raise ApiError('NOT_FOUND', 404)
                 if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
                     body = self.read_json()
+                    from capital.slices import COMMANDS as slice_commands
+                    if type(body) is dict and type(body.get('op')) is str and body['op'] in slice_commands:
+                        raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
                     if type(body) is dict and (body.get('op') in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration') or 'writeoff' in body):
                         raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
                     require(authorizer, principal, permission)

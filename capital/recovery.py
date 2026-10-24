@@ -136,14 +136,16 @@ def source_quotes(state, subject, sources, setoff):
                 continue
             key = source_key(source_id, line['payee'])
             consumed = state.get('recovery', {}).get('sources', {}).get(key, 0)
-            available = max(0, line['eligible_krw'] - consumed)
+            from capital import slices
+            available = slices.source_available(state, source_id, line['payee'], line['eligible_krw'], line['distributed'])
             if available == 0:
                 continue
             source = {'claim_id': source_id, 'payee_label': line['payee'], 'source_cut': sha(claim)}
             witness = {'source_ref': source, 'observed_eligible_krw': line['eligible_krw'],
                        'distributed_krw': line['distributed'], 'recovery_due_krw': line['recovery_due'],
                        'consumed_krw': consumed, 'state_digest': overlay.state_digest(state),
-                       'advance_id': ref, 'claim_due_krw': due}
+                       'advance_id': ref, 'claim_due_krw': due,
+                       **slices.source_terms(state, source_id, line['payee'], line['distributed'])}
             result.append({'quote_ref': sha(witness), **witness, 'amount_krw': min(due, available),
                            'available_krw': available,
                            'waterfall_step': waterfall(state, ref)[0 if source_id == case['claim_id'] else 1],
@@ -239,11 +241,13 @@ def plan_payload(state, entry):
                             'distributed_krw': q['distributed_krw'], 'recovery_due_krw': q['recovery_due_krw'],
                             'consumed_krw': consumed, 'state_digest': overlay.state_digest(state),
                             'advance_id': ref, 'claim_due_krw': pos['claim_krw']}
+        from capital import slices
+        expected_witness.update(slices.source_terms(state, source['claim_id'], source['payee_label'], q['distributed_krw']))
         if any(type(q[key]) is not int or q[key] < 0 for key in ('observed_eligible_krw', 'distributed_krw', 'recovery_due_krw', 'consumed_krw', 'claim_due_krw')):
             raise RecoveryError('RECOVERY_QUOTE_STALE')
         if q != expected_witness or sha(q) != command['quote_ref']:
             raise RecoveryError('RECOVERY_QUOTE_STALE')
-        if amount > max(0, q['observed_eligible_krw'] - consumed):
+        if amount > slices.source_available(state, source['claim_id'], source['payee_label'], q['observed_eligible_krw'], q['distributed_krw']):
             raise RecoveryError('RECOVERY_SOURCE_EXCEEDED')
         steps = waterfall(state, ref)
         step = steps[0 if source['claim_id'] == a['claim_id'] else 1]
