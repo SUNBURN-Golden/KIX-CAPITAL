@@ -35,6 +35,7 @@ class MatrixTests(unittest.TestCase):
             '/api/terms': 'projection:read',
             '/api/terms/sim-a': 'projection:read',
             '/api/overlay': 'projection:read',
+            '/api/risk': 'projection:read',
             '/api/policy': 'projection:read',
             '/api/policy/simulation': 'projection:read',
             '/api/policy/shadow': 'projection:read',
@@ -459,22 +460,23 @@ class HttpAuthTests(unittest.TestCase):
         preview = f"/api/preview/sim-http-auth?instance_id={instance}"
         underwrite = f"/api/underwrite/sim-http-auth?instance_id={instance}"
         operation = f"/api/operations/auth-offer?instance_id={instance}"
+        snapshot = f"/api/portfolio/snapshot?instance_id={instance}"
         for role in (None, 'organizer', 'auditor'):
             headers = {'X-Capital-Token': self.token_for(role)} if role else {}
-            for path in ('/api/state', '/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, operation):
+            for path in ('/api/state', '/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, operation, snapshot):
                 status, raw = self.request('GET', path, headers=headers)
                 self.assertEqual(status, 200, (role, path, raw[:200]))
         observer = {'X-Capital-Token': self.token_for('observer')}
         for path in ('/api/state', operation):
             status, raw = self.request('GET', path, headers=observer)
             self.assertEqual(status, 200, (path, raw[:200]))
-        for path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, '/api/export', '/api/reconciliation', '/api/statement'):
+        for path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, snapshot, '/api/export', '/api/reconciliation', '/api/statement'):
             status, raw = self.request('GET', path, headers=observer)
             payload = json.loads(raw)
             self.assertEqual(status, 403, (path, payload))
             self.assertEqual(payload['error'], 'ROLE_FORBIDDEN')
             self.assertEqual(payload['role'], 'observer')
-            if path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite):
+            if path in ('/api/evidence', '/api/projection', '/api/terms', '/api/policy', '/api/policy/simulation', '/api/policy/shadow', preview, underwrite, snapshot):
                 self.assertEqual(payload['permission'], 'projection:read')
             if path == '/api/statement':
                 self.assertEqual(payload['permission'], 'statement:read')
@@ -503,7 +505,8 @@ class HttpAuthTests(unittest.TestCase):
         for path, children, _name in GET_DISPATCH:
             if children:
                 continue
-            status, raw = self.request('GET', path)
+            target = f'{path}?instance_id={instance}' if path == '/api/portfolio/snapshot' else path
+            status, raw = self.request('GET', target)
             payload = json.loads(raw)
             self.assertNotEqual(payload.get('error'), 'NOT_FOUND', path)
             self.assertEqual(status, 200, (path, payload))

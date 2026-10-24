@@ -8,8 +8,61 @@ from capital.readiness import GROUPS
 from capital.service import CapitalService
 
 ROOT = Path(__file__).resolve().parents[1]
+HANDBOOK = ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md'
+_STALE_REBASE = re.compile(r'(rebase|re-based|재기준|리베이스).{0,160}(DECISION_REQUIRED|결정 대기)'
+                           r'|(DECISION_REQUIRED|결정 대기).{0,160}(rebase|re-based|재기준|리베이스)',
+                           re.IGNORECASE | re.DOTALL)
+
+
+def handbook_section(text, name):
+    start = '<!-- handbook-section:%s -->' % name
+    if start not in text:
+        return ''
+    body = text.split(start, 1)[1]
+    return body.split('<!-- /handbook-section -->', 1)[0]
+
+
+def handbook_rebase_errors(text):
+    errors = []
+    risk = handbook_section(text, 'portfolio-risk-analytics')
+    if not risk:
+        errors.append('risk section missing')
+    if 'NOT_REBASED / DECISION_REQUIRED' in risk:
+        errors.append('retired NOT_REBASED / DECISION_REQUIRED in risk section')
+    for token in ('docs/decisions/CAPITAL_DEFAULT_RECOVERY.md', 'overlay-recovery-writeoff',
+                  'PROVISIONAL', 'interest_rebased'):
+        if token not in risk:
+            errors.append('risk section lacks ' + token)
+    if _STALE_REBASE.search(text):
+        errors.append('stale rebase wording in handbook')
+    return errors
 REQUIREMENTS = ROOT / 'docs' / 'CAPITAL_REQUIREMENTS_KO.md'
 COVERAGE = ROOT / 'docs' / 'CAP_COVERAGE.md'
+REGISTRY_NOTE = ROOT / 'docs' / 'decisions' / 'CAPITAL_CLAIM_SLICE_REGISTRY.md'
+
+
+def requirements_header(text):
+    """Everything before the first '## ' heading: the pin-scope paragraph."""
+    return text.split('\n## ', 1)[0]
+
+
+def requirements_header_errors(header, registry_note):
+    """The header must scope the two executable/reference pins and mark each
+    decision note's recorded research baseline as provenance, not a binding."""
+    errors = []
+    for needle in ('7481b0e16ce9b903abbffa62249bb91cd9e63cfe',
+                   'e2a029d8ac3af7575888dac22fc4bf173ebec232'):
+        if needle not in header:
+            errors.append('requirements header lacks executable pin ' + needle[:7])
+    if '모든 Protocol 출처는 위 두 SHA 중' in header:
+        errors.append('requirements header still binds every Protocol citation to two SHAs')
+    for needle in ('실행·참조', 'bases', 'CAPITAL_CLAIM_SLICE_REGISTRY.md', '9eb6b9f',
+                   '구속이 아니'):
+        if needle not in header:
+            errors.append('requirements header lacks baseline scoping ' + needle)
+    if '9eb6b9f' not in registry_note:
+        errors.append('CAPITAL_CLAIM_SLICE_REGISTRY.md no longer records the 9eb6b9f baseline')
+    return errors
 
 CAP_IDS = [f'CAP-{index:02d}' for index in range(1, 21)]
 STATUS_TOKENS = (
@@ -153,6 +206,53 @@ class CoverageTests(unittest.TestCase):
         ready = CapitalService().readiness()
         self.assertEqual(ready['upstream_nodes_completed'], [])
         self.assertEqual([cells[0] for cells, _line in table_rows(REQUIREMENTS.read_text(encoding='utf-8'))], CAP_IDS)
+
+    def test_decision_notes_are_cited_and_rebase_wording_retired(self):
+        text = COVERAGE.read_text(encoding='utf-8')
+        rows = {l.split('|')[1].strip(): l for l in text.splitlines() if l.startswith('| CAP-')}
+        recovery = 'docs/decisions/CAPITAL_DEFAULT_RECOVERY.md'
+        posting = 'docs/decisions/CAPITAL_REPAYMENT_POSTING.md'
+        for cap in ('CAP-01', 'CAP-04'):
+            self.assertIn(recovery, rows[cap])
+        for cap in ('CAP-01', 'CAP-11'):
+            self.assertIn(posting, rows[cap])
+        line9 = text.splitlines()[8]
+        self.assertIn(recovery, line9)
+        self.assertIn(posting, line9)
+        for rel in ('README.md', 'docs/INTEGRATION.md', 'docs/CAPITAL_REQUIREMENTS_KO.md',
+                    'docs/OPERATOR_HANDBOOK_KO.md'):
+            body = (ROOT / rel).read_text(encoding='utf-8')
+            self.assertIsNone(_STALE_REBASE.search(body), rel)
+
+    def test_requirements_header_scopes_pins_to_consumers(self):
+        header = requirements_header(REQUIREMENTS.read_text(encoding='utf-8'))
+        note = REGISTRY_NOTE.read_text(encoding='utf-8')
+        self.assertEqual(requirements_header_errors(header, note), [])
+        stale = header + '\n모든 Protocol 출처는 위 두 SHA 중 해당 범위의 것에 고정한다.\n'
+        self.assertTrue(requirements_header_errors(stale, note))
+        for needle in ('bases', '9eb6b9f', '구속이 아니'):
+            mutated = header.replace(needle, 'x', 1)
+            self.assertNotEqual(mutated, header)
+            self.assertTrue(requirements_header_errors(mutated, note), needle)
+        self.assertTrue(
+            requirements_header_errors(header, note.replace('9eb6b9f', '0000000')))
+
+    def test_handbook_risk_section_rebase_wording_and_fence(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        self.assertEqual(handbook_rebase_errors(text), [])
+        old = '마진 가속 후의 만기 재기준(`NOT_REBASED / DECISION_REQUIRED`)은 반영하지 않는다.'
+        for name in ('portfolio-risk-analytics', 'margin-cure-default'):
+            section = handbook_section(text, name)
+            self.assertTrue(section, name)
+            mutated = text.replace(section, section + ' ' + old, 1)
+            self.assertNotEqual(mutated, text)
+            self.assertIsNotNone(_STALE_REBASE.search(mutated))
+            self.assertTrue(handbook_rebase_errors(mutated), name)
+        risk = handbook_section(text, 'portfolio-risk-analytics')
+        for token in ('overlay-recovery-writeoff', 'CAPITAL_DEFAULT_RECOVERY.md'):
+            self.assertIn(token, risk)
+            mutated = text.replace(risk, risk.replace(token, 'x'), 1)
+            self.assertTrue(handbook_rebase_errors(mutated), token)
 
     def test_missing_duplicate_and_flipped_status_fail(self):
         original = COVERAGE.read_text(encoding='utf-8')

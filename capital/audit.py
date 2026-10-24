@@ -4,8 +4,9 @@
 directly: no flock, no mkdir, no write, no repair. The staged checks recompute
 the envelope checksum, replay the journal into a scratch machine, run the
 service's own restore validation over an in-memory document port, recompute
-receipt fingerprints, and embed the same six build_reconciliation checks as
-GET /api/reconciliation. The first failing check supplies the reason and the
+receipt fingerprints, and embed the same build_reconciliation checks as
+GET /api/reconciliation (six, plus overlay_fold_digest_equals_persisted when
+the overlay is non-empty). The first failing check supplies the reason and the
 command exits non-zero. This is a local diagnostic, not stage5 durable
 transaction evidence and not an import or resume route.
 """
@@ -22,7 +23,7 @@ from capital.projection import SimulationProjection
 from capital.protocol import CreditMachine
 from capital.recon import build_reconciliation
 from capital.service import MAX_OPERATIONS, CapitalService, digest
-from capital.store import FILE_NAME, StoragePort, verify_document
+from capital.store import FILE_NAME, StoragePort, overlay_section, verify_document
 from capital.verify import loads
 
 CHECK_ORDER = (
@@ -162,8 +163,18 @@ def _fingerprints_match(receipts, journal, mapping):
             return False
         if stored is None:
             return False
-        expected = digest({'operation_id': entry['idempotency_key'], 'op': entry['op'],
-                           'advance_id': entry['advance_id'], 'args': args})
+        identity = {'operation_id': entry['idempotency_key'], 'op': entry['op'],
+                    'advance_id': entry['advance_id'], 'args': args}
+        if entry['op'] == 'default' and stored['receipt'].get('approvals'):
+            from capital.recovery import approvals
+            try:
+                labels = approvals(stored['receipt']['approvals'])
+            except ValueError:
+                return False
+            if labels != stored['receipt']['approvals']:
+                return False
+            identity['approvals'] = labels
+        expected = digest(identity)
         if not hmac.compare_digest(expected, stored['fingerprint']):
             return False
     return True
@@ -237,7 +248,9 @@ def audit_workspace(directory):
             fixture_rows=copy.deepcopy(fixtures.rows), fixtures_digest=digest(fixtures.rows),
             settlement_source=fixtures, projection_port=SimulationProjection(),
             probe_operation_id=None, instance_id=_AUDIT_INSTANCE,
-            operation_capacity=MAX_OPERATIONS, workspace_status=_WORKSPACE_STATUS)
+            operation_capacity=MAX_OPERATIONS, workspace_status=_WORKSPACE_STATUS,
+            overlay_entries=copy.deepcopy(service.overlay_entries) or None,
+            overlay_persisted=copy.deepcopy(overlay_section(document)))
     except Exception:
         return fail('RECON_MISMATCH', 'recon')
     if recon['status'] != 'MATCHED':

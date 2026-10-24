@@ -14,8 +14,8 @@ ScenarioReplaySource below, which replays F01-F03 scenario steps on its own book
 All arithmetic is integer. Every integer literal is 0, 1 or 2; the rate, the cure window and
 the grace come from the decision note through `terms.margin_terms`.
 
-Accrual is not re-based: interest and write-off keep the standard maturity until the
-financial-terms owner decides (NOT_REBASED / DECISION_REQUIRED, see `interest_rebased`).
+Accrual rebases under CAPITAL_DEFAULT_RECOVERY.md. The service plans crossed
+acceleration boundaries before interest; historical postings retain their witnesses.
 """
 from __future__ import annotations
 
@@ -194,7 +194,8 @@ def _row(subject, record, *, mutable):
     return {**base, **figures, 'state': state, 'checked': True, 'triggered': live,
             'cure_deadline': None if record is None else record['cure_deadline'],
             'effective_maturity_day': None if record is None else record['maturity_day'],
-            'default_eligible_day': None if record is None else record.get('default_eligible_day')}
+            'default_eligible_day': None if record is None else record.get('default_eligible_day'),
+            'interest_rebased': record is not None and record['status'] == ACCELERATED}
 
 
 def unbound_row(advance_id):
@@ -224,7 +225,8 @@ def status_block(state, rows, *, mutable, bound, cure_terms=None):
         'limit': None if mutable else LIMIT_IMMUTABLE,
         'cure_window_days': None if cure_terms is None else cure_terms['cure_window_days'],
         'cure_options': _cure_options(cure_terms),
-        'interest_rebased': False,
+        'interest_rebased': any(row['interest_rebased'] for row in rows),
+        'executionAuthorized': False,
         'events': events,
         'proposals': [item for item in events if item['record'] == KIND_OF_RECORD[overlay.KIND_DEFAULT_PROPOSAL]],
         'f04_default_called': False,
@@ -299,6 +301,8 @@ class ScenarioReplaySource(FixtureViews):
                 skipped = self._already_observed(fixture_id, args)
                 if not skipped:
                     book.observe_statement(fixture_id, idempotency_key=key, **{'adjustment': 0, **args})
+            elif op == 'commit_settlement':
+                book.commit(fixture_id, idempotency_key=key, **args)
             elif op == 'apply_distribution':
                 book.distribute(fixture_id, idempotency_key=key, order=args['order'])
             elif op == 'bind_refund':

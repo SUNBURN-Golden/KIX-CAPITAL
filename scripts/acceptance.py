@@ -2,7 +2,9 @@
 """One-command local acceptance ladder for the Capital simulation.
 
 Stages: unit, storage-conformance, pinned vendor, upstream claim checks,
-node --check, browser, packaged-artifact smoke, and the seeded demo.
+node --check, browser, packaged-artifact smoke, the seeded demo, and the
+integrated-journeys stage (SIMULATED T03-sim, T04-sim, T05-sim and T06-sim over
+the loopback API).
 Evidence is written to
 build/acceptance-evidence.json (untracked). A failed or missing stage exits
 non-zero. This is a SIMULATED ladder, not human product acceptance and not a
@@ -37,6 +39,7 @@ REQUIRED_STAGES = (
     'browser',
     'packaged-smoke',
     'seeded-demo',
+    'integrated-journeys',
 )
 _RAN = re.compile(r'^Ran (\d+) tests?(?: in .+)?$')
 _PASSED = re.compile(r'^(\d+) passed(?: \(.+\))?$')
@@ -44,6 +47,10 @@ _FAILED_LINE = re.compile(r'^(\d+) failed$')
 _UNIT_FAILED = re.compile(r'^FAILED \((.+)\)$')
 _SMOKE = re.compile(r'^smoke ok: (.+)$')
 _SEED = re.compile(r'^seed demo (ok|updated) ')
+_JOURNEYS = re.compile(r'^sim journeys ok SIMULATED (.+)$')
+_JOURNEY_STEPS = re.compile(r'(T0[3-6]-sim) steps=(\d+)')
+_JOURNEY_SUMMARY = re.compile(r'^SIM_JOURNEYS (\{.+\})$')
+JOURNEY_IDS = ('T03-sim', 'T04-sim', 'T05-sim', 'T06-sim')
 _CLAIMS = re.compile(r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)$')
 _COUNT_WORD = re.compile(r'(failures|errors|skipped)=(\d+)')
 
@@ -56,7 +63,10 @@ def build_plan(root=None):
         {
             'id': 'unit',
             'timeout': 300,
-            'commands': [[py, '-m', 'unittest', 'discover', '-s', 'tests', '-v']],
+            'commands': [
+                [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
+                [py, 'scripts/decision_bindings.py', '--check'],
+            ],
         },
         {
             'id': 'storage-conformance',
@@ -64,6 +74,8 @@ def build_plan(root=None):
             'commands': [[
                 py, '-m', 'unittest', 'discover',
                 '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
+            ], [
+                py, '-m', 'unittest', 'tests.test_crash_replay', '-v',
             ]],
         },
         {
@@ -82,6 +94,10 @@ def build_plan(root=None):
             'commands': [
                 [py, 'scripts/upstream_claims_check.py', '--execute'],
                 [py, 'scripts/agent_claims_check.py', '--execute'],
+                [py, 'scripts/read_model_claims_check.py', '--execute'],
+                [py, 'scripts/ce1_claims_check.py', '--execute'],
+                [py, 'scripts/adapter_identity_claims_check.py', '--execute'],
+                [py, 'scripts/lifecycle_claims_check.py', '--execute'],
             ],
         },
         {
@@ -104,6 +120,12 @@ def build_plan(root=None):
             'id': 'seeded-demo',
             'timeout': 60,
             'commands': [[py, 'scripts/seed_demo.py']],
+        },
+        {
+            'id': 'integrated-journeys',
+            'kind': 'integrated-journeys',
+            'timeout': 180,
+            'commands': [[py, 'scripts/sim_journeys.py']],
         },
     ]
 
@@ -164,6 +186,11 @@ def parse_test_count(text):
             ran = passed = 1
             failed = 0
             continue
+        match = _JOURNEYS.fullmatch(line)
+        if match:
+            ran = passed = len(_JOURNEY_STEPS.findall(match.group(1)))
+            failed = 0
+            continue
         match = _CLAIMS.fullmatch(line)
         if match:
             passed = int(match.group(1))
@@ -180,6 +207,19 @@ def parse_test_count(text):
     if ran is None and passed is not None:
         ran = passed + (failed or 0)
     return {'ran': ran, 'passed': passed, 'failed': failed}
+
+
+def parse_journeys(text):
+    """The SIM_JOURNEYS summary object printed by scripts/sim_journeys.py, or None."""
+    found = None
+    for raw in text.splitlines():
+        match = _JOURNEY_SUMMARY.fullmatch(raw.strip())
+        if match:
+            try:
+                found = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                found = None
+    return found if type(found) is dict else None
 
 
 def _tail(text, limit=2000):
@@ -218,12 +258,16 @@ def _stop_group(pid, sig):
 
 def _command_record(argv, exit_code, out, err):
     combined = out + ('\n' if out and err else '') + err
-    return {
+    record = {
         'argv': list(argv),
         'exit_code': exit_code,
         'test_count': parse_test_count(combined),
         'output_tail': _tail(combined),
     }
+    journeys = parse_journeys(combined)
+    if journeys is not None:
+        record['journeys'] = journeys
+    return record
 
 
 def _run_packaged(stage, root):
@@ -389,6 +433,40 @@ def _annotate_upstream(stage, body):
         body['status'] = 'failed'
 
 
+def _annotate_journeys(stage, body):
+    """Attach the named SIMULATED journeys. Missing, extra, unlabelled, or integrated ones fail."""
+    if stage.get('kind') != 'integrated-journeys' or stage.get('injected'):
+        return
+    summaries = [record.get('journeys') for record in body['commands'] if record.get('journeys') is not None]
+    summary = summaries[-1] if summaries else None
+    items = []
+    ok = summary is not None
+    if ok:
+        for item in summary.get('journeys') or []:
+            if type(item) is not dict:
+                ok = False
+                continue
+            steps = item.get('steps')
+            digest = item.get('digest')
+            if (item.get('label') != 'SIMULATED' or type(steps) is not int or isinstance(steps, bool)
+                    or steps <= 0 or type(digest) is not str or len(digest) != 64
+                    or item.get('integrated') is not False or item.get('funds_executed') is not False):
+                ok = False
+            items.append({'id': item.get('id'), 'label': item.get('label'), 'steps': steps, 'digest': digest})
+        ok = ok and sorted(item['id'] for item in items) == sorted(JOURNEY_IDS)
+        ok = ok and summary.get('label') == 'SIMULATED' and summary.get('integrated') is False \
+            and summary.get('funds_executed') is False
+    body['journeys'] = {
+        'label': 'SIMULATED',
+        'integrated': False,
+        'funds_executed': False,
+        'qualification_claimed': False,
+        'items': items,
+    }
+    if not ok or body['exit_code'] != 0:
+        body['status'] = 'failed'
+
+
 def _write_json(path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=True) + '\n'
@@ -418,6 +496,7 @@ def execute_plan(plan, *, root, evidence_path, required=REQUIRED_STAGES):
             'commands': records,
         }
         _annotate_upstream(stage, body)
+        _annotate_journeys(stage, body)
         status = body['status']
         stages.append(body)
         by_id[stage['id']] = body
@@ -448,6 +527,15 @@ def execute_plan(plan, *, root, evidence_path, required=REQUIRED_STAGES):
         'format': FORMAT,
         'label': 'SIMULATED',
         'funds_executed': False,
+        'integrated': False,
+        'qualification': {
+            'claimed': False,
+            'ladder': 'Q0 local acceptance ladder',
+            'note': (
+                'T03-sim, T04-sim, T05-sim and T06-sim are named synthetic variants inside Q0. '
+                'They are not integrated acceptance and no T01-T06 qualification is claimed.'
+            ),
+        },
         'note': (
             'Local simulation ladder. Not human product acceptance. '
             'Not a payment, loan, KYC decision, or deployment.'

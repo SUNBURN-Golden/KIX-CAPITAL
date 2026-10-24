@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,15 +39,29 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(commands['storage-conformance'][0][1:], [
             '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
         ])
+        self.assertEqual(commands['storage-conformance'][1][1:], [
+            '-m', 'unittest', 'tests.test_crash_replay', '-v',
+        ])
         self.assertIn('test_mock_credit.py', commands['pinned-vendor'][0])
         self.assertEqual(
             commands['upstream-claims'][0][1:],
             ['scripts/upstream_claims_check.py', '--execute'],
         )
+        self.assertEqual(len(commands['upstream-claims']), 6)
+        self.assertEqual(commands['upstream-claims'][3][1:],
+                         ['scripts/ce1_claims_check.py', '--execute'])
+        self.assertEqual(commands['upstream-claims'][4][1:],
+                         ['scripts/adapter_identity_claims_check.py', '--execute'])
+        self.assertEqual(commands['upstream-claims'][5][1:],
+                         ['scripts/lifecycle_claims_check.py', '--execute'])
         self.assertEqual(commands['node-check'][0][1:], ['--check', 'capital/static/app.js'])
         self.assertEqual(commands['browser'][0], ['npm', 'run', 'test:browser'])
         self.assertEqual(commands['packaged-smoke'][0][1:], ['scripts/build_release.py', '--out', 'build/acceptance-dist'])
         self.assertEqual(commands['seeded-demo'][0][1:], ['scripts/seed_demo.py'])
+        self.assertEqual(commands['integrated-journeys'][0][1:], ['scripts/sim_journeys.py'])
+        self.assertEqual(plan[-1]['id'], 'integrated-journeys')
+        self.assertEqual(plan[-1]['kind'], 'integrated-journeys')
+        self.assertEqual(len(plan), 9)
         workflow = (ROOT / '.github' / 'workflows' / 'verify.yml').read_text(encoding='utf-8')
         self.assertIn('python3 scripts/acceptance.py', workflow)
         self.assertIn('acceptance-evidence', workflow)
@@ -59,6 +74,23 @@ class AcceptanceTests(unittest.TestCase):
             self.assertIn(name, spec)
         self.assertIn('375', spec)
         self.assertIn('console', spec)
+
+    def test_lifecycle_failure_propagates_and_counts_are_aggregated(self):
+        stage = next(s for s in acceptance.build_plan() if s['id'] == 'upstream-claims')
+        replies = [(0, 'CLAIM_CONFORMANCE passed=2 total=2 failed=0', '')] * 3
+        replies += [(0, 'CLAIM_CONFORMANCE passed=49 total=49 failed=0', '')]
+        replies += [(0, 'CLAIM_CONFORMANCE passed=30 total=30 failed=0', '')]
+        replies += [(1, 'CLAIM_CONFORMANCE passed=11 total=12 failed=1', '')]
+        with patch.object(acceptance, 'run_argv', side_effect=replies) as run:
+            records, code = acceptance._run_stage(stage, ROOT)
+        self.assertEqual(run.call_args_list[-1].args[0][1:],
+                         ['scripts/lifecycle_claims_check.py', '--execute'])
+        self.assertEqual(code, 1)
+        self.assertEqual(acceptance._merge_counts(records), {'ran': 97, 'passed': 96, 'failed': 1})
+        body = {'test_count': acceptance._merge_counts(records), 'exit_code': code}
+        acceptance._annotate_upstream(stage, body)
+        self.assertEqual(body['status'], 'failed')
+        self.assertEqual(body['label'], 'CLAIM_CONFORMANCE')
 
     def test_injected_failing_stage_writes_evidence_and_exits_nonzero(self):
         plan = acceptance.inject_failure([_ok_stage(stage_id) for stage_id in acceptance.REQUIRED_STAGES], 'node-check')
@@ -117,6 +149,15 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(mixed, {'ran': 4, 'passed': 4, 'failed': 0})
         claims = acceptance.parse_test_count('CLAIM_CONFORMANCE passed=87 total=87 failed=0\n')
         self.assertEqual(claims, {'ran': 87, 'passed': 87, 'failed': 0})
+
+    def test_journey_line_counts_as_two_checks_and_the_summary_is_parsed(self):
+        line = 'sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33\n'
+        self.assertEqual(acceptance.parse_test_count(line), {'ran': 2, 'passed': 2, 'failed': 0})
+        summary = {'label': 'SIMULATED', 'journeys': [{'id': 'T05-sim', 'steps': 35}]}
+        text = 'noise\nSIM_JOURNEYS ' + json.dumps(summary) + '\n' + line
+        self.assertEqual(acceptance.parse_journeys(text), summary)
+        self.assertIsNone(acceptance.parse_journeys('SIM_JOURNEYS {not json}\n'))
+        self.assertIsNone(acceptance.parse_journeys(line))
 
     def test_unknown_inject_target_exits_two(self):
         self.assertEqual(acceptance.main(['--inject-fail', 'not-a-stage', '--evidence', '/tmp/unused-acceptance.json']), 2)
