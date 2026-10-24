@@ -17,7 +17,8 @@ from capital.auth import (
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
 from capital.resources import read_static
-from capital.export import DevHmacSigner, ExportError, SignerConfigError, build_signer
+from capital.export import DevHmacSigner, ExportError, SignerConfigError
+from capital.keyset import build_signer
 from capital.service import ApiError, CapitalService
 from capital.policy import DecisionNoteSettlementPolicy
 from capital.terms import DecisionNoteTermsPolicy
@@ -34,7 +35,10 @@ GET_DISPATCH = (
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
     ('/api/overlay', False, 'overlay'),
+    ('/api/overlay/slices', False, 'overlay_slices'),
+    ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
+    ('/api/risk/covenants', False, 'covenants'),
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
@@ -283,6 +287,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 return self.reply(200, service.terms_portfolio(
                     instance, draw_day=draw_day, as_of_day=as_of_day,
                     expected_settlement_cash_day=expected))
+            if route.path == '/api/terms/portfolio/forecast':
+                # Only the documented parameters are accepted on this route.
+                keys = set(parse_qs(route.query, keep_blank_values=True))
+                if keys - {'instance_id', 'expected_settlement_cash_day'}:
+                    raise ApiError('INVALID_ARGUMENTS')
+                instance = parse_qs(route.query).get('instance_id', [''])[0]
+                expected = query_day(route.query, 'expected_settlement_cash_day', False)
+                return self.reply(200, service.forecast(
+                    instance, expected_settlement_cash_day=expected))
             if route.path.endswith('/setoff'):
                 advance_id = route.path[len('/api/terms/'):-len('/setoff')].rstrip('/')
                 instance = parse_qs(route.query).get('instance_id', [''])[0]
@@ -310,6 +323,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             return self.reply(200, service.case_terms(
                 advance_id, instance, draw_day, as_of_day, expected))
 
+        def _get_overlay_slices(self, route, principal):
+            params = parse_qs(route.query, keep_blank_values=True)
+            if set(params) - {'quote_claim_id', 'quote_payee_label', 'expected_days'} or any(len(v) != 1 for v in params.values()):
+                raise ApiError('INVALID_ARGUMENTS')
+            expected = query_day(route.query, 'expected_days', False)
+            return self.reply(200, service.overlay_slices(
+                params.get('quote_claim_id', [None])[0], params.get('quote_payee_label', [None])[0], expected))
+
         def _get_overlay(self, route, principal):
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
             lookup = values[0] if values and len(values) == 1 else None
@@ -317,6 +338,16 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_risk(self, route, principal):
             return self.reply(200, service.risk())
+
+        def _get_portfolio_snapshot(self, route, principal):
+            params = parse_qs(route.query, keep_blank_values=True)
+            if set(params) - {'instance_id'} or len(params.get('instance_id', [])) > 1:
+                raise ApiError('INVALID_ARGUMENTS')
+            instance = params.get('instance_id', [''])[0]
+            return self.reply(200, service.portfolio_snapshot(instance))
+
+        def _get_covenants(self, route, principal):
+            return self.reply(200, service.covenants())
 
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
@@ -456,8 +487,17 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                         break
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
-                require(authorizer, principal, permission)
-                body = self.read_json()
+                if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
+                    body = self.read_json()
+                    from capital.slices import COMMANDS as slice_commands
+                    if type(body) is dict and type(body.get('op')) is str and body['op'] in slice_commands:
+                        raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
+                    if type(body) is dict and (body.get('op') in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration') or 'writeoff' in body):
+                        raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
+                    require(authorizer, principal, permission)
+                else:
+                    require(authorizer, principal, permission)
+                    body = self.read_json()
                 if path == '/api/commands' and type(body) is dict and type(body.get('operation_id')) is str:
                     operation_id = body.get('operation_id')
                 if path == '/api/session':
@@ -517,8 +557,11 @@ def main():
                         help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Not bundled in the zipapp.')
     parser.add_argument('--policy-note', default=None,
                         help='Decision note for the simulated policy application. A missing note reports policy not bound. Not bundled in the zipapp.')
-    parser.add_argument('--dev-hmac', action='store_true',
+    signing = parser.add_mutually_exclusive_group()
+    signing.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')
+    signing.add_argument('--dev-keyset', action='store_true',
+                         help='Opt-in DEV_ONLY keyset at WORKSPACE/export-dev-keyset.json (0600). Integrity only; stage7 NOT_BOUND.')
     parser.add_argument('--producer', choices=('pinned', 'gate-fake'), default='pinned',
                         help='Opt-in producer. pinned is the in-process FSM (default). '
                              'gate-fake starts LOCAL_FAKE_GATE on 127.0.0.1. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND.')
@@ -528,7 +571,7 @@ def main():
     parser.add_argument('--version', action='version', version=f'kix-capital {__version__}')
     args = parser.parse_args()
     try:
-        signer = build_signer(args.workspace, args.dev_hmac)
+        signer = build_signer(args.workspace, args.dev_hmac, args.dev_keyset)
     except (SignerConfigError, ExportError) as exc:
         parser.error(exc.code)
     terms = DecisionNoteTermsPolicy(args.terms_note) if args.terms_note is not None else None

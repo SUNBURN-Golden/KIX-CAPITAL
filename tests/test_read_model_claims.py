@@ -50,6 +50,13 @@ CHECK_PREFIXES = (
 )
 
 
+def _other_claim_total():
+    from capital.ce1_claims import load_table as ce1
+    from capital.adapter_identity_claims import load_table as identity
+    from capital.lifecycle_claims import load_table as lifecycle
+    return sum(len(load()['claims']) for load in (ce1, identity, lifecycle))
+
+
 def _acceptance():
     spec = importlib.util.spec_from_file_location('acceptance_read_model', ROOT / 'scripts' / 'acceptance.py')
     module = importlib.util.module_from_spec(spec)
@@ -215,7 +222,7 @@ class ReadModelClaimsTests(unittest.TestCase):
         table['claims'].append({
             'id': 'mut-unmapped', 'source_doc': SOURCE_DOC, 'section': '## 8. 비변경',
             'pinned_sha': PINNED_SHA, 'claim': 'Not a registered check.',
-            'check_id': 'not.a.real.check', 'needle': '`canonical_state()`', 'expected': None,
+            'route': 'CapitalService.read_query', 'check_id': 'not.a.real.check', 'needle': '`canonical_state()`', 'expected': None,
         })
         result = run_claims(table)
         failed = [row for row in result['rows'] if not row['ok']]
@@ -441,8 +448,8 @@ class AcceptanceStageTests(unittest.TestCase):
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['skipped'], ['scripts/read_model_claims_check.py'])
-        self.assertEqual([c['skipped'] for c in stage['commands']], [False, False, True])
-        total = len(load_upstream()['claims']) + len(load_agent()['claims'])
+        self.assertEqual([c['skipped'] for c in stage['commands']], [False, False, True, False, False, False])
+        total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total()
         self.assertEqual((stage['passed'], stage['total']), (total, total))
         self.assertTrue(stage['commands'][2]['output_tail'].startswith('SKIPPED'))
         self.assertIsNone(stage['commands'][2]['test_count'])
@@ -461,7 +468,7 @@ class AcceptanceStageTests(unittest.TestCase):
         self.assertEqual(code, 0)
         stage = data['stages'][0]
         self.assertEqual(stage['skipped'], [])
-        total = len(load_upstream()['claims']) + len(load_agent()['claims']) + len(table['claims'])
+        total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total() + len(table['claims'])
         self.assertEqual((stage['passed'], stage['total']), (total, total))
 
     def test_a_failing_row_fails_the_stage(self):

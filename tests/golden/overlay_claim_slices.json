@@ -1,0 +1,134 @@
+{
+  "admission_granted": false,
+  "application": "SHADOW_NOT_APPLIED",
+  "applied_to_fsm": false,
+  "bank_debit_observed": false,
+  "double_use_refusal": "SLICE_OPEN_EXISTS",
+  "entry_count": 6,
+  "executionAuthorized": false,
+  "external_return_closed": false,
+  "f04_digest": "2ce0b723232b1f15c730a127372d2b03c389c4ea43f3439ff73571a203c7fe33",
+  "funds_executed": false,
+  "holder_first": true,
+  "label": "SIMULATED",
+  "legal_debtor_bound": false,
+  "legal_effect": "NOT_ASSESSED",
+  "manifest_verified": true,
+  "mode": "SHADOW_NOT_APPLIED",
+  "offering": "SIMULATION_ONLY_NOT_OFFERED_V1",
+  "overlay_digest": "5a0303469ccca253d573a3a67a074634bff922f538dc687a1d437b308ba38132",
+  "overlay_fold_check": "MATCHED",
+  "policy_adopted": false,
+  "provisional": true,
+  "right_cancelled": false,
+  "served_krw": 10000000,
+  "shortfall_krw": 10000000,
+  "slices": [
+    {
+      "SLICE_IMPAIRMENT_ELIGIBLE": false,
+      "SLICE_RESOLVABLE": false,
+      "admission_granted": false,
+      "application": "SHADOW_NOT_APPLIED",
+      "applied_to_fsm": false,
+      "bank_debit_observed": false,
+      "baseline_distributed_krw": 0,
+      "beneficiary_role": "demo-org-delta",
+      "claim_id": "demo-delta-mid",
+      "eligible_line_krw": 0,
+      "encumbered_face_krw": 0,
+      "executionAuthorized": false,
+      "exposure_krw": 0,
+      "external_return_closed": false,
+      "funds_executed": false,
+      "holder_first": true,
+      "holder_role": "KIX_CAPITAL_LENDER",
+      "label": "SIMULATED",
+      "legal_debtor_bound": false,
+      "legal_effect": "NOT_ASSESSED",
+      "mode": "SHADOW_NOT_APPLIED",
+      "offering": "SIMULATION_ONLY_NOT_OFFERED_V1",
+      "outstanding_krw": 0,
+      "payee_label": "organizer",
+      "policy": {
+        "bounds": {
+          "demo_script_budget_operations": 40,
+          "max_non_terminal_per_beneficiary": 3,
+          "max_non_terminal_slices": 24,
+          "max_recourse_entries_per_slice": 8,
+          "max_registry_entries": 256,
+          "max_slices_total": 64,
+          "max_string_bytes": 64
+        },
+        "caps": {
+          "beneficiary_aggregate_cap_krw": 2000000000,
+          "portfolio_cap_krw": 20000000000,
+          "single_advance_cap_krw": 500000000
+        },
+        "payees": {
+          "demo-agency-south": [
+            "agency"
+          ],
+          "demo-org-alpha": [
+            "organizer"
+          ],
+          "demo-org-beta": [
+            "organizer"
+          ],
+          "demo-org-delta": [
+            "organizer"
+          ],
+          "demo-org-epsilon": [
+            "organizer"
+          ],
+          "demo-org-gamma": [
+            "organizer"
+          ],
+          "demo-venue-east": [
+            "venue"
+          ],
+          "fixture-organizer": [
+            "organizer"
+          ]
+        },
+        "policy_digest": "0aafa92c0c7138ae070f50defd4e10a350a84280b2835f103379e7c27ec00f2b",
+        "price_rates": {
+          "T1_COMMIT_OBSERVED": 700,
+          "T2_UNBOUND": 1300
+        },
+        "rates": {
+          "T1_COMMIT_OBSERVED": 8500,
+          "T2_UNBOUND": 5000
+        },
+        "sizing_rates": {
+          "T1_COMMIT_OBSERVED": 8500,
+          "T2_UNBOUND": 0
+        },
+        "terms_version": "CAPITAL-TERMS-V1",
+        "threshold": 50000000,
+        "tier_gates": {
+          "MOCK_COMMIT_OBSERVED": "T1_COMMIT_OBSERVED",
+          "UNBOUND": "T2_UNBOUND"
+        }
+      },
+      "policy_adopted": false,
+      "provisional": true,
+      "quote_ref": "19277c255536175a27c67246163f522417e9e9e869391f542ec9d4046ef0dba6",
+      "quotes": [],
+      "recourse_received_krw": 10000000,
+      "resolution": "RECOURSE_SATISFIED",
+      "right_cancelled": false,
+      "served_krw": 10000000,
+      "shadow_discount": 230136,
+      "shadow_price": 19769864,
+      "shortfall_krw": 0,
+      "slice_face_krw": 20000000,
+      "slice_id": "journey-slice",
+      "status": "RESOLVED",
+      "tier": "T1_COMMIT_OBSERVED",
+      "title_transferred": false,
+      "workspace_mutated": false
+    }
+  ],
+  "title_transferred": false,
+  "workspace_mutated": false
+}

@@ -845,11 +845,23 @@ class DecisionNoteTermsPolicy:
             'close_ready': close_ready,
         }
 
-    def ledger_terms(self, case, claim, *, gate, draw_day):
+    def ledger_denominator(self):
+        """Basis-point times day-count denominator of the interest ledger, or None when not ADOPTED.
+
+        Needed by a repayment posting on an advance with no matching tier: no interest accrues
+        there, but the entry still stamps the denominator its witness is stated over.
+        """
+        if not self._ready('interest_rate'):
+            return None
+        return BPS_SCALE * _day_count(self._value('interest_rate')['day_count'])
+
+    def ledger_terms(self, case, claim, *, gate, draw_day, expected_settlement_cash_day=None):
         """Per-advance constants the overlay ledger stamps into an interest posting.
 
         None when the schedule or interest items are not ADOPTED, or no tier matches the
-        draw receipt gate. Standard term only: no settlement date is known to the ledger.
+        draw receipt gate. The ledger posts with `expected_settlement_cash_day=None`
+        (standard term); a read may pass a known settlement day to take the note's
+        settlement-linked clamp. `term_source` says which rule produced `term_days`.
         """
         if not self._ready('interest_rate', 'term', 'default_loss_treatment'):
             return None
@@ -859,7 +871,7 @@ class DecisionNoteTermsPolicy:
         if tier is None:
             return None
         interest = self._value('interest_rate')
-        schedule = self._schedule(draw_day, None)
+        schedule = self._schedule(draw_day, expected_settlement_cash_day)
         contract_bps = tier['all_in_bps_annual']
         return {
             'tier': tier['id'].split('_', 1)[0],
@@ -869,6 +881,7 @@ class DecisionNoteTermsPolicy:
             'denominator': BPS_SCALE * _day_count(interest['day_count']),
             'min_interest_days': interest['min_interest_days'],
             'term_days': schedule['term_days'],
+            'term_source': schedule['source'],
             'maturity_day': schedule['maturity_day'],
             'writeoff_day': schedule['writeoff_day'],
         }

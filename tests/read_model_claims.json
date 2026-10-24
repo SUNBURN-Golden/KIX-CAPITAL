@@ -2,7 +2,7 @@
   "format": "KIX_CAPITAL_READ_MODEL_CLAIMS_V1",
   "label": "CLAIM_CONFORMANCE",
   "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
-  "note": "CLAIM_CONFORMANCE checks against the local READ_MODEL_QUERIES consumer rehearsal (CapitalService.read_query over the in-process loopback facade). Results are SIMULATED, fixture_mode REFERENCE_IN_MEMORY. This is not a read model, not ReadObservationV1, and not SEMANTIC_CONFORMANCE. Visibility classes, paging and list_* queries are UNDETERMINED upstream and not implemented. The credit_claim row for a valid fixture id depends on a draw: the mock credit ledger notes a claim only then. Keyset rows pin the key lists of sections 2.11 to 2.13; the drift script re-derives them from the draft working tree. A missing protocol checkout is SKIPPED and is not a pass.",
+  "note": "CLAIM_CONFORMANCE checks against the local READ_MODEL_QUERIES consumer rehearsal (CapitalService.read_query over the in-process loopback facade). Results are SIMULATED, fixture_mode REFERENCE_IN_MEMORY. This is not a read model, not ReadObservationV1, and not SEMANTIC_CONFORMANCE. Visibility classes, paging and list_* queries are UNDETERMINED upstream and not implemented. The credit_claim row for a valid fixture id depends on a draw: the mock credit ledger notes a claim only then. Keyset rows pin the key lists of sections 2.11 to 2.13; the drift script re-derives them from the draft working tree. A missing protocol checkout is SKIPPED and is not a pass. The original 39 mapped GET /api/state, CreditMachine.view and CreditMachine.view_claim checks are retained under the same draft revision, with original_pinned_sha recording their earlier citation. Their per-read guard also checks the overlay state digest.",
   "claims": [
     {
       "id": "rm-keyset-settlement",
@@ -38,7 +38,8 @@
         "settlement_id",
         "terminal",
         "trade_id"
-      ]
+      ],
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-keyset-credit-advance",
@@ -100,7 +101,8 @@
         "ticket_ownership_authoritative",
         "trade_id",
         "underwriting_executed"
-      ]
+      ],
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-keyset-credit-claim",
@@ -135,7 +137,8 @@
         "revenue_assigned",
         "snapshot_frozen",
         "trade_id"
-      ]
+      ],
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-advance-flag-funds-executed",
@@ -145,7 +148,8 @@
       "claim": "get_credit_advance keeps funds_executed false.",
       "check_id": "field.credit_advance.funds_executed",
       "needle": "`funds_executed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-license-granted",
@@ -155,7 +159,8 @@
       "claim": "get_credit_advance keeps license_granted false.",
       "check_id": "field.credit_advance.license_granted",
       "needle": "`license_granted`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-regulated-product",
@@ -165,7 +170,8 @@
       "claim": "get_credit_advance keeps regulated_product false.",
       "check_id": "field.credit_advance.regulated_product",
       "needle": "`regulated_product`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-collateral-perfected",
@@ -175,7 +181,8 @@
       "claim": "get_credit_advance keeps collateral_perfected false.",
       "check_id": "field.credit_advance.collateral_perfected",
       "needle": "`collateral_perfected`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-priority-bound",
@@ -185,7 +192,8 @@
       "claim": "get_credit_advance keeps priority_bound false.",
       "check_id": "field.credit_advance.priority_bound",
       "needle": "`priority_bound`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-disposal-controlled",
@@ -195,7 +203,8 @@
       "claim": "get_credit_advance keeps disposal_controlled false.",
       "check_id": "field.credit_advance.disposal_controlled",
       "needle": "`disposal_controlled`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-revenue-assigned",
@@ -205,7 +214,8 @@
       "claim": "get_credit_advance keeps revenue_assigned false.",
       "check_id": "field.credit_advance.revenue_assigned",
       "needle": "`revenue_assigned`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-admission-granted",
@@ -215,7 +225,8 @@
       "claim": "get_credit_advance keeps admission_granted false.",
       "check_id": "field.credit_advance.admission_granted",
       "needle": "`admission_granted`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-legal-debtor-bound",
@@ -225,7 +236,8 @@
       "claim": "get_credit_advance keeps legal_debtor_bound false.",
       "check_id": "field.credit_advance.legal_debtor_bound",
       "needle": "`legal_debtor_bound`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-bank-debit-observed",
@@ -235,7 +247,8 @@
       "claim": "get_credit_advance keeps bank_debit_observed false.",
       "check_id": "field.credit_advance.bank_debit_observed",
       "needle": "`bank_debit_observed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-external-pledge-complete",
@@ -245,7 +258,8 @@
       "claim": "get_credit_advance keeps external_pledge_complete false.",
       "check_id": "field.credit_advance.external_pledge_complete",
       "needle": "`external_pledge_complete`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-durable",
@@ -255,7 +269,8 @@
       "claim": "get_credit_advance keeps durable false.",
       "check_id": "field.credit_advance.durable",
       "needle": "`durable`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-repayment-observed",
@@ -265,7 +280,8 @@
       "claim": "get_credit_advance keeps repayment_observed false.",
       "check_id": "field.credit_advance.repayment_observed",
       "needle": "`repayment_observed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-interest-defined",
@@ -275,7 +291,8 @@
       "claim": "get_credit_advance keeps interest_defined false.",
       "check_id": "field.credit_advance.interest_defined",
       "needle": "`interest_defined`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-kyc-executed",
@@ -285,7 +302,8 @@
       "claim": "get_credit_advance keeps kyc_executed false.",
       "check_id": "field.credit_advance.kyc_executed",
       "needle": "`kyc_executed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-underwriting-executed",
@@ -295,7 +313,8 @@
       "claim": "get_credit_advance keeps underwriting_executed false.",
       "check_id": "field.credit_advance.underwriting_executed",
       "needle": "`underwriting_executed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-economic-finality-claimed",
@@ -305,7 +324,8 @@
       "claim": "get_credit_advance keeps economic_finality_claimed false.",
       "check_id": "field.credit_advance.economic_finality_claimed",
       "needle": "`economic_finality_claimed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-ownership-mutated",
@@ -315,7 +335,8 @@
       "claim": "get_credit_advance keeps ownership_mutated false.",
       "check_id": "field.credit_advance.ownership_mutated",
       "needle": "`ownership_mutated`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-flag-ticket-ownership-authoritative",
@@ -325,7 +346,8 @@
       "claim": "get_credit_advance keeps ticket_ownership_authoritative false.",
       "check_id": "field.credit_advance.ticket_ownership_authoritative",
       "needle": "`ticket_ownership_authoritative`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-claim-flag-funds-executed",
@@ -335,7 +357,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag funds_executed false.",
       "check_id": "field.credit_claim.funds_executed",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-license-granted",
@@ -345,7 +368,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag license_granted false.",
       "check_id": "field.credit_claim.license_granted",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-regulated-product",
@@ -355,7 +379,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag regulated_product false.",
       "check_id": "field.credit_claim.regulated_product",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-collateral-perfected",
@@ -365,7 +390,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag collateral_perfected false.",
       "check_id": "field.credit_claim.collateral_perfected",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-priority-bound",
@@ -375,7 +401,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag priority_bound false.",
       "check_id": "field.credit_claim.priority_bound",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-disposal-controlled",
@@ -385,7 +412,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag disposal_controlled false.",
       "check_id": "field.credit_claim.disposal_controlled",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-revenue-assigned",
@@ -395,7 +423,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag revenue_assigned false.",
       "check_id": "field.credit_claim.revenue_assigned",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-admission-granted",
@@ -405,7 +434,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag admission_granted false.",
       "check_id": "field.credit_claim.admission_granted",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-legal-debtor-bound",
@@ -415,7 +445,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag legal_debtor_bound false.",
       "check_id": "field.credit_claim.legal_debtor_bound",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-bank-debit-observed",
@@ -425,7 +456,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag bank_debit_observed false.",
       "check_id": "field.credit_claim.bank_debit_observed",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-external-pledge-complete",
@@ -435,7 +467,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag external_pledge_complete false.",
       "check_id": "field.credit_claim.external_pledge_complete",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-durable",
@@ -445,7 +478,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag durable false.",
       "check_id": "field.credit_claim.durable",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-repayment-observed",
@@ -455,7 +489,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag repayment_observed false.",
       "check_id": "field.credit_claim.repayment_observed",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-claim-flag-interest-defined",
@@ -465,7 +500,8 @@
       "claim": "get_credit_claim keeps the shared always-false flag interest_defined false.",
       "check_id": "field.credit_claim.interest_defined",
       "needle": "`_flags`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-settlement-flag-provider-authorization-executed",
@@ -475,7 +511,8 @@
       "claim": "get_settlement keeps provider_authorization_executed false.",
       "check_id": "field.settlement.provider_authorization_executed",
       "needle": "`provider_authorization_executed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-legal-debtor-bound",
@@ -485,7 +522,8 @@
       "claim": "get_settlement keeps legal_debtor_bound false.",
       "check_id": "field.settlement.legal_debtor_bound",
       "needle": "`legal_debtor_bound`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-admission-granted",
@@ -495,7 +533,8 @@
       "claim": "get_settlement keeps admission_granted false.",
       "check_id": "field.settlement.admission_granted",
       "needle": "`admission_granted`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-right-cancelled",
@@ -505,7 +544,8 @@
       "claim": "get_settlement keeps right_cancelled false.",
       "check_id": "field.settlement.right_cancelled",
       "needle": "`right_cancelled`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-bank-debit-observed",
@@ -515,7 +555,8 @@
       "claim": "get_settlement keeps bank_debit_observed false.",
       "check_id": "field.settlement.bank_debit_observed",
       "needle": "`bank_debit_observed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-external-return-closed",
@@ -525,7 +566,8 @@
       "claim": "get_settlement keeps external_return_closed false.",
       "check_id": "field.settlement.external_return_closed",
       "needle": "`external_return_closed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-funds-executed",
@@ -535,7 +577,8 @@
       "claim": "get_settlement keeps funds_executed false.",
       "check_id": "field.settlement.funds_executed",
       "needle": "`funds_executed`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-flag-durable",
@@ -545,7 +588,8 @@
       "claim": "get_settlement keeps durable false.",
       "check_id": "field.settlement.durable",
       "needle": "`durable`",
-      "expected": false
+      "expected": false,
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-advance-provenance",
@@ -555,7 +599,8 @@
       "claim": "get_credit_advance provenance is MOCK_CREDIT_F04_ONLY.",
       "check_id": "field.credit_advance.provenance",
       "needle": "`MOCK_CREDIT_F04_ONLY`",
-      "expected": "MOCK_CREDIT_F04_ONLY"
+      "expected": "MOCK_CREDIT_F04_ONLY",
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-authority",
@@ -565,7 +610,8 @@
       "claim": "get_credit_advance lifecycle_authority is IN_MEMORY_FSM.",
       "check_id": "field.credit_advance.lifecycle_authority",
       "needle": "`IN_MEMORY_FSM`",
-      "expected": "IN_MEMORY_FSM"
+      "expected": "IN_MEMORY_FSM",
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-advance-ledger",
@@ -575,7 +621,8 @@
       "claim": "get_credit_advance exposure_ledger is MOCK_EXPOSURE.",
       "check_id": "field.credit_advance.exposure_ledger",
       "needle": "`MOCK_EXPOSURE`",
-      "expected": "MOCK_EXPOSURE"
+      "expected": "MOCK_EXPOSURE",
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-claim-provenance",
@@ -585,7 +632,8 @@
       "claim": "get_credit_claim provenance is MOCK_CREDIT_F04_ONLY.",
       "check_id": "field.credit_claim.provenance",
       "needle": "`MOCK_CREDIT_F04_ONLY`",
-      "expected": "MOCK_CREDIT_F04_ONLY"
+      "expected": "MOCK_CREDIT_F04_ONLY",
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-settlement-provenance",
@@ -595,7 +643,8 @@
       "claim": "get_settlement provenance is MOCK_SETTLEMENT_ONLY.",
       "check_id": "field.settlement.provenance",
       "needle": "`MOCK_SETTLEMENT_ONLY`",
-      "expected": "MOCK_SETTLEMENT_ONLY"
+      "expected": "MOCK_SETTLEMENT_ONLY",
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-authority",
@@ -605,7 +654,8 @@
       "claim": "get_settlement lifecycle_authority is IN_MEMORY_FSM.",
       "check_id": "field.settlement.lifecycle_authority",
       "needle": "`IN_MEMORY_FSM`",
-      "expected": "IN_MEMORY_FSM"
+      "expected": "IN_MEMORY_FSM",
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-claim-no-lifecycle-authority",
@@ -615,7 +665,8 @@
       "claim": "The get_credit_claim body has no lifecycle_authority key; it is not merged with the FSM view.",
       "check_id": "claim.no_lifecycle_authority",
       "needle": "`lifecycle_authority`가 없다",
-      "expected": false
+      "expected": false,
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-advance-snapshot-before-draw",
@@ -625,7 +676,8 @@
       "claim": "An offered advance with no draw yet, so no noted mock claim, reports snapshot_frozen false.",
       "check_id": "advance.snapshot_before_draw",
       "needle": "`snapshot_frozen`은 묶인 목 청구가 있을 때만 참이다",
-      "expected": false
+      "expected": false,
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-claim-snapshot-after-draw",
@@ -635,7 +687,8 @@
       "claim": "The mock claim view reports snapshot_frozen true.",
       "check_id": "claim.snapshot_after_draw",
       "needle": "`snapshot_frozen`은 목 청구 뷰가 항상 참이다",
-      "expected": true
+      "expected": true,
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-claim-unknown-before-draw",
@@ -648,7 +701,8 @@
       "expected": {
         "code": "UNKNOWN_CLAIM",
         "status": 404
-      }
+      },
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-settlement-claim-captured",
@@ -661,7 +715,8 @@
       "expected": [
         "CAPTURED",
         "MOCK_SETTLEMENT_ONLY"
-      ]
+      ],
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-settlement-claim-provenance",
@@ -671,7 +726,8 @@
       "claim": "The nested settlement claim provenance is MOCK_SETTLEMENT_ONLY.",
       "check_id": "settlement.claim_provenance",
       "needle": "`claim` 안의 `provenance`도 `MOCK_SETTLEMENT_ONLY`다",
-      "expected": "MOCK_SETTLEMENT_ONLY"
+      "expected": "MOCK_SETTLEMENT_ONLY",
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-error-unknown-credit-advance",
@@ -684,7 +740,8 @@
       "expected": {
         "code": "UNKNOWN_ADVANCE",
         "status": 404
-      }
+      },
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-error-invalid-credit-advance",
@@ -697,7 +754,8 @@
       "expected": {
         "code": "INVALID_ID",
         "status": 400
-      }
+      },
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-error-unknown-credit-claim",
@@ -710,7 +768,8 @@
       "expected": {
         "code": "UNKNOWN_CLAIM",
         "status": 404
-      }
+      },
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-error-invalid-credit-claim",
@@ -723,7 +782,8 @@
       "expected": {
         "code": "INVALID_ID",
         "status": 400
-      }
+      },
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-error-unknown-settlement",
@@ -736,7 +796,8 @@
       "expected": {
         "code": "UNKNOWN_SETTLEMENT",
         "status": 404
-      }
+      },
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-error-invalid-settlement",
@@ -749,7 +810,8 @@
       "expected": {
         "code": "INVALID_ID",
         "status": 400
-      }
+      },
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-error-codes",
@@ -764,7 +826,8 @@
         "UNKNOWN_ADVANCE",
         "UNKNOWN_CLAIM",
         "UNKNOWN_SETTLEMENT"
-      ]
+      ],
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-envelope-version",
@@ -774,7 +837,8 @@
       "claim": "The envelope read_schema_version is 0.1.",
       "check_id": "envelope.read_schema_version",
       "needle": "`read_schema_version`",
-      "expected": "0.1"
+      "expected": "0.1",
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-envelope-fixture-mode",
@@ -784,7 +848,8 @@
       "claim": "The envelope fixture_mode is REFERENCE_IN_MEMORY.",
       "check_id": "envelope.fixture_mode",
       "needle": "`REFERENCE_IN_MEMORY`",
-      "expected": "REFERENCE_IN_MEMORY"
+      "expected": "REFERENCE_IN_MEMORY",
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-envelope-query-digest",
@@ -794,7 +859,8 @@
       "claim": "query_digest is the sha256 of the canonical JSON of the query name and id. The draft names no algorithm; this is a Capital choice.",
       "check_id": "envelope.query_digest",
       "needle": "`query_digest`",
-      "expected": true
+      "expected": true,
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-envelope-accepted-advance",
@@ -807,7 +873,8 @@
       "expected": [
         5,
         5
-      ]
+      ],
+      "route": "GET /api/read/credit_advance/{id}"
     },
     {
       "id": "rm-envelope-accepted-claim",
@@ -820,7 +887,8 @@
       "expected": [
         5,
         5
-      ]
+      ],
+      "route": "GET /api/read/credit_claim/{id}"
     },
     {
       "id": "rm-envelope-accepted-settlement",
@@ -833,7 +901,8 @@
       "expected": [
         4,
         4
-      ]
+      ],
+      "route": "GET /api/read/settlement/{id}"
     },
     {
       "id": "rm-envelope-no-clock",
@@ -843,7 +912,8 @@
       "claim": "No logical_time_ms appears: neither machine has a clock.",
       "check_id": "envelope.no_clock",
       "needle": "시계가 없는 기계는 `logical_time_ms`를 생략한다",
-      "expected": false
+      "expected": false,
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-envelope-reserved-absent",
@@ -853,7 +923,8 @@
       "claim": "None of the seven RESERVED_FOR ReadObservationV1 names appears in the envelope or a body.",
       "check_id": "envelope.reserved_absent",
       "needle": "`source_cut`",
-      "expected": []
+      "expected": [],
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-envelope-visibility",
@@ -866,7 +937,8 @@
       "expected": [
         false,
         "UNDETERMINED"
-      ]
+      ],
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-body-unmodified",
@@ -880,7 +952,8 @@
         true,
         true,
         true
-      ]
+      ],
+      "route": "CapitalService.read_query"
     },
     {
       "id": "rm-non-mutation",
@@ -890,7 +963,496 @@
       "claim": "Queries over every fixture id, the drawn advance and rejected ids leave state_digest, canonical_state, journal and receipts identical.",
       "check_id": "nonmutation.service",
       "needle": "`canonical_state()`",
-      "expected": true
+      "expected": true,
+      "route": "CapitalService.read_query"
+    },
+    {
+      "id": "read-advance-phase",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The mapped read exposes the CreditMachine.view phase of the drawn case.",
+      "check_id": "read.advance.phase",
+      "needle": "phase",
+      "route": "GET /api/state",
+      "expected": "DRAWN",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-provenance",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "provenance stays MOCK_CREDIT_F04_ONLY.",
+      "check_id": "read.advance.provenance",
+      "needle": "MOCK_CREDIT_F04_ONLY",
+      "route": "GET /api/state",
+      "expected": "MOCK_CREDIT_F04_ONLY",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-lifecycle-authority",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "lifecycle_authority stays IN_MEMORY_FSM on the advance view.",
+      "check_id": "read.advance.lifecycle_authority",
+      "needle": "IN_MEMORY_FSM",
+      "route": "GET /api/state",
+      "expected": "IN_MEMORY_FSM",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-claim-id",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "claim_id cites the bound mock settlement fixture.",
+      "check_id": "read.advance.claim_id",
+      "needle": "claim_id",
+      "route": "GET /api/state",
+      "expected": "sim-committed",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-trade-id",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "trade_id echoes the bound fixture's synthetic trade id.",
+      "check_id": "read.advance.trade_id",
+      "needle": "trade_id",
+      "route": "GET /api/state",
+      "expected": "sim-trade-sim-committed",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-currency",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "currency is the fixture's KRW label.",
+      "check_id": "read.advance.currency",
+      "needle": "currency",
+      "route": "GET /api/state",
+      "expected": "KRW",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-amount",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "amount is the synthetic draw amount in fixture units.",
+      "check_id": "read.advance.amount",
+      "needle": "amount",
+      "route": "GET /api/state",
+      "expected": 60000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-beneficiary",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "beneficiary_role is the fixture's organizer role (the section-6 owner-or-holder class).",
+      "check_id": "read.advance.beneficiary_role",
+      "needle": "beneficiary_role",
+      "route": "GET /api/state",
+      "expected": "fixture-organizer",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-open-face",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "open_face is the bound claim's gross face in fixture units.",
+      "check_id": "read.advance.open_face",
+      "needle": "open_face",
+      "route": "GET /api/state",
+      "expected": 100000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-reserved-open",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "reserved_open is the mock ledger integer the draw reserved, not a bank reservation.",
+      "check_id": "read.advance.reserved_open",
+      "needle": "reserved_open",
+      "route": "GET /api/state",
+      "expected": 60000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-residual-unreserved",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "residual_unreserved is open_face minus reserved_open on the mock ledger.",
+      "check_id": "read.advance.residual_unreserved",
+      "needle": "residual_unreserved",
+      "route": "GET /api/state",
+      "expected": 40000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-confirmed-cash",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "confirmed_cash_on_face is the committed statement cash on the bound face.",
+      "check_id": "read.advance.confirmed_cash_on_face",
+      "needle": "confirmed_cash_on_face",
+      "route": "GET /api/state",
+      "expected": 97000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-recovery-due",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "recovery_due_on_face is zero on the fixture with no recovery posture.",
+      "check_id": "read.advance.recovery_due_on_face",
+      "needle": "recovery_due_on_face",
+      "route": "GET /api/state",
+      "expected": 0,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-snapshot-frozen",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "snapshot_frozen is true because a bound mock claim exists.",
+      "check_id": "read.advance.snapshot_frozen",
+      "needle": "snapshot_frozen",
+      "route": "GET /api/state",
+      "expected": true,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-outstanding",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "outstanding_exposure equals the drawn exposure before any repay.",
+      "check_id": "read.advance.outstanding_exposure",
+      "needle": "outstanding_exposure",
+      "route": "GET /api/state",
+      "expected": 60000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-draw-id",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "draw_id is the diagnostic pair derived from the draw idempotency key.",
+      "check_id": "read.advance.draw_id",
+      "needle": "draw_id",
+      "route": "GET /api/state",
+      "expected": "draw-sim-read-draw",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-settlement-gate",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "settlement_gate is the MOCK_COMMIT_OBSERVED label, not an atomic proof.",
+      "check_id": "read.advance.settlement_gate",
+      "needle": "settlement_gate",
+      "route": "GET /api/state",
+      "expected": "MOCK_COMMIT_OBSERVED",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-note-status",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "note_status is the mock ledger's NOTED state after the draw.",
+      "check_id": "read.advance.note_status",
+      "needle": "note_status",
+      "route": "GET /api/state",
+      "expected": "NOTED",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-funds-executed-false",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "funds_executed stays false on the read view.",
+      "check_id": "read.advance.funds_executed",
+      "needle": "funds_executed",
+      "route": "GET /api/state",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-repayment-observed-false",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "repayment_observed stays false before any repay command.",
+      "check_id": "read.advance.repayment_observed",
+      "needle": "repayment_observed",
+      "route": "GET /api/state",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-kyc-false",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "kyc_executed stays false; the read is not KYC.",
+      "check_id": "read.advance.kyc_executed",
+      "needle": "kyc_executed",
+      "route": "GET /api/state",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-underwriting-false",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "underwriting_executed stays false; the read is not underwriting.",
+      "check_id": "read.advance.underwriting_executed",
+      "needle": "underwriting_executed",
+      "route": "GET /api/state",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-interest-defined-false",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "interest_defined stays false; the mock defines no interest.",
+      "check_id": "read.advance.interest_defined",
+      "needle": "interest_defined",
+      "route": "GET /api/state",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-advance-unknown",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.12 `get_credit_advance`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "A missing advance id reads UNKNOWN_ADVANCE and adds no new error code.",
+      "check_id": "read.advance.unknown",
+      "needle": "UNKNOWN_ADVANCE",
+      "route": "CreditMachine.view",
+      "expected": "UNKNOWN_ADVANCE",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-provenance",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The claim view provenance is MOCK_CREDIT_F04_ONLY.",
+      "check_id": "read.claim.provenance",
+      "needle": "MOCK_CREDIT_F04_ONLY",
+      "route": "CreditMachine.view_claim",
+      "expected": "MOCK_CREDIT_F04_ONLY",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-claim-id",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "claim_id names the bound mock claim object, a different object from the section-2.11 settlement claim.",
+      "check_id": "read.claim.claim_id",
+      "needle": "claim_id",
+      "route": "CreditMachine.view_claim",
+      "expected": "sim-committed",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-open-face",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "open_face on the claim view is the mock face in fixture units.",
+      "check_id": "read.claim.open_face",
+      "needle": "open_face",
+      "route": "CreditMachine.view_claim",
+      "expected": 100000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-reserved-open",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "reserved_open on the claim view is the mock ledger integer the advance reserved.",
+      "check_id": "read.claim.reserved_open",
+      "needle": "reserved_open",
+      "route": "CreditMachine.view_claim",
+      "expected": 60000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-residual-unreserved",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "residual_unreserved on the claim view is the unreserved remainder.",
+      "check_id": "read.claim.residual_unreserved",
+      "needle": "residual_unreserved",
+      "route": "CreditMachine.view_claim",
+      "expected": 40000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-confirmed-cash",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "confirmed_cash_on_face on the claim view is the committed statement cash.",
+      "check_id": "read.claim.confirmed_cash_on_face",
+      "needle": "confirmed_cash_on_face",
+      "route": "CreditMachine.view_claim",
+      "expected": 97000,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-recovery-due",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "recovery_due_on_face on the claim view is zero on the fixture.",
+      "check_id": "read.claim.recovery_due_on_face",
+      "needle": "recovery_due_on_face",
+      "route": "CreditMachine.view_claim",
+      "expected": 0,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-snapshot-frozen",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "snapshot_frozen on the mock claim view is always true; it is not a chain snapshot.",
+      "check_id": "read.claim.snapshot_frozen",
+      "needle": "snapshot_frozen",
+      "route": "CreditMachine.view_claim",
+      "expected": true,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-funds-executed-false",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The claim view carries the same always-false flags; funds_executed stays false.",
+      "check_id": "read.claim.funds_executed",
+      "needle": "그리고 §2.12와 같은 `_flags`",
+      "route": "CreditMachine.view_claim",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-no-lifecycle-key",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The claim view has no lifecycle_authority key; the two objects are not merged into one schema.",
+      "check_id": "read.claim.no_lifecycle_key",
+      "needle": "lifecycle_authority",
+      "route": "CreditMachine.view_claim",
+      "expected": false,
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-claim-unknown",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "### 2.13 `get_credit_claim`",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "A missing claim id reads UNKNOWN_CLAIM and adds no new error code.",
+      "check_id": "read.claim.unknown",
+      "needle": "UNKNOWN_CLAIM",
+      "route": "CreditMachine.view_claim",
+      "expected": "UNKNOWN_CLAIM",
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-readonly-state",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "## 8. 비변경",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The GET /api/state read leaves canonical_state, journal length, the overlay state digest and operation_count unchanged.",
+      "check_id": "read.readonly.state",
+      "needle": "canonical_state()",
+      "route": "GET /api/state",
+      "expected": {
+        "canonical_state": true,
+        "journal": true,
+        "overlay_state_digest": true,
+        "operation_count": true
+      },
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-readonly-advance",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "## 8. 비변경",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The advance view read writes no journal entry, stores no idempotency key and changes no counter.",
+      "check_id": "read.readonly.advance",
+      "needle": "export_journal()",
+      "route": "CreditMachine.view",
+      "expected": {
+        "canonical_state": true,
+        "journal": true,
+        "overlay_state_digest": true,
+        "operation_count": true
+      },
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-readonly-claim",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "## 8. 비변경",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "The claim view read also leaves the bound ownership source's canonical_state unchanged, like the existing view _guard.",
+      "check_id": "read.readonly.claim",
+      "needle": "_guard",
+      "route": "CreditMachine.view_claim",
+      "expected": {
+        "canonical_state": true,
+        "journal": true,
+        "overlay_state_digest": true,
+        "operation_count": true
+      },
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "read-readonly-unknown",
+      "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
+      "section": "## 8. 비변경",
+      "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
+      "claim": "Even erroring reads (missing advance, missing claim) leave the guard unchanged.",
+      "check_id": "read.readonly.unknown",
+      "needle": "`canonical_state()`",
+      "route": "CreditMachine.view",
+      "expected": {
+        "canonical_state": true,
+        "journal": true,
+        "overlay_state_digest": true,
+        "operation_count": true
+      },
+      "original_pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
     }
   ]
 }

@@ -198,6 +198,8 @@ class ShapeTests(unittest.TestCase):
             role = 'organizer' if cell['caller'] == 'no-token' else cell['caller']
             if cell['caller'] == 'no-token':
                 self.assertEqual(cell['expect'], {'status': 403, 'error': 'LOCAL_TOKEN_REQUIRED'}, cell)
+            elif cell['op'] == 'default' and role == 'agent':
+                self.assertEqual(cell['expect'], {'status': 403, 'error': 'RECOVERY_AGENT_FORBIDDEN'}, cell)
             elif COMMAND_SUBMIT in MATRIX[role]:
                 self.assertEqual(cell['expect'], {'status': 400, 'error': 'INVALID_ARGUMENTS'}, cell)
             else:
