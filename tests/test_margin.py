@@ -221,10 +221,14 @@ class AccelerationTests(unittest.TestCase):
         self.assertEqual(margin_state(self.service)['status'], 'ACCELERATED')
         self.assertNotIn(overlay.KIND_DEFAULT_PROPOSAL, kinds(self.service))
 
-    def test_interest_is_not_rebased(self):
+    def test_interest_is_rebased_under_default_recovery_decision(self):
         tick(self.service, 'c-2', 3, self.deadline + 1)
-        self.assertIs(self.service.overlay_state()['margin']['interest_rebased'], False)
-        self.assertIs(self.service.overlay_state()['advances'][0]['margin']['interest_rebased'], False)
+        self.assertIs(self.service.overlay_state()['margin']['interest_rebased'], True)
+        self.assertIs(self.service.overlay_state()['advances'][0]['margin']['interest_rebased'], True)
+        row = self.service.overlay_state()['advances'][0]
+        self.assertEqual(row['maturity_day'], self.deadline)
+        self.assertEqual(row['interest_rebase']['status'], 'REBASED')
+        self.assertEqual(row['interest_rebase']['default_interest_from_sim_day'], self.deadline + 1)
 
 
 class FoldTests(unittest.TestCase):

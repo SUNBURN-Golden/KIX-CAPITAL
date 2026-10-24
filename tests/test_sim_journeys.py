@@ -240,8 +240,8 @@ class T05Tests(JourneyBase):
         self.assertEqual(called['margin_state'], 'CALLED')
         self.assertEqual(called['default_eligible_day'], None)
         self.assertEqual(accelerated['margin_state'], 'ACCELERATED')
-        self.assertIs(accelerated['interest_rebased'], False)
-        self.assertEqual(accelerated['interest_basis'], 'NOT_REBASED')
+        self.assertIs(accelerated['interest_rebased'], True)
+        self.assertEqual(accelerated['interest_basis'], 'REBASED')
         # Deadline 3 + window 5 = 8; acceleration on the next tick; eligible = 8 + grace 10 + 1.
         self.assertEqual((called['cure_deadline'], accelerated['default_eligible_day']), (8, 19))
         self.assertEqual(_step(self.t05, 'allocation quote')['status'], [200, 'NOT_APPLICABLE', 'NOT_APPLICABLE'])

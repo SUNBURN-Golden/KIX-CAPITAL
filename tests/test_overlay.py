@@ -139,19 +139,20 @@ class AccrualTests(unittest.TestCase):
         self.assertEqual(row(self.service)['interest_due_krw'], expected)
         self.assertEqual(row(self.service)['principal_outstanding_krw'], 70000)
 
-    def test_accrual_stops_at_the_note_writeoff_day(self):
+    def test_without_a_default_command_interest_continues_and_overdue_is_display_only(self):
+        # CAPITAL_DEFAULT_RECOVERY.md §4.2: only an accepted, dated human default
+        # anchors the stop day. Eligibility itself neither defaults nor writes off.
         tick(self.service, 'c-1', 0, 170)
-        term = terms_value('term')
-        loss = terms_value('default_loss_treatment')
-        maturity = term['standard_term_days']
-        writeoff = maturity + term['grace_days_after_maturity'] + 1 + loss['writeoff_days_after_default']
+        maturity = terms_value('term')['standard_term_days']
         current = row(self.service)
-        self.assertEqual(current['writeoff_day'], writeoff)
-        self.assertEqual(current['accrued_through_sim_day'], writeoff)
+        self.assertIsNone(current['writeoff_day'])
+        self.assertEqual(current['accrued_through_sim_day'], 170)
         self.assertEqual(current['interest_due_krw'], formula(90000 * maturity, 700))
-        self.assertEqual(current['default_interest_due_krw'], formula(90000 * (writeoff - maturity), 1000))
+        self.assertEqual(current['default_interest_due_krw'], formula(90000 * (170 - maturity), 1000))
+        self.assertIn('DEFAULT_COMMAND_OVERDUE', current['interest_rebase']['flags'])
         tick(self.service, 'c-2', 170, 200)
-        self.assertEqual(row(self.service)['accrued_through_sim_day'], writeoff)
+        self.assertEqual(row(self.service)['accrued_through_sim_day'], 200)
+        self.assertEqual(self.service.machine.view('sim-a')['phase'], 'DRAWN')
 
     def test_a_draw_then_one_tick_posts_exactly_one_day(self):
         receipt = tick(self.service, 'c-1', 0, 1)
