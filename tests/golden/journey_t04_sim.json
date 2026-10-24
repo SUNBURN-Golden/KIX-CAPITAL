@@ -1,0 +1,772 @@
+{
+  "digest": "89ab38c4600a5fb1451107f301dfb791534b3aca1549dfecf37e32a82c37599c",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "T04-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 38,
+  "steps": [
+    {
+      "expect": [
+        "LOCAL_FILE_WORKSPACE",
+        false
+      ],
+      "facts": {
+        "label": "SIMULATED"
+      },
+      "kind": "PROCESS",
+      "n": 1,
+      "name": "organizer session on a --workspace server",
+      "status": [
+        "LOCAL_FILE_WORKSPACE",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-closed",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "seed offer sim-closed",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-closed",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "seed approve sim-closed",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-closed",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "seed bind_settlement sim-closed",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-closed",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "seed draw sim-closed",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-closed",
+        "op": "repay"
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "seed repay sim-closed",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-closed",
+        "op": "close"
+      },
+      "kind": "HTTP",
+      "n": 7,
+      "name": "seed close sim-closed",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-defaulted",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 8,
+      "name": "seed offer sim-defaulted",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-defaulted",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 9,
+      "name": "seed approve sim-defaulted",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-defaulted",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 10,
+      "name": "seed bind_settlement sim-defaulted",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-defaulted",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 11,
+      "name": "seed draw sim-defaulted",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-defaulted",
+        "op": "default"
+      },
+      "kind": "HTTP",
+      "n": 12,
+      "name": "seed default sim-defaulted",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-rejected",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 13,
+      "name": "seed offer sim-rejected",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-rejected",
+        "op": "reject"
+      },
+      "kind": "HTTP",
+      "n": 14,
+      "name": "seed reject sim-rejected",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-cancelled",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 15,
+      "name": "seed offer sim-cancelled",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-cancelled",
+        "op": "cancel"
+      },
+      "kind": "HTTP",
+      "n": 16,
+      "name": "seed cancel sim-cancelled",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-unbound",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 17,
+      "name": "seed offer sim-unbound",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-unbound",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 18,
+      "name": "seed approve sim-unbound",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-unbound",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 19,
+      "name": "seed draw sim-unbound",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-pending-settlement",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 20,
+      "name": "seed offer sim-pending-settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-pending-settlement",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 21,
+      "name": "seed approve sim-pending-settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-pending-settlement",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 22,
+      "name": "seed bind_settlement sim-pending-settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "REJECTED",
+        "SETTLEMENT_NOT_COMMITTED"
+      ],
+      "facts": {
+        "advance_id": "sim-pending-settlement",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 23,
+      "name": "seed draw sim-pending-settlement",
+      "status": [
+        200,
+        "REJECTED",
+        "SETTLEMENT_NOT_COMMITTED"
+      ]
+    },
+    {
+      "expect": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45",
+      "facts": {
+        "cases": 6,
+        "operation_count": 22
+      },
+      "kind": "HTTP",
+      "n": 24,
+      "name": "the seeded book matches the seeded-demo state_digest pin",
+      "status": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45"
+    },
+    {
+      "expect": [
+        200,
+        "auditor",
+        "NOT_BOUND",
+        "NOT_BOUND",
+        "NOT_BOUND"
+      ],
+      "facts": {
+        "mode": "LOCAL_SYNTHETIC_ROLES",
+        "role_provenance": "SYNTHETIC_LOCAL_ROLE"
+      },
+      "kind": "HTTP",
+      "n": 25,
+      "name": "auditor role bound through the organizer session",
+      "status": [
+        200,
+        "auditor",
+        "NOT_BOUND",
+        "NOT_BOUND",
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "ROLE_FORBIDDEN"
+      ],
+      "kind": "HTTP",
+      "n": 26,
+      "name": "the auditor token cannot advance the clock",
+      "status": [
+        403,
+        "ROLE_FORBIDDEN"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 10
+      },
+      "kind": "HTTP",
+      "n": 27,
+      "name": "advance_day 0->10",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        10,
+        "BOUND",
+        "INCLUDED_IN_MANIFEST_V3"
+      ],
+      "facts": {
+        "advances": 3,
+        "interest_payments": "NONE_YET",
+        "overlay_state_digest": "aa59b818817d70509841678d930d85dc706f7150e9bbdbe18b38ed9f26f30033"
+      },
+      "kind": "HTTP",
+      "n": 28,
+      "name": "auditor reads the overlay after the organizer tick",
+      "status": [
+        200,
+        10,
+        "BOUND",
+        "INCLUDED_IN_MANIFEST_V3"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "BOUND",
+        true
+      ],
+      "facts": {
+        "advances_open": 2,
+        "outstanding_krw": 45000,
+        "risk_digest": "ce65bdba62381b04e102fd5c6c0180b93696c7a1b9fdac9eb5a2524aaf1cb77b"
+      },
+      "kind": "HTTP",
+      "n": 29,
+      "name": "auditor reads the risk rollup",
+      "status": [
+        200,
+        "BOUND",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "BOUND"
+      ],
+      "facts": {
+        "evaluated": 3,
+        "interest_krw": 110,
+        "rows": 6
+      },
+      "kind": "HTTP",
+      "n": 30,
+      "name": "auditor reads the terms portfolio rollup",
+      "status": [
+        200,
+        "BOUND"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "MATCHED",
+        [
+          "MATCHED"
+        ]
+      ],
+      "facts": {
+        "checks": [
+          "receipts_vs_journal_keys",
+          "rejected_receipts_absent_from_journal",
+          "replay_digest_equals_state_digest",
+          "case_fixture_map_vs_journal_offers",
+          "projection_totals_vs_case_views",
+          "fixtures_digest",
+          "overlay_fold_digest_equals_persisted"
+        ]
+      },
+      "kind": "HTTP",
+      "n": 31,
+      "name": "auditor reconciliation: every check MATCHED",
+      "status": [
+        200,
+        "MATCHED",
+        [
+          "MATCHED"
+        ]
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "COMPLETE",
+        "UNSIGNED",
+        "NOT_BOUND"
+      ],
+      "facts": {
+        "content_digest": "00d77f9c6935b0b796abeac523db450e519c985157e487cc511b4bd15e40249a",
+        "sections": [
+          "fixtures",
+          "journal",
+          "overlay",
+          "projection",
+          "receipts",
+          "reconciliation",
+          "source_pin",
+          "statement"
+        ],
+        "stage7_authenticated_export": false
+      },
+      "kind": "HTTP",
+      "n": 32,
+      "name": "auditor exports the V3 manifest",
+      "status": [
+        200,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "COMPLETE",
+        "UNSIGNED",
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "MATCHED",
+        "NOT_BOUND",
+        false
+      ],
+      "facts": {
+        "sections": {
+          "fixtures": "MATCHED",
+          "journal": "MATCHED",
+          "overlay": "MATCHED",
+          "projection": "MATCHED",
+          "receipts": "MATCHED",
+          "reconciliation": "MATCHED",
+          "source_pin": "MATCHED",
+          "statement": "MATCHED"
+        }
+      },
+      "kind": "VERIFY",
+      "n": 33,
+      "name": "capital.verify rechecks the exported manifest offline",
+      "status": [
+        0,
+        true,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "MATCHED",
+        "NOT_BOUND",
+        false
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "OFFLINE_WORKSPACE_AUDIT",
+        "MATCHED",
+        false,
+        false,
+        false
+      ],
+      "facts": {
+        "checks": {
+          "envelope_shape": "MATCHED",
+          "journal_replay": "MATCHED",
+          "payload_sha256": "MATCHED",
+          "payload_shape": "MATCHED",
+          "receipt_journal_fingerprints": "MATCHED",
+          "recon": "MATCHED",
+          "service_restore": "MATCHED",
+          "state_digest": "MATCHED",
+          "strict_json": "MATCHED",
+          "workspace_file": "MATCHED"
+        },
+        "durable": "LOCAL_FILE_WORKSPACE",
+        "entry_count": 21,
+        "receipt_count": 22,
+        "stage5_durable_transactions": "NOT_BOUND",
+        "state_digest": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45"
+      },
+      "kind": "VERIFY",
+      "n": 34,
+      "name": "capital.verify --workspace audits the live file read-only",
+      "status": [
+        0,
+        true,
+        "OFFLINE_WORKSPACE_AUDIT",
+        "MATCHED",
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "ROLE_FORBIDDEN"
+      ],
+      "kind": "HTTP",
+      "n": 35,
+      "name": "the auditor token cannot submit a command",
+      "status": [
+        403,
+        "ROLE_FORBIDDEN"
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "ROLE_FORBIDDEN"
+      ],
+      "kind": "HTTP",
+      "n": 36,
+      "name": "the observer token cannot export the manifest",
+      "status": [
+        403,
+        "ROLE_FORBIDDEN"
+      ]
+    },
+    {
+      "expect": {
+        "sim-cancelled": "CANCELLED",
+        "sim-closed": "CLOSED",
+        "sim-defaulted": "DEFAULTED",
+        "sim-pending-settlement": "APPROVED",
+        "sim-rejected": "REJECTED",
+        "sim-unbound": "DRAWN"
+      },
+      "facts": {
+        "funds_executed": false,
+        "operation_count": 22,
+        "overlay_state_digest": "aa59b818817d70509841678d930d85dc706f7150e9bbdbe18b38ed9f26f30033",
+        "risk_digest": "ce65bdba62381b04e102fd5c6c0180b93696c7a1b9fdac9eb5a2524aaf1cb77b",
+        "sim_day": 10,
+        "state_digest": "a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45"
+      },
+      "kind": "HTTP",
+      "n": 37,
+      "name": "final phases and digests",
+      "status": {
+        "sim-cancelled": "CANCELLED",
+        "sim-closed": "CLOSED",
+        "sim-defaulted": "DEFAULTED",
+        "sim-pending-settlement": "APPROVED",
+        "sim-rejected": "REJECTED",
+        "sim-unbound": "DRAWN"
+      }
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 25
+      },
+      "kind": "AUDIT",
+      "n": 38,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}

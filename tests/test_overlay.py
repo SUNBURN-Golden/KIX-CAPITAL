@@ -139,19 +139,20 @@ class AccrualTests(unittest.TestCase):
         self.assertEqual(row(self.service)['interest_due_krw'], expected)
         self.assertEqual(row(self.service)['principal_outstanding_krw'], 70000)
 
-    def test_accrual_stops_at_the_note_writeoff_day(self):
+    def test_without_a_default_command_interest_continues_and_overdue_is_display_only(self):
+        # CAPITAL_DEFAULT_RECOVERY.md §4.2: only an accepted, dated human default
+        # anchors the stop day. Eligibility itself neither defaults nor writes off.
         tick(self.service, 'c-1', 0, 170)
-        term = terms_value('term')
-        loss = terms_value('default_loss_treatment')
-        maturity = term['standard_term_days']
-        writeoff = maturity + term['grace_days_after_maturity'] + 1 + loss['writeoff_days_after_default']
+        maturity = terms_value('term')['standard_term_days']
         current = row(self.service)
-        self.assertEqual(current['writeoff_day'], writeoff)
-        self.assertEqual(current['accrued_through_sim_day'], writeoff)
+        self.assertIsNone(current['writeoff_day'])
+        self.assertEqual(current['accrued_through_sim_day'], 170)
         self.assertEqual(current['interest_due_krw'], formula(90000 * maturity, 700))
-        self.assertEqual(current['default_interest_due_krw'], formula(90000 * (writeoff - maturity), 1000))
+        self.assertEqual(current['default_interest_due_krw'], formula(90000 * (170 - maturity), 1000))
+        self.assertIn('DEFAULT_COMMAND_OVERDUE', current['interest_rebase']['flags'])
         tick(self.service, 'c-2', 170, 200)
-        self.assertEqual(row(self.service)['accrued_through_sim_day'], writeoff)
+        self.assertEqual(row(self.service)['accrued_through_sim_day'], 200)
+        self.assertEqual(self.service.machine.view('sim-a')['phase'], 'DRAWN')
 
     def test_a_draw_then_one_tick_posts_exactly_one_day(self):
         receipt = tick(self.service, 'c-1', 0, 1)
@@ -870,20 +871,27 @@ class GoldenTests(unittest.TestCase):
     def demo_scenario():
         service = seed.build_service()
         tick(service, 'demo-advance-1', 0, 60)
-        run(service, 'repay', 'sim-unbound', 'demo-repay-1', amount=5000, sequence=1)
+        # The interest due plus 1000 KRW of principal: the F04 repay is issued by the posting itself.
+        due = row(service, 'sim-unbound')['interest_due_krw']
+        service.overlay_command({
+            'instance_id': service.instance_id, 'operation_id': 'demo-repay-1', 'op': 'post_repayment',
+            'advance_ref': 'sim-unbound', 'at_sim_day': 60, 'amount_krw': due + 1000})
         tick(service, 'demo-advance-2', 60, 75)
         state = overlay.fold(service.overlay_entries, len(service.machine.export_journal()))
         manifest = service.export_manifest()
         return {
             'label': 'SIMULATED', 'overlay_schema': 1,
-            'decision_note': 'docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4 (overlay-digest-export-decision), node audit60-fix2',
+            'decision_note': 'docs/decisions/CAPITAL_REPAYMENT_POSTING.md 3.9 (repayment-posting-decision), node overlay-repayment-posting; docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4',
             'export_manifest_v3_format': manifest['format'],
             'export_manifest_v3_content_digest': manifest['content_digest'],
-            'scenario': 'terms binding -> advance_day 0->60 -> repay sim-unbound 5000 -> advance_day 60->75',
+            'scenario': 'terms binding -> advance_day 0->60 -> post_repayment sim-unbound interest plus 1000 principal -> advance_day 60->75',
             'sim_day': state['sim_day'], 'entry_count': state['entry_count'],
             'overlay_state_digest': overlay.state_digest(state),
             'interest_krw': {advance: {'contract': info['posted_contract_krw'], 'default': info['posted_default_krw']}
                              for advance, info in sorted(state['advances'].items())},
+            'repayments_krw': {advance: {'default_interest': info['paid_default_krw'], 'interest': info['paid_interest_krw'],
+                                         'principal': info['principal_krw'], 'unapplied': info['unapplied_cash_krw']}
+                               for advance, info in sorted(state['repayment']['advances'].items())},
         }
 
     def test_empty_overlay_golden(self):

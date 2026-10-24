@@ -136,6 +136,7 @@
       "probes": [
         "/api/terms",
         "/api/terms/portfolio?instance_id=@instance&as_of_day=1",
+        "/api/terms/portfolio/forecast?instance_id=@instance",
         "/api/terms/sim-mtx?instance_id=@instance&draw_day=0&as_of_day=1",
         "/api/terms/sim-mtx/allocation?instance_id=@instance&as_of_day=1&cash=1",
         "/api/terms/sim-mtx/setoff?instance_id=@instance&as_of_day=1"
@@ -153,12 +154,32 @@
     },
     {
       "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "children": false,
+      "handler": "_get_portfolio_snapshot",
+      "permission": "projection:read",
+      "probes": [
+        "/api/portfolio/snapshot?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/risk",
       "children": false,
       "handler": "_get_risk",
       "permission": "projection:read",
       "probes": [
         "/api/risk"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/covenants",
+      "children": false,
+      "handler": "_get_covenants",
+      "permission": "projection:read",
+      "probes": [
+        "/api/risk/covenants"
       ]
     },
     {
@@ -790,6 +811,57 @@
     },
     {
       "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
       "route": "/api/risk",
       "caller": "organizer",
       "outcome": "ALLOW",
@@ -833,6 +905,57 @@
     {
       "method": "GET",
       "route": "/api/risk",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/covenants",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/covenants",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/covenants",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/covenants",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/covenants",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {
@@ -2487,9 +2610,7 @@
       "outcome": "DENY",
       "expect": {
         "status": 403,
-        "error": "ROLE_FORBIDDEN",
-        "permission": "command:submit",
-        "role": "agent"
+        "error": "RECOVERY_AGENT_FORBIDDEN"
       }
     },
     {

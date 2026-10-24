@@ -1,7 +1,8 @@
-"""Named SIMULATED journeys T05-sim and T06-sim: steps, pinned goldens, and the acceptance stage.
+"""Named SIMULATED journeys T03-sim through T06-sim: steps, pinned goldens, and the acceptance stage.
 
-The journeys run a real loopback server (T06-sim a --workspace subprocess that is killed with
-SIGKILL). Nothing here claims T01-T06 qualification, integration, or human acceptance.
+The journeys run a real loopback server (T04-sim and T06-sim on --workspace subprocesses,
+T06-sim killed with SIGKILL). Nothing here claims T01-T06 qualification, integration, or
+human acceptance.
 """
 import contextlib
 import importlib.util
@@ -43,16 +44,29 @@ def _step(result, fragment):
     return matches[0]
 
 
+_RESULTS = {}
+
+
+def _result(journey_id):
+    """One cached run per journey; the golden-equality test reruns each itself."""
+    if journey_id not in _RESULTS:
+        _RESULTS[journey_id] = journeys.RUNNERS[journey_id]()
+    return _RESULTS[journey_id]
+
+
 class JourneyBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.t05 = journeys.run_t05()
-        cls.t06 = journeys.run_t06()
+        cls.t03 = _result('T03-sim')
+        cls.t04 = _result('T04-sim')
+        cls.t05 = _result('T05-sim')
+        cls.t06 = _result('T06-sim')
+        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06)
 
 
 class CommonTests(JourneyBase):
-    def test_labels_and_flags_on_both_journeys(self):
-        for result in (self.t05, self.t06):
+    def test_labels_and_flags_on_all_journeys(self):
+        for result in self.all:
             with self.subTest(result['journey']):
                 self.assertEqual(result['label'], 'SIMULATED')
                 self.assertIs(result['funds_executed'], False)
@@ -67,13 +81,14 @@ class CommonTests(JourneyBase):
                 self.assertEqual(len(result['digest']), 64)
 
     def test_committed_goldens_equal_the_live_run(self):
-        for result in (self.t05, self.t06):
+        for result in self.all:
             path = GOLDEN / journeys.GOLDEN_FILES[result['journey']]
             self.assertEqual(path.read_text(encoding='utf-8'), journeys.render(result), path.name)
 
     def test_second_run_has_the_same_digests(self):
-        self.assertEqual(journeys.run_t05()['digest'], self.t05['digest'])
-        self.assertEqual(journeys.run_t06()['digest'], self.t06['digest'])
+        for result in self.all:
+            with self.subTest(result['journey']):
+                self.assertEqual(journeys.RUNNERS[result['journey']]()['digest'], result['digest'])
 
     def test_goldens_carry_no_process_identity(self):
         for name in journeys.GOLDEN_FILES.values():
@@ -84,10 +99,104 @@ class CommonTests(JourneyBase):
                 self.assertNotIn(needle, text, needle)
 
     def test_no_operation_id_is_posted_twice(self):
-        for result in (self.t05, self.t06):
+        for result in self.all:
             step = _step(result, 'no operation id was posted twice')
             self.assertIs(step['status'], True)
             self.assertGreater(step['facts']['posted'], 5)
+
+
+class T03Tests(JourneyBase):
+    def test_lifecycle_reaches_close_with_no_exceptions(self):
+        for fragment in ('offer sim-t03-a', 'approve sim-t03-a', 'bind_settlement sim-t03-a',
+                         'draw sim-t03-a', 'repay the outstanding principal', 'close sim-t03-a'):
+            self.assertEqual(_step(self.t03, fragment)['status'], [200, 'ACCEPTED', None], fragment)
+        self.assertEqual(_step(self.t03, 'the draw receipt is queryable')['status'],
+                         [200, 'ACCEPTED', False])
+        final = _step(self.t03, 'final phases and digests')
+        self.assertEqual(final['status'], {'sim-t03-a': 'CLOSED'})
+        facts = final['facts']
+        self.assertEqual((facts['sim_day'], facts['interest_payments']), (45, 'NONE_YET'))
+        self.assertIs(facts['funds_executed'], False)
+        for key in ('overlay_state_digest', 'risk_digest', 'state_digest'):
+            self.assertRegex(facts[key], r'^[0-9a-f]{64}$', key)
+
+    def test_act365_accrual_is_pinned_and_stops_at_close(self):
+        day15 = _step(self.t03, 'through sim_day 15')
+        day30 = _step(self.t03, 'through sim_day 30')
+        self.assertEqual((day15['status'], day30['status'][0]),
+                         (['DRAWN', 15, True, 0, False], 30))
+        self.assertEqual((day15['facts']['interest_due_krw'], day30['facts']['interest_due_krw']),
+                         (86, 172))
+        self.assertEqual(day30['facts']['cumulative_exact_contract'], '12600/73')
+        after = _step(self.t03, 'no interest accrues after close')
+        self.assertEqual(after['status'], [[], 30, 'CLOSED'])
+        self.assertEqual(after['facts']['interest_due_krw'], day30['facts']['interest_due_krw'])
+
+    def test_full_repay_leaves_the_interest_memo_unpaid_and_close_still_works(self):
+        self.assertEqual(_step(self.t03, 'not close-ready')['status'],
+                         ['DRAWN', 0, False, 'NONE_YET'])
+        quote = _step(self.t03, 'full-repayment allocation quote')['facts']
+        self.assertEqual(quote['order'], ['DEFAULT_INTEREST', 'INTEREST', 'PRINCIPAL'])
+        self.assertEqual((quote['to_interest'], quote['to_principal']), (172, 30_000))
+        self.assertEqual(quote['fsm_repay'], {'amount': 30_000, 'sequence': 1})
+        recon = _step(self.t03, 'reconciliation is clean')
+        self.assertEqual(recon['status'], [200, 'MATCHED', ['MATCHED']])
+        self.assertIn('overlay_fold_digest_equals_persisted', recon['facts']['checks'])
+        risk = _step(self.t03, 'risk rollup is bound')
+        self.assertEqual(risk['status'], [200, 'BOUND', True, 30_000])
+        self.assertRegex(risk['facts']['risk_digest'], r'^[0-9a-f]{64}$')
+
+
+class T04Tests(JourneyBase):
+    def test_seeded_book_matches_the_demo_pin_over_http(self):
+        seeds = [step for step in self.t04['steps'] if step['name'].startswith('seed ')]
+        self.assertEqual(len(seeds), len(journeys.seed_demo.STEPS))
+        rejected = _step(self.t04, 'seed draw sim-pending-settlement')
+        self.assertEqual(rejected['status'], [200, 'REJECTED', 'SETTLEMENT_NOT_COMMITTED'])
+        pin = _step(self.t04, 'matches the seeded-demo state_digest pin')
+        demo = json.loads((GOLDEN / 'demo.json').read_text(encoding='utf-8'))
+        self.assertEqual(pin['status'], demo['state_digest'])
+        self.assertEqual(pin['expect'], demo['state_digest'])
+        self.assertEqual(pin['facts']['cases'], 6)
+
+    def test_auditor_reads_and_offline_verification(self):
+        bind = _step(self.t04, 'auditor role bound')
+        self.assertEqual(bind['status'], [200, 'auditor', 'NOT_BOUND', 'NOT_BOUND', 'NOT_BOUND'])
+        overlay = _step(self.t04, 'auditor reads the overlay')
+        self.assertEqual(overlay['status'], [200, 10, 'BOUND', 'INCLUDED_IN_MANIFEST_V3'])
+        self.assertRegex(overlay['facts']['overlay_state_digest'], r'^[0-9a-f]{64}$')
+        self.assertEqual(_step(self.t04, 'auditor reads the risk rollup')['status'],
+                         [200, 'BOUND', True])
+        self.assertEqual(_step(self.t04, 'terms portfolio rollup')['status'], [200, 'BOUND'])
+        recon = _step(self.t04, 'every check MATCHED')
+        self.assertEqual(recon['status'], [200, 'MATCHED', ['MATCHED']])
+        self.assertIn('overlay_fold_digest_equals_persisted', recon['facts']['checks'])
+        exported = _step(self.t04, 'auditor exports the V3 manifest')
+        self.assertEqual(exported['status'],
+                         [200, 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'COMPLETE', 'UNSIGNED', 'NOT_BOUND'])
+        self.assertIs(exported['facts']['stage7_authenticated_export'], False)
+        verify = _step(self.t04, 'rechecks the exported manifest')
+        self.assertEqual(verify['status'],
+                         [0, True, 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'MATCHED', 'NOT_BOUND', False])
+        self.assertEqual(set(verify['facts']['sections'].values()), {'MATCHED'})
+        audit = _step(self.t04, 'audits the live file read-only')
+        self.assertEqual(audit['status'],
+                         [0, True, 'OFFLINE_WORKSPACE_AUDIT', 'MATCHED', False, False, False])
+        self.assertEqual(set(audit['facts']['checks'].values()), {'MATCHED'})
+        self.assertEqual(audit['facts']['stage5_durable_transactions'], 'NOT_BOUND')
+        self.assertEqual(audit['facts']['durable'], 'LOCAL_FILE_WORKSPACE')
+        final = _step(self.t04, 'final phases and digests')
+        self.assertEqual(final['status'],
+                         {row[0]: row[1] for row in journeys.seed_demo.EXPECTED})
+        facts = final['facts']
+        self.assertEqual((facts['sim_day'], facts['funds_executed']), (10, False))
+        for key in ('overlay_state_digest', 'risk_digest', 'state_digest'):
+            self.assertRegex(facts[key], r'^[0-9a-f]{64}$', key)
+
+    def test_auditor_and_observer_tokens_cannot_write_or_export(self):
+        for fragment in ('cannot advance the clock', 'cannot submit a command',
+                         'cannot export the manifest'):
+            self.assertEqual(_step(self.t04, fragment)['status'], [403, 'ROLE_FORBIDDEN'], fragment)
 
 
 class T05Tests(JourneyBase):
@@ -131,8 +240,8 @@ class T05Tests(JourneyBase):
         self.assertEqual(called['margin_state'], 'CALLED')
         self.assertEqual(called['default_eligible_day'], None)
         self.assertEqual(accelerated['margin_state'], 'ACCELERATED')
-        self.assertIs(accelerated['interest_rebased'], False)
-        self.assertEqual(accelerated['interest_basis'], 'NOT_REBASED')
+        self.assertIs(accelerated['interest_rebased'], True)
+        self.assertEqual(accelerated['interest_basis'], 'REBASED')
         # Deadline 3 + window 5 = 8; acceleration on the next tick; eligible = 8 + grace 10 + 1.
         self.assertEqual((called['cure_deadline'], accelerated['default_eligible_day']), (8, 19))
         self.assertEqual(_step(self.t05, 'allocation quote')['status'], [200, 'NOT_APPLICABLE', 'NOT_APPLICABLE'])
@@ -145,7 +254,7 @@ class T05Tests(JourneyBase):
         self.assertEqual(later['facts']['principal_outstanding_krw'], 48_000 - split['principal_share_krw'])
 
     def test_close_and_human_default_with_the_proposal_only_f04(self):
-        self.assertEqual(_step(self.t05, 'not close-ready')['status'], [False, 'NOT_RECORDED'])
+        self.assertEqual(_step(self.t05, 'not close-ready')['status'], [False, 'NONE_YET'])
         proposal = _step(self.t05, 'DEFAULT_ELIGIBLE proposal')
         self.assertEqual(proposal['status'], [1, 'DEFAULT_ELIGIBLE', False, True])
         self.assertEqual(_step(self.t05, 'still DRAWN')['status'], 'DRAWN')
@@ -247,24 +356,26 @@ class GoldenTests(JourneyBase):
             self.assertEqual(path.read_text(encoding='utf-8'), tampered)
 
     def test_digest_tamper_in_a_golden_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / 'journey_t06_sim.json'
-            data = json.loads((GOLDEN / 'journey_t06_sim.json').read_text(encoding='utf-8'))
-            data['digest'] = '0' * 64
-            path.write_text(journeys.render(data), encoding='utf-8')
-            code, _out, err = _run(['--journey', 'T06-sim', '--golden-dir', tmp])
-            self.assertEqual(code, 1)
-            self.assertIn('T06-sim.digest', err)
+        for journey_id, name in (('T03-sim', 'journey_t03_sim.json'), ('T06-sim', 'journey_t06_sim.json')):
+            with self.subTest(journey_id), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / name
+                data = json.loads((GOLDEN / name).read_text(encoding='utf-8'))
+                data['digest'] = '0' * 64
+                path.write_text(journeys.render(data), encoding='utf-8')
+                code, _out, err = _run(['--journey', journey_id, '--golden-dir', tmp])
+                self.assertEqual(code, 1)
+                self.assertIn(f'{journey_id}.digest', err)
 
     def test_a_golden_with_a_volatile_key_is_rejected(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / 'journey_t05_sim.json'
-            data = json.loads((GOLDEN / 'journey_t05_sim.json').read_text(encoding='utf-8'))
-            data['instance_id'] = 'x'
-            path.write_text(journeys.render(data), encoding='utf-8')
-            code, _out, err = _run(['--journey', 'T05-sim', '--golden-dir', tmp])
-            self.assertEqual(code, 1)
-            self.assertIn('volatile key', err)
+        for journey_id in ('T04-sim', 'T05-sim'):
+            with self.subTest(journey_id), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / journeys.GOLDEN_FILES[journey_id]
+                data = json.loads((GOLDEN / journeys.GOLDEN_FILES[journey_id]).read_text(encoding='utf-8'))
+                data['instance_id'] = 'x'
+                path.write_text(journeys.render(data), encoding='utf-8')
+                code, _out, err = _run(['--journey', journey_id, '--golden-dir', tmp])
+                self.assertEqual(code, 1)
+                self.assertIn('volatile key', err)
 
 
 def _stage(script, kind='integrated-journeys'):
@@ -275,16 +386,21 @@ def _summary_script(mutate=None, exit_code=0):
     summary = {
         'label': 'SIMULATED', 'seed': 'x', 'funds_executed': False, 'integrated': False,
         'journeys': [
-            {'id': 'T05-sim', 'label': 'SIMULATED', 'steps': 3, 'digest': 'a' * 64,
+            {'id': 'T03-sim', 'label': 'SIMULATED', 'steps': 3, 'digest': 'a' * 64,
              'funds_executed': False, 'integrated': False},
-            {'id': 'T06-sim', 'label': 'SIMULATED', 'steps': 4, 'digest': 'b' * 64,
+            {'id': 'T04-sim', 'label': 'SIMULATED', 'steps': 3, 'digest': 'b' * 64,
+             'funds_executed': False, 'integrated': False},
+            {'id': 'T05-sim', 'label': 'SIMULATED', 'steps': 3, 'digest': 'c' * 64,
+             'funds_executed': False, 'integrated': False},
+            {'id': 'T06-sim', 'label': 'SIMULATED', 'steps': 4, 'digest': 'd' * 64,
              'funds_executed': False, 'integrated': False},
         ],
     }
     if mutate:
         mutate(summary)
     return ('import sys\nprint("SIM_JOURNEYS " + ' + repr(json.dumps(summary)) + ')\n'
-            'print("sim journeys ok SIMULATED T05-sim steps=3 T06-sim steps=4")\n'
+            'print("sim journeys ok SIMULATED T03-sim steps=3 T04-sim steps=3 '
+            'T05-sim steps=3 T06-sim steps=4")\n'
             f'sys.exit({exit_code})')
 
 
@@ -301,16 +417,16 @@ class EvidenceTests(unittest.TestCase):
             code = acceptance.execute_plan(plan, root=ROOT, evidence_path=path, required=acceptance.REQUIRED_STAGES)
             return code, json.loads(path.read_text(encoding='utf-8'))
 
-    def test_real_stage_lists_both_journeys_with_steps_and_label(self):
+    def test_real_stage_lists_all_journeys_with_steps_and_label(self):
         doc_before = ACCEPTANCE_DOC.read_bytes()
         stage = next(item for item in acceptance.build_plan(ROOT) if item['id'] == 'integrated-journeys')
         code, evidence = self.evidence_for(stage)
         self.assertEqual(code, 0, evidence['stages'][-1])
         body = next(item for item in evidence['stages'] if item['id'] == 'integrated-journeys')
         self.assertEqual(body['status'], 'passed')
-        self.assertEqual(body['test_count'], {'ran': 2, 'passed': 2, 'failed': 0})
+        self.assertEqual(body['test_count'], {'ran': 4, 'passed': 4, 'failed': 0})
         items = {item['id']: item for item in body['journeys']['items']}
-        self.assertEqual(sorted(items), ['T05-sim', 'T06-sim'])
+        self.assertEqual(sorted(items), ['T03-sim', 'T04-sim', 'T05-sim', 'T06-sim'])
         for journey_id, item in items.items():
             golden = json.loads((GOLDEN / journeys.GOLDEN_FILES[journey_id]).read_text(encoding='utf-8'))
             self.assertEqual(item['label'], 'SIMULATED')
@@ -359,7 +475,9 @@ class EvidenceTests(unittest.TestCase):
     def test_nonzero_exit_or_no_summary_fails_the_stage(self):
         code, evidence = self.evidence_for(_stage(_summary_script(exit_code=1)))
         self.assertEqual((code, evidence['stages'][-1]['status']), (1, 'failed'))
-        code, evidence = self.evidence_for(_stage('print("sim journeys ok SIMULATED T05-sim steps=3 T06-sim steps=4")'))
+        code, evidence = self.evidence_for(_stage(
+            'print("sim journeys ok SIMULATED T03-sim steps=3 T04-sim steps=3 '
+            'T05-sim steps=3 T06-sim steps=4")'))
         self.assertEqual((code, evidence['stages'][-1]['status']), (1, 'failed'))
         self.assertEqual(evidence['stages'][-1]['journeys']['items'], [])
 

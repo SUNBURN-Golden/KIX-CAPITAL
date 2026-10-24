@@ -1,0 +1,584 @@
+{
+  "cell_count": 23,
+  "cells": [
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": "workspace_file",
+        "audit_ok": false,
+        "audit_reason": "WORKSPACE_UNREADABLE",
+        "cases": 0,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 0,
+        "state_digest": "2ce0b723232b1f15c730a127372d2b03c389c4ea43f3439ff73571a203c7fe33",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-before-save1",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 1
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 1,
+        "state_digest": "f2c438025819954616b7741bb45b2e194e479c031754de57962003d90ef13eb6",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-after-save1",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 1
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 1,
+        "state_digest": "f2c438025819954616b7741bb45b2e194e479c031754de57962003d90ef13eb6",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-before-save2",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 2
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 2,
+        "state_digest": "a463e0e042d55827a1e5718de40c3089321b814d4020c9f67da9da3938b7f565",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-after-save2",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 2
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 2,
+        "state_digest": "a463e0e042d55827a1e5718de40c3089321b814d4020c9f67da9da3938b7f565",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-before-save3",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 3
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 3,
+        "state_digest": "d35c083e11a176321ed3d5b648f88a6610747e0c76222e09d048c0b196ae8262",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-after-save3",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 3
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 3,
+        "state_digest": "d35c083e11a176321ed3d5b648f88a6610747e0c76222e09d048c0b196ae8262",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-before-save4",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 4
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 4,
+        "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-after-save4",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 4
+    },
+    {
+      "boundary": "overlay-entry",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 4,
+        "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "overlay-entry-before-save5",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 5
+    },
+    {
+      "boundary": "overlay-entry",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 4,
+        "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "overlay-entry-after-save5",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 5
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 4,
+        "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-before-save6",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 6
+    },
+    {
+      "boundary": "journal-append",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 5,
+        "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "journal-append-after-save6",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 6
+    },
+    {
+      "boundary": "overlay-entry",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 5,
+        "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "overlay-entry-before-save7",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "before",
+      "runner": "save-boundary",
+      "save_index": 7
+    },
+    {
+      "boundary": "overlay-entry",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "dd5140574892131fff223b880079a7500170fffd33c0188b400836d4b2cef2fb",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 5,
+        "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "overlay-entry-after-save7",
+      "inject": "WORKSPACE_WRITE_FAILED",
+      "position": "after",
+      "runner": "save-boundary",
+      "save_index": 7
+    },
+    {
+      "boundary": "temp-rename",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 3,
+        "state_digest": "d35c083e11a176321ed3d5b648f88a6610747e0c76222e09d048c0b196ae8262",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "temp-rename-before-save4",
+      "inject": "replace",
+      "position": "before",
+      "rename_of": "journal-append",
+      "runner": "rename",
+      "save_index": 4
+    },
+    {
+      "boundary": "temp-rename",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 4,
+        "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "temp-rename-after-save4",
+      "inject": "dir-fsync",
+      "position": "after",
+      "rename_of": "journal-append",
+      "runner": "rename",
+      "save_index": 4
+    },
+    {
+      "boundary": "temp-rename",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 5,
+        "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "temp-rename-before-save7",
+      "inject": "replace",
+      "position": "before",
+      "rename_of": "overlay-entry",
+      "runner": "rename",
+      "save_index": 7
+    },
+    {
+      "boundary": "temp-rename",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "dd5140574892131fff223b880079a7500170fffd33c0188b400836d4b2cef2fb",
+        "raised": "WORKSPACE_WRITE_FAILED",
+        "receipts_restored": 5,
+        "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "temp-rename-after-save7",
+      "inject": "dir-fsync",
+      "position": "after",
+      "rename_of": "overlay-entry",
+      "runner": "rename",
+      "save_index": 7
+    },
+    {
+      "boundary": "torn-payload",
+      "expect": {
+        "audit_failed_check": "strict_json",
+        "audit_ok": false,
+        "audit_reason": "WORKSPACE_UNREADABLE",
+        "cases": 0,
+        "file_unchanged": true,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": null,
+        "receipts_restored": 0,
+        "state_digest": "2ce0b723232b1f15c730a127372d2b03c389c4ea43f3439ff73571a203c7fe33",
+        "workspace_status": "WORKSPACE_UNREADABLE",
+        "write_blocked": "WORKSPACE_UNREADABLE"
+      },
+      "id": "torn-truncate-half",
+      "inject": "truncate-half",
+      "position": "trailing-partial",
+      "runner": "torn",
+      "save_index": null
+    },
+    {
+      "boundary": "torn-payload",
+      "expect": {
+        "audit_failed_check": "payload_sha256",
+        "audit_ok": false,
+        "audit_reason": "WORKSPACE_UNREADABLE",
+        "cases": 0,
+        "file_unchanged": true,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": null,
+        "receipts_restored": 0,
+        "state_digest": "2ce0b723232b1f15c730a127372d2b03c389c4ea43f3439ff73571a203c7fe33",
+        "workspace_status": "WORKSPACE_UNREADABLE",
+        "write_blocked": "WORKSPACE_UNREADABLE"
+      },
+      "id": "torn-payload-byte",
+      "inject": "payload-byte",
+      "position": "trailing-partial",
+      "runner": "torn",
+      "save_index": null
+    },
+    {
+      "boundary": "torn-payload",
+      "expect": {
+        "audit_failed_check": "service_restore",
+        "audit_ok": false,
+        "audit_reason": "WORKSPACE_UNREADABLE",
+        "cases": 0,
+        "file_unchanged": true,
+        "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+        "raised": null,
+        "receipts_restored": 0,
+        "state_digest": "2ce0b723232b1f15c730a127372d2b03c389c4ea43f3439ff73571a203c7fe33",
+        "workspace_status": "WORKSPACE_UNREADABLE",
+        "write_blocked": "WORKSPACE_UNREADABLE"
+      },
+      "id": "torn-overlay-digest-byte",
+      "inject": "overlay-digest-byte",
+      "position": "trailing-partial",
+      "runner": "torn",
+      "save_index": null
+    },
+    {
+      "boundary": "temp-rename",
+      "expect": {
+        "audit_failed_check": null,
+        "audit_ok": true,
+        "audit_reason": null,
+        "cases": 1,
+        "overlay_state_digest": "dd5140574892131fff223b880079a7500170fffd33c0188b400836d4b2cef2fb",
+        "raised": null,
+        "receipts_restored": 5,
+        "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53",
+        "temp_cleared": true,
+        "workspace_status": "ACTIVE"
+      },
+      "id": "stale-temp-never-loaded",
+      "inject": "stale-tmp",
+      "position": "trailing-partial",
+      "runner": "stale-temp",
+      "save_index": null
+    },
+    {
+      "boundary": "sigkill",
+      "expect": {
+        "audit_ok": true,
+        "cases": 1,
+        "overlay_state_digest_one_of": [
+          "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+          "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5"
+        ],
+        "raised": null,
+        "receipts_restored": 4,
+        "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c",
+        "workspace_status": "ACTIVE"
+      },
+      "id": "sigkill-mid-overlay-write",
+      "inject": "SIGKILL",
+      "position": "mid-write",
+      "runner": "sigkill",
+      "save_index": 5
+    }
+  ],
+  "cross_host_fencing": "NOT_CLAIMED",
+  "durable": "LOCAL_FILE_WORKSPACE",
+  "format": "KIX_CAPITAL_WORKSPACE_CRASH_V1",
+  "label": "SIMULATED",
+  "prefix_digests": [
+    {
+      "after_step": 0,
+      "cases": 0,
+      "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+      "receipts": 0,
+      "state_digest": "2ce0b723232b1f15c730a127372d2b03c389c4ea43f3439ff73571a203c7fe33"
+    },
+    {
+      "after_step": 1,
+      "cases": 1,
+      "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+      "receipts": 1,
+      "state_digest": "f2c438025819954616b7741bb45b2e194e479c031754de57962003d90ef13eb6"
+    },
+    {
+      "after_step": 2,
+      "cases": 1,
+      "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+      "receipts": 2,
+      "state_digest": "a463e0e042d55827a1e5718de40c3089321b814d4020c9f67da9da3938b7f565"
+    },
+    {
+      "after_step": 3,
+      "cases": 1,
+      "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+      "receipts": 3,
+      "state_digest": "d35c083e11a176321ed3d5b648f88a6610747e0c76222e09d048c0b196ae8262"
+    },
+    {
+      "after_step": 4,
+      "cases": 1,
+      "overlay_state_digest": "9310a6e71dea2d19e08623de2844b15e07e225810a2b4241cba17c0684fd5d0b",
+      "receipts": 4,
+      "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c"
+    },
+    {
+      "after_step": 5,
+      "cases": 1,
+      "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+      "receipts": 4,
+      "state_digest": "660b21e2ccbb56e550de7b5c3228b7e85cc0bd6979e70c64bc3a03b8ee35307c"
+    },
+    {
+      "after_step": 6,
+      "cases": 1,
+      "overlay_state_digest": "e3ceda9037e83e2185744605cbeee0e4e511c0a8e561a45620a8b6ceddb4a5f5",
+      "receipts": 5,
+      "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53"
+    },
+    {
+      "after_step": 7,
+      "cases": 1,
+      "overlay_state_digest": "dd5140574892131fff223b880079a7500170fffd33c0188b400836d4b2cef2fb",
+      "receipts": 5,
+      "state_digest": "5790f99739b44ced02eeb7415b8875a4722a3fc77e16331b2fe1f9a44c787b53"
+    }
+  ],
+  "script": [
+    {
+      "advance_id": "sim-cr-a",
+      "args": {
+        "amount": 40000,
+        "fixture_id": "sim-committed"
+      },
+      "boundary": "journal-append",
+      "op": "offer",
+      "operation_id": "cr-offer",
+      "step": 1
+    },
+    {
+      "advance_id": "sim-cr-a",
+      "args": {},
+      "boundary": "journal-append",
+      "op": "approve",
+      "operation_id": "cr-approve",
+      "step": 2
+    },
+    {
+      "advance_id": "sim-cr-a",
+      "args": {},
+      "boundary": "journal-append",
+      "op": "bind_settlement",
+      "operation_id": "cr-bind",
+      "step": 3
+    },
+    {
+      "advance_id": "sim-cr-a",
+      "args": {},
+      "boundary": "journal-append",
+      "op": "draw",
+      "operation_id": "cr-draw",
+      "step": 4
+    },
+    {
+      "boundary": "overlay-entry",
+      "from_sim_day": 0,
+      "op": "advance_day",
+      "operation_id": "cr-tick-1",
+      "reason": "CRASH_MATRIX",
+      "step": 5,
+      "to_sim_day": 3
+    },
+    {
+      "advance_id": "sim-cr-a",
+      "args": {
+        "amount": 10000,
+        "sequence": 1
+      },
+      "boundary": "journal-append",
+      "op": "repay",
+      "operation_id": "cr-repay",
+      "step": 6
+    },
+    {
+      "boundary": "overlay-entry",
+      "from_sim_day": 3,
+      "op": "advance_day",
+      "operation_id": "cr-tick-2",
+      "reason": "CRASH_MATRIX",
+      "step": 7,
+      "to_sim_day": 4
+    }
+  ],
+  "semantic_conformance": false,
+  "stage5_durable_transactions": "NOT_BOUND"
+}
