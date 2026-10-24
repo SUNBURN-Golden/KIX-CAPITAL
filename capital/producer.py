@@ -7,6 +7,7 @@ SEMANTIC_CONFORMANCE. CAP-16 exact tuple stays NOT_BOUND.
 from __future__ import annotations
 
 import copy
+import hashlib
 
 from capital.protocol import CreditError, CreditMachine, SettlementMachine
 
@@ -112,6 +113,23 @@ class PinnedFsmProducer:
     def __init__(self, fixtures=None, machine=None):
         self.fixtures = fixtures if fixtures is not None else FixtureViews()
         self.machine = machine if machine is not None else CreditMachine(self.fixtures)
+
+    def snapshot_inputs(self):
+        """Optional local-cut capability, outside mandatory ProducerPort.
+
+        Caller holds CapitalService.lock. Only immutable built-in fixture views
+        qualify; mutable providers require a future coherent-cut contract.
+        """
+        if type(self.machine) is not CreditMachine:
+            raise ValueError('COHERENT_SNAPSHOT_UNSUPPORTED')
+        if type(self.fixtures) is not FixtureViews or getattr(self.fixtures, 'settlement_views_mutable', False):
+            raise ValueError('IMMUTABLE_FIXTURES_REQUIRED')
+        canonical = self.machine.canonical_state()
+        return {'canonical_state': canonical,
+                'state_digest': hashlib.sha256(canonical.encode('utf-8')).hexdigest(),
+                'fixtures': copy.deepcopy({'rows': self.fixtures.rows, 'profiles': self.fixtures.profiles,
+                                          'beneficiaries': self.fixtures.beneficiaries,
+                                          'projection_ids': sorted(self.fixtures.projection_ids)})}
 
     def reset(self):
         self.machine = CreditMachine(self.fixtures)

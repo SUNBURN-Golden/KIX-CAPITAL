@@ -284,6 +284,21 @@ class LiveFakeTests(LiveBase, unittest.TestCase):
         status, err = self.call('GET', '/api/state', extra={'X-Capital-Token': mint('auditor')})
         self.assertEqual((status, err['error']), (403, 'LOCAL_TOKEN_REQUIRED'))
 
+    def test_claim_bound_agent_keeps_slice_and_recovery_write_denials(self):
+        status, session = self.session('agent', mint('agent'))
+        self.assertEqual(status, 200, session)
+        before = self.fingerprint()
+        from capital.slices import COMMANDS as slice_commands
+        cases = [(op, 'SLICE_AGENT_FORBIDDEN') for op in slice_commands]
+        cases += [(op, 'RECOVERY_AGENT_FORBIDDEN')
+                  for op in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration')]
+        for path in ('/api/commands', '/api/overlay/commands'):
+            for op, code in cases:
+                with self.subTest(path=path, op=op):
+                    status, body = self.call('POST', path, {'op': op}, token=session['local_token'])
+                    self.assertEqual((status, body['error']), (403, code))
+        self.assertEqual(self.fingerprint(), before)
+
     def test_body_role_differing_from_claim_is_403_and_mints_nothing(self):
         status, body = self.session('organizer', mint('auditor'))
         self.assertEqual((status, body['error']), (403, 'ROLE_MISMATCH'))

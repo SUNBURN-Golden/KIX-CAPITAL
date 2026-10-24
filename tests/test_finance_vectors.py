@@ -70,9 +70,8 @@ GROUP_CANDIDATE = {
     'statement_and_previews': 'fin-credit-exposure-reconciliation',
     'manifest_section_digests': 'fin-consistent-accounting-export',
     'facade_read_model': 'fin-catalogue-read-model',
+    'closeout_digest': 'fin-finance-closeout',
 }
-# The one candidate with no group: its named input is an untracked per-run file.
-NO_VECTORS = 'fin-finance-closeout'
 
 # Per scenario, per step: (op, outcome, error, duplicate,
 #   organizer (distributed, cancelled_unpaid, recovery_due, outstanding),
@@ -199,6 +198,7 @@ INSTANCE_BOUND_SECTIONS = ['receipts', 'projection', 'reconciliation', 'statemen
 SHA256 = re.compile(r'[0-9a-f]{64}')
 # Every GET api route of the facade contract, in contract order: path -> response definitions.
 FACADE_READS = [
+    ('/api/portfolio/snapshot', ['portfolio_snapshot']),
     ('/api/state', ['state']),
     ('/api/scenarios', ['scenario_list']),
     ('/api/scenarios/{id}', ['scenario_detail']),
@@ -208,6 +208,7 @@ FACADE_READS = [
     ('/api/projection', ['projection', 'projection_coa_candidate']),
     ('/api/terms', ['terms_status']),
     ('/api/terms/portfolio', ['terms_portfolio']),
+    ('/api/terms/portfolio/forecast', ['terms_forecast']),
     ('/api/terms/{advance_id}', ['terms_case']),
     ('/api/terms/{advance_id}/allocation', ['terms_allocation']),
     ('/api/terms/{advance_id}/setoff', ['terms_setoff']),
@@ -224,7 +225,9 @@ FACADE_READS = [
     ('/api/metrics', ['metrics']),
     ('/api/health', ['health']),
     ('/api/overlay', ['overlay_state']),
+    ('/api/overlay/slices', ['slice_registry_listing']),
     ('/api/risk', ['risk_state']),
+    ('/api/risk/covenants', ['covenant_state']),
 ]
 FACADE = ROOT / 'capital' / 'contract' / 'facade-v1.json'
 UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -266,23 +269,19 @@ class ArtifactShapeTests(unittest.TestCase):
         supplied = {row['id']: row['vectors'] for row in self.artifact['candidates']}
         for name, candidate in GROUP_CANDIDATE.items():
             self.assertEqual(supplied[candidate], name)
-        self.assertEqual(sorted(key for key, value in supplied.items() if value is None), [NO_VECTORS])
-        self.assertEqual(sorted(set(ids) - set(GROUP_CANDIDATE.values())), [NO_VECTORS])
-        self.assertEqual(len(set(GROUP_CANDIDATE.values())), 7)
+        self.assertEqual([key for key, value in supplied.items() if value is None], [])
+        self.assertEqual(sorted(ids), sorted(GROUP_CANDIDATE.values()))
+        self.assertEqual(len(set(GROUP_CANDIDATE.values())), 8)
 
-    def test_only_the_closeout_candidate_is_null_and_it_says_why(self):
+    def test_all_eight_candidates_carry_vectors_and_none_has_a_reason(self):
         rows = {row['id']: row for row in self.artifact['candidates']}
-        self.assertEqual(sum(row['vectors'] is not None for row in rows.values()), 7)
+        self.assertEqual(sum(row['vectors'] is not None for row in rows.values()), 8)
         for name, row in rows.items():
             with self.subTest(candidate=name):
                 self.assertEqual(sorted(row), ['id', 'reason', 'vectors'])
-                if name == NO_VECTORS:
-                    self.assertIsNone(row['vectors'])
-                    self.assertIsInstance(row['reason'], str)
-                    self.assertIn('build/acceptance-evidence.json', row['reason'])
-                    self.assertIn('untracked', row['reason'])
-                else:
-                    self.assertIsNone(row['reason'])
+                self.assertIsNone(row['reason'])
+                self.assertIn(row['vectors'], GROUP_CANDIDATE)
+        self.assertEqual(rows['fin-finance-closeout']['vectors'], 'closeout_digest')
 
     def test_bytes_are_canonical_ascii_with_no_volatile_or_host_text(self):
         self.assertTrue(self.raw.endswith(b'\n') and not self.raw.endswith(b'\n\n'))
@@ -291,8 +290,14 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertEqual(again.encode('ascii'), self.raw)
         text = self.raw.decode('ascii')
         self.assertIsNone(UUID.search(text))
-        for fragment in ('/workspace', '/tmp/', '/home/', 'instance_id', 'workspace.json'):
+        for fragment in ('/workspace', '/tmp/', '/home/', 'workspace.json'):
             self.assertNotIn(fragment, text)
+        # The embedded closeout digest lists the keys it stripped as string values, so 'instance_id'
+        # may appear only there; as a key at any depth it never may.
+        listed = '"stripped_keys":' + json.dumps(self.artifact['groups']['closeout_digest']['stripped_keys'],
+                                                 separators=(',', ':'))
+        self.assertEqual(text.count(listed), 1)
+        self.assertNotIn('instance_id', text.replace(listed, ''))
 
     def test_docs_state_the_non_claim(self):
         text = VALIDATION.read_text(encoding='utf-8')
@@ -302,10 +307,12 @@ class ArtifactShapeTests(unittest.TestCase):
             self.assertIn(phrase, section)
         self.assertIn('not SEMANTIC_CONFORMANCE', script.__doc__)
         self.assertIn('completes no upstream node', script.__doc__)
-        # Seven of eight candidates have vectors; the section must not still call five of them null.
+        # All eight candidates have vectors; the section must not still call one of them null.
         self.assertNotIn('The other five candidates', section)
-        self.assertIn('Seven of the eight candidates now have vectors', section)
+        self.assertNotIn('Seven of the eight candidates now have vectors', section)
+        self.assertIn('All eight candidates now have vectors', section)
         self.assertIn('fin-finance-closeout', section)
+        self.assertIn('closeout_digest', section)
 
 
 class ScenarioVectorTests(unittest.TestCase):
@@ -735,14 +742,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_twenty_five_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 26)
+    def test_exactly_the_thirty_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 30)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 38)
+        self.assertEqual(len(self.contract['routes']), 42)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
@@ -777,7 +784,8 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(self.by_path['/api/statement']['closure'], [
             'approved_row', 'exposure_row', 'gap', 'refund_row', 'reserved_row', 'scope', 'settlement_row', 'statement'])
         self.assertEqual(self.by_path['/api/operations/{operation_id}']['closure'], [
-            'accepted_receipt', 'command_result', 'credit_view', 'rejected_receipt', 'repayment', 'unknown_operation'])
+            'accepted_receipt', 'command_result', 'credit_view', 'recovery_approvals',
+            'rejected_receipt', 'repayment', 'unknown_operation'])
         self.assertIn('statement', self.by_path['/api/export/manifest']['closure'])
         self.assertGreater(len(self.by_path['/api/export/manifest']['closure']), 40)
 

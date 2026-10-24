@@ -10,6 +10,7 @@ from capital.auth import LocalRoleAuthorizer
 from capital.export import UnsignedSigner
 from capital.idp_fake import FakeIdpAuthorizer
 from capital.producer import PinnedFsmProducer
+from capital.observation import LocalFakeObservation
 from capital.projection import SimulationProjection
 from capital.service import CapitalService
 from capital.store import FileWorkspace, InMemoryStorage
@@ -90,7 +91,7 @@ class SeamRegistryTests(unittest.TestCase):
     def test_every_protocol_has_a_non_adopted_row(self):
         names = protocol_names()
         self.assertEqual(names, [
-            'AuthorizerPort', 'ProducerPort', 'ProjectionPort', 'SetoffQuotePort', 'SettlementPolicyPort',
+            'AuthorizerPort', 'ObservationPort', 'ProducerPort', 'ProjectionPort', 'SetoffQuotePort', 'SettlementPolicyPort',
             'ShadowPolicyPort', 'SignaturePort', 'StoragePort', 'TermsPolicyPort', 'UnderwritingPort',
         ])
         rows = assert_registry(SEAMS.read_text(encoding='utf-8'), names)
@@ -99,6 +100,9 @@ class SeamRegistryTests(unittest.TestCase):
             self.assertEqual(row['Upstream receipt'], 'NONE')
             self.assertIn('CAP-', row['Readiness'])
         by_port = {row['Port']: row for row in rows}
+        self.assertIn('LocalFakeObservation', by_port['ObservationPort']['Local implementation'])
+        self.assertEqual(by_port['ObservationPort']['Status'], 'NOT_BOUND')
+        self.assertEqual(by_port['ObservationPort']['Readiness'], 'CAP-14')
         self.assertIn('PinnedFsmProducer', by_port['ProducerPort']['Local implementation'])
         self.assertIn('InMemoryStorage', by_port['StoragePort']['Local implementation'])
         self.assertIn('SimulationProjection', by_port['ProjectionPort']['Local implementation'])
@@ -137,6 +141,7 @@ class SeamRegistryTests(unittest.TestCase):
             assert_registry(text, protocol_names())
 
     def test_default_instances_satisfy_the_protocols(self):
+        self.assertIsInstance(LocalFakeObservation(), ports.ObservationPort)
         self.assertIsInstance(InMemoryStorage(), ports.StoragePort)
         with tempfile.TemporaryDirectory() as directory:
             workspace = FileWorkspace.open(directory)

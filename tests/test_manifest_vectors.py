@@ -46,6 +46,10 @@ def expect(reason, sections, digest, signature):
 
 # Written by hand on purpose: the generator must not be its own oracle.
 EXPECTED = {
+    'dev-keyset-kid-1.json': expect(None, ALL_MATCHED, 'MATCHED', 'VERIFIED_DEV_ONLY_INTEGRITY'),
+    'dev-keyset-kid-2.json': expect(None, ALL_MATCHED, 'MATCHED', 'VERIFIED_DEV_ONLY_INTEGRITY'),
+    'unknown-kid.json': expect('UNKNOWN_KID', ALL_MATCHED, 'MATCHED', 'UNKNOWN_KID'),
+    'retired-key.json': expect('KEY_RETIRED', ALL_MATCHED, 'MATCHED', 'KEY_RETIRED'),
     'unsigned.json': expect(None, ALL_MATCHED, 'MATCHED', 'NOT_BOUND'),
     'dev-hmac.json': expect(None, ALL_MATCHED, 'MATCHED', 'VERIFIED_DEV_ONLY_INTEGRITY'),
     **{
@@ -96,7 +100,15 @@ class ManifestVectorTests(unittest.TestCase):
         return subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30, check=False)
 
     def _report(self, name, key_file):
-        proc = self._cli(MANIFESTS / name, key_file)
+        if name.startswith('dev-keyset-') or name in ('unknown-kid.json', 'retired-key.json'):
+            fixture = 'dev-keyset-retired.json' if name == 'retired-key.json' else 'dev-keyset-active.json'
+            pinned = Path(self._tmp.name) / fixture
+            shutil.copyfile(VECTORS / fixture, pinned)
+            pinned.chmod(0o600)
+            proc = subprocess.run([sys.executable, '-m', 'capital.verify', str(MANIFESTS / name),
+                                   '--keyset-file', str(pinned)], cwd=ROOT, capture_output=True, text=True, timeout=30)
+        else:
+            proc = self._cli(MANIFESTS / name, key_file)
         self.assertEqual(proc.stderr, '')
         self.assertNotIn(self.key.decode(), proc.stdout)
         self.assertNotIn(self.key.hex(), proc.stdout)
@@ -184,7 +196,7 @@ class RegenerationTests(unittest.TestCase):
         found = {}
         for path in sorted(VECTORS.rglob('*')):
             relative = path.relative_to(VECTORS)
-            if path.is_file() and (relative.parts[0] == MANIFESTS.name or relative.as_posix() == KEY.name):
+            if path.is_file() and (relative.parts[0] == MANIFESTS.name or relative.as_posix() in (KEY.name, 'dev-keyset-active.json', 'dev-keyset-retired.json')):
                 found[relative.as_posix()] = path.read_bytes()
         return found
 

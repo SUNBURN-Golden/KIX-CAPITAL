@@ -16,8 +16,14 @@ Fault hooks, armed in-process or with ``--fault OPERATION_ID:KIND``:
 - ``drop-before``: count the POST, do not apply, close with no response
 - ``drop-after``: apply, store the original receipt, count the POST, close
 - ``timeout``: apply and store, count the POST, then delay the response
+- ``error-5xx``: count the POST, do not apply, answer 503 ``GATE_FAILED``
+- ``malformed-json``: apply, store the original receipt, count the POST,
+  answer 200 with a truncated invalid JSON body
 
-A lost response is the caller's UNKNOWN. This server does not retry.
+A lost response is the caller's UNKNOWN. This server does not retry. A
+replayed ``operationId`` returns the first stored receipt; a replay with a
+different ``action`` or ``body`` is HTTP 409 ``IDEMPOTENCY_CONFLICT`` and
+never replaces the first receipt.
 """
 from __future__ import annotations
 
@@ -44,7 +50,7 @@ from capital.producer import CreditError, PinnedFsmProducer
 LABEL = 'LOCAL_FAKE_GATE'
 LOOPBACK = '127.0.0.1'
 MAX_BODY_BYTES = 1_048_576  # local read cap, not a financial limit
-FAULTS = frozenset({'drop-before', 'drop-after', 'timeout'})
+FAULTS = frozenset({'drop-before', 'drop-after', 'timeout', 'error-5xx', 'malformed-json'})
 ENVELOPE_KEYS = frozenset({'operationId', 'actor', 'action', 'body'})
 BODY_KEYS = frozenset({'operation_id', 'advance_id', 'args', 'bound_settlement_id'})
 COMMANDS = {
@@ -71,6 +77,14 @@ class FakeGateError(Exception):
 
 
 class SchemaError(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
+
+
+class GateConflictError(Exception):
+    """The FSM refused a same-key replay whose request differs. HTTP 409."""
+
     def __init__(self, code):
         super().__init__(code)
         self.code = code
@@ -229,6 +243,11 @@ class FakeGate:
                     action, body['advance_id'], idempotency_key=body['operation_id'],
                     args=body['args'], bound_settlement_id=body['bound_settlement_id'])
             except CreditError as exc:
+                if exc.code == 'IDEMPOTENCY_CONFLICT':
+                    # The FSM refuses a same-key replay whose request differs.
+                    # It stores nothing; the gate answers 409 instead of a
+                    # stored rejection, so the first receipt is never replaced.
+                    raise GateConflictError(exc.code)
                 receipt = _stamp(
                     operationId=operation_id, action=action, actor=actor,
                     actor_is_authentication=False, outcome='REJECTED', error=exc.code, result=None)
@@ -461,10 +480,22 @@ class Handler(BaseHTTPRequestHandler):
             gate.note_post(operation_id)
             self._drop()
             return
-        receipt = gate.apply_command(envelope)
+        if fault == 'error-5xx':
+            gate.note_post(operation_id)
+            self._error(503, 'GATE_FAILED')
+            return
+        try:
+            receipt = gate.apply_command(envelope)
+        except GateConflictError:
+            gate.note_post(operation_id)
+            self._error(409, 'IDEMPOTENCY_CONFLICT')
+            return
         gate.note_post(operation_id)
         if fault == 'drop-after':
             self._drop()
+            return
+        if fault == 'malformed-json':
+            self._malformed(receipt)
             return
         if fault == 'timeout':
             time.sleep(gate.fault_delay)
@@ -560,6 +591,19 @@ class Handler(BaseHTTPRequestHandler):
         except OSError:
             return
 
+    def _malformed(self, receipt):
+        """200 with a truncated body. The stored receipt stays the original."""
+        raw = json.dumps(
+            receipt, ensure_ascii=True, sort_keys=True, separators=(',', ':')).encode('ascii')
+        raw = raw[: max(1, len(raw) // 2)]
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(raw)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        self.wfile.write(raw)
+
     def _drop(self):
         """Close with no status line. The client must treat that as UNKNOWN."""
         self.close_connection = True
@@ -574,7 +618,7 @@ def main(argv=None) -> int:
     parser.add_argument('--host', default=LOOPBACK, help='Loopback address only. Any other host is NON_LOOPBACK_BIND.')
     parser.add_argument('--port', type=int, default=8791)
     parser.add_argument('--fault', action='append', default=[],
-                        help='Opt-in fault OPERATION_ID:drop-before|drop-after|timeout. Not a production control.')
+                        help='Opt-in fault OPERATION_ID:drop-before|drop-after|timeout|error-5xx|malformed-json. Not a production control.')
     parser.add_argument('--fault-delay', type=float, default=1.0, help='Seconds a timeout fault waits after apply.')
     args = parser.parse_args(argv)
     try:

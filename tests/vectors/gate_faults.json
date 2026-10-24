@@ -1,0 +1,339 @@
+{
+  "format": "KIX_CAPITAL_GATE_FAULTS_V1",
+  "label": "LOCAL_FAKE_GATE",
+  "mode": "SIMULATED",
+  "binding": "NOT_BOUND",
+  "semantic_conformance": false,
+  "funds_executed": false,
+  "cases": [
+    {
+      "id": "accept",
+      "journal_length": 1,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-accept-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-accept",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gate-5xx",
+      "journal_length": 1,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-5xx-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-5xx",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-5xx-approve",
+          "op": "approve",
+          "advance_id": "sim-corpus-5xx",
+          "args": {},
+          "fault": "error-5xx",
+          "expect": {
+            "http": 502,
+            "outcome": null,
+            "error": "GATE_FAILED",
+            "retry_authorized": null,
+            "transport_duplicate": null,
+            "post_count": 1,
+            "lookup": "UNKNOWN",
+            "upstream_receipt": null,
+            "phase": "OFFERED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "malformed-json",
+      "journal_length": 2,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-malformed-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-malformed",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-malformed-approve",
+          "op": "approve",
+          "advance_id": "sim-corpus-malformed",
+          "args": {},
+          "fault": "malformed-json",
+          "expect": {
+            "http": 502,
+            "outcome": null,
+            "error": "INVALID_JSON",
+            "retry_authorized": null,
+            "transport_duplicate": null,
+            "post_count": 1,
+            "lookup": "UNKNOWN",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "APPROVED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "drop-before",
+      "journal_length": 1,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-dropbefore-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-dropbefore",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-dropbefore-approve",
+          "op": "approve",
+          "advance_id": "sim-corpus-dropbefore",
+          "args": {},
+          "fault": "drop-before",
+          "expect": {
+            "http": 200,
+            "outcome": "UNKNOWN",
+            "error": null,
+            "retry_authorized": false,
+            "transport_duplicate": null,
+            "post_count": 1,
+            "lookup": "UNKNOWN",
+            "upstream_receipt": null,
+            "phase": "OFFERED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "drop-after",
+      "journal_length": 2,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-dropafter-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-dropafter",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-dropafter-approve",
+          "op": "approve",
+          "advance_id": "sim-corpus-dropafter",
+          "args": {},
+          "fault": "drop-after",
+          "expect": {
+            "http": 200,
+            "outcome": "UNKNOWN",
+            "error": null,
+            "retry_authorized": false,
+            "transport_duplicate": null,
+            "post_count": 1,
+            "lookup": "UNKNOWN",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "APPROVED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "delayed-then-lost",
+      "journal_length": 2,
+      "producer_timeout": 0.4,
+      "fault_delay": 1.5,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-timeout-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-timeout",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-timeout-approve",
+          "op": "approve",
+          "advance_id": "sim-corpus-timeout",
+          "args": {},
+          "fault": "timeout",
+          "expect": {
+            "http": 200,
+            "outcome": "UNKNOWN",
+            "error": null,
+            "retry_authorized": false,
+            "transport_duplicate": null,
+            "post_count": 1,
+            "lookup": "UNKNOWN",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "APPROVED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "idempotency-conflict",
+      "journal_length": 1,
+      "steps": [
+        {
+          "post": "facade",
+          "operation_id": "corpus-dup-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-dup",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": false,
+            "post_count": 1,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "gate",
+          "operation_id": "corpus-dup-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-dup",
+          "args": {"fixture_id": "sim-committed", "amount": 2000},
+          "fault": null,
+          "expect": {
+            "http": 409,
+            "outcome": null,
+            "error": "IDEMPOTENCY_CONFLICT",
+            "retry_authorized": null,
+            "transport_duplicate": null,
+            "post_count": 2,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-dup-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-dup",
+          "args": {"fixture_id": "sim-committed", "amount": 3000},
+          "fault": null,
+          "expect": {
+            "http": 409,
+            "outcome": null,
+            "error": "IDEMPOTENCY_CONFLICT",
+            "retry_authorized": null,
+            "transport_duplicate": null,
+            "post_count": 2,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        },
+        {
+          "post": "facade",
+          "operation_id": "corpus-dup-offer",
+          "op": "offer",
+          "advance_id": "sim-corpus-dup",
+          "args": {"fixture_id": "sim-committed", "amount": 1000},
+          "fault": null,
+          "expect": {
+            "http": 200,
+            "outcome": "ACCEPTED",
+            "error": null,
+            "retry_authorized": null,
+            "transport_duplicate": true,
+            "post_count": 2,
+            "lookup": "ACCEPTED",
+            "upstream_receipt": "ACCEPTED",
+            "phase": "OFFERED"
+          }
+        }
+      ]
+    }
+  ]
+}
