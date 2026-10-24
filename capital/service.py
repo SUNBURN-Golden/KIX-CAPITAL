@@ -35,6 +35,7 @@ from capital.statement import build_statement
 from capital.setoff import DecisionNoteSetoff
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
+from capital import slices
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, overlay_section, verify_document
@@ -138,6 +139,7 @@ class CapitalService:
         self.overlay_entries = []
         self.overlay_bounds = overlay_bounds if overlay_bounds is not None else overlay.load_bounds()
         self.recovery_policy = recovery.load_policy(self.terms)
+        self.slice_policy = slices.load_policy(self.terms)
         self.repayment_bounds = repayment_bounds if repayment_bounds is not None else overlay.load_repayment_bounds()
         self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
@@ -216,6 +218,7 @@ class CapitalService:
             self._require_repayment_links(entries, journal, receipts)
             try:
                 recovery.validate_links(entries, journal)
+                slices.validate_links(entries, journal, self.fixtures)
             except ValueError as exc:
                 raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
         except Exception:
@@ -495,9 +498,11 @@ class CapitalService:
                 case = self.machine.view(advance_id)
                 claim = self.fixtures.view(self.case_fixtures[advance_id])['claim']
                 gate = self._case_gate(advance_id, case)
+                holds = self._slice_source_holds(claim)
                 body = self.setoff.proposal(
                     case, claim, draw_day=draw_day, as_of_day=as_of_day,
-                    expected_settlement_cash_day=expected_settlement_cash_day, gate=gate)
+                    expected_settlement_cash_day=expected_settlement_cash_day, gate=gate,
+                    **({'source_holds': holds} if holds else {}))
                 body = dict(body)
                 body['advance_id'] = advance_id
                 return self._terms_envelope(body)
@@ -548,8 +553,10 @@ class CapitalService:
                 beneficiary_outstanding += view['outstanding_exposure']
             if bound == fixture_id:
                 sibling_reserved = view['reserved_open']
+        slice_inputs = self._slice_underwrite_inputs(beneficiary, fixture_id)
         if candidate:
             return {
+                **slice_inputs,
                 'advance_id': advance_id, 'candidate': True, 'phase': 'CANDIDATE',
                 'amount': amount, 'beneficiary_role': beneficiary,
                 'settlement_id': fixture_id, 'commit_observed': False,
@@ -562,6 +569,7 @@ class CapitalService:
             }
         own_note = case['amount'] if case['note_status'] == 'NOTED' else 0
         return {
+            **slice_inputs,
             'advance_id': advance_id, 'candidate': False, 'phase': case['phase'],
             'amount': amount, 'beneficiary_role': beneficiary,
             'settlement_id': case['settlement_id'],
@@ -1181,6 +1189,8 @@ class CapitalService:
                 receipt['proposal_id'] = cited
             default_entry = None
             before_journal = self.machine.export_journal()
+            if op == 'draw' and case in self.case_fixtures:
+                self._slice_draw_guard(case, principal.role)
             if op == 'default':
                 if self.recovery_policy is None:
                     raise self._overlay_not_bound('default recovery policy not bound')
@@ -1433,6 +1443,8 @@ class CapitalService:
         """
         with self.lock:
             principal = Principal(role if type(role) is str else '')
+            if principal.role == 'agent' and type(body) is dict and type(body.get('op')) is str and body['op'] in slices.COMMANDS:
+                raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
             if principal.role == 'agent' and type(body) is dict and (
                     body.get('op') in recovery.COMMANDS or 'writeoff' in body):
                 raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
@@ -1442,6 +1454,8 @@ class CapitalService:
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             self._overlay_volatile(body)
+            if type(body.get('op')) is str and body['op'] in slices.COMMANDS:
+                return self._post_slice_command(body, principal)
             if body.get('op') in recovery.COMMANDS:
                 return self._post_recovery_command(body, principal)
             if body.get('op') == overlay.COMMAND_REPAY:
@@ -1566,6 +1580,196 @@ class CapitalService:
                            overlay_state_digest=overlay.state_digest(overlay.fold(candidate)))
             return receipt
 
+    def _slice_observations(self, state):
+        policy = self.slice_policy
+        if policy is None:
+            raise self._overlay_not_bound('claim slice policy not bound')
+        return {c: slices.observation(v['claim'], policy['payees'].get(self.fixtures.beneficiary(c), []))
+                for c, v in self.fixtures.rows.items()}
+
+    def _slice_underwrite_inputs(self, beneficiary, claim_id):
+        state = overlay.fold(self.overlay_entries)
+        if not slices.registry(state):
+            return {}
+        values = slices.exposures(state, self._slice_observations(state), beneficiary, claim_id)
+        return {k: v for k, v in values.items() if v}
+
+    def _slice_draw_guard(self, advance_id, role):
+        state = overlay.fold(self.overlay_entries)
+        observations = self._slice_observations(state) if slices.registry(state) else {}
+        if not any(slices.derived(r, observations[r['claim_id']])['exposure_krw'] for r in slices.registry(state).values()):
+            return
+        case = self.machine.view(advance_id)
+        if case['phase'] != 'APPROVED':
+            return
+        claim_id = self.case_fixtures[advance_id]
+        subject = self._underwrite_subject(advance_id, claim_id, case, self.fixtures.view(claim_id), case['amount'], False)
+        record = self.underwriting.record(subject, decided_by_role=role, sim_day=state['sim_day'])
+        if subject.get('slice_encumbered_krw'):
+            # Reservations are shared per claim in F04, not per advance. G4 must
+            # retain I-BASE even when several smaller notes exist on one line.
+            eligible = sum(slices.eligible(observations[claim_id], p) for p in observations[claim_id]['lines'])
+            if case['reserved_open'] + case['amount'] + subject['slice_encumbered_krw'] > eligible:
+                raise ApiError('SLICE_DRAW_REFUSED', 409, {'failed_check': 'U3_BORROWING_BASE', 'reason': 'BASE_ALREADY_ENCUMBERED'})
+        for check in record.get('checks', []):
+            if check['id'] in ('U3_BORROWING_BASE', 'U4_CONCENTRATION') and check['outcome'] != 'PASS':
+                raise ApiError('SLICE_DRAW_REFUSED', 409, {'failed_check': check['id'], 'reason': check['detail']})
+
+    def _slice_source_holds(self, claim):
+        state = overlay.fold(self.overlay_entries)
+        if not slices.registry(state):
+            return {}
+        holds = {}
+        for line in claim['obligations']:
+            c, p = claim['claim_id'], line['payee']
+            consumed = state.get('recovery', {}).get('sources', {}).get(recovery.source_key(c, p), 0)
+            amount = consumed + sum(slices.source_terms(state, c, p, line['distributed']).values())
+            if amount:
+                holds[p] = amount
+        return holds
+
+    def _slice_context(self, state, claim_id, payee, policy=None):
+        policy = policy or self.slice_policy
+        if policy is None:
+            raise self._overlay_not_bound('claim slice policy not bound')
+        if claim_id not in self.fixtures.rows:
+            raise ApiError('UNKNOWN_SETTLEMENT', 404)
+        beneficiary = self.fixtures.beneficiary(claim_id)
+        view = self.fixtures.view(claim_id)
+        gate = 'MOCK_COMMIT_OBSERVED' if view['phase'] == 'COMMITTED' else 'BOUND'
+        tier = policy['tier_gates'].get(gate, 'NOT_BOUND')
+        claims = {claim_id} | {r['claim_id'] for r in slices.registry(state).values()}
+        advances = slices.advance_witness(self.producer, self.machine.export_journal())
+        claims |= {a['claim_id'] for a in advances.values() if a['beneficiary_role'] == beneficiary}
+        observations = {c: slices.observation(self.fixtures.view(c)['claim'], policy['payees'].get(self.fixtures.beneficiary(c), [])) for c in sorted(claims)}
+        witness = {'observations': observations, 'advances': advances,
+                   'beneficiaries': {c: self.fixtures.beneficiary(c) for c in sorted(claims)}, 'gates': {claim_id: gate}}
+        return {'state': state, 'identity': {'claim_id': claim_id, 'payee_label': payee, 'beneficiary_role': beneficiary, 'tier': tier},
+                'witness': witness, 'policy': policy}
+
+    def _slice_quote(self, context, expected_days):
+        ident = context['identity']
+        obs = context['witness']['observations'][ident['claim_id']]
+        line = obs['lines'].get(ident['payee_label'])
+        outstanding = 0 if line is None else line['outstanding']
+        refund = outstanding - slices.eligible(obs, ident['payee_label'])
+        return self.shadow.claim_purchase({'vector_id': 'slice:' + ident['claim_id'] + ':' + ident['payee_label'],
+                                          'input_source': 'SIMULATED_DISPOSABLE_BOOK' if margin.views_mutable(self.fixtures) else 'READ_ONLY_FIXTURE',
+                                          'outstanding': outstanding, 'open_refund_face': refund,
+                                          'tier': ident['tier'], 'expected_days': expected_days, 'registry': context})
+
+    def overlay_slices(self, quote_claim_id=None, quote_payee_label=None, expected_days=None):
+        """Read-only SIMULATED registry and optional state-bound sizing quote."""
+        with self.lock:
+            if self.workspace_status != 'ACTIVE':
+                raise ApiError(self.workspace_status, 503)
+            state = overlay.fold(self.overlay_entries)
+            if self.slice_policy is None:
+                return {**slices.labels(), 'status': 'NOT_BOUND', 'slices': []}
+            observations = self._slice_observations(state)
+            rows = [{**copy.deepcopy(r), **slices.derived(r, observations[r['claim_id']]), **slices.labels(),
+                     'holder_first': True, 'quotes': slices.recourse_quotes(state, r, self.fixtures, self.setoff)}
+                    for r in slices.registry(state).values()]
+            from capital.shadow import slice_price
+            for row in rows:
+                pricing = slice_price(row['slice_face_krw'], row['policy']['price_rates'][row['tier']],
+                                      next(e['payload']['command']['expected_days'] for e in state['claim_slices']['entries'] if e['kind'] == 'SLICE_PROPOSE' and e['payload']['slice_id'] == row['slice_id']))
+                row.update({'shadow_' + k: v for k, v in pricing.items()})
+            result = {**slices.labels(), 'status': 'BOUND', 'read_only': True, 'holder_first': True,
+                      'slices': rows, 'capacity': slices.capacity(state, self.slice_policy),
+                      'sim_day': state['sim_day'], 'after_journal_index': len(self.machine.export_journal())}
+            if any(x is not None for x in (quote_claim_id, quote_payee_label, expected_days)):
+                if (type(quote_claim_id) is not str or not recovery.LABEL.fullmatch(quote_claim_id)
+                        or type(quote_payee_label) is not str or not recovery.LABEL.fullmatch(quote_payee_label)
+                        or type(expected_days) is not int or not 0 <= expected_days <= self.overlay_bounds['SIM_DAY_MAX']):
+                    raise ApiError('INVALID_ARGUMENTS')
+                result['quote'] = self._slice_quote(self._slice_context(state, quote_claim_id, quote_payee_label), expected_days)
+            return result
+
+    def _post_slice_command(self, body, principal):
+        if set(body) & {'token', 'holder_ref', 'transfer_to'}:
+            raise ApiError('SLICE_FIELD_NOT_ADOPTED')
+        if not {'instance_id', 'operation_id'} <= set(body):
+            raise ApiError('INVALID_COMMAND')
+        if body['instance_id'] != self.instance_id:
+            raise ApiError('SESSION_CHANGED', 409)
+        if type(body['operation_id']) is not str or not recovery.LABEL.fullmatch(body['operation_id']):
+            raise ApiError('INVALID_OPERATION_ID')
+        command = {k: copy.deepcopy(v) for k, v in body.items() if k not in ('instance_id', 'operation_id')}
+        try:
+            command['approvals'] = recovery.approvals(command.get('approvals', []))
+            slices.validate_command(command)
+            self._require_day(command['at_sim_day'])
+            if 'expected_days' in command:
+                self._require_day(command['expected_days'])
+            prior = overlay.operation_receipt(self.overlay_entries, body['operation_id'])
+            if prior is not None:
+                if prior.get('entry', {}).get('command') != command:
+                    raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+                return {**self._overlay_receipt_common(principal), **prior, 'transport_duplicate': True}
+            if any(e['overlay_id'] == body['operation_id'] for e in self.overlay_entries) or body['operation_id'] in self.receipts:
+                raise ApiError('IDEMPOTENCY_CONFLICT', 409)
+            index = len(self.machine.export_journal())
+            if command['op'] == 'open_slice' and command['expected_after_journal_index'] != index:
+                raise ApiError('REGISTRY_STALE_CAS', 409)
+            state = overlay.fold(self.overlay_entries)
+            if command['at_sim_day'] != state['sim_day']:
+                raise ApiError('SIM_CLOCK_STALE', 409)
+            if self.slice_policy is None or self._overlay_terms() is None:
+                raise self._overlay_not_bound('claim slice policy not bound')
+            kind = slices.COMMANDS[command['op']]
+            if kind == 'SLICE_PROPOSE':
+                context = self._slice_context(state, command['claim_id'], command['payee_label'])
+                ident = {**context['identity'], 'slice_id': body['operation_id'], 'slice_face_krw': command['slice_face_krw'], 'holder_role': command['holder_role']}
+                if command['holder_role'] != 'KIX_CAPITAL_LENDER':
+                    raise ApiError('SLICE_HOLDER_NOT_ADOPTED', 409)
+                # Stable uniqueness refusal precedes the now-stale quote lookup.
+                check = slices.registry_check(context, 0)
+                if check['codes']:
+                    raise ApiError(check['codes'][0], 409)
+                quote = self._slice_quote(context, command['expected_days'])
+                if quote.get('status') != 'SHADOW_COMPUTED':
+                    raise self._overlay_not_bound('claim slice quote not bound')
+                if quote['result_digest'] != command['quote_ref'] or command['slice_face_krw'] > quote['shadow_slice_face_max']:
+                    raise ApiError('SLICE_QUOTE_MISMATCH', 409)
+            else:
+                row = slices.registry(state).get(command['slice_id'])
+                if row is None:
+                    raise ApiError('UNKNOWN_SLICE', 404)
+                context = self._slice_context(state, row['claim_id'], row['payee_label'], row['policy'])
+                ident = {'slice_id': row['slice_id']}
+                if kind == 'SLICE_RECOURSE':
+                    source = command['source_ref']
+                    c = source['claim_id']
+                    if c in self.fixtures.rows:
+                        b = self.fixtures.beneficiary(c)
+                        context['witness']['observations'][c] = slices.observation(self.fixtures.view(c)['claim'], context['policy']['payees'].get(b, []))
+                        context['witness']['beneficiaries'][c] = b
+                    quotes = slices.recourse_quotes(state, row, self.fixtures, self.setoff)
+                    q = next((q for q in quotes if q['source_ref'] == source and q['quote_ref'] == command['quote_ref']), None)
+                    if q is None: raise ApiError('RECOVERY_QUOTE_STALE', 409)
+                    ident['quote_witness'] = {k: q[k] for k in ('source_ref', 'slice_id', 'state_digest', 'observed_eligible_krw', 'available_krw')}
+            additions = []
+            if state['terms_binding'] is None:
+                binding = {'overlay_id': body['operation_id'] + ':terms', 'after_journal_index': index, 'sim_day': state['sim_day'], 'kind': overlay.KIND_TERMS, 'payload': {'terms_version': self.terms.version, 'status': self.terms.status()['status']}}
+                additions.append(binding)
+                state = overlay.fold(self.overlay_entries + additions)
+            entry = slices.entry(body['operation_id'], kind, state, index, {**ident, 'command': command, 'policy': context['policy'], 'witness': context['witness']})
+            candidate = self.overlay_entries + additions + [entry]
+            overlay.fold(candidate, index)
+            slices.validate_links(candidate, self.machine.export_journal(), self.fixtures)
+            self._overlay_check_capacity(self.overlay_entries, additions + [entry], state['sim_day'], {
+                'journal': self.machine.export_journal(), 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+            try:
+                self._persist(candidate)
+            except WorkspaceError as exc:
+                self.workspace_status = exc.code
+                raise ApiError(exc.code, 503) from exc
+            self.overlay_entries = candidate
+            return {**self._overlay_receipt_common(principal), **slices.receipt(entry), 'transport_duplicate': False}
+        except (slices.SliceError, recovery.RecoveryError) as exc:
+            raise ApiError(exc.code, exc.status, getattr(exc, 'detail', None)) from exc
+
     def _invalid_recovery(self):
         raise ApiError('INVALID_COMMAND')
 
@@ -1660,7 +1864,7 @@ class CapitalService:
                 quote = next((q for q in quotes if q['quote_ref'] == body['quote_ref'] and q['source_ref'] == body['source_ref']), None)
                 if quote is None:
                     raise ApiError('RECOVERY_QUOTE_STALE', 409)
-                payload['quote_witness'] = {k: quote[k] for k in ('source_ref', 'observed_eligible_krw', 'distributed_krw', 'recovery_due_krw', 'consumed_krw', 'state_digest', 'advance_id', 'claim_due_krw')}
+                payload['quote_witness'] = {k: v for k, v in quote.items() if k in ('source_ref', 'observed_eligible_krw', 'distributed_krw', 'recovery_due_krw', 'consumed_krw', 'state_digest', 'advance_id', 'claim_due_krw', 'slice_held_krw', 'slice_recourse_consumed_krw')}
         try:
             return recovery.entry(body['operation_id'], kind, state, len(self.machine.export_journal()), payload)
         except recovery.RecoveryError as exc:

@@ -1823,3 +1823,157 @@ not an established explanation of the original CI failure. Both affected files
 then passed together without code, assertion or timeout changes.
 The subsequent complete Chromium run passed all 69 tests. This round changes only
 this validation record; no commit, push or external post was made.
+
+## claim-slice-registry — provisional shadow registry
+
+Implemented `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md` using its ten
+ADOPTED entries and runtime CAPITAL-TERMS-V1 caps/rates/authority threshold.
+`capital/slices.py` plans and folds all six kinds into `state.claim_slices`;
+empty is key-absent and overlay_schema remains 1. Organizer commands and
+`projection:read` listing/quotes are covered by the regenerated auth matrix
+and the strict local facade contract. Registry records, shortfall and
+holder-first arithmetic remain SIMULATED / SHADOW_NOT_APPLIED; all execution
+flags are false. Legal/tax treatment remains a provisional working assumption
+pending professional review. No real offering, funds, title or COA posting.
+
+The demo golden uses `ScenarioReplaySource` and the actual demo-book claims.
+`demo-delta-mid` gets a synthetic low-cash/held statement through the pinned
+settlement FSM, allowing partial organizer service before a simulated refund.
+The remaining slice is impaired, recovered from `demo-delta-small`, and resolved.
+The distribution order in this disposable scenario is explicit fixture input,
+not a newly adopted settlement policy. Late-distribution arithmetic is also
+unit-tested with an explicitly synthetic pure observation vector; it is not
+reported as an accepted post-refund FSM distribution.
+
+Replay checks F04 witness advances against the exact journal prefix, including
+shared reservations and every advance exposure. Guard traces are recomputed
+from stamped policy and compact observations. Settlement observations are
+stamped and bound, **not re-derived from F04**: the pinned line face must match,
+observed line amounts are bounded by face, distributions cannot decrease across
+slice entries, and an unchanged claim hash requires exact observation equality.
+An additional G4 cross-journal splice check is possible only when that settlement
+cut remains unchanged; changed cuts do not claim a historical distribution
+journal. Recomputed checksums are integrity evidence, not authentication.
+Forged guard/reservation/exposure/prefix witnesses fail restore with
+WORKSPACE_UNREADABLE, offline verification with OVERLAY_FOLD_MISMATCH, and
+reconciliation with RECON_MISMATCH / claim_slice_link.
+
+Shared accounting applies G0–G4. U3 subtracts slice encumbrance, U4 counts the
+face exposure with advances, and a draw re-evaluates when any portfolio slice
+exposure remains. The draw checks the incoming reservation plus existing shared
+reservations to retain I-BASE across multiple advances. Pre-default set-off,
+RECOVERY and SLICE_RECOURSE subtract served holder amounts and both lanes'
+source consumption in journal order. Resolved holder service stays held.
+
+Plan adjustments after checking the repository:
+
+- The illustrative §3.4 opening example conflicts with G2: at the adopted rate,
+  the remaining base is below the example's advance. Tests enforce G2 and compute
+  the admissible face from the note/terms instead of treating that example as an
+  exception. Unpledged fixtures never become additional collateral for G2.
+- Witness observations are compact mapped-line records under payload.witness;
+  the full stamped policy stays under payload.policy, following the existing
+  recovery convention and the unchanged 4096-byte global entry bound. The lower
+  global capacity bound still refuses an oversized witness without eviction.
+- The strict facade contract also needed the six request shapes, receipts,
+  listing, optional shadow registry_check/U3 field, route and error rows.
+- The predecessor's exact overlay byte pin was extended, preserving both a
+  live exact-byte hash and the original recovery hash after reversing only the
+  three exact slice dispatch additions. No legacy fold byte is exempted.
+- The demo book cannot reach the adopted portfolio cap while respecting all
+  beneficiary caps. The cross-beneficiary U4 test explicitly uses a boundary-test
+  policy whose portfolio cap equals the adopted single cap; deployed/default
+  policy values remain note-loaded. This is synthetic test input, not a product
+  term or a real capacity result.
+- Local `main` is the initial commit, while HEAD and `origin/main` are `2633e01`.
+  The requested `git diff --exit-code main -- capital/vendor capital/export.py
+  .aiops` reports pre-existing baseline additions. The corresponding check
+  against `origin/main` passes with zero bytes of diff. No refs were changed.
+
+Commands actually run during development (later closeout evidence follows):
+
+| Command | Result |
+|---|---|
+| `python3 scripts/seed_overlay_slices.py --write` | Golden generated; final journey has 6 overlay entries, verified V3 manifest and MATCHED overlay fold. Initial low-cash distribution used the platform first and failed the partial-holder assertion; corrected the explicit disposable fixture order. |
+| `python3 -m unittest discover -s tests -p test_claim_slices.py -v` | Initial 19-test run exposed fixture/idempotency mistakes; corrected. Latest expanded run: 26 passed. |
+| `python3 -m unittest discover -s tests -p test_underwriting.py -v` | 14 passed. |
+| `python3 -m unittest discover -s tests -p test_recovery.py -v` | 29 passed. |
+| `python3 scripts/auth_matrix.py --write` / `--check` | Regenerated and matched. |
+| `python3 scripts/docs_surface.py --check` | 31 routes, 40 artifacts, 9 stages; passed. |
+| `python3 -m unittest discover -s tests -p test_auth_matrix.py -v` | 36 passed, including live loopback role probes. |
+| `python3 -m unittest discover -s tests -v` (first full run) | 1070 tests, 4 failures: overlay byte pin, empty synthetic V3 fixture verification, and missing facade error/route catalogue. Fixed without changing vendor/export bytes or removing checks. |
+| `python3 -m unittest discover -s tests -p test_coa_candidate.py -v` | 36 passed after the additive byte guard extension. |
+| `python3 -m unittest discover -s tests -p test_dev_keyset.py -v` | Initially exposed the empty fixture verifier regression; fixed the optional rows lookup. 7 passed on rerun. |
+| `python3 -m unittest discover -s tests -p test_facade_contract.py -v` | 5 passed after extending the contract. |
+| `python3 scripts/pack_vectors.py --write` | 9 existing pack vectors regenerated. |
+| `python3 scripts/manifest_vectors.py --check` | 19 matched. |
+| `python3 scripts/workspace_vectors.py --check` | 6 matched. |
+| `python3 scripts/decision_ledger.py` | All decision notes parsed; ten registry entries ADOPTED. |
+| `python3 scripts/not_bound_checklist.py --check` | Passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed. |
+| `python3 -m compileall -q capital` | Passed. |
+| `node --check capital/static/app.js` | Passed; UI unchanged. |
+| `git diff --check` | Passed. |
+| `git diff --exit-code origin/main -- capital/vendor capital/export.py .aiops` | Passed, empty diff. |
+
+`git ls-files -z capital/vendor | xargs -0 sha256sum` recorded the unchanged pins:
+
+```text
+f4f6b3698dd848538d2efa10b276cb33659eb4877fcbea0feb7429b28456491b  capital/vendor/credit_advance_f04/credit_fsm.py
+5e75fcc76fb0857f671b2fa33ca0fc851e9d676d4b5db8f357393367bc725d95  capital/vendor/credit_advance_f04/mock_credit.py
+75cd55f773e3e71553392f674d1595af66cf82560565cc5603bf829a9a29e99d  capital/vendor/credit_advance_f04/test_mock_credit.py
+b5ff2fca301bf456826dcbc9a6617521d528746efb03b8107f23b818fb4d6def  capital/vendor/manifest.json
+9e9c25571fdbe7b90b7539df2cc71afaee83d81905293dc56dbeb9faaf864170  capital/vendor/settlement_f01_f03/mock_settlement.py
+c6d7ae79fe0c3289def2d3c195212247d1ab2c2e913feb80612fcd9ff64c77c8  capital/vendor/settlement_f01_f03/settlement_fsm.py
+```
+
+Further local verification and environment adjustments:
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` (second full run) | 1072 tests, 11 failures and 1 error, all stale finance-vector contract digests/route coverage after adding the strict facade schema. Regenerated the existing finance artifact and extended the exact GET list/count from 29 to 30 (all routes 41 to 42); no route check was removed. |
+| `python3 scripts/finance_vectors.py --write` | Bootstrap regeneration for the new facade contract, using the existing closeout digest; regenerated again after gated closeout evidence below. |
+| `python3 -m unittest discover -s tests -p test_finance_vectors.py -v` | 54 passed after regeneration. |
+| `python3 scripts/decision_bindings.py --check` | Passed: declared references only; pending anchors are not implementation. |
+| `python3 scripts/pack_vectors.py --check` | 9 matched. |
+| `python3 scripts/finance_vectors.py --check` | Matched after bootstrap. |
+| `npm ci --ignore-scripts` | Installed the 3 existing lockfile dev dependencies; audit reported 0 vulnerabilities. No dependency/lockfile change. |
+| Browser port availability probe | Host ports 8765 and 8766 belong to unrelated existing crawler services. Left both untouched. |
+| `npm run test:browser` (host namespace) | Failed because the initially available global playwright CLI lacks the `test` command. Installed the lockfile dependencies before retrying. |
+
+The browser and complete acceptance ladder run in a fresh user/network namespace
+using `unshare -Urn -- bash -c 'ip link set lo up && exec …'`. This enables only
+that namespace's loopback and lets the **unchanged** Playwright configuration,
+fixed ports and tests run without interfering with the host services. No CI,
+server, browser assertion or Playwright configuration was weakened for this.
+
+| Command | Result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | 69 passed (2.1m), unchanged Chromium suite. All four namespace-local Capital servers stopped afterward. |
+
+| Closeout command | Result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (first evidence) | Exit 0, `ok:true`; unit 1072, storage-conformance 19, pinned-vendor 7, upstream-claims 311, browser 69, packaged-smoke 8, seeded-demo 1, integrated-journeys 4; node-check passed. |
+| `python3 scripts/closeout_digest.py --write` | Gated by that passing evidence; wrote 4518 bytes. |
+| `python3 scripts/finance_vectors.py --write` | Regenerated after closeout; wrote 97980 bytes. |
+| `python3 scripts/pack_vectors.py --check` | 9 matched; no repeat/regeneration cycle needed. |
+
+Local detailed logs and the first evidence snapshot are retained under the
+ignored `build/claim-slice-registry/` directory. The final acceptance evidence is
+`build/acceptance-evidence.json`. These are SIMULATED local verification records,
+not production authorization or upstream adoption evidence.
+
+| Additional verification command | Result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (second attempt) | Unit 1072 and all non-browser stages passed. Browser: 67 passed, 2 failed. Evidence honestly recorded `ok:false`; no gated artifact write was attempted from it. |
+| Trace inspection | The existing `portfolio.spec.cjs` reconciliation test timed out waiting for a close-command response after repayment; its unclosed reservation caused the following default test's draw to return `ADVANCE_EXCEEDS_OPEN_FACE`. No slices were registered in either test. Preserved failed evidence and traces under `build/claim-slice-registry/`. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --project=workspace tests/browser/portfolio.spec.cjs'` | All 6 portfolio tests passed (19.6s) on a fresh isolated server, including both previously failing cases. No UI, assertion, timeout or browser configuration change. A full ladder retry follows to obtain passing final evidence. |
+
+| Final verification command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests` | 1072 tests, OK. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py` | 7 passed. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (final runs) | Three runs. Runs 1 and 2 recorded `ok:false` with a single 30s browser timeout each (`auditor-evidence-desk` unreadable case, then `portfolio.spec` default case) while host load average was 9-10. Both specs pass alone, and nothing in the slice change touches those paths. Run 3, at load 6, was `ok:true`: unit 1072, storage-conformance 19, pinned-vendor 7, upstream-claims 311, node-check passed, browser 69, packaged-smoke 8, seeded-demo 1, integrated-journeys 4. |
+| `python3 scripts/closeout_digest.py --check-evidence`, `--check`; `scripts/finance_vectors.py --check`; `scripts/pack_vectors.py --check` | All pass against the final evidence; the committed digests needed no regeneration. |
+| `git diff --exit-code origin/main -- capital/vendor capital/export.py .aiops` | Empty diff. |

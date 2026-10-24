@@ -91,11 +91,12 @@ def verify_manifest(document, key=None, key_error=None, *, keyset=None, keyset_e
         return _fail('CONTENT_DIGEST_MISMATCH', pending, 'CONTENT_DIGEST_MISMATCH')
     if OVERLAY_SECTION in sections:
         try:
-            from capital import overlay, recovery
+            from capital import overlay, recovery, slices
             body = sections[OVERLAY_SECTION]['body']
             journal = sections['journal']['body']['entries']
             state = overlay.fold(body['journal'], len(journal))
             recovery.validate_links(body['journal'], journal)
+            slices.validate_links(body['journal'], journal, sections['fixtures']['body'].get('rows', {}))
             if body['state'] != state or body['overlay_state_digest'] != overlay.state_digest(state):
                 raise ValueError('overlay fold differs')
         except (ValueError, KeyError, TypeError, ArithmeticError):

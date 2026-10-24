@@ -262,8 +262,15 @@ def slice_sizing(outstanding, open_refund_face, advance_bps, all_in_bps, expecte
     if open_refund_face > outstanding:
         raise ShadowInconsistent('open refund face exceeds the line outstanding')
     face_max = _bps_floor(outstanding - open_refund_face, advance_bps)
-    discount = face_max * all_in_bps * expected_days // (_BPS * _YEAR_DAYS)
-    return {'slice_face_max': face_max, 'discount': discount, 'price': face_max - discount}
+    return {'slice_face_max': face_max, **slice_price(face_max, all_in_bps, expected_days)}
+
+
+def slice_price(face, all_in_bps, expected_days):
+    """The same one-floor price for an admitted face below the quoted maximum."""
+    for name, value in (('face', face), ('all_in_bps', all_in_bps), ('expected_days', expected_days)):
+        _check_amount(value, name)
+    discount = face * all_in_bps * expected_days // (_BPS * _YEAR_DAYS)
+    return {'discount': discount, 'price': face - discount}
 
 
 def uc_partition(confirmed_cash, undistributed_cash, refund_outstanding, reclassified, rows):
@@ -892,6 +899,9 @@ class DecisionNoteShadow:
             body = slice_sizing(v['outstanding'], v['open_refund_face'], self._advance_rates[tier],
                                 self._tier_rates[tier], v['expected_days'])
             body['tier'] = tier
+            if 'registry' in v:
+                from capital.slices import registry_check
+                body['registry_check'] = registry_check(v['registry'], body['slice_face_max'])
             return body
         return self._slice_result(
             'claim_purchase', vector, ('outstanding', 'open_refund_face', 'tier', 'expected_days'),

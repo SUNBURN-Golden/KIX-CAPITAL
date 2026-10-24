@@ -174,6 +174,12 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
                 validate_links(overlay_entries, journal)
             except ValueError:
                 overlay_ok, overlay_detail = False, 'recovery_default_link'
+        try:
+            from capital.slices import KINDS as slice_kinds, validate_links as validate_slice_links
+            if any(type(e) is dict and e.get('kind') in slice_kinds for e in overlay_entries):
+                validate_slice_links(overlay_entries, journal, settlement_source)
+        except ValueError:
+            overlay_ok, overlay_detail = False, 'claim_slice_link'
         checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
     if coa_port is not None:
         checks.extend(_coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,

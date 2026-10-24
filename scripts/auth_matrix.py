@@ -70,6 +70,7 @@ GET_PROBES = {
         f'/api/terms/{ADVANCE}/setoff?instance_id={INSTANCE}&as_of_day=1',
     ],
     '/api/overlay': ['/api/overlay'],
+    '/api/overlay/slices': ['/api/overlay/slices'],
     '/api/portfolio/snapshot': [f'/api/portfolio/snapshot?instance_id={INSTANCE}'],
     '/api/risk': ['/api/risk'],
     '/api/risk/covenants': ['/api/risk/covenants'],
@@ -130,6 +131,7 @@ COMMAND_PROBE_ADVANCE = 'sim-mtx-probe'
 ASSET_NOTE = 'Static assets are served after the loopback boundary and before authentication. Role and token headers are not read.'
 
 CODE_MEANING = {
+    'SLICE_AGENT_FORBIDDEN': '슬라이스 레지스트리 게시 작업은 사람 운영자 전용이다.',
     'RECOVERY_AGENT_FORBIDDEN': '부도·회수·상각은 사람 운영자 전용이다.',
     'ROLE_FORBIDDEN': '토큰의 역할에 그 권한이 없다.',
     'LOCAL_TOKEN_REQUIRED': '토큰이 없거나 알 수 없다. 모든 POST는 먼저 토큰을 본다.',
@@ -288,6 +290,11 @@ def _edges():
     add('unknown token', 'GET', '/api/no-such-route', 'bogus', no_token)
     add('unknown token', 'POST', '/api/session', 'bogus', no_token, body={'role': 'auditor'})
     add('unknown token', 'POST', '/api/commands', 'bogus', no_token, body=POST_BODIES['/api/commands'])
+
+    from capital.slices import COMMANDS as slice_commands
+    for op in slice_commands:
+        add('agent cannot post a claim slice', 'POST', '/api/overlay/commands', 'agent',
+            {'status': 403, 'error': 'SLICE_AGENT_FORBIDDEN'}, body={'op': op})
 
     for path in ASSETS:
         add('static asset ignores token and role headers', 'GET', path, 'bogus', {'status': 200})
