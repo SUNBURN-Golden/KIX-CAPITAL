@@ -247,7 +247,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -679,5 +679,13 @@ python3 scripts/lifecycle_claims_check.py --execute
 ```
 
 87+94+39+49+30+12=311행을 합산한다. `tests/test_adapter_identity_claims.py`는 표 변이·잘못된 함수·fake drift·isolation·드리프트를 검증한다. `--execute`는 SIMULATED 실행이며 체크아웃이 없고 실행 옵션도 없으면 `SKIPPED` (통과 아님)다. `--protocol-dir`는 절과 needle을 읽기 전용으로 확인하고 전체 파일 해시는 `SOURCE_SHA256 match|differs`로 별도 보고한다. `differs`이면 전체 고정 원문과 동일하다는 뜻이 아니며, 절·needle 검증과 구분한다. 새 route, stage, durable alias 또는 EventItemId 원천 선택은 없다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:risk-whatif-scenarios -->
+
+### risk-whatif-scenarios
+
+`GET /api/risk/scenarios`와 `GET /api/risk/scenarios/{id}`는 읽기 전용 가상 시나리오 평가기다. `mode`는 `SIMULATED_WHATIF`이고 권한은 `projection:read`라 organizer·auditor가 읽고 observer·agent는 `403 ROLE_FORBIDDEN`이다. 인덱스는 고정 넷 `largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`을 이름 붙이고, 각 id는 `GET /api/risk`·`GET /api/risk/covenants`가 쓰는 정수 입력을 깊은 복사해 가정 하나를 적용한 뒤 `risk.build`·`covenants.build`를 다시 접는다. 가정은 최대 미상환 잔액의 미디폴트 오픈 전진을 `DEFAULTED`로 두기, 스펙 고정 최대 충격(`SHOCKS_BPS` 마지막 값)만큼 `refund_face`를 올리기(새로 위반하는 대상엔 `hypothetical` `CALLED` 행만 보고, 기록은 안 함), 마지막 기록 만기 하루 뒤로 `sim_day`를 투영하기, 가장 빡빡한 bound U4 캡을 넘는 가상 인출 `sim-whatif-cap` 하나 넣기다. `reconciliation`은 `baseline_outstanding_krw`·`assumption_delta_krw`·`scenario_outstanding_krw`·`matched`와 기준 digest를 싣고, `applied`·`enforced`·`policy_adopted`는 항상 false다. 대상이 없으면 `evaluated` false에 `unevaluated_reason`만 둔다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 없거나 쓸 수 없으면 숫자 절 없는 `NOT_BOUND`이며 인덱스는 이름만 계속 낸다. 저널·오버레이 항목·receipt·예약은 변하지 않는다. 시드 데모 응답은 `tests/vectors/risk_scenarios.json`(`KIX_CAPITAL_RISK_WHATIF_VECTORS_V1`)에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝난다. `tests/test_risk_whatif.py`가 고정 벡터·대사·역할 거절·읽기 불변을 확인한다.
 
 <!-- /handbook-section -->

@@ -38,6 +38,7 @@ GET_DISPATCH = (
     ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
     ('/api/risk/covenants', False, 'covenants'),
+    ('/api/risk/scenarios', True, 'risk_scenarios'),
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
@@ -338,6 +339,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_covenants(self, route, principal):
             return self.reply(200, service.covenants())
+
+        def _get_risk_scenarios(self, route, principal):
+            path = route.path
+            if path == '/api/risk/scenarios':
+                return self.reply(200, service.risk_scenarios())
+            return self.reply(200, service.risk_scenarios(path.rsplit('/', 1)[-1]))
 
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
