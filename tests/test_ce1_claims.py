@@ -347,7 +347,7 @@ class Ce1ClaimsTests(unittest.TestCase):
         self.assertEqual(proc.stderr, '')
         self.assertNotIn(PROFILE_TOKEN, proc.stdout)
 
-    def test_acceptance_stage_runs_the_checker_fourth(self):
+    def test_acceptance_stage_runs_the_ce1_checker_fourth(self):
         acceptance = _acceptance()
         plan = [stage for stage in acceptance.build_plan(ROOT) if stage['id'] == 'upstream-claims']
         self.assertEqual(len(plan), 1)

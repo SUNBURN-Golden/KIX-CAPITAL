@@ -1257,6 +1257,88 @@ Commands actually run after the second merge:
 - `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 733, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
 
+## lifecycle-claims-conformance — prior builder evidence (2026-10-23)
+
+Historical run below: its baseline integration blocker is superseded by the
+supervisor-authorized main merge and the 2026-10-24 verification recorded below.
+
+Completed the interrupted implementation with twelve executable local lifecycle
+analogues in `capital/lifecycle_claims.py`, `tests/lifecycle_claims.json`, and
+`scripts/lifecycle_claims_check.py`. Every row and report carries
+CLAIM_CONFORMANCE / SIMULATED / funds_executed false. State, receipt and scenario
+non-execution flags are asserted against actual responses. The harness uses
+stdlib HTTP on disposable 127.0.0.1 servers, temporary workspaces, an event barrier
+for dropped replies, explicit shutdown/close/join, and no external services.
+
+| Contract mapping | Executed observation |
+|---|---|
+| LC-TERM first results | Accepted and business-rejected first receipts survive duplicate submissions; after the rejected command the missing case is successfully created. Changed arguments return IDEMPOTENCY_CONFLICT. Duplicates/conflicts invoke the producer zero times. |
+| LC-TERM UNKNOWN | A lost reply remains unresolved across synthetic elapsed time and state reads; only receipt lookup resolves it, returning the exact dropped receipt. Producer TransportLost remains UNKNOWN across repeated absent-receipt reads. |
+| LC-CUT retry boundary | The SIMULATED client fences resubmission and emits one original POST; recovery uses GET only. This is client-owned fencing, not a global server prohibition. |
+| LC-TERM absent receipt | Repeated lookup of a never-submitted ID returns UNKNOWN and retry_authorized false, with no command POST, journal, receipt or overlay change. |
+| LC-CUT local fences | Stale instance command/lookup fail; after restart the old token fails and a fresh token cannot bypass the old instance fence. Local instance IDs are not distributed lease generations or C_g/H_g. |
+| LC-CUT restoration | Workspace replay restores the original writer receipt, journal, overlay and state in a new instance with zero producer applications and zero new command POSTs. |
+| LC-FACT late facts | The existing late-cash READ_ONLY_FIXTURE retains confirmed but unallocated cash after cancellation, preserves cancelled obligations, and leaves the active book unchanged. This is not provider evidence custody or ingestion. |
+
+The read-only Protocol checkout currently has HEAD
+`d84cc50f78a37420ca9d12752ac23f9f9b51c5fc`. The lifecycle source pin from the
+interrupted attempt, `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`, exists, and
+`git -C /workspace/capital-run/kixproto-ro diff e2313ab473ea1b5a7b5b9246a564749188c1c2c8 -- docs/contracts/STATE_LIFECYCLE.md`
+returned exit 0 with no diff. The checker verifies the file against that commit's
+exact Git blob, then checks headings and section-local needles. A missing
+checkout reports citation SKIPPED even when behavior execution passes. This
+source pin is separate from the unchanged 7481b0e FSM vendor pin.
+
+The existing upstream-claims stage runs lifecycle checks fourth and aggregates
+failures. Existing stage-count tests, README, integration/requirements/handbook
+docs, and the docs-surface registry were extended accordingly. The claim table
+lives outside tests/vectors. No facade semantics, routes, golden fixtures, CI
+requirements, vendor files, Protocol/Commerce, or .aiops files were changed.
+CAP-11/CAP-16, operational closure, provider custody, distributed fencing and
+stage5 durability remain NOT_BOUND/out of scope.
+
+The first narrow run exposed two failures and one error caused by the harness
+sending an empty token header on bootstrap; the existing facade rejects that
+header. The fix omits the token until the normal state response supplies it.
+No facade behavior or expectation was weakened. Prior socket-denial evidence
+from the interrupted attempt is superseded by this environment's actual loopback
+execution below. No financial product values or external access were required.
+Baseline integration now requires supervisor action, recorded in root `DECISION_REQUIRED.md`; the
+existing byte guard and overlay implementation remain unchanged.
+
+Commands actually run in this continuation (all local simulation):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_lifecycle_claims tests.test_acceptance tests.test_docs_surface -v` | Initial exit 1: 29 tests, two failures and one error from the bootstrap bug. After the fix: exit 0, 29 passed. After strengthening duplicate and dropped-receipt observations: exit 0, 29 passed again. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund --cache /tmp/capital-dossier-npm-cache` | Exit 0; three pinned packages installed from the existing local cache; lockfile unchanged. Existing Chromium was available. |
+| `python3 scripts/lifecycle_claims_check.py` | Exit 0; citation SKIPPED, verified=0/12, no behavior success count. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; behavior passed=12 total=12 failed=0; citation SKIPPED. |
+| `python3 scripts/lifecycle_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behavior 12/12 and pinned citations verified=12/12. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 29 routes, 38 artifacts, nine stages. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| Python SHA256 and `git show HEAD:capital/vendor/<file>` byte comparisons for every manifest entry and manifest.json | Exit 0; all five SHA256 locks and baseline bytes match; manifest unchanged. |
+| `git diff --check` | Exit 0. |
+| `python3 -m unittest discover -s tests -v` | Exit 1; 821 run, 820 passed, one existing baseline-guard failure: capital/overlay.py differs from origin/main despite being unchanged from this worktree HEAD. |
+| `python3 -m unittest tests.test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 1; import error because this existing test imports test_overlay as a sibling. The corrected invocation below reaches the guard. |
+| `PYTHONPATH=tests:. python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 1; independently reproduces the same baseline-guard failure. |
+| `npm run test:browser` | Exit 0; all 62 Chromium browser tests passed (1.6m). |
+| `python3 scripts/build_release.py --out build/lifecycle-dist-a` and `python3 scripts/build_release.py --out build/lifecycle-dist-b` | Both exit 0; identical SHA256 079b6720ae1ee1ba2c53e38eb023c0d035bd7a4073b8b7b153801a62e975abf0. |
+| `cmp build/lifecycle-dist-a/capital-*.pyz build/lifecycle-dist-b/capital-*.pyz` | Exit 0; reproducible package bytes. |
+| `python3 scripts/smoke_release.py build/lifecycle-dist-a/capital-*.pyz` | Exit 0; all eight smoke checks passed. |
+| `python3 -m unittest tests.test_lifecycle_claims tests.test_acceptance tests.test_docs_surface tests.test_agent_claims tests.test_read_model_claims tests.test_handbook -v` | Exit 0; 64 passed after final README and documentation updates. |
+| `python3 scripts/acceptance.py` | Exit 1; evidence.ok=false solely from the unchanged baseline guard (unit 820/821). All remaining stages passed: storage 19, vendor 7, upstream claims 232, node syntax, browser 62, packaged smoke 8, seeded demo 1 and integrated journeys 4. |
+| Python /proc command-line check restricted to Python Capital/fake-gate servers | Exit 0; no servers remain after verification. |
+
+`build/acceptance-evidence.json` contains the actual commands, captured results
+and nonzero unit-stage status. It is an ignored local artifact. The independent
+full-suite run and acceptance rerun both reproduce the same sole baseline guard
+failure. Root `DECISION_REQUIRED.md` gives the evidence, integration options,
+recommendation and decision owner. No tests or guards were weakened, no refs were
+moved, and no commits or remote actions were performed.
+
 ## ce1-canonical-claims
 
 A fourth pinned claim table `tests/ce1_claims.json` (format `KIX_CAPITAL_CE1_CLAIMS_V1`, 49 rows) binds the pinned `docs/CANONICAL_ENCODING_V1.md` byte rules (kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, the vendor pin; the spec text at that commit is byte-identical to the current checkout's) to Capital's canonical JSON (`capital/store.py` `canonical_bytes`) and digest framing. Each row cites a CE1 section and verbatim needle, carries an `input` form, and names one `ce1.*` check in `capital/ce1_claims.py`: canonical-bytes recomputation (`ce1.encode`), rejection-before-hashing (`ce1.reject`: duplicate and escaped-duplicate keys, NaN/Infinity/-Infinity, fractions, exponents, -0, out-of-range integers, non-ASCII/empty/out-of-grammar keys, non-NFC strings, lone surrogates, >262,144-byte and >64-deep inputs, BOM and NUL bytes, trailing garbage), digest outputs (`ce1.plain_digest`, `ce1.framed_digest`, `ce1.part_tag_digest`), the domain-tag machine-ID grammar (`ce1.domain_tag`), and the digest-family equivalence (`ce1.digest_family`: `service.digest`, `export.sha256_hex` and the workspace checksum are all SHA-256 over the same canonical bytes). The binding gate `decode_input` applies the CE1 input rules before any `canonical_bytes`/digest call; it changes no encoder and does not enforce the pinned Unicode-15.0 assigned-scalar repertoire (that range table is not vendored; NFC and scalar validity are enforced and no row claims repertoire enforcement). The `ensure_ascii` escaping divergence is recorded in four `DOCUMENTED_DIVERGENCE` rows whose checks re-verify the §3.4 rationale needle in `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`; the CE1 `KIX-CE1\0<domain>\0` wire frame is stage-7 adapter scope and no row claims it. `scripts/ce1_claims_check.py` mirrors the upstream CLI (bare → `SKIPPED`, never a pass; `--protocol-dir` read-only). `scripts/acceptance.py` runs it as the fourth command of the unchanged `upstream-claims` stage; the stage sums 87+94+39+49=269. `tests/test_ce1_claims.py` adds 14 tests; the agent/read-model stage tests and `test_handbook.py` now assert the fourth command and the 269 total. Results are SIMULATED and labelled CLAIM_CONFORMANCE, never SEMANTIC_CONFORMANCE. Nothing under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` was edited.
@@ -1277,6 +1359,117 @@ Commands actually run, in order:
 - `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
 
 Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v` covers detached-input component parity, independent cut digests, read-only workspace bytes, deterministic snapshots across sessions, controlled reader/writer ordering for repayment and clock commands, unsupported producers/fixtures, degraded storage, unbound terms, identity, authorization and closed facade schemas. `python3 scripts/docs_surface.py --check` guards the route documentation and the auth matrix includes the route. All data is SIMULATED; no authenticated or cross-process source cut is claimed.
+
+## lifecycle-claims-conformance — merge completion and verification (2026-10-24)
+
+Historical evidence from the preceding merge round follows; the conflict-fix
+round 1 entry below records the current combined tree and supersedes its command
+positions and counts.
+
+The supervisor-supplied six conflicts in README, operator handbook, validation,
+acceptance, agent claims tests and read-model claims tests are resolved, retaining
+both lifecycle and CE1 additions. The existing `upstream-claims` stage now runs
+five commands and aggregates 87+94+39+49+12=281 behavior claims. Plan deviation:
+CE1 retains main's fourth position; lifecycle runs fifth. No lifecycle semantics,
+facade routes, browser implementation, export construction or CI requirements
+were changed by this node.
+
+The first full run found that the supplied pending merge targeted `8c5ad10`,
+while the local `origin/main` had advanced to `97b636a`. Its sole failure was the
+live baseline guard for `capital/ports.py` and
+`docs/decisions/CAPITAL_UPSTREAM_BINDING.md`. A read-only three-way preview, then
+application, incorporated the 23 intervening main file updates without a
+conflict, retaining this node's additions. The guarded files and
+`tests/test_coa_candidate.py` are byte-identical to current main; no guard was
+hand-edited or weakened. The final diff against current main contains only the
+17 lifecycle implementation, integration, regression and documentation files.
+The original pending merge metadata is retained for the supervisor: MERGE_HEAD
+is `8c5ad101dc9ba3d2f96a214b8aa6d4ab6116808f`, and incorporated main content is
+`97b636ab2bdaf5aae52882129bd6ed11e16869aa`. No commit or branch ref was created
+or moved; the supervisor owns final merge ancestry and committing.
+
+The twelve loopback checks retain CLAIM_CONFORMANCE / SIMULATED /
+funds_executed false. The lifecycle document still matches the exact blob at
+`e2313ab473ea1b5a7b5b9246a564749188c1c2c8`; citations verify headings and
+section-local needles independently of behavior execution. Without a checkout,
+citation verification is SKIPPED, including with `--execute`. These remain local
+analogues, with synthetic client-owned UNKNOWN fencing and an existing
+READ_ONLY_FIXTURE late-cash scenario, not operational LC-TERM closure, provider
+custody, distributed fencing, stage5 durability or SEMANTIC_CONFORMANCE.
+
+Commands actually run in this continuation (results below are local simulation):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_lifecycle_claims tests.test_acceptance tests.test_docs_surface -v` | Exit 0; 30 passed after resolving the supplied conflicts. |
+| `python3 -m unittest tests.test_lifecycle_claims tests.test_acceptance tests.test_docs_surface tests.test_agent_claims tests.test_read_model_claims tests.test_ce1_claims tests.test_handbook -v` | Exit 0; 79 passed before and after incorporating newer main. Actual upstream stage executions aggregate 281/281. |
+| `python3 scripts/lifecycle_claims_check.py` | Exit 0; SKIPPED, verified=0/12; no behavior pass count. Repeated after main integration with the same result. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; behavior 12/12; citation SKIPPED. Repeated after main integration with the same result. |
+| `python3 scripts/lifecycle_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behavior 12/12, pinned citations verified=12/12. Repeated after main integration with the same result. JSON labels and exact false non-execution flags also checked. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; final surface is 30 routes, 40 artifacts, nine stages (newer main supplies two of those artifacts). |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references valid, pending anchors not claimed as implementation. |
+| `python3 -m unittest discover -s tests -v` | First run: exit 1, 903 run, 902 passed, the single moving-baseline guard failure described above. After integrating newer main: exit 0, all 972 passed in 172.017s. |
+| `PYTHONPATH=tests:. python3 -m unittest test_coa_candidate.V1UnchangedTests -v` | Exit 0; five passed after main integration, including the live baseline and append-only port guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed, repeated after main integration. |
+| `python3 -m compileall -q capital` | Exit 0, repeated after main integration. |
+| `node --check capital/static/app.js` | Exit 0, repeated after main integration. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three pinned packages installed from the local cache; package lock unchanged. Existing Chromium was available. |
+| `npm run test:browser` | Exit 1 before tests: unrelated services in other workspaces own ports 8765 and 8766. They were identified read-only and left running. |
+| `npm run test:browser -- --config build/lifecycle-playwright.config.cjs` | Exit 0; all 69 Chromium tests passed in 2.2m, including browser UNKNOWN/restart regressions. |
+| Python heredoc: SHA256 every vendor manifest entry and compare all five files plus manifest bytes with `git show HEAD:...`, `MERGE_HEAD:...`, and `origin/main:...` | Exit 0; all locks and baseline bytes match; manifest unchanged. Protocol source blob identity was also checked read-only. |
+| `git diff --check` and `git diff --check origin/main` | Exit 0; no whitespace issues in this node's changes. |
+| `git diff --cached --check` | Exit 2 on three pre-existing Markdown hard-break lines in main's imported `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`; that file is preserved byte-for-byte from main. This is outside the node diff and is not a CI failure. |
+| `git ls-files -u` | Exit 0, empty: all supplied conflicts resolved. |
+
+Local browser-port deviation: ignored
+`build/lifecycle-playwright.config.cjs` imports the checked-in config and changes
+only the four web-server ports/URLs from 8765–8768 to 18765–18768, plus absolute
+paths needed for its location under build. It preserves every project, test,
+assertion, worker count, timeout and server cleanup rule. Ignored
+`build/lifecycle_acceptance.py` loads the existing `scripts/acceptance.py` plan
+and appends only `-- --config build/lifecycle-playwright.config.cjs` to its npm
+browser command. It preserves all nine required stages and their checks,
+aggregation, timeouts and failure handling. These local helpers avoid stopping
+unrelated services; they do not alter the checked-in CI configuration.
+
+The first `python3 build/lifecycle_acceptance.py` run exited 1: unit 972,
+storage 19, vendor 7, claims 281, JavaScript syntax, packaged smoke 8, seeded demo
+1 and integrated journeys 4 all passed, but Chromium reported 68 passed and one
+readiness initial-loading timeout. Its actual evidence is retained separately in
+ignored `build/lifecycle-acceptance-first.json`. The trace showed successful
+initial GETs and pending later GETs at the assertion timeout, not a business
+outcome mismatch. Focused rerun command
+`npm run test:browser -- --config build/lifecycle-playwright.config.cjs --grep 'readiness separates local capability'`
+exited 0 (one passed, test duration 1.3s). No assertion, application behavior or
+timeout was changed for the fresh full ladder rerun.
+
+Node files changed against current main:
+
+- Core: `capital/lifecycle_claims.py`, `tests/lifecycle_claims.json`, `scripts/lifecycle_claims_check.py`, `tests/test_lifecycle_claims.py`.
+- Integration: `scripts/acceptance.py`, `scripts/docs_surface.py`.
+- Existing regression tests: `tests/test_acceptance.py`, `tests/test_agent_claims.py`, `tests/test_read_model_claims.py`, `tests/test_ce1_claims.py`, `tests/test_docs_surface.py`, `tests/test_handbook.py`.
+- Documentation: `README.md`, `docs/INTEGRATION.md`, `docs/CAPITAL_REQUIREMENTS_KO.md`, `docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`.
+
+Final ladder rerun and cleanup:
+
+| Command | Result |
+|---|---|
+| `python3 build/lifecycle_acceptance.py` | Fresh full rerun: exit 0; all nine stages passed. Unit 972, storage-conformance 19, pinned-vendor 7, upstream claims 281, node syntax pass, Chromium 69, packaged smoke 8, seeded demo 1, integrated journeys 4. |
+| Python heredoc: inspect `build/acceptance-evidence.json`, verify vendor SHA256/baseline bytes, scan `/proc` for this worktree's Capital/fake-gate/zipapp servers, verify branch/HEAD and unresolved index entries | Exit 0; evidence `ok: true`, SIMULATED, funds_executed false, integrated false; all nine statuses passed; all five vendor locks and manifest unchanged; no servers remain; branch/HEAD unchanged; no unresolved conflicts. Unrelated services were left running. |
+
+Final successful aggregated evidence is the ignored local
+`build/acceptance-evidence.json`; the earlier unsuccessful ladder evidence remains
+`build/lifecycle-acceptance-first.json`. The scripts, logs and evidence above
+record actual executions. No test was skipped or weakened to obtain this result,
+no product decision was invented, and no Protocol, Commerce, vendor or `.aiops/`
+content was modified. No commit, push, PR, issue, comment, deployment or external
+financial/provider operation was performed.
+
+After recording the final results, `python3 scripts/docs_surface.py --check`
+exited 0 (30 routes, 40 artifacts, nine stages),
+`python3 -m unittest tests.test_docs_surface -v` exited 0 (nine passed), and
+`git diff --check origin/main` exited 0. All 17 node files are recorded in the
+index for supervisor review; no commit was created.
 
 ## adapter-identity-claims
 
@@ -1399,3 +1592,89 @@ Final explicit full-suite run:
 The node is complete with the planned method divergence preserved. The only
 implementation/verification adjustments were the separate SIMULATED output line,
 the narrow-test import path, and normal-user isolated loopback verification.
+
+## lifecycle-claims-conformance — conflict-fix round 1 (2026-10-24)
+
+This pending merge combines lifecycle HEAD
+`a49ff2f517c2722953a0e3e27b801797242e05f3` with main/MERGE_HEAD
+`ff123d54f864d1338575f0bf2e6c33eb1061d46f`. The eight supplied conflicts in
+README, integration, validation, acceptance, CE1 tests, closeout tests and the
+closeout/finance JSON vectors were resolved. Both claim implementations and all
+main additions are retained. The existing upstream-claims stage keeps CE1 fourth
+and adapter identity fifth, and adds lifecycle sixth:
+87+94+39+49+30+12=311 claims. Cleanly merged acceptance, agent, read-model and
+handbook assertions also needed the combined order/count. No stage, test,
+assertion, timeout or CI requirement was removed or weakened.
+
+README and the operator handbook now describe the six-command stage. Both
+integration sections and both preceding validation histories survive; those
+histories describe their own trees, not this merged tree. Closeout artifacts
+follow CAPITAL-CLOSEOUT-REGEN-V1: preserve main's actual prior snapshot until a
+successful combined acceptance run, regenerate with the two existing tools, add
+the sixth command to the independent closeout-test expectation, then rerun the
+complete ladder and compare its projected bytes. Historical or failed evidence
+is never relabelled as a combined success.
+
+Host loopback ports 8765 and 8766 belong to unrelated services and were left
+running. Verification uses the already available local user/network namespaces:
+
+```sh
+unshare --user --map-current-user --keep-caps --net bash -c 'ip link set lo up && setpriv --inh-caps=-all --ambient-caps=-all --bounding-set=-all python3 scripts/acceptance.py'
+```
+
+This retains the normal UID, drops capabilities before Python starts, and runs
+the checked-in acceptance plan and unchanged `npm run test:browser` on isolated
+loopback. No dependency install, public endpoint or paid service is involved.
+All evidence is local SIMULATED / CLAIM_CONFORMANCE; funds_executed and integrated
+remain false. This is not SEMANTIC_CONFORMANCE or human product acceptance.
+
+Initial checks and corrections actually executed:
+
+| Command/check | Result |
+|---|---|
+| Focused acceptance, agent, read-model, CE1, lifecycle, adapter-identity and closeout unittest modules | Exit 0; 136 passed. |
+| Handbook and docs-surface unittest modules | First run: 20 tests, one failure from the stale five-command handbook assertion. After updating it to six and retaining the explicit CE1 fourth-position documentation: exit 0, 20 passed. |
+| `python3 scripts/lifecycle_claims_check.py` | Exit 0; citation SKIPPED, verified=0/12, no behavior pass count. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; behaviors 12/12, citation SKIPPED. |
+| `python3 scripts/lifecycle_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behaviors 12/12, pinned citations 12/12. Each row's CLAIM_CONFORMANCE, SIMULATED and funds_executed false labels checked separately. |
+| `python3 scripts/adapter_identity_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behaviors 30/30, citations 30/30. |
+| First isolated complete acceptance run | Exit 1: unit 988 run, 987 passed, one stale handbook assertion loaded before its correction; Chromium 67 passed, two UI update timing failures; all seven other stages passed, including 311 claims. |
+| `npm run test:browser -- --grep "advanced UNBOUND\|organizer advances sim_day"` in the same isolated environment | Exit 0; both previously failing cases passed (6.2s total), with unchanged assertions and timeouts. |
+
+The initial failed evidence is retained in ignored
+`build/conflict-round1-failed-evidence.json`, with browser traces in
+`build/conflict-round1-failed-traces/`. Logs use the ignored
+`build/conflict-round1-*.log` paths. No artifact was generated from that failed
+run. The first failure summary names the assertion's old expected value even
+though Python's traceback reads its corrected source line from disk.
+
+Successful combined verification and regeneration:
+
+| Command/check | Actual result |
+|---|---|
+| Isolated unchanged `python3 scripts/acceptance.py`, before regeneration | Exit 0; all nine stages passed: unit 988, storage 19, pinned vendor 7, upstream CLAIM_CONFORMANCE 311, JS syntax, Chromium 69, packaged smoke 8, seeded demo 1, integrated journeys 4. Saved as `build/conflict-round1-pre-regen-evidence.json`. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0; generated 4516 bytes from that successful evidence. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; generated 97240 bytes. All unrelated groups and candidate metadata remain identical to main. |
+| `python3 -m unittest tests.test_closeout_digest -v` after adding lifecycle sixth to the independent STAGES expectation | Exit 0; 61 passed. |
+| Isolated unchanged `python3 scripts/acceptance.py`, after regeneration | Exit 0; all nine stages passed again with the same counts: unit 988, storage 19, vendor 7, claims 311, Chromium 69, smoke 8, demo 1, journeys 4, JS syntax pass. |
+| `python3 scripts/closeout_digest.py --check-evidence` after the final run | Exit 0; 4516 bytes match the fresh evidence. Both successful evidence projections and the regenerated digest are byte-identical. |
+| `python3 scripts/closeout_digest.py --check` and `python3 scripts/finance_vectors.py --check` | Exit 0; matching embedded closeout copy and canonical finance pack. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed standalone, also passed in both successful ladders. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Exit 0; repeated after regeneration. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 30 routes, 40 artifacts, nine stages. No new vectors paths require registry entries. |
+| Python stdlib SHA256 and byte comparisons | All five vendor files and manifest match HEAD, MERGE_HEAD and origin/main. Export construction, ports and their baseline guard tests match main. No changes under vendor or `.aiops/`. |
+| `git diff --check origin/main`, `git diff --cached --check`, conflict-marker scan and `git ls-files -u` | Clean whitespace, no conflict markers and no unresolved index entries. |
+| Read-only `/proc` scan for this worktree's Capital, fake-gate and zipapp servers | No remaining servers. Unrelated services were left running. |
+
+The final ignored `build/acceptance-evidence.json` has ok true, all nine stages
+passed, label SIMULATED, funds_executed false and integrated false. The packaged
+LOCAL_SIMULATION_ARTIFACT SHA256 is
+`02a9d68e02b43f0fb0c6125807a385e383a1cc8afa25f447e01623281fbb2ae3`.
+The full unit command is `python3 -m unittest discover -s tests -v`; it passed
+all 988 tests in both successful ladders. The unchanged `npm run test:browser`
+passed all 69 Chromium tests in each. Initial failures remain documented above.
+
+The merge remains pending and staged for the supervisor. HEAD and MERGE_HEAD
+are unchanged. No commit, push, reset, rebase, merge abort, external message,
+Protocol/Commerce edit, deployment, financial/provider operation or consequential
+product decision was made.

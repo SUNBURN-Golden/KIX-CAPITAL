@@ -129,6 +129,16 @@ VECTOR_NEEDLES = {
 }
 
 
+# Claim artifacts live outside tests/vectors/.
+CLAIM_NEEDLES = {
+    'tests/lifecycle_claims.json': (
+        'tests/lifecycle_claims.json', 'scripts/lifecycle_claims_check.py --execute',
+        'e2313ab473ea1b5a7b5b9246a564749188c1c2c8',
+        'citation SKIPPED',
+    ),
+}
+
+
 class SurfaceError(Exception):
     """A needle registry contradicts the live routes or the vectors tree."""
 
@@ -235,6 +245,13 @@ def find_drift(integration=DEFAULT_INTEGRATION, readme=DEFAULT_README,
         for needle in VECTOR_NEEDLES[key]:
             if needle not in docs['README.md']:
                 findings.append(f'README.md drops tests/vectors/{key}: needle {needle!r} is absent')
+
+    for artifact, needles in CLAIM_NEEDLES.items():
+        if not (ROOT / artifact).is_file():
+            findings.append(f'claim artifact missing: {artifact}')
+        for needle in needles:
+            if needle not in docs['README.md']:
+                findings.append(f'README.md drops {artifact}: needle {needle!r} is absent')
 
     required = acceptance_stages()
     for label in STAGE_DOCS:

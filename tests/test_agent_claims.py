@@ -347,7 +347,10 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(plan[0]['commands'][4][1:], ['scripts/adapter_identity_claims_check.py', '--execute'])
         from capital.adapter_identity_claims import load_table as load_identity
         from capital.ce1_claims import load_table as load_ce1
+        from capital.lifecycle_claims import load_table as load_lifecycle
+        self.assertEqual(plan[0]['commands'][5][1:], ['scripts/lifecycle_claims_check.py', '--execute'])
         expected_total = (
+            len(load_lifecycle()['claims']) +
             len(load_upstream()['claims'])
             + len(load_table()['claims'])
             + len(load_read_model()['claims'])
