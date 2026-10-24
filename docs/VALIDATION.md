@@ -1977,3 +1977,79 @@ not production authorization or upstream adoption evidence.
 | `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (final runs) | Three runs. Runs 1 and 2 recorded `ok:false` with a single 30s browser timeout each (`auditor-evidence-desk` unreadable case, then `portfolio.spec` default case) while host load average was 9-10. Both specs pass alone, and nothing in the slice change touches those paths. Run 3, at load 6, was `ok:true`: unit 1072, storage-conformance 19, pinned-vendor 7, upstream-claims 311, node-check passed, browser 69, packaged-smoke 8, seeded-demo 1, integrated-journeys 4. |
 | `python3 scripts/closeout_digest.py --check-evidence`, `--check`; `scripts/finance_vectors.py --check`; `scripts/pack_vectors.py --check` | All pass against the final evidence; the committed digests needed no regeneration. |
 | `git diff --exit-code origin/main -- capital/vendor capital/export.py .aiops` | Empty diff. |
+
+## fake-idp-session
+
+`capital/idp_fake.py` adds `FakeIdpAuthorizer`, a `LocalRoleAuthorizer` subclass for the opt-in `python3 -m capital.server --authorizer fake-idp`, and `scripts/fake_idp.py` mints HS256 tokens for the four synthetic roles from a committed test-vector key (not a credential, no key or kid parameter, no environment or file key source). Only `POST /api/session` changes: it needs exactly one `Authorization: Bearer` header, the bound role is the verified `role` claim, and a different body role is `403 ROLE_MISMATCH`. A missing token is `401 IDP_TOKEN_REQUIRED`; any rejected token (alg `none` or another alg, bad signature, expired, not yet valid with zero leeway, wrong `iss` or `aud`, unknown `kid`, duplicate/missing/extra claims, non-integer times, lifetime over 3600 s, over 2048 bytes, malformed base64url) is `401 IDP_TOKEN_INVALID` with a closed `reason` slug and never echoes the token. The check runs before the body is read, and nothing is written. Responses carry `mode: LOCAL_FAKE_IDP` while `identity`, `authentication`, `idp`, `kyc`, `agent_grant` and `action_permit` stay `NOT_BOUND`. `sub` must equal one fixed placeholder and the verifier returns only the role, so no subject, name or email reaches the workspace, event log or metrics (asserted against `workspace`, event log, `/api/state`, `/api/metrics`, `/api/export`). Later requests keep the role-scoped `X-Capital-Token`. This is not a security upgrade: the bootstrap organizer token from `GET /api/state` is unchanged, and tokens have no `jti`, so they replay until `exp`. The browser UI cannot present a bearer token, so role switching in the UI gets 401 in fake mode; the browser suite runs the default mode only.
+
+`capital/ports.py` gains `run_authorizer_vectors(factory)` (collects failures, raises one `AssertionError`). `LocalRoleAuthorizer` and `FakeIdpAuthorizer` pass the same vectors, and negative controls (header-trusting and allow-everything authorizers) fail them. `capital/contract/facade-v1.json` gains `IDP_TOKEN_REQUIRED` and `IDP_TOKEN_INVALID` (401) and `session.mode` / `auth.mode` become an enum of the two labels; `tests/vectors/finance_vectors.json` was regenerated with `python3 scripts/finance_vectors.py --write` (digest of the contract file only). `tests/test_coa_candidate.py` no longer lists `capital/ports.py` among files that must equal main, because this node adds to it. `tests/auth_matrix.json`, `capital/auth.py`, `capital/vendor/**` and `.aiops/` are untouched. Everything is SIMULATED; no real IdP, KYC, credential or network call.
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_fake_idp -v`: exit 0, **28 passed**.
+- `python3 -m unittest discover -s tests`: **650 tests, 1 failure**, `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`. It diffs against `origin/main`, which has moved since this branch started, so it lists `docs/decisions/CAPITAL_EXTERNAL_GATES.md`, `docs/decisions/CAPITAL_RELEASE_ACCEPTANCE.md` and `tests/golden/demo.json` from other nodes. `git diff --name-only <merge-base> -- <its file list>` shows only `capital/ports.py`, the intended edit. An earlier run also failed nine `test_finance_vectors` tests until the vectors were regenerated.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py`: exit 0, 7 passed.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/auth_matrix.py --check`, `docs_surface.py --check`, `not_bound_checklist.py --check`, `finance_vectors.py --check`: exit 0.
+- `git diff --name-only -- capital/vendor .aiops .github tests/auth_matrix.json`: no output.
+- `npm run test:browser`: **not run**. This worktree has no `node_modules` and `127.0.0.1:8765` is held by another process, so the fixed-port config (`reuseExistingServer: false`) would clash. No UI file changed.
+
+Merge with main (2026-10-20; `MERGE_HEAD` `5ec4c95`, `origin/main` moved on to `c9cfd6e` while the merge was in progress): three conflicts, none dropped. `docs/VALIDATION.md` keeps main's `audit70-fix5`, `t05-t06-sim-journeys`, `portfolio-risk-analytics` and `operator-console-ux` sections before this node's section. `tests/test_coa_candidate.py` `test_v1_and_golden_files_are_untouched` takes main's newest form (the `guarded` list, the `added_on_main` carve-out for files main added after the branch's merge point that the working tree never held, and the key-by-key golden pin check) with `capital/ports.py` left out of `guarded` for this node's additive `run_authorizer_vectors`. `tests/vectors/finance_vectors.json` was regenerated with `python3 scripts/finance_vectors.py --write` from the merged facade, not hand-merged. The two commits main gained after `MERGE_HEAD` (`a6e603a` sim-journeys, `c9cfd6e` claim-slice decision) are folded in so their work survives: `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`, `scripts/sim_journeys.py`, `tests/test_sim_journeys.py`, `tests/golden/journey_t05_sim.json`, `tests/golden/journey_t06_sim.json`, `docs/ACCEPTANCE_KO.md`, `docs/OPERATOR_HANDBOOK_KO.md`, `scripts/acceptance.py` and `tests/test_acceptance.py` are byte-identical to `origin/main` (this branch never touched them), the sim-journeys paragraph was added to `README.md`, and the `t05-t06-sim-journeys` section was added to this file in main's order.
+
+Commands actually run after the merge:
+
+- `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0, 90609 bytes match.
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33`; both pins match a live run.
+- `python3 -m unittest discover -s tests -v`: exit 0, **713 passed**. The first run had one failure, `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched` (`docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md` absent because `origin/main` had moved past `MERGE_HEAD`), fixed as described above.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. Vendored file SHA256 values match `capital/vendor/manifest.json`.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/docs_surface.py --check` (28 routes, 20 artifacts, 9 stages), `manifest_vectors` (13 files), `workspace_vectors` (6 files), `not_bound_checklist`, `auth_matrix` with `--check`, and `scripts/decision_ledger.py`: exit 0.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `npm ci --offline --ignore-scripts`: exit 0, 3 packages. `npm run test:browser`: exit 0, **62 passed** (2.3m); no `capital.server` of this worktree remained.
+- `git diff --name-only origin/main -- capital/vendor .aiops .github tests/auth_matrix.json`: no output.
+
+
+## fake-idp-session conflict-fix round 1 (2026-10-25)
+
+Resolved all eleven conflicts against main `51a0d2e8b1b6422d99c3a8f3b7f8bb999ca4090c`.
+The merge remains uncommitted for the supervisor. Both implementations survive:
+`ObservationPort` precedes the unchanged `run_authorizer_vectors` addition, and
+session bearer verification still runs before the session body is read while
+main's slice/recovery agent denials keep their original precedence. The COA
+compatibility guard retains main's historical, live byte and overlay checks;
+its append-only exception now also permits the exact SHA256-pinned source of
+`run_authorizer_vectors`, with negative controls for mutations and duplicates.
+No existing definition is exempted. A new live fake-IdP test binds an agent from
+its verified claim, checks every slice/recovery command denial on both command
+routes, and confirms unchanged workspace data.
+
+Main's T03–T06 journey runner, journey tests, T05 golden, acceptance runner and
+operator handbook are byte-identical to main. README and this validation log
+retain both nodes' documentation. Finance vectors were regenerated from the
+merged facade; all vector groups and rows survive, and the only changed values
+against main are `contract_digest`, `definitions_digest` and the session route's
+`closure_digest` under `facade_read_model`.
+
+All evidence below is local and SIMULATED; identity/authentication remain
+NOT_BOUND, and no real funds or provider calls occur.
+
+| Verification | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | 1100 passed, 207.923 s. The additional integration test added during this run is covered by the focused run below. |
+| `python3 -m unittest tests.test_fake_idp -v` | 29 passed, including the new claim-bound agent slice/recovery denial test. |
+| `python3 -m unittest discover -s tests -p test_coa_candidate.py -v` | 36 passed against the final source-pinned compatibility guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | 69 passed, 2.6 min. Chromium was available. Host ports 8765/8766 were occupied, so unchanged browser configuration ran in an isolated loopback network namespace. Lockfile dependencies installed with `npm ci --offline --ignore-scripts`. |
+| `python3 scripts/docs_surface.py --check` | 31 routes, 40 artifacts, 9 stages; passed. |
+| `python3 scripts/auth_matrix.py --check` | Passed; matrix bytes equal main. |
+| `python3 scripts/finance_vectors.py --write`, then `--check` | 97980 bytes; matched. |
+| `manifest_vectors.py`, `pack_vectors.py`, `workspace_vectors.py`, `observation_vectors.py`, `forecast_vectors.py`, `not_bound_checklist.py`, `decision_bindings.py`, each with `--check` | All passed; 19 manifest, 9 pack and 6 workspace vectors matched. |
+| `python3 scripts/sim_journeys.py` | All unchanged pins matched: T03 22, T04 38, T05 35, T06 33 steps. |
+| `python3 scripts/seed_demo.py` | Golden matched; debit = credit = 385000 synthetic units. |
+| Vendor SHA256 and byte checks | All five files match `capital/vendor/manifest.json`; those files and manifest are byte-identical to main. |
+| Protected paths | `capital/export.py`, `capital/auth.py`, `tests/auth_matrix.json`, vendor and `.aiops/` unchanged against main. |
+| Merge hygiene | No conflict markers or unmerged index entries. `git diff --check origin/main` passed. Main's existing Markdown hard breaks in `CAPITAL_UPSTREAM_REPINS.md` were retained unchanged. |
+
+No product decision or external action was needed. No merge abort, commit, push,
+rebase or reset was performed.
