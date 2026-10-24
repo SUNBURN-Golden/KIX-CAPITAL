@@ -18,9 +18,16 @@ example) are read from the note at runtime, never copied into code.
 A missing or malformed note reports `SHADOW_NOT_BOUND` — the zipapp does not
 bundle `docs/`, so that run stays NOT_BOUND. Every result carries the nine
 constant false flags; no result is an executed distribution, a recovery, a
-payout or a bank movement. Revenue participation, claim purchase and the
-residual/late-cash partition are out of scope for this node and stay
-`SHADOW_DEFERRED`.
+payout or a bank movement.
+
+Single-claim revenue participation posting, claim-slice sizing and price, and
+the ordered UC1-UC4 partition of `undistributed_cash` are pure integer-floor
+functions here (CAPITAL_SHADOW_POLICY section 3.7). Their ratio, cap, advance
+rate and tier rate are read from the settlement and financial-terms notes at
+runtime; only the CAPITAL-SHADOW-V1 rule constants (10000 bps, 365 days) live in
+code. The multi-claim base, 90-day window, upward late cash, term end, slice
+registry, holder priority, impairment, aggregate caps, 180-day timer, D+1 batch
+and provider return stay `SHADOW_DEFERRED` with the unblock seam from the note.
 """
 from __future__ import annotations
 
@@ -57,6 +64,10 @@ FALSE_FLAGS = (
     'admission_granted', 'workspace_mutated',
 )
 
+_BPS = 10_000  # CAPITAL-SHADOW-V1: bps = floor(amount * bps / 10000)
+_YEAR_DAYS = 365  # CAPITAL-SHADOW-V1 / ACT_365_FIXED day-count divisor
+_ACT_365 = 'ACT_365_FIXED'
+_UC_IDS = ('UC1', 'UC2', 'UC3', 'UC4')
 _FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
 # Bearer mechanics vocabulary of the settlement note's reason_classes_ordered.
 _PRO_RATA_ALL = 'PRO_RATA_ALL_LINES'
@@ -67,6 +78,13 @@ _RESALE_ROUTED = 'resale_prior_contract_cancel_burden'
 _SELLER = 'seller_due'
 _ORGANIZER_DUE = 'organizer_due'
 _PLATFORM_DUE = 'platform_due'
+
+
+class _UnknownInput(Exception):
+    def __init__(self, key, detail):
+        self.key = key
+        self.detail = detail
+        super().__init__(detail)
 
 
 class ShadowInconsistent(Exception):
@@ -81,6 +99,18 @@ def default_note_path():
     """Checkout path of the settlement-policy note. Absent inside the zipapp."""
     package = importlib.resources.files('capital')
     return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_SETTLEMENT_POLICY.md'
+
+
+def default_terms_path():
+    """Checkout path of the financial-terms note. Absent inside the zipapp."""
+    package = importlib.resources.files('capital')
+    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_FINANCIAL_TERMS.md'
+
+
+def default_shadow_note_path():
+    """Checkout path of the shadow-policy note. Absent inside the zipapp."""
+    package = importlib.resources.files('capital')
+    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_SHADOW_POLICY.md'
 
 
 def _reject_duplicate_keys(pairs):
@@ -194,6 +224,86 @@ def capped_pro_rata(total, lines):
     return [(label, fixed[label]) for label, _w, _c in lines], pool
 
 
+def _bps_floor(amount, bps):
+    return amount * bps // _BPS
+
+
+def participation_posting(class2_allocated, organizer_borne_refunds, funded, paid_to_date,
+                          ratio_bps, cap_bps):
+    """Single-claim participation posting. B = class-2 cash - organizer-borne
+    refunds; participation = floor(B*ratio); cap = floor(F*cap);
+    payable = min(participation, cap - paid_to_date)."""
+    _check_amount(class2_allocated, 'class2_allocated')
+    _check_amount(organizer_borne_refunds, 'organizer_borne_refunds')
+    _check_amount(funded, 'F')
+    _check_amount(paid_to_date, 'paid_to_date')
+    _check_amount(ratio_bps, 'ratio_bps')
+    _check_amount(cap_bps, 'cap_bps')
+    if organizer_borne_refunds > class2_allocated:
+        raise ShadowInconsistent('organizer-borne refunds exceed the class-2 allocated cash')
+    base = class2_allocated - organizer_borne_refunds
+    participation = _bps_floor(base, ratio_bps)
+    cap = _bps_floor(funded, cap_bps)
+    if paid_to_date > cap:
+        raise ShadowInconsistent('paid_to_date exceeds the cap')
+    return {'base': base, 'participation': participation, 'cap': cap,
+            'payable': min(participation, cap - paid_to_date)}
+
+
+def slice_sizing(outstanding, open_refund_face, advance_bps, all_in_bps, expected_days):
+    """Claim-slice size and price. max = floor((outstanding - open refund) *
+    advance/10000); discount = floor(max*all_in*days/(10000*365)) (one last
+    floor); price = max - discount."""
+    _check_amount(outstanding, 'outstanding')
+    _check_amount(open_refund_face, 'open_refund_face')
+    _check_amount(advance_bps, 'advance_bps')
+    _check_amount(all_in_bps, 'all_in_bps')
+    _check_amount(expected_days, 'expected_days')
+    if open_refund_face > outstanding:
+        raise ShadowInconsistent('open refund face exceeds the line outstanding')
+    face_max = _bps_floor(outstanding - open_refund_face, advance_bps)
+    discount = face_max * all_in_bps * expected_days // (_BPS * _YEAR_DAYS)
+    return {'slice_face_max': face_max, 'discount': discount, 'price': face_max - discount}
+
+
+def uc_partition(confirmed_cash, undistributed_cash, refund_outstanding, reclassified, rows):
+    """Ordered UC1-UC4 split of undistributed cash; the parts sum to the cash."""
+    _check_amount(confirmed_cash, 'confirmed_cash')
+    _check_amount(undistributed_cash, 'undistributed_cash')
+    _check_amount(refund_outstanding, 'refund_outstanding')
+    if type(reclassified) is not bool:
+        raise ShadowInconsistent('reclassified must be a bool')
+    if type(rows) is not list or not rows:
+        raise ShadowInconsistent('obligations missing')
+    outstanding = faces = distributed = 0
+    for row in rows:
+        if type(row) is not dict:
+            raise ShadowInconsistent('obligation row must be an object')
+        face = _check_amount(row.get('face'), 'face')
+        paid = _check_amount(row.get('distributed'), 'distributed')
+        cancelled = _check_amount(row.get('cancelled_unpaid'), 'cancelled_unpaid')
+        open_ = _check_amount(row.get('outstanding'), 'outstanding')
+        if face != paid + cancelled + open_:
+            raise ShadowInconsistent('face != distributed + cancelled_unpaid + outstanding')
+        faces += face
+        distributed += paid
+        outstanding += open_
+    if confirmed_cash < distributed or undistributed_cash != confirmed_cash - distributed:
+        raise ShadowInconsistent('undistributed_cash != confirmed_cash - sum distributed')
+    rest = undistributed_cash
+    uc1 = min(rest, outstanding)
+    rest -= uc1
+    uc2 = min(rest, refund_outstanding)
+    rest -= uc2
+    uc3 = rest if reclassified else 0
+    rest -= uc3
+    uc4 = rest if confirmed_cash > faces else 0
+    rest -= uc4
+    if rest:
+        raise ShadowInconsistent('undistributed cash fits no UC state')
+    return {'uc1': uc1, 'uc2': uc2, 'uc3': uc3, 'uc4': uc4}
+
+
 def _false_flags():
     return {name: False for name in FALSE_FLAGS}
 
@@ -277,6 +387,28 @@ def _parse_refund_entry(refund):
     return refund_id, amount, reason_class, evidence_ref, adjudicated
 
 
+def _read_block(path):
+    """The single capital-decision-v1 block of a note as a dict, else None."""
+    try:
+        path = Path(path)
+        if not path.is_file():
+            return None
+        text = path.read_text(encoding='utf-8')
+        blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
+    except (OSError, UnicodeError, ValueError, RecursionError):
+        return None
+    if len(blocks) != 1 or type(blocks[0]) is not dict:
+        return None
+    return blocks[0]
+
+
+def _adopted_value(entries, key):
+    entry = entries.get(key)
+    if type(entry) is dict and entry.get('status') == 'ADOPTED' and type(entry.get('value')) is dict:
+        return entry['value']
+    return None
+
+
 class DecisionNoteShadow:
     """Load one capital-decision-v1 settlement note and evaluate shadow vectors.
 
@@ -285,8 +417,17 @@ class DecisionNoteShadow:
     policy value is copied into this module.
     """
 
-    def __init__(self, path=None):
+    def __init__(self, path=None, *, terms_path=None, shadow_path=None):
         self.path = default_note_path() if path is None else Path(path)
+        self.terms_path = default_terms_path() if terms_path is None else Path(terms_path)
+        self.shadow_path = default_shadow_note_path() if shadow_path is None else Path(shadow_path)
+        self.terms_note_digest = None
+        self.shadow_note_digest = None
+        self._participation_rates = None
+        self._advance_rates = None
+        self._tier_rates = None
+        self._uc_ids = None
+        self._deferral = None
         self.outcome = 'NOT_BOUND'
         self.reason = SHADOW_NOT_BOUND_REASON
         self.policy_version = None
@@ -296,18 +437,8 @@ class DecisionNoteShadow:
         self._load()
 
     def _load(self):
-        path = self.path
-        try:
-            if not path.is_file():
-                return
-            text = path.read_text(encoding='utf-8')
-            blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
-        except (OSError, UnicodeError, ValueError, RecursionError):
-            return
-        if len(blocks) != 1 or type(blocks[0]) is not dict:
-            return
-        block = blocks[0]
-        if block.get('schema') != 'capital-decision-v1':
+        block = _read_block(self.path)
+        if block is None or block.get('schema') != 'capital-decision-v1':
             return
         entries = block.get('entries')
         if type(entries) is not dict:
@@ -335,8 +466,47 @@ class DecisionNoteShadow:
             if type(triggers) is list and all(
                     type(row) is dict and _nonempty_str(row.get('id')) for row in triggers):
                 self._resale_entry = resale['value']
+        self._load_slice_policy(entries)
         self.outcome = 'BOUND'
         self.reason = None
+
+    def _load_slice_policy(self, entries):
+        """Participation ratio/cap, advance rates, UC ids (settlement note), the
+        tier rates (terms note) and the deferral text and vectors (shadow note)."""
+        participation = _adopted_value(entries, 'revenue_participation')
+        if participation is not None and _amount(participation.get('ratio_bps_of_base')) and _amount(
+                participation.get('cap_bps_of_funded_amount')):
+            self._participation_rates = (
+                participation['ratio_bps_of_base'], participation['cap_bps_of_funded_amount'])
+        purchase = _adopted_value(entries, 'claim_purchase')
+        volume = purchase.get('volume') if purchase is not None else None
+        advance = volume.get('advance_rate_bps_by_tier') if type(volume) is dict else None
+        if type(advance) is dict and advance and all(
+                _nonempty_str(tier) and _amount(bps) for tier, bps in advance.items()):
+            self._advance_rates = dict(advance)
+        residual = _adopted_value(entries, 'residual_and_late_cash')
+        states = residual.get('undistributed_cash_states_ordered') if residual is not None else None
+        if type(states) is list and all(type(row) is dict and _nonempty_str(row.get('id')) for row in states):
+            ids = tuple(row['id'].split('_', 1)[0] for row in states)
+            if ids == _UC_IDS:
+                self._uc_ids = [row['id'] for row in states]
+        terms = _read_block(self.terms_path)
+        terms_entries = terms.get('entries') if terms is not None and terms.get('schema') == 'capital-decision-v1' else None
+        interest = _adopted_value(terms_entries, 'interest_rate') if type(terms_entries) is dict else None
+        tiers = interest.get('tiers') if interest is not None else None
+        if interest is not None and interest.get('day_count') == _ACT_365 and type(tiers) is list:
+            rates = {row['id']: row['all_in_bps_annual'] for row in tiers
+                     if type(row) is dict and _nonempty_str(row.get('id'))
+                     and _amount(row.get('all_in_bps_annual'))}
+            if rates:
+                self._tier_rates = rates
+                self.terms_note_digest = _sha256(terms)
+        shadow = _read_block(self.shadow_path)
+        shadow_entries = shadow.get('entries') if shadow is not None and shadow.get('schema') == 'capital-decision-v1' else None
+        deferral = _adopted_value(shadow_entries, 'revshare_claim_purchase_deferral') if type(shadow_entries) is dict else None
+        if deferral is not None:
+            self._deferral = deferral
+            self.shadow_note_digest = _sha256(shadow)
 
     # -- module surface ----------------------------------------------------
 
@@ -617,6 +787,129 @@ class DecisionNoteShadow:
                 return DIVERGES
         return MATCHES
 
+    # -- participation, claim slice, residual partition -----------------------
+
+    def item_binding(self, item):
+        """None when the item's policy values are bound, else the reason."""
+        if self.outcome != 'BOUND':
+            return self.reason
+        if item == 'revenue_participation':
+            ready = self._participation_rates is not None
+        elif item == 'claim_purchase':
+            ready = self._advance_rates is not None and self._tier_rates is not None
+        elif item == 'residual_and_late_cash':
+            ready = self._uc_ids is not None
+        else:
+            return SHADOW_ENTRY_NOT_BOUND
+        if not ready or self._item_note(item) is None:
+            return SHADOW_ENTRY_NOT_BOUND
+        return None
+
+    def _item_note(self, item):
+        entry = self._deferral.get(item) if self._deferral is not None else None
+        return entry if type(entry) is dict else None
+
+    def not_bound(self, detail=None):
+        """Item verdict carrying no number when a note or entry is unbound."""
+        return self._envelope(NOT_BOUND, detail or self.reason or SHADOW_ENTRY_NOT_BOUND)
+
+    def note_vectors(self, item):
+        """[{id, inputs, expected}] the shadow note states for the item."""
+        entry = self._item_note(item)
+        if entry is None:
+            return []
+        rows = [entry['vector']] if type(entry.get('vector')) is dict else entry.get('vectors')
+        if type(rows) is not list:
+            return []
+        return [{'id': row['id'], 'inputs': row.get('inputs'), 'expected': row.get('expected')}
+                for row in rows if type(row) is dict and _nonempty_str(row.get('id'))]
+
+    def deferred_rows(self, item):
+        """One SHADOW_DEFERRED row per deferred sub-item with its unblock seam."""
+        entry = self._item_note(item)
+        if self.item_binding(item) is not None or entry is None:
+            return []
+        names = entry.get('deferred_SHADOW_DEFERRED')
+        unblock = entry.get('unblock')
+        if type(names) is not list or not _nonempty_str(unblock):
+            return []
+        return [{'deferred_item': name, 'unblock': unblock, **self._envelope(DEFERRED, name)}
+                for name in names if _nonempty_str(name)]
+
+    def divide(self, total, weighted) -> list:
+        """N-payee largest-remainder split; ties by ascending label."""
+        return allocate_largest_remainder(total, weighted)
+
+    def _slice_result(self, item, vector, required, compute, extra=None):
+        """Shared INPUT_UNKNOWN / INCONSISTENT / COMPUTED shell for the three items."""
+        reason = self.item_binding(item)
+        if reason is not None:
+            return self._not_bound_result(vector, reason)
+        missing = [key for key in required if type(vector) is not dict or vector.get(key) is None]
+        label = {'vector_id': None, 'input_source': None}
+        if type(vector) is dict:
+            label = {key: vector.get(key) if _nonempty_str(vector.get(key)) else None for key in label}
+        if missing:
+            result = self._envelope(INPUT_UNKNOWN, 'required inputs are absent')
+            result['missing_inputs'] = missing
+        else:
+            try:
+                body = compute(vector)
+            except ShadowInconsistent as exc:
+                result = self._envelope(INCONSISTENT, exc.detail)
+                result['missing_inputs'] = []
+            except _UnknownInput as exc:
+                result = self._envelope(INPUT_UNKNOWN, exc.detail)
+                result['missing_inputs'] = [exc.key]
+            else:
+                result = self._envelope(COMPUTED)
+                result.update({f'shadow_{key}': value for key, value in body.items() if type(value) is int})
+                result.update({key: value for key, value in body.items() if type(value) is not int})
+                result['missing_inputs'] = []
+        result['reconciliation'] = NOT_COMPARABLE
+        result.update(label)
+        if extra:
+            result.update(extra)
+        return self._finish(result, vector)
+
+    def participation(self, vector) -> dict:
+        """Single-claim participation posting (ratio and cap read from the note)."""
+        def compute(v):
+            ratio, cap = self._participation_rates
+            return participation_posting(
+                v['class2_allocated'], v['organizer_borne_refunds'], v['F'], v['paid_to_date'],
+                ratio, cap)
+        return self._slice_result(
+            'revenue_participation', vector,
+            ('class2_allocated', 'organizer_borne_refunds', 'F', 'paid_to_date'), compute)
+
+    def claim_purchase(self, vector) -> dict:
+        """Claim-slice maximum, discount and price (rates read from the notes)."""
+        def compute(v):
+            tier = v['tier']
+            if not _nonempty_str(tier) or tier not in self._advance_rates or tier not in self._tier_rates:
+                raise _UnknownInput('tier', 'tier is outside the decided tier table')
+            body = slice_sizing(v['outstanding'], v['open_refund_face'], self._advance_rates[tier],
+                                self._tier_rates[tier], v['expected_days'])
+            body['tier'] = tier
+            return body
+        return self._slice_result(
+            'claim_purchase', vector, ('outstanding', 'open_refund_face', 'tier', 'expected_days'),
+            compute, {'terms_note_digest': self.terms_note_digest})
+
+    def residual_partition(self, vector) -> dict:
+        """Ordered UC1-UC4 split of undistributed cash. `pg_adjustment_outstanding`
+        is required and validated but is not a partition input: the shadow note's
+        UC2 formula uses `refund_outstanding` only."""
+        def compute(v):
+            _check_amount(v['pg_adjustment_outstanding'], 'pg_adjustment_outstanding')
+            return uc_partition(v['confirmed_cash'], v['undistributed_cash'],
+                                v['refund_outstanding'], v['reclassified'], v['obligations'])
+        return self._slice_result(
+            'residual_and_late_cash', vector,
+            ('confirmed_cash', 'undistributed_cash', 'refund_outstanding', 'reclassified',
+             'pg_adjustment_outstanding', 'obligations'), compute)
+
     # -- resale unwind (RU1-RU3) --------------------------------------------
 
     def resale(self, vector) -> dict:
@@ -800,3 +1093,15 @@ class ShadowPolicyPort(Protocol):
 
     def resale(self, vector) -> dict:
         """Latest-trade resale unwind shadow (RU1-RU3). Inputs are explicit."""
+
+    def participation(self, vector) -> dict:
+        """Single-claim revenue participation posting shadow."""
+
+    def claim_purchase(self, vector) -> dict:
+        """Claim-slice size, discount and price shadow."""
+
+    def residual_partition(self, vector) -> dict:
+        """Ordered UC1-UC4 partition of undistributed cash."""
+
+    def divide(self, total, weighted) -> list:
+        """N-payee largest-remainder split."""

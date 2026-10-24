@@ -886,6 +886,22 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+
+## shadow-participation-slice-uc
+
+`capital/shadow.py` adds three pure integer-floor computations from `CAPITAL_SHADOW_POLICY.md` §3.7, wired into `DecisionNoteShadow` and `GET /api/policy/shadow`: single-claim revenue participation posting, claim-slice size and price, and the ordered UC1-UC4 partition of `undistributed_cash`. All results are `SHADOW_NOT_APPLIED` with the nine false flags and `reconciliation: NOT_COMPARABLE`. The ratio, cap, advance rate and tier rate are read from the settlement and financial-terms notes at runtime; the only constants in code are the CAPITAL-SHADOW-V1 rule constants (10000 bps, 365 days), and an AST test bans the policy numbers. A missing settlement, terms or shadow note, or a non-ADOPTED entry, reports `SHADOW_NOT_BOUND` without numbers. A vector missing an input is `SHADOW_INPUT_UNKNOWN`; a domain breach is `SHADOW_INCONSISTENT`.
+
+Vectors reproduced from the shadow note: V-RP-single (base 95000, participation 19000, cap 75000, payable 19000), V-CP-size (slice max 80750, discount 929, price 79821), V-UC-late-cash-open-refund (uc2 100000), V-UC-late-cash-accepted (uc3 100000, replayed on a disposable `MockSettlement` after a full mock acceptance), V-UC-overpay (uc4 1000, a labelled synthetic literal) and V-UC-split-statement (uc1 49000). `paid_to_date` is 0 with the source label `NOTE_VECTOR_FIRST_POSTING_NO_STORED_STATE` because there is no stored state. The multi-claim base, 90-day window, upward late cash, term end, slice registry, holder priority, impairment, aggregate caps, 180-day timer, D+1 batch and provider return stay `SHADOW_DEFERRED` rows carrying the note's unblock seam.
+
+Resolutions and findings for the upstream candidates:
+
+- UC2 uses `refund_outstanding` only. The settlement note's "when" clause also names `pg_adjustment_outstanding`, but the shadow note's formula and V-UC-late-cash-accepted (uc3 = 100000 while the accepted view has `pg_adjustment_outstanding` = 100000) require it not to. The field is required and validated but is not a partition input.
+- The settlement note says largest remainder equals the pinned floor split for two payees. That does not hold in general (gross 99,999 at 500 bps: pinned 95000 / 4999, largest remainder 94999 / 5000). No equivalence is claimed and no reconciliation is attempted.
+- `organizer_borne_refunds` is an explicit input; it is not derived from the refund shadow results.
+- `expected_days` is a caller-supplied non-negative integer; the notes decide no bound for it.
+
+`/api/policy/simulation`, `state_digest`, receipts and `operation_count` are unchanged (golden digest in `tests/test_shadow_slice_uc.py`, taken on main before this node).
+
 ## closeout-evidence-vector
 
 The `closeout-evidence-vector` node supplies the eighth finance input vector, so all eight `FINANCE_PENDING_NODES` candidates now carry vectors. It implements the decided artifact of `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md` (provisional product decision; its ADOPTED entries are the policy, and the generator reads the strip keys, labels and non-claims from that note instead of copying them).
@@ -1737,3 +1753,73 @@ Merge resolutions and these supporting test/documentation fixes are staged for
 the supervisor. No merge commit or push was made. No vendor, `.aiops`, legacy
 export, existing V2 demo golden, Protocol or Commerce bytes were edited, and no
 real funds, credentials, providers or deployment were used.
+
+## shadow-participation-slice-uc — conflict-fix round 1
+
+Merged `origin/main` (`6d3e2a6466098fcd50adc93566a2e6b3158f2351`) into the reviewed shadow feature, leaving the merge uncommitted for the supervisor. All 14 conflicted paths are resolved. Main's forecast, recovery/writeoff and repayment posting, evidence artifacts, T03–T06 journeys and COA byte guards are preserved. The facade schema retains every main key/value and adds the shadow vector/deferred-row properties. `finance_vectors.json` was regenerated only with `python3 scripts/finance_vectors.py --write` to pin the combined schema. Documentation now distinguishes single-claim shadow computations from deferred state/clock work.
+
+All evidence below is local **SIMULATED** verification; no funds executed, upstream adoption or integrated acceptance is claimed.
+
+| Command / check | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | 1,046 tests passed (249.412s), including the shadow note vectors, runtime rate loading, false flags, missing-note/input paths, unchanged state/receipts and byte-pinned policy simulation |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 tests passed |
+| `python3 -m compileall -q capital` | exit 0 |
+| `node --check capital/static/app.js` | exit 0 |
+| `npm run test:browser -- --config=build/playwright-merge-check.cjs` | 69 tests passed (2.4m); Chromium available |
+| `python3 scripts/sim_journeys.py` | T03–T06 golden matches: 22 / 38 / 35 / 33 steps; SIMULATED, funds_executed false, integrated false |
+| `python3 scripts/docs_surface.py --check` | 30 routes, 40 artifacts, 9 stages |
+| `python3 scripts/finance_vectors.py --check` | 97,332 bytes match |
+| `python3 scripts/forecast_vectors.py --check` | 6,456 bytes match |
+| `python3 scripts/closeout_digest.py --check` | 4,516 bytes; embedded copy matches |
+| `python3 scripts/decision_bindings.py --check` | declared references match |
+| Vendor SHA256 / manifest / protected paths | All five locked hashes match; manifest byte-identical to main; no vendor or `.aiops/` diff |
+| Merge hygiene | No conflict markers or unmerged index entries; `git diff origin/main --check` clean |
+
+The default browser ports 8765/8766 were occupied by unrelated services in other workspaces. The ignored temporary config imports the checked-in config and changes only the four configured server ports/base URLs to 18765–18768, setting the repository working directory explicitly. Test files, assertions and timeouts are unchanged. The first complete browser run had 68 passes and one repayment/close refresh timeout; the complete five-test command-fence file then passed, followed by the clean 69-test full rerun above. No application or test change was needed for that timeout.
+
+## shadow-participation-slice-uc — PR fix round 1 (2026-10-24)
+
+Investigated the supplied CI `TimeoutError` in the live authorization matrix at
+merged HEAD `001bae9`. It did not recur: the complete Python suite passed, the
+36-test authorization file passed separately, and 20 fresh-server repetitions of
+`LiveMatrixTests.test_every_cell` passed all 4,100 route/role requests. The reported
+agent request to `/api/scenarios` is denied by the existing authorization check
+before the scenario handler or shadow arithmetic runs. These observations do not
+establish the cause of the historical timeout; they provide no reproducible
+application or merge defect to repair. Application code, tests, CI settings,
+timeouts and golden artifacts are unchanged in this round.
+
+All results are local **SIMULATED** verification, with no external execution or
+upstream adoption claimed.
+
+| Command / check | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | 1,046 passed in 274.633s |
+| `python3 -m unittest discover -s tests -p test_auth_matrix.py -v` | 36 passed |
+| Twenty fresh-server live matrix sweeps | 20 passed; 205 requests each, including the reported denied agent request |
+| `python3 -m unittest discover -s tests -p 'test_shadow*.py' -v` | 57 passed; note vectors, runtime rates, missing inputs/notes, false flags and unchanged simulation golden |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0 |
+| `python3 scripts/docs_surface.py --check` | 30 routes, 40 artifacts, 9 stages |
+| Finance, forecast, closeout, decision-binding, auth-matrix and not-bound-checklist scripts with `--check` | All exit 0; existing combined-main artifacts match without regeneration |
+| Actual loopback `GET /api/policy/shadow` | Three added items computed under SHADOW_NOT_APPLIED; all nine flags false in items, vectors and deferred rows; state_digest, receipts and operation_count unchanged |
+| Actual loopback `GET /api/policy/simulation`, compared with a disposable `origin/main` archive | Byte-identical with the same synthetic instance_id: 6,110 bytes, SHA256 `e68616b02581d822964dc969cd05591bfa791f28e6ef43dfca3363c6f1a64d82` |
+| Vendor / manifest / legacy export | Five locked SHA256s match; five reference files, manifest and export.py byte-identical to HEAD and origin/main |
+| Focused Chromium journey and portfolio files | 21 passed in 32.1s, including both cases that timed out in earlier full runs |
+| `npm run test:browser -- --config=/tmp/shadow-fix-browser-tcyi1rdb/playwright.config.cjs` | Final full run: all 69 passed in 2.0m |
+
+The default browser invocation could not bind occupied loopback ports. The
+temporary `/tmp/shadow-fix-browser-tcyi1rdb/playwright.config.cjs` imports the
+tracked configuration, uses unused loopback ports and a disposable demo workspace,
+and relocates config-relative test/report paths. It retains all projects, tests,
+assertions and timeouts. Two full runs each passed 68/69 tests, with different
+timing failures: first the default journey, then mobile startup. Inspection of the
+first trace showed the browser resolving the expected DEFAULTED label at
+68,570ms, while the test worker recorded completion at 146,084ms and exceeded its
+30s test budget. The second trace showed a 5s startup assertion returning after
+about 13.9s. Runner scheduling delays are an inference from those timing gaps,
+not an established explanation of the original CI failure. Both affected files
+then passed together without code, assertion or timeout changes.
+The subsequent complete Chromium run passed all 69 tests. This round changes only
+this validation record; no commit, push or external post was made.

@@ -23,13 +23,13 @@ from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manife
 from capital.gate_producer import GateProtocolError, TransportLost
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
-from capital.protocol import VENDOR
+from capital.protocol import VENDOR, MockSettlement
 from capital.recon import build_reconciliation
 from capital.policy import (
     POLICY_LABEL, POLICY_NOT_BOUND, SCENARIO_ID, DecisionNoteSettlementPolicy,
     apply_order, probe_order_freeze,
 )
-from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
+from capital.scenarios import ORDER, POLICY, STATEMENT, definitions, replay_scenarios
 from capital.shadow import DecisionNoteShadow, SHADOW_LABEL, SHADOW_MODE, SHADOW_PROVENANCE
 from capital.statement import build_statement
 from capital.setoff import DecisionNoteSetoff
@@ -782,10 +782,86 @@ class CapitalService:
             'admission_granted', 'workspace_mutated')})
         return verdict
 
-    _SHADOW_DEFERRED_DETAIL = (
-        'out of scope for this node: the decision keeps the parts needing a logical clock, '
-        'a slice registry or a multi-claim base deferred; this endpoint computes only the '
-        'refund-bearer classes and the resale unwind')
+    def _shadow_item_verdict(self, item, vectors):
+        """Computed vectors plus the note's deferred rows, each with its unblock seam."""
+        reason = self.shadow.item_binding(item)
+        if reason is not None:
+            return self.shadow.not_bound(reason)
+        results = [self._shadow_run(item, vector) for vector in vectors]
+        verdict = self.shadow.not_bound(None)
+        verdict.update({
+            'status': 'SHADOW_COMPUTED' if results and all(
+                row['status'] == 'SHADOW_COMPUTED' for row in results) else 'SHADOW_INCONSISTENT',
+            'detail': None,
+            'shadow_rules_version': self.shadow.status()['shadow_rules_version'],
+            'vectors': results,
+            'deferred': self.shadow.deferred_rows(item),
+        })
+        return verdict
+
+    def _shadow_run(self, item, vector):
+        method = {'revenue_participation': self.shadow.participation,
+                  'claim_purchase': self.shadow.claim_purchase,
+                  'residual_and_late_cash': self.shadow.residual_partition}[item]
+        return method(vector)
+
+    @staticmethod
+    def _shadow_uc_vector(vector_id, source, view):
+        return {
+            'vector_id': vector_id, 'input_source': source,
+            'confirmed_cash': view['confirmed_cash'],
+            'undistributed_cash': view['undistributed_cash'],
+            'refund_outstanding': view['refund_outstanding'],
+            'reclassified': view['fixture_reclassified'],
+            'pg_adjustment_outstanding': view['pg_adjustment_outstanding'],
+            'obligations': [
+                {'face': row['face'], 'distributed': row['distributed'],
+                 'cancelled_unpaid': row['cancelled_unpaid'], 'outstanding': row['outstanding']}
+                for row in view['obligations']],
+        }
+
+    def _shadow_late_cash_accepted_view(self):
+        """late-cash replayed on a disposable book, then a full mock cancel acceptance."""
+        late = next(row for row in definitions() if row[0] == 'late-cash')
+        book = MockSettlement()
+        claim_id = 'sim-lab-late-cash-accepted'
+        book.recognize_claim(claim_id, trade_id='sim-lab-trade', gross=100_000,
+                             debtor_role='fixture-merchant', policy=POLICY)
+        for command in late[3]:
+            getattr(book, command['op'])(claim_id, **copy.deepcopy(command['args']))
+        book.observe_mock_cancel_acceptance(claim_id, source_id='sim-accept-late', amount=100_000)
+        return book.view(claim_id)
+
+    def _shadow_participation_verdict(self):
+        vectors = [{**(row['inputs'] or {}), 'paid_to_date': 0, 'vector_id': row['id'],
+                    'input_source': 'NOTE_VECTOR_FIRST_POSTING_NO_STORED_STATE'}
+                   for row in self.shadow.note_vectors('revenue_participation')]
+        return self._shadow_item_verdict('revenue_participation', vectors)
+
+    def _shadow_claim_purchase_verdict(self):
+        vectors = [{**(row['inputs'] or {}), 'vector_id': row['id'],
+                    'input_source': 'NOTE_SYNTHETIC_VECTOR'}
+                   for row in self.shadow.note_vectors('claim_purchase')]
+        return self._shadow_item_verdict('claim_purchase', vectors)
+
+    def _shadow_residual_verdict(self):
+        if self.shadow.item_binding('residual_and_late_cash') is not None:
+            return self._shadow_item_verdict('residual_and_late_cash', [])
+        overpay_rows = [{'face': 95_000, 'distributed': 95_000, 'cancelled_unpaid': 0, 'outstanding': 0},
+                        {'face': 5_000, 'distributed': 5_000, 'cancelled_unpaid': 0, 'outstanding': 0}]
+        vectors = [
+            self._shadow_uc_vector('V-UC-split-statement', 'PINNED_VIEW_SNAPSHOT:split-statement:step3',
+                                   self.scenario_results['split-statement']['steps'][2]['view']),
+            self._shadow_uc_vector('V-UC-late-cash-open-refund', 'PINNED_VIEW_SNAPSHOT:late-cash:final',
+                                   self.scenario_results['late-cash']['final']),
+            self._shadow_uc_vector('V-UC-late-cash-accepted',
+                                   'DISPOSABLE_REPLAY:late-cash+full-mock-acceptance',
+                                   self._shadow_late_cash_accepted_view()),
+            {'vector_id': 'V-UC-overpay', 'input_source': 'SYNTHETIC_LITERAL',
+             'confirmed_cash': 101_000, 'undistributed_cash': 1_000, 'refund_outstanding': 0,
+             'reclassified': False, 'pg_adjustment_outstanding': 0, 'obligations': overpay_rows},
+        ]
+        return self._shadow_item_verdict('residual_and_late_cash', vectors)
 
     def _shadow_body(self):
         """Side-by-side pinned and shadow verdicts for the unsupported items."""
@@ -796,8 +872,14 @@ class CapitalService:
                 verdict = self._shadow_refund_verdict()
             elif name == 'resale_prior_contract_cancel_burden':
                 verdict = self._shadow_resale_verdict()
+            elif name == 'revenue_participation':
+                verdict = self._shadow_participation_verdict()
+            elif name == 'claim_purchase':
+                verdict = self._shadow_claim_purchase_verdict()
+            elif name == 'residual_and_late_cash':
+                verdict = self._shadow_residual_verdict()
             else:
-                verdict = self.shadow.deferred(name, self._SHADOW_DEFERRED_DETAIL)
+                verdict = self.shadow.deferred(name, None)
             items.append({'item': name, 'pinned': row, 'shadow': verdict})
         bound = self.shadow.outcome == 'BOUND'
         body = {

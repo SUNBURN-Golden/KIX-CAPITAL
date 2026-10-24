@@ -162,7 +162,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 
 ### policy-simulator
 
-`GET /api/policy`와 `GET /api/policy/simulation`은 읽기 전용 시뮬레이티드 정책 적용이다. 라벨은 `simulated policy application — not executed distribution, not bank movement`다. 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 `allocation_order`가 ADOPTED이면 도출된 순서를 기존 fixture 두 순서와 나란히 보여 준다. UNDETERMINED이면 `POLICY_UNDECIDED`이고 fixture 비교만 남는다. 환불 부담, 리셀 취소, 수익 참여, 채권 매입, 잔여·늦은 현금은 `UNSUPPORTED_BY_PINNED_FSM`이며 금액을 계산하지 않는다. 그림자 산술은 별도 읽기 전용 경로 `GET /api/policy/shadow`에 있다. 환불 부담 RC1–RC4(RC5는 리셀 해제로 라우팅)와 리셀 해제 RU1–RU3를 `SHADOW_NOT_APPLIED` 모드로만 계산하고, 핀드 FSM에는 적용하지 않는다. 노트가 없으면 `SHADOW_NOT_BOUND`다. 권한은 `projection:read`(관찰자 403), `applied_to_fsm`·`funds_executed`·`policy_adopted`는 항상 거짓이며 `state_digest`는 변하지 않는다. 수익 참여·채권 매입·잔여·늦은 현금은 이 노드에서도 계산하지 않는다(`SHADOW_DEFERRED`). `policy_adopted`는 false다. 노트가 없으면 `policy not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 이것은 실행된 배분이 아니고 은행 이동이 아니다. 병합은 JunTae가 한다. 이 노드는 배정 우선순위를 인코딩하므로 스스로 병합하지 않는다.
+`GET /api/policy`와 `GET /api/policy/simulation`은 읽기 전용 시뮬레이티드 정책 적용이다. 라벨은 `simulated policy application — not executed distribution, not bank movement`다. 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 `allocation_order`가 ADOPTED이면 도출된 순서를 기존 fixture 두 순서와 나란히 보여 준다. UNDETERMINED이면 `POLICY_UNDECIDED`이고 fixture 비교만 남는다. 환불 부담, 리셀 취소, 수익 참여, 채권 매입, 잔여·늦은 현금은 `UNSUPPORTED_BY_PINNED_FSM`이며 금액을 계산하지 않는다. 그림자 산술은 별도 읽기 전용 경로 `GET /api/policy/shadow`에 있다. 환불 부담 RC1–RC4(RC5는 리셀 해제로 라우팅)와 리셀 해제 RU1–RU3를 `SHADOW_NOT_APPLIED` 모드로만 계산하고, 핀드 FSM에는 적용하지 않는다. 노트가 없으면 `SHADOW_NOT_BOUND`다. 권한은 `projection:read`(관찰자 403), `applied_to_fsm`·`funds_executed`·`policy_adopted`는 항상 거짓이며 `state_digest`는 변하지 않는다. 단일 청구 수익 참여 게시·채권 슬라이스 크기/가격·UC1–UC4 분할도 같은 그림자 경로로만 계산한다. 다중 청구 기준·90일 창·슬라이스 등록부·180일 타이머·D+1 배치는 `SHADOW_DEFERRED`다. `policy_adopted`는 false다. 노트가 없으면 `policy not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 이것은 실행된 배분이 아니고 은행 이동이 아니다. 병합은 JunTae가 한다. 이 노드는 배정 우선순위를 인코딩하므로 스스로 병합하지 않는다.
 
 <!-- /handbook-section -->
 
@@ -442,9 +442,9 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 ### shadow-refund-resale
 
-`GET /api/policy/shadow`는 환불 부담자(RC1–RC4. RC5는 재판매로 간다)와 재판매 되감기(RU1–RU3)를 `CAPITAL-SHADOW-V1` 노트로 산수만 해 보여 주는 읽기 경로다. 권한은 `projection:read`이고 observer는 `403 ROLE_FORBIDDEN`을 받는다. 모드는 `SHADOW_NOT_APPLIED`이고 라벨은 "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"다. 항목마다 고정 FSM의 `UNSUPPORTED_BY_PINNED_FSM` 판정과 그림자 판정이 나란히 나온다.
+`GET /api/policy/shadow`는 환불 부담자(RC1–RC4. RC5는 재판매로 간다)와 재판매 되감기(RU1–RU3), 단일 청구 수익 참여 게시, 채권 슬라이스 크기·가격, 잔여 현금 UC1–UC4 분할을 `CAPITAL-SHADOW-V1` 노트로 산수만 해 보여 주는 읽기 경로다. 권한은 `projection:read`이고 observer는 `403 ROLE_FORBIDDEN`을 받는다. 모드는 `SHADOW_NOT_APPLIED`이고 라벨은 "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"다. 항목마다 고정 FSM의 `UNSUPPORTED_BY_PINNED_FSM` 판정과 그림자 판정이 나란히 나온다.
 
-그림자 판정은 `SHADOW_COMPUTED`, `SHADOW_DEFERRED`, `SHADOW_NOT_BOUND`, `SHADOW_INPUT_UNKNOWN`, `SHADOW_INCONSISTENT` 중 하나다. 수익 참여, 청구권 매입, 잔여·지연 현금은 계산하지 않고 `SHADOW_DEFERRED`로 남는다. `applied_to_fsm`, `funds_executed`, `policy_adopted`를 포함한 상수 false 플래그가 붙는다. 고정 FSM은 호출하지 않고 `state_digest`도 바뀌지 않는다. 노트가 없거나 깨졌거나 `.pyz`로 실행하면 `SHADOW_NOT_BOUND`다. 이것은 `SIMULATED` 산수이지 집행된 분배가 아니다.
+그림자 판정은 `SHADOW_COMPUTED`, `SHADOW_DEFERRED`, `SHADOW_NOT_BOUND`, `SHADOW_INPUT_UNKNOWN`, `SHADOW_INCONSISTENT` 중 하나다. 수익 참여, 채권 슬라이스, 잔여·늦은 현금 항목은 노트가 정한 단일 청구 산술만 `vectors`로 계산한다. 비율·상한·선지급률·금리는 노트에서 읽는다. 다중 청구 기준, 90일 창, 슬라이스 등록부, 180일 타이머, D+1 배치는 `deferred` 행의 해제 seam과 함께 `SHADOW_DEFERRED`로 남고, 입력이 빠지면 `SHADOW_INPUT_UNKNOWN`이다. `applied_to_fsm`, `funds_executed`, `policy_adopted`를 포함한 상수 false 플래그가 붙는다. 고정 FSM은 호출하지 않고 `state_digest`도 바뀌지 않는다. 노트가 없거나 깨졌거나 `.pyz`로 실행하면 `SHADOW_NOT_BOUND`다. 이것은 `SIMULATED` 산수이지 집행된 분배가 아니다.
 
 <!-- /handbook-section -->
 
