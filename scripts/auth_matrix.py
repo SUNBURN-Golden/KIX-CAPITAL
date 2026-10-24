@@ -70,6 +70,7 @@ GET_PROBES = {
         f'/api/terms/{ADVANCE}/setoff?instance_id={INSTANCE}&as_of_day=1',
     ],
     '/api/overlay': ['/api/overlay'],
+    '/api/portfolio/snapshot': [f'/api/portfolio/snapshot?instance_id={INSTANCE}'],
     '/api/risk': ['/api/risk'],
     '/api/risk/covenants': ['/api/risk/covenants'],
     '/api/risk/scenarios': ['/api/risk/scenarios', '/api/risk/scenarios/largest-advance-default'],

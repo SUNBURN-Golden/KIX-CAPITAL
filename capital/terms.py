@@ -845,6 +845,16 @@ class DecisionNoteTermsPolicy:
             'close_ready': close_ready,
         }
 
+    def ledger_denominator(self):
+        """Basis-point times day-count denominator of the interest ledger, or None when not ADOPTED.
+
+        Needed by a repayment posting on an advance with no matching tier: no interest accrues
+        there, but the entry still stamps the denominator its witness is stated over.
+        """
+        if not self._ready('interest_rate'):
+            return None
+        return BPS_SCALE * _day_count(self._value('interest_rate')['day_count'])
+
     def ledger_terms(self, case, claim, *, gate, draw_day, expected_settlement_cash_day=None):
         """Per-advance constants the overlay ledger stamps into an interest posting.
 

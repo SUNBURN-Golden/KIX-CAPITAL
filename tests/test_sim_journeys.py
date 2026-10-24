@@ -115,7 +115,7 @@ class T03Tests(JourneyBase):
         final = _step(self.t03, 'final phases and digests')
         self.assertEqual(final['status'], {'sim-t03-a': 'CLOSED'})
         facts = final['facts']
-        self.assertEqual((facts['sim_day'], facts['interest_payments']), (45, 'NOT_RECORDED'))
+        self.assertEqual((facts['sim_day'], facts['interest_payments']), (45, 'NONE_YET'))
         self.assertIs(facts['funds_executed'], False)
         for key in ('overlay_state_digest', 'risk_digest', 'state_digest'):
             self.assertRegex(facts[key], r'^[0-9a-f]{64}$', key)
@@ -134,7 +134,7 @@ class T03Tests(JourneyBase):
 
     def test_full_repay_leaves_the_interest_memo_unpaid_and_close_still_works(self):
         self.assertEqual(_step(self.t03, 'not close-ready')['status'],
-                         ['DRAWN', 0, False, 'NOT_RECORDED'])
+                         ['DRAWN', 0, False, 'NONE_YET'])
         quote = _step(self.t03, 'full-repayment allocation quote')['facts']
         self.assertEqual(quote['order'], ['DEFAULT_INTEREST', 'INTEREST', 'PRINCIPAL'])
         self.assertEqual((quote['to_interest'], quote['to_principal']), (172, 30_000))
@@ -254,7 +254,7 @@ class T05Tests(JourneyBase):
         self.assertEqual(later['facts']['principal_outstanding_krw'], 48_000 - split['principal_share_krw'])
 
     def test_close_and_human_default_with_the_proposal_only_f04(self):
-        self.assertEqual(_step(self.t05, 'not close-ready')['status'], [False, 'NOT_RECORDED'])
+        self.assertEqual(_step(self.t05, 'not close-ready')['status'], [False, 'NONE_YET'])
         proposal = _step(self.t05, 'DEFAULT_ELIGIBLE proposal')
         self.assertEqual(proposal['status'], [1, 'DEFAULT_ELIGIBLE', False, True])
         self.assertEqual(_step(self.t05, 'still DRAWN')['status'], 'DRAWN')

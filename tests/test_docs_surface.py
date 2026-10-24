@@ -76,6 +76,13 @@ class MutatedDocTests(unittest.TestCase):
         self.assertIn('GET /api/statement', err)
         self.assertIn('- `GET /api/statement`:', err)
 
+    def test_missing_portfolio_snapshot_bullet_fails(self):
+        tmp, copy = _mutated_copy(INTEGRATION, lambda text: _drop_line(text, '- `GET /api/portfolio/snapshot`:'))
+        self.addCleanup(tmp.cleanup)
+        code, _out, err = _run(['--check', '--integration', str(copy)])
+        self.assertEqual(code, 1)
+        self.assertIn('GET /api/portfolio/snapshot', err)
+
     def test_agent_routes_in_generated_block_do_not_count(self):
         # The agent POST names also sit in the generated auth-matrix table; only
         # the prose sentence is the hand enumeration, so deleting it must fail.
@@ -96,6 +103,15 @@ class MutatedDocTests(unittest.TestCase):
         self.assertIn('tests/vectors/finance_vectors.json', err)
         # The --check command is still named by the verification block.
         self.assertNotIn('scripts/finance_vectors.py --check', err)
+
+    def test_lifecycle_claim_readme_needles_are_required(self):
+        for needle in docs_surface.CLAIM_NEEDLES['tests/lifecycle_claims.json']:
+            with self.subTest(needle=needle):
+                tmp, copy = _mutated_copy(README, lambda text: text.replace(needle, 'REMOVED'))
+                self.addCleanup(tmp.cleanup)
+                code, _out, err = _run(['--check', '--readme', str(copy)])
+                self.assertEqual(code, 1)
+                self.assertIn(needle, err)
 
     def test_unexpected_vector_file_fails_naming_it(self):
         with tempfile.TemporaryDirectory() as tmp:

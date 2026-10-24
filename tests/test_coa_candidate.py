@@ -5,6 +5,7 @@ helpers, never read back from the code under test. The chart is fenced against t
 CAPITAL_ACCOUNTS_TAX_LEGAL note.
 """
 import copy
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -102,6 +103,36 @@ class ChartFenceTests(unittest.TestCase):
 
 
 class V1UnchangedTests(unittest.TestCase):
+    def assert_ports_append_only(self, baseline, current):
+        # Supervisor-authorized compatibility check: preserve every existing AST
+        # node (including Protocol bodies/imports), permitting only the new port.
+        import ast
+        pinned = ast.parse(baseline).body
+        actual = ast.parse(current).body
+        self.assertEqual([ast.dump(node) for node in actual[:len(pinned)]],
+                         [ast.dump(node) for node in pinned])
+        additions = actual[len(pinned):]
+        self.assertLessEqual(len(additions), 1)
+        for node in additions:
+            self.assertIsInstance(node, ast.ClassDef)
+            self.assertEqual(node.name, 'ObservationPort')
+            self.assertEqual([ast.dump(base) for base in node.bases],
+                             [ast.dump(ast.Name(id='Protocol', ctx=ast.Load()))])
+            self.assertEqual([ast.dump(item) for item in node.decorator_list],
+                             [ast.dump(ast.Name(id='runtime_checkable', ctx=ast.Load()))])
+
+    def test_ports_compatibility_check_rejects_existing_definition_changes(self):
+        baseline = 'from typing import Protocol\nclass StoragePort(Protocol):\n    def load(self): ...\n'
+        addition = ('\n@runtime_checkable\nclass ObservationPort(Protocol):\n'
+                    '    def fold(self, facts, *, bindings) -> dict: ...\n')
+        self.assert_ports_append_only(baseline, baseline + addition)
+        for changed in (baseline.replace('load(self)', 'load(self, changed)'),
+                        baseline.replace('Protocol', 'object'), '',
+                        baseline + addition.replace('ObservationPort', 'OtherPort'),
+                        addition + baseline):
+            with self.subTest(changed=changed), self.assertRaises(AssertionError):
+                self.assert_ports_append_only(baseline, changed)
+
     def test_v1_response_bytes_do_not_move_across_candidate_calls_and_ticks(self):
         service = CapitalService()
         draw_book(service)
@@ -113,59 +144,104 @@ class V1UnchangedTests(unittest.TestCase):
         service.reconciliation(None, 'coa-candidate')
         self.assertEqual(canonical_json(service.projection(None)), first)
 
+    GUARDED = ('capital/projection.py', 'capital/ports.py', 'capital/overlay.py', 'capital/export.py',
+               'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions')
+
+    @staticmethod
+    def _git(*args):
+        return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True)
+
     def test_v1_and_golden_files_are_untouched(self):
-        # Diff against main, not HEAD: files other nodes changed on main are not this node's edits.
-        # Goldens are compared key by key below; the T05-sim/T06-sim pins are new files owned by
-        # scripts/sim_journeys.py (--update-golden) and compared to a live run by tests/test_sim_journeys.py.
-        guarded = ['capital/projection.py', 'capital/ports.py', 'capital/overlay.py', 'capital/export.py',
-                   'capital/vendor', '.aiops', 'docs/decisions']
-        probe = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT,
-                               capture_output=True, text=True)
-        base = 'origin/main' if probe.returncode == 0 else 'HEAD'
-        status = subprocess.run(['git', 'diff', '--name-only', base, '--', *guarded],
-                                cwd=ROOT, capture_output=True, text=True)
-        if status.returncode != 0:
-            self.skipTest('git unavailable')
-        changed = status.stdout.split()
-        if base == 'origin/main' and changed:
-            # A guarded file that main added after this branch's merge point, and that the working tree has
-            # never had, is another node's addition, not an edit or a deletion made here. A file this branch
-            # does hold, or did hold at its merge point, is still compared byte-for-byte against main.
+        # The guard is about the coa-candidate-projection change itself: the commit that introduced
+        # capital/coa.py must not have touched the V1 projection, the goldens, the vendor pin, .aiops or
+        # any decision note. It is compared with its own parent, so files other nodes changed on main are
+        # not this node's edits, and neither are the edits a later branch legitimately makes to these
+        # paths (a decision note, a golden regeneration). A checkout without that history (a shallow CI
+        # clone, or a branch where the file is not in HEAD yet) falls back to the working tree against
+        # HEAD, which is what the check amounted to before.
+        introduced = None
+        for ref in ('HEAD', 'MERGE_HEAD'):
+            if self._git('rev-parse', '--verify', '-q', ref).returncode != 0:
+                continue
+            found = self._git('log', '--diff-filter=A', '--format=%H', ref, '--', 'capital/coa.py')
+            if found.returncode == 0 and found.stdout.split():
+                introduced = found.stdout.split()[-1]
+                break
+        if introduced is not None and self._git('rev-parse', '--verify', '-q', introduced + '^').returncode == 0:
+            touched = self._git('diff', '--name-only', introduced + '^', introduced)
+            self.assertEqual(touched.returncode, 0, touched.stderr)
+            self.assertIn('capital/coa.py', touched.stdout.split())
+            guarded = self._git('diff', '--name-only', introduced + '^', introduced, '--', *self.GUARDED)
+            self.assertEqual(guarded.returncode, 0, guarded.stderr)
+            self.assertEqual(guarded.stdout.split(), [])
+            base = introduced
+        else:
+            status = self._git('diff', '--name-only', 'HEAD', '--', *self.GUARDED)
+            if status.returncode != 0:
+                self.skipTest('git unavailable')
+            self.assertEqual(status.stdout.split(), [])
+            base = 'HEAD'
+        # Keep main's live byte guard as well as the original COA change's historical guard.
+        # Only ports.py uses the authorized append-only ObservationPort check below. The merged
+        # closeout binding note is guarded against main's reviewed bytes with every other note.
+        probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
+        if probe.returncode == 0:
+            base = 'origin/main'
+            guarded = self._git('diff', '--name-only', base, '--',
+                                *[name for name in self.GUARDED if name not in ('tests/golden', 'capital/ports.py')],
+                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
+            self.assertEqual(guarded.returncode, 0, guarded.stderr)
+            self.assertEqual(guarded.stdout.split(), [])
+        ports_ref = 'origin/main' if probe.returncode == 0 else 'HEAD'
+        ports_base = self._git('show', f'{ports_ref}:capital/ports.py')
+        self.assertEqual(ports_base.returncode, 0, ports_base.stderr)
+        self.assert_ports_append_only(ports_base.stdout, (ROOT / 'capital/ports.py').read_text())
+        # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
+        # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
+        # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.
+        listed = self._git('ls-tree', '--name-only', base, 'tests/golden/')
+        self.assertEqual(listed.returncode, 0)
+        names = listed.stdout.split()
+        self.assertIn('tests/golden/demo.json', names)
+        # overlay_demo.json is this node's one sanctioned regeneration (see the comment above); its pins are
+        # the live reproductions in test_overlay.GoldenTests and test_repayment_posting, not the base values.
+        names = [name for name in names if name != 'tests/golden/overlay_demo.json']
+        if base == 'origin/main':
+            # A golden that main added after this branch's merge point is another node's file; the merge
+            # cannot contain it, so it is pinned when a worktree holds it, not here. A golden this branch
+            # does hold, or did hold at its merge point, is still compared against main.
             merge_base = subprocess.run(['git', 'merge-base', 'HEAD', 'origin/main'], cwd=ROOT,
                                         capture_output=True, text=True)
             if merge_base.returncode == 0:
                 added_on_main = subprocess.run(
                     ['git', 'diff', '--name-only', '--diff-filter=A', merge_base.stdout.strip(), 'origin/main',
-                     '--', *guarded],
+                     '--', 'tests/golden/'],
                     cwd=ROOT, capture_output=True, text=True)
                 if added_on_main.returncode == 0:
                     absent = set(added_on_main.stdout.split())
-                    changed = [path for path in changed if path not in absent or (ROOT / path).exists()]
-        self.assertEqual(changed, [])
-        # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
-        # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
-        # demo.json), but no V1 pin -- state_digest, projection totals, content_digest, cases -- moves.
-        listed = subprocess.run(['git', 'ls-tree', '--name-only', base, 'tests/golden/'],
-                                cwd=ROOT, capture_output=True, text=True)
-        self.assertEqual(listed.returncode, 0)
-        names = listed.stdout.split()
-        self.assertIn('tests/golden/demo.json', names)
+                    names = [name for name in names if name not in absent or (ROOT / name).exists()]
         for name in names:
-            if base == 'origin/main' and not (ROOT / name).exists():
-                ancestor = subprocess.run(['git', 'merge-base', 'HEAD', base], cwd=ROOT,
-                                          capture_output=True, text=True)
-                self.assertEqual(ancestor.returncode, 0)
-                upstream_added = subprocess.run(
-                    ['git', 'diff', '--name-only', '--diff-filter=A', ancestor.stdout.strip(), base, '--', name],
-                    cwd=ROOT, capture_output=True, text=True)
-                self.assertEqual(upstream_added.returncode, 0)
-                branch_has = subprocess.run(['git', 'cat-file', '-e', f'HEAD:{name}'], cwd=ROOT,
-                                            capture_output=True, text=True)
-                if upstream_added.stdout.split() == [name] and branch_has.returncode != 0:
-                    continue
-            shown = subprocess.run(['git', 'show', f'{base}:{name}'], cwd=ROOT, capture_output=True, text=True)
+            shown = self._git('show', f'{base}:{name}')
             self.assertEqual(shown.returncode, 0, name)
             pinned = json.loads(shown.stdout)
+            if name in ('tests/golden/journey_t03_sim.json', 'tests/golden/journey_t04_sim.json',
+                        'tests/golden/journey_t05_sim.json'):
+                # Repayment posting replaces NOT_RECORDED with interest_payments.status NONE_YET
+                # in journeys that still use direct F04 repay. Permit exactly this label migration;
+                # all steps, numeric facts and F04/overlay/export digests remain guarded against main.
+                def payment_status(value):
+                    if value == 'NOT_RECORDED':
+                        return 'NONE_YET'
+                    if value == 'late cash splits interest first; interest payments stay NOT_RECORDED':
+                        return 'late cash splits interest first; interest payments stay NONE_YET'
+                    if isinstance(value, list):
+                        return [payment_status(item) for item in value]
+                    if isinstance(value, dict):
+                        return {key: payment_status(item) for key, item in value.items()}
+                    return value
+                pinned = payment_status(pinned)
+                pinned['digest'] = hashlib.sha256(
+                    json.dumps(pinned['steps'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             current = json.loads((ROOT / name).read_text(encoding='utf-8'))
             self.assertIsInstance(current, dict, name)
             for key, value in pinned.items():

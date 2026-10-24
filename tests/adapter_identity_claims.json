@@ -1,0 +1,861 @@
+{
+  "format": "KIX_CAPITAL_ADAPTER_IDENTITY_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+  "results": "SIMULATED",
+  "semantic_conformance": false,
+  "claims": [
+    {
+      "id": "case-redelivery",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fake redelivery keeps one item; command receipt replay is an analogue only.",
+      "check_id": "case.redelivery",
+      "needle": "같은 전송이 다시 도착",
+      "expected": {
+        "case": "redelivery",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [
+            1
+          ],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "replay-draw",
+          "transport_duplicate": true,
+          "receipt_equal": true,
+          "state_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "redelivery"
+    },
+    {
+      "id": "case-new-transmission",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fake transmission metadata does not create a new item; reordered command replay is an analogue.",
+      "check_id": "case.new-transmission",
+      "needle": "새 전송, 같은 사실",
+      "expected": {
+        "case": "new-transmission-same-fact",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [
+            1
+          ],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "reordered-draw",
+          "transport_duplicate": true,
+          "receipt_equal": true,
+          "state_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "new-transmission-same-fact"
+    },
+    {
+      "id": "case-lost-ack",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A local redelivery adds no item; facade receipt lookup after discarding a reply grants no retry.",
+      "check_id": "case.lost-ack",
+      "needle": "수신 뒤 응답만 유실",
+      "expected": {
+        "case": "lost-ack",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [
+            1
+          ],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "discard-reply-lookup",
+          "outcome": "ACCEPTED",
+          "receipts_added": 1,
+          "seed_receipts_preserved": true,
+          "stored_receipt_equal": true,
+          "unknown": "UNKNOWN",
+          "retry_authorized": false,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "lost-ack"
+    },
+    {
+      "id": "case-snapshot-repeat",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Repeated local facts keep one item; disposable statement and snapshot reads supply analogue evidence.",
+      "check_id": "case.snapshot-repeat",
+      "needle": "같은 사실의 snapshot 반복",
+      "expected": {
+        "case": "snapshot-repeat",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [
+            1,
+            2
+          ],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "SCENARIO_FIXTURE_ANALOGUE",
+          "action": "repeat-snapshot-and-statement",
+          "duplicate": true,
+          "same_view": true,
+          "snapshot_equal": true
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "snapshot-repeat"
+    },
+    {
+      "id": "case-same-id-different-content",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local conflicting evidence is retained beside the original, and original replay leaves the item marked CONFLICT. Command rejection is an analogue.",
+      "check_id": "case.same-id-different-content",
+      "needle": "같은 `event_id`, 다른 내용",
+      "expected": {
+        "case": "same-id-different-content",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "CONFLICT"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [
+            2
+          ],
+          "conflicts": [
+            1
+          ],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "conflicting-draw",
+          "error": {
+            "code": "IDEMPOTENCY_CONFLICT",
+            "status": 409
+          },
+          "state_preserved": true,
+          "scenario_error": "STATEMENT_BINDING_CONFLICT",
+          "rejection_preserves_state": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "same-id-different-content"
+    },
+    {
+      "id": "case-state-change",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "A changed state under a separate fixture item key preserves the capture evidence. A separate receipt is a command analogue.",
+      "check_id": "case.state-change",
+      "needle": "이후 상태 변화 (예: DONE→CANCELED)",
+      "expected": {
+        "case": "state-change-new-item",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "new-reconcile",
+          "outcome": "ACCEPTED",
+          "receipts_added": 1,
+          "seed_receipts_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "state-change-new-item"
+    },
+    {
+      "id": "case-partial-cancel",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Two distinct local return items coexist with capture; disposable cancel acceptance IDs supply analogue evidence.",
+      "check_id": "case.partial-cancel",
+      "needle": "반환 종류의 **별도** 항목",
+      "expected": {
+        "case": "partial-cancel-separate",
+        "fake": {
+          "items": 3,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "SCENARIO_FIXTURE_ANALOGUE",
+          "action": "separate-cancel-acceptances",
+          "outcomes": [
+            "ACCEPTED",
+            "ACCEPTED",
+            "ACCEPTED"
+          ],
+          "duplicates": [
+            false,
+            true,
+            false
+          ],
+          "source_ids": [
+            "sim-accept-1",
+            "sim-accept-1",
+            "sim-accept-2"
+          ]
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "partial-cancel-separate"
+    },
+    {
+      "id": "case-out-of-order",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Reversing local facts preserves both evidence mappings; old command replay preserves the drawn facade state.",
+      "check_id": "case.out-of-order",
+      "needle": "새 snapshot 뒤에 옛 snapshot",
+      "expected": {
+        "case": "out-of-order",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true,
+          "order_independent": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "replay-earliest-offer",
+          "transport_duplicate": true,
+          "receipt_equal": true,
+          "state_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "out-of-order"
+    },
+    {
+      "id": "case-late-capture",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Earlier occurrence received later remains separate from receipt time; late-cash fixture preserves refund reclassification without funds execution.",
+      "check_id": "case.late-capture",
+      "needle": "만료 뒤 늦은 capture",
+      "expected": {
+        "case": "late-capture",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true,
+          "times_separate": true
+        },
+        "facade": {
+          "evidence": "SCENARIO_FIXTURE_ANALOGUE",
+          "action": "late-cash-preserves-refund",
+          "outcome": "ACCEPTED",
+          "refund_preserved": true,
+          "all_predicates_matched": true,
+          "funds_executed": false
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "late-capture"
+    },
+    {
+      "id": "case-unmatched",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "An unbound local fact retains UNMATCHED binding through conflict and replay; unknown advance rejection creates no case.",
+      "check_id": "case.unmatched",
+      "needle": "계약 용어 **UNMATCHED**",
+      "expected": {
+        "case": "unmatched",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "CONFLICT"
+          ],
+          "binding_statuses": [
+            "UNMATCHED"
+          ],
+          "duplicates": [
+            2
+          ],
+          "conflicts": [
+            1
+          ],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "reject-unmatched",
+          "outcome": "REJECTED",
+          "error": "UNKNOWN_ADVANCE",
+          "state_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "unmatched"
+    },
+    {
+      "id": "case-other-scope-provider",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local provider scope creates a distinct item. Facade evidence is explicitly limited to the stated analogue or isolation.",
+      "check_id": "case.other-scope.provider",
+      "needle": "다른 MID, 환경, 또는 수단",
+      "expected": {
+        "case": "other-scope",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "ISOLATION_ONLY",
+          "action": "read-isolation-only",
+          "state_preserved": true
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "other-scope"
+    },
+    {
+      "id": "case-other-scope-account",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local account scope creates a distinct item. Facade evidence is explicitly limited to the stated analogue or isolation.",
+      "check_id": "case.other-scope.account",
+      "needle": "다른 MID, 환경, 또는 수단",
+      "expected": {
+        "case": "other-scope",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "ISOLATION_ONLY",
+          "action": "read-isolation-only",
+          "state_preserved": true
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "other-scope"
+    },
+    {
+      "id": "case-other-scope-environment",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local environment scope creates a distinct item. Facade evidence is explicitly limited to the stated analogue or isolation.",
+      "check_id": "case.other-scope.environment",
+      "needle": "다른 MID, 환경, 또는 수단",
+      "expected": {
+        "case": "other-scope",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "foreign-instance",
+          "error": {
+            "code": "SESSION_CHANGED",
+            "status": 409
+          },
+          "state_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "other-scope"
+    },
+    {
+      "id": "case-other-scope-profile-version",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local profile-version scope creates a distinct item. Facade evidence is explicitly limited to the stated analogue or isolation.",
+      "check_id": "case.other-scope.profile-version",
+      "needle": "다른 MID, 환경, 또는 수단",
+      "expected": {
+        "case": "other-scope",
+        "fake": {
+          "items": 2,
+          "statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE",
+            "UNMATCHED"
+          ],
+          "duplicates": [],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "ISOLATION_ONLY",
+          "action": "read-isolation-only",
+          "state_preserved": true
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "other-scope"
+    },
+    {
+      "id": "case-other-scope-method",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "DOCUMENTED_DIVERGENCE: local method is content rather than scope; original and incoming evidence are retained without effect. Asset rejection is only an analogue.",
+      "check_id": "case.other-scope.method",
+      "needle": "다른 MID, 환경, 또는 수단",
+      "expected": {
+        "case": "other-scope",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "CONFLICT"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [],
+          "conflicts": [
+            1
+          ],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true,
+          "fixture_divergence": "METHOD_IS_CONTENT_NOT_SCOPE_IN_LOCAL_PROFILE",
+          "incoming_method": "sim-other-method"
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "foreign-asset",
+          "error": {
+            "code": "ASSET_MISMATCH",
+            "status": 400
+          },
+          "state_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      },
+      "case": "other-scope"
+    },
+    {
+      "id": "identity-transmission",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 2. 정체성 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local synthetic transmission projection keeps identities separate; no durable alias or provider key is adopted.",
+      "check_id": "identity.transmission",
+      "needle": "`TransmissionId`",
+      "expected": true
+    },
+    {
+      "id": "identity-raw-evidence",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 2. 정체성 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local synthetic raw-evidence projection keeps identities separate; no durable alias or provider key is adopted.",
+      "check_id": "identity.raw-evidence",
+      "needle": "`RawEvidenceRef`",
+      "expected": true
+    },
+    {
+      "id": "identity-payment",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 2. 정체성 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local synthetic payment projection keeps identities separate; no durable alias or provider key is adopted.",
+      "check_id": "identity.payment",
+      "needle": "`PaymentRef`",
+      "expected": [
+        "sim-provider",
+        "sim-mid",
+        "fixture",
+        "sim-payment",
+        "sim-order"
+      ]
+    },
+    {
+      "id": "identity-fact-key",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 2. 정체성 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local synthetic fact-key projection keeps identities separate; no durable alias or provider key is adopted.",
+      "check_id": "identity.fact-key",
+      "needle": "`ProviderFactKey`",
+      "expected": "sim-capture-1"
+    },
+    {
+      "id": "identity-event-item",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 2. 정체성 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local synthetic event-item projection keeps identities separate; no durable alias or provider key is adopted.",
+      "check_id": "identity.event-item",
+      "needle": "`EventItemId`",
+      "expected": true
+    },
+    {
+      "id": "identity-operation",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 2. 정체성 용어",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "The local synthetic operation projection keeps identities separate; no durable alias or provider key is adopted.",
+      "check_id": "identity.operation",
+      "needle": "`OperationRef`",
+      "expected": "sim-operation"
+    },
+    {
+      "id": "cardinality-transmission-items",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 3. 관계와 기수",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture transmission-items cardinality diagnostics preserve explicit bindings without applying effects.",
+      "check_id": "cardinality.transmission-items",
+      "needle": "전송 → 이벤트 항목",
+      "expected": [
+        2,
+        1
+      ]
+    },
+    {
+      "id": "cardinality-payment-items",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 3. 관계와 기수",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture payment-items cardinality diagnostics preserve explicit bindings without applying effects.",
+      "check_id": "cardinality.payment-items",
+      "needle": "결제 → 이벤트 항목",
+      "expected": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "cardinality-operation-payment",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 3. 관계와 기수",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture operation-payment cardinality diagnostics preserve explicit bindings without applying effects.",
+      "check_id": "cardinality.operation-payment",
+      "needle": "operation → 결제",
+      "expected": {
+        "status": "BINDING_CONFLICT",
+        "no_effects": true
+      }
+    },
+    {
+      "id": "cardinality-operation-order",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 3. 관계와 기수",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture operation-order cardinality diagnostics preserve explicit bindings without applying effects.",
+      "check_id": "cardinality.operation-order",
+      "needle": "operation → 주문",
+      "expected": {
+        "status": "BINDING_CONFLICT",
+        "no_effects": true
+      }
+    },
+    {
+      "id": "boundary-command-vs-event",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "One local event item across two transmissions is separate from two command receipt identities.",
+      "check_id": "boundary.command-vs-event",
+      "needle": "event identity와 경제 operation identity는 서로 다른 중복 경계다",
+      "expected": {
+        "case": "command-vs-event",
+        "fake": {
+          "items": 1,
+          "statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "binding_statuses": [
+            "MATCHED_FIXTURE"
+          ],
+          "duplicates": [
+            1
+          ],
+          "conflicts": [],
+          "originals_preserved": true,
+          "evidence_preserved": true,
+          "transmissions_preserved": true,
+          "conflicting_evidence_preserved": true,
+          "no_effects": true,
+          "safe": true
+        },
+        "facade": {
+          "evidence": "COMMAND_BOUNDARY_ANALOGUE",
+          "action": "new-approve",
+          "outcome": "REJECTED",
+          "receipts_added": 1,
+          "seed_receipts_preserved": true,
+          "boundary_note": "COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY"
+        },
+        "isolation": true,
+        "label": "SIMULATED"
+      }
+    },
+    {
+      "id": "boundary-semantic_conformance",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture boundary semantic_conformance is diagnostic only, without applied or executed effects.",
+      "check_id": "boundary.semantic_conformance",
+      "needle": "event identity와 경제 operation identity는 서로 다른 중복 경계다",
+      "expected": false
+    },
+    {
+      "id": "boundary-binding_status",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture boundary binding_status is diagnostic only, without applied or executed effects.",
+      "check_id": "boundary.binding_status",
+      "needle": "event identity와 경제 operation identity는 서로 다른 중복 경계다",
+      "expected": "NOT_BOUND"
+    },
+    {
+      "id": "boundary-applied_effects",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture boundary applied_effects is diagnostic only, without applied or executed effects.",
+      "check_id": "boundary.applied_effects",
+      "needle": "event identity와 경제 operation identity는 서로 다른 중복 경계다",
+      "expected": []
+    },
+    {
+      "id": "boundary-safe-items",
+      "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+      "section": "## 5. 경우 행렬",
+      "pinned_sha": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+      "claim": "Local fixture boundary safe-items is diagnostic only, without applied or executed effects.",
+      "check_id": "boundary.safe-items",
+      "needle": "event identity와 경제 operation identity는 서로 다른 중복 경계다",
+      "expected": true
+    }
+  ]
+}

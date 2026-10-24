@@ -35,6 +35,7 @@ GET_DISPATCH = (
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
     ('/api/overlay', False, 'overlay'),
+    ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
     ('/api/risk/covenants', False, 'covenants'),
     ('/api/risk/scenarios', True, 'risk_scenarios'),
@@ -328,6 +329,13 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_risk(self, route, principal):
             return self.reply(200, service.risk())
+
+        def _get_portfolio_snapshot(self, route, principal):
+            params = parse_qs(route.query, keep_blank_values=True)
+            if set(params) - {'instance_id'} or len(params.get('instance_id', [])) > 1:
+                raise ApiError('INVALID_ARGUMENTS')
+            instance = params.get('instance_id', [''])[0]
+            return self.reply(200, service.portfolio_snapshot(instance))
 
         def _get_covenants(self, route, principal):
             return self.reply(200, service.covenants())

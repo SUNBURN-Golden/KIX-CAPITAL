@@ -1,0 +1,575 @@
+{
+  "format": "KIX_CAPITAL_PROVIDER_FACTS_V1",
+  "label": "SIMULATED",
+  "source_doc": "docs/contracts/ADAPTER_EVENT_IDENTITY.md",
+  "source_revision": "e2a029d8ac3af7575888dac22fc4bf173ebec232",
+  "source_sha256": "e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345",
+  "identity_profile": "LOCAL_SYNTHETIC_JSON_SHA256_V1",
+  "semantic_conformance": false,
+  "base_fact": {
+    "provenance": "SYNTHETIC_FIXTURE",
+    "provider": "sim-provider",
+    "account": "sim-mid",
+    "environment": "fixture",
+    "profile_version": "sim-v1",
+    "item_key": "sim-capture-1",
+    "payment_key": "sim-payment",
+    "order_id": "sim-order",
+    "operation": "sim-operation",
+    "kind": "capture",
+    "amount": 1000,
+    "currency": "KRW",
+    "method": "sim-card",
+    "status": "DONE",
+    "occurred_at": "2026-10-01T12:00:00",
+    "offset": null,
+    "api_version": "sim-api-v1",
+    "product": "sim-product",
+    "transmission": {
+      "id": "sim-delivery-1",
+      "raw_evidence_ref": "sim-raw-1",
+      "received_at": "sim-receive-1"
+    }
+  },
+  "bindings": [
+    {
+      "provider": "sim-provider",
+      "account": "sim-mid",
+      "environment": "fixture",
+      "profile_version": "sim-v1",
+      "operation": "sim-operation",
+      "payment_key": "sim-payment",
+      "order_id": "sim-order"
+    }
+  ],
+  "cases": [
+    {
+      "name": "same-transmission",
+      "patches": [
+        {},
+        {}
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 1,
+      "conflicts": 0,
+      "duplicate_deliveries": [
+        1
+      ],
+      "conflict_deliveries": [],
+      "output_sha256": "f9d9e2b859466a03b3ebcfa769b0ebcb963bd64326ad5b8128d0195d75a0c66e"
+    },
+    {
+      "name": "redelivery",
+      "patches": [
+        {},
+        {
+          "transmission": {
+            "id": "sim-delivery-2",
+            "raw_evidence_ref": "sim-raw-2",
+            "received_at": "sim-receive-2"
+          }
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 1,
+      "conflicts": 0,
+      "duplicate_deliveries": [
+        1
+      ],
+      "conflict_deliveries": [],
+      "output_sha256": "1f035dd9402a75d4a1cc2ea07b2b3bf2cb37a43d7ea0d291ba8ffbe8e1d59af9"
+    },
+    {
+      "name": "amount-conflict",
+      "patches": [
+        {},
+        {
+          "amount": 999
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "ea7faa7ebb6187078327d8d8f83ddf4e8a4386b8585a5f570498694d56e3b0ef"
+    },
+    {
+      "name": "operation-conflict",
+      "patches": [
+        {},
+        {
+          "operation": "sim-other-operation"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "e8071f6165d9308d205b0bc774b8afa808b0bdf43121b643e286a5925fddcd02"
+    },
+    {
+      "name": "status-conflict",
+      "patches": [
+        {},
+        {
+          "status": "CANCELED"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "cbc8b3528a60f6600a4daee461de1bff8739ceac8e88acc1842aae90c34f8b8e"
+    },
+    {
+      "name": "unmatched",
+      "patches": [
+        {}
+      ],
+      "bindings": [],
+      "statuses": [
+        "UNMATCHED"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "d26ae851dc0f2c4a4b0421c5f8ae7f169d5bdf1850765b43e6ab5638deb86c3d"
+    },
+    {
+      "name": "binding-conflict",
+      "patches": [
+        {
+          "payment_key": "sim-other-payment"
+        }
+      ],
+      "statuses": [
+        "BINDING_CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "51cc076a4326121ae93d1f59941a1485aeacffa595c158fe1711dd678d3d2495"
+    },
+    {
+      "name": "scope-provider",
+      "patches": [
+        {},
+        {
+          "provider": "sim-other-provider"
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "UNMATCHED"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "4f870d4ec512deba6c921c40ff3f679fb584dc94d01d541ffdcff46561f7fe50"
+    },
+    {
+      "name": "scope-account",
+      "patches": [
+        {},
+        {
+          "account": "sim-other-mid"
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "UNMATCHED"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "2d0fcae41501b3e92f78c24274c36f18aea489055067ec01185cd678197c0135"
+    },
+    {
+      "name": "scope-environment",
+      "patches": [
+        {},
+        {
+          "environment": "sim-other-environment"
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "UNMATCHED"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "48a05705aab4f4c7a643fda735f70ed844ed2406fb83e0ad06631d14f6522357"
+    },
+    {
+      "name": "scope-profile",
+      "patches": [
+        {},
+        {
+          "profile_version": "sim-v2"
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "UNMATCHED"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "1f82f2cc93fc23b2f728b3fa69f982d12d19d7eefddd850db533ef4970c70c99"
+    },
+    {
+      "name": "partial-cancel",
+      "patches": [
+        {},
+        {
+          "item_key": "sim-cancel-1",
+          "kind": "return",
+          "status": "PARTIAL_CANCELED",
+          "amount": 200
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "785850b9c18a9cbdcb646d13f94029afca8ffedd16a37a26818908df6995c732"
+    },
+    {
+      "name": "reverse-order",
+      "patches": [
+        {
+          "item_key": "sim-cancel-1",
+          "kind": "return",
+          "status": "PARTIAL_CANCELED",
+          "amount": 200
+        },
+        {}
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "ec1e070ec85368c9a25698460e8c3e058242e7ad6e56c6b4655d4072fa18633f"
+    },
+    {
+      "name": "offset-retained",
+      "patches": [
+        {
+          "offset": "+09:00"
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "71d3f1338c8c5345bc4157690cc8305d0d317f1ad2eccacb7b87746aaeb194a7"
+    },
+    {
+      "name": "conflict-survives-original-replay",
+      "patches": [
+        {},
+        {
+          "amount": 999
+        },
+        {},
+        {
+          "amount": 999
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 1,
+      "conflicts": 2,
+      "duplicate_deliveries": [
+        2
+      ],
+      "conflict_deliveries": [
+        1,
+        3
+      ],
+      "output_sha256": "ddacaf34a261f0797076ea53d2f1dc8fe8fb3ebeadb84fb223fcd367b8545e33"
+    },
+    {
+      "name": "unmatched-conflict-retained",
+      "patches": [
+        {},
+        {
+          "amount": 999
+        },
+        {}
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 1,
+      "conflicts": 1,
+      "duplicate_deliveries": [
+        2
+      ],
+      "conflict_deliveries": [
+        1
+      ],
+      "bindings": [],
+      "output_sha256": "9b7b2d170c3e64c557b683341c37f664635c3b71f2c174737337918de0b8f289"
+    },
+    {
+      "name": "second-item-conflict",
+      "patches": [
+        {},
+        {
+          "item_key": "sim-capture-2"
+        },
+        {
+          "item_key": "sim-capture-2",
+          "amount": 999
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        2
+      ],
+      "output_sha256": "a80b5ac15ec5df4519981ec2ff5c341efe81f6ece31ffe93007ec4424361dae7"
+    },
+    {
+      "name": "new-status-new-item",
+      "patches": [
+        {},
+        {
+          "item_key": "sim-canceled-1",
+          "status": "CANCELED"
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "acf2c1fc9b5887ef08364eaec6a174c8b5bc9a23e325e9ee786f3e63cc2879f9"
+    },
+    {
+      "name": "two-partial-cancels",
+      "patches": [
+        {},
+        {
+          "item_key": "sim-cancel-1",
+          "kind": "return",
+          "amount": 200
+        },
+        {
+          "item_key": "sim-cancel-2",
+          "kind": "return",
+          "amount": 200
+        }
+      ],
+      "statuses": [
+        "MATCHED_FIXTURE",
+        "MATCHED_FIXTURE",
+        "MATCHED_FIXTURE"
+      ],
+      "duplicates": 0,
+      "conflicts": 0,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [],
+      "output_sha256": "0c9e21ef9e443ca19b958eb212a5c6f8acbe4d7189973e8f717b8657ea2fc6a4"
+    },
+    {
+      "name": "payment_key-conflict",
+      "patches": [
+        {},
+        {
+          "payment_key": "sim-other-payment"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "1ac45d532fb2cd035c9046c2c8e6b3846527ac2983d178d28368920bc22cb76b"
+    },
+    {
+      "name": "order_id-conflict",
+      "patches": [
+        {},
+        {
+          "order_id": "sim-other-order"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "b10ed07f23ed7d7f09e913830498e82b744109b73d688889afefb66bd9b504fd"
+    },
+    {
+      "name": "kind-conflict",
+      "patches": [
+        {},
+        {
+          "kind": "return"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "c0d94cfe8b1aea3a8eb7ce062200c466c62ffad77564ab1ff7986d1bac0c8bf5"
+    },
+    {
+      "name": "method-conflict",
+      "patches": [
+        {},
+        {
+          "method": "sim-other-method"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "4f07deb77343358ffc74758e9dbfc08f9c73caa2539655c2676eb57469ada1bb"
+    },
+    {
+      "name": "occurred_at-conflict",
+      "patches": [
+        {},
+        {
+          "occurred_at": "2026-10-01T12:01:00"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "b31f4616bb05ddc71568a7faa881c628beab3e977031f1fca3cb482816a0828c"
+    },
+    {
+      "name": "offset-conflict",
+      "patches": [
+        {},
+        {
+          "offset": "+09:00"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "63d8b28c8771a01752c1b75630e7391dba50f11048e65aad8e3d36acb0c3a328"
+    },
+    {
+      "name": "api_version-conflict",
+      "patches": [
+        {},
+        {
+          "api_version": "sim-api-v2"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "1be56b848673bdc778c3144e92e3e4988b6fe52e86d9fff100751dcd92e81741"
+    },
+    {
+      "name": "product-conflict",
+      "patches": [
+        {},
+        {
+          "product": "sim-other-product"
+        }
+      ],
+      "statuses": [
+        "CONFLICT"
+      ],
+      "duplicates": 0,
+      "conflicts": 1,
+      "duplicate_deliveries": [],
+      "conflict_deliveries": [
+        1
+      ],
+      "output_sha256": "9920edbfa310a6d53dc01d6cbe95c261b73664fd4fb76f80e3bf1800015c4d07"
+    }
+  ]
+}
