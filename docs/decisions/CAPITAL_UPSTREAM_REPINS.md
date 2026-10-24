@@ -4,9 +4,9 @@
 >
 > 결정 귀속(요청 지정): **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**
 >
-> 결정일: **2026-10-22**\
-> 기준: **KIX-CAPITAL main `cde0bc7` · kix-protocol `93cec6a`** — supervisor 제공 기준이다. 병합 라운드 1(2026-10-22)에서 `origin/main` = `cde0bc7`(`cde0bc778573ef8d543f2e1bb70a521e06bf4e44`)를 이 작업 트리에 직접 병합해 Capital 기준은 확인했고, Protocol `93cec6a`는 여전히 직접 확인하지 않은 연구 기준이다.\
-> 결정 노드: `upstream-repin-policy-decision`\
+> 결정일: **2026-10-22**  
+> 기준: **KIX-CAPITAL main `cde0bc7` · kix-protocol `93cec6a`** — supervisor 제공 기준이다. 병합 라운드 1(2026-10-22)에서 `origin/main` = `cde0bc7`(`cde0bc778573ef8d543f2e1bb70a521e06bf4e44`)를 이 작업 트리에 직접 병합해 Capital 기준은 확인했고, Protocol `93cec6a`는 여전히 직접 확인하지 않은 연구 기준이다.  
+> 결정 노드: `upstream-repin-policy-decision`  
 > 선행: `upstream-binding-decision`, `audit90-fix2`
 
 Capital 자체 참조의 **시뮬레이션·제품 설계용** 거버넌스다. 실자금은 없으며 production은 **`NOT_AUTHORIZED`**다. 여기서 `ADOPTED`는 위임 범위 안의 잠정 제품 정책이며, upstream 계약 채택·seam 채택·`SEMANTIC_CONFORMANCE`·구현 완료를 뜻하지 않는다. **이번 결정으로 어느 핀도 이동하지 않는다.**
