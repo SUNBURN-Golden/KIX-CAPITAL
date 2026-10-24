@@ -1362,6 +1362,10 @@ Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v
 
 ## lifecycle-claims-conformance — merge completion and verification (2026-10-24)
 
+Historical evidence from the preceding merge round follows; the conflict-fix
+round 1 entry below records the current combined tree and supersedes its command
+positions and counts.
+
 The supervisor-supplied six conflicts in README, operator handbook, validation,
 acceptance, agent claims tests and read-model claims tests are resolved, retaining
 both lifecycle and CE1 additions. The existing `upstream-claims` stage now runs
@@ -1466,3 +1470,211 @@ exited 0 (30 routes, 40 artifacts, nine stages),
 `python3 -m unittest tests.test_docs_surface -v` exited 0 (nine passed), and
 `git diff --check origin/main` exited 0. All 17 node files are recorded in the
 index for supervisor review; no commit was created.
+
+## adapter-identity-claims
+
+The fifth `CLAIM_CONFORMANCE` table is `tests/adapter_identity_claims.json`
+(`KIX_CAPITAL_ADAPTER_IDENTITY_CLAIMS_V1`, 30 rows). Its own pin is
+`e2a029d8ac3af7575888dac22fc4bf173ebec232`; the read-only protocol checkout's
+`docs/contracts/ADAPTER_EVENT_IDENTITY.md` SHA256 matches
+`e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`.
+The rows execute the ObservationPort fake and explicitly labelled loopback facade
+analogues. Conflict diagnostics retain original and incoming facts; original
+replay leaves CONFLICT in place, and UNMATCHED binding survives that conflict.
+No kernel behavior or SEMANTIC_CONFORMANCE is claimed. Results are SIMULATED.
+The method-content fixture divergence remains explicit, and provider/account/
+profile-version facade evidence is ISOLATION_ONLY. No upstream or financial
+choice was made.
+
+Commands actually run on working tree HEAD `97b636ab2bdaf5aae52882129bd6ed11e16869aa`
+(uncommitted node changes; this records local evidence, not CI or independent review):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_adapter_identity_claims -v` | exit 0, 16 tests passed |
+| `python3 -m unittest tests.test_adapter_identity_claims tests.test_agent_claims tests.test_read_model_claims tests.test_ce1_claims tests.test_handbook tests.test_upstream_claims tests.test_observation_port tests.test_coa_candidate -v` | first run: 82 tests, 2 failures and 2 errors; second run after count-line fix: 82 tests, 2 import errors |
+| `PYTHONPATH=tests:. python3 -m unittest tests.test_adapter_identity_claims tests.test_agent_claims tests.test_read_model_claims tests.test_ce1_claims tests.test_handbook tests.test_upstream_claims tests.test_observation_port tests.test_coa_candidate -v` | exit 0, 117 passed (28.022s) |
+| `python3 scripts/adapter_identity_claims_check.py` | exit 0, first line SKIPPED; no passed count |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | exit 0, CLAIM_CONFORMANCE passed=30 total=30 failed=0; RESULTS SIMULATED |
+| `python3 scripts/adapter_identity_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | exit 0, CLAIM_DRIFT verified=30 total=30; SOURCE_SHA256 match; checkout read only |
+| `npm ci --no-audit --no-fund` | exit 0, 3 packages installed; cached Chromium available |
+| `python3 -m compileall -q capital` | exit 0 |
+| `node --check capital/static/app.js` | exit 0 |
+| `python3 scripts/docs_surface.py --check` | exit 0, 30 routes, 40 artifacts, 9 stages |
+| `python3 scripts/observation_vectors.py --check` | exit 0, SIMULATED observation vectors PASS; NOT_BOUND; applied=false; funds_executed=false |
+| Python stdlib SHA256 comparison of all five `capital/vendor/manifest.json` entries | all five match |
+| `git diff --name-only HEAD -- capital/vendor .aiops docs/decisions` | empty |
+| `git diff --check` | exit 0 |
+
+Plan adjustments: the existing acceptance parser requires its count line to end
+at `failed=N`; the checker prints `RESULTS SIMULATED` on a separate line. Existing
+`test_observation_port` and `test_coa_candidate` use top-level `test_overlay`
+imports, so the plan's named-module narrow command requires `PYTHONPATH=tests:.`.
+Full discovery supplies that path itself. The first two runs above record those
+failures without weakening tests. Existing vector artifacts need no new
+`docs_surface.py` entries.
+
+The first `python3 scripts/acceptance.py` run exited 1 (`ok=false`): unit 972,
+storage-conformance 19, pinned-vendor 7, upstream-claims 299, node-check,
+packaged-smoke 8, seeded-demo 1 and integrated-journeys 4 all passed. Browser
+startup failed with `OSError: [Errno 98] Address already in use`. Read-only
+`ss -ltnp` and process/cwd inspection identified unrelated services on loopback
+8765 and 8766; neither was stopped. `unshare --user --map-root-user --net true`
+succeeded, so verification uses an isolated loopback network:
+`unshare --user --map-root-user --net bash -c 'ip link set lo up && python3 scripts/acceptance.py'`.
+This preserves the test suite, fixed Playwright configuration, nine stages and
+timeouts. No artifacts were regenerated from the failed run.
+
+The first isolated run also exited 1 (`ok=false`): browser **69 passed**, and all
+non-unit stages passed, but unit exited 124 at the unchanged 300-second limit.
+No artifacts were written. Diagnostics:
+
+- `unshare --user --map-root-user --net bash -c 'ip link set lo up && timeout 60 python3 -m unittest discover -s tests -p test_gate_faults.py -v'`: exit 0, 7 passed (32.958s).
+- An isolated `scripts.gate_faults.run_corpus()` call with a 45-second bound and
+  traceback timer returned `ok=True`, 7 cases, no findings.
+- `python3 -m unittest discover -s tests -p test_gate_faults.py -v`: exit 0,
+  7 passed (36.741s).
+- `unshare --user --map-current-user --keep-caps --net` with loopback enabled and
+  `setpriv --inh-caps=-all --ambient-caps=-all --bounding-set=-all` verified the
+  original UID 1000 and zero inherited/permitted/effective/bounding/ambient
+  capabilities before test execution. Subsequent isolated runs use this form;
+  no timeout, assertion, or test selection was changed.
+
+Fresh successful acceptance (before regeneration):
+
+| Command | Result |
+|---|---|
+| `unshare --user --map-current-user --keep-caps --net bash -c 'ip link set lo up && setpriv --inh-caps=-all --ambient-caps=-all --bounding-set=-all python3 scripts/acceptance.py'` | exit 0, `ok=true`; all 9 stages passed: unit 972, storage-conformance 19, pinned-vendor 7, upstream-claims 299, node-check, browser 69, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 |
+| `python3 scripts/closeout_digest.py --write` | exit 0, generated 4462 bytes from that successful evidence |
+| `python3 scripts/finance_vectors.py --write` | exit 0, generated 97186 bytes |
+
+Only after those writes was the fifth expected command added to the independent
+`tests/test_closeout_digest.py` STAGES list, as planned. The first successful raw
+evidence was saved separately for a later comparison. The two committed vector
+files were generated by their tools, never hand-edited.
+
+Second successful acceptance and final checks:
+
+| Command | Result |
+|---|---|
+| `unshare --user --map-current-user --keep-caps --net bash -c 'ip link set lo up && setpriv --inh-caps=-all --ambient-caps=-all --bounding-set=-all python3 scripts/acceptance.py'` (second successful pass) | exit 0, `ok=true`; same 9 passed stages and counts, including 972 unit, 299 CLAIM_CONFORMANCE, 69 browser |
+| `python3 scripts/closeout_digest.py --check-evidence` | exit 0, 4462 bytes match the second successful evidence |
+| `python3 scripts/closeout_digest.py --check` | exit 0, 4462 bytes, matching embedded finance copy |
+| `python3 scripts/finance_vectors.py --check` | exit 0, 97186 bytes match |
+| Python stdlib comparison using `scripts.closeout_digest.build_artifact` on the first and second successful evidence | both projections and the committed digest are byte-identical |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | exit 0, 7 passed |
+| `python3 -m compileall -q capital` (final rerun) | exit 0 |
+| `node --check capital/static/app.js` (final rerun) | exit 0 |
+| `python3 scripts/docs_surface.py --check` (final rerun) | exit 0, 30 routes, 40 artifacts, 9 stages |
+| `python3 scripts/observation_vectors.py --check` (final rerun) | exit 0, SIMULATED PASS; NOT_BOUND; applied=false; funds_executed=false |
+| `git diff --check` (final rerun) | exit 0 |
+
+`npm run test:browser` was executed unchanged by each isolated acceptance run;
+the two successful complete ladders both report **69 passed**. Namespace setup
+was only a verification environment adjustment for occupied host loopback ports.
+No CI/test configuration, timeout, test selection, protected fixture or upstream
+reference was changed. No commit, push, PR, issue, comment, or external message
+was made.
+
+Final explicit full-suite run:
+
+- `python3 -m unittest discover -s tests -v`: exit 0, **972 passed** (155.375s).
+- Python stdlib SHA256 comparison against all five manifest entries, plus byte
+  comparison of `manifest.json` with `git show HEAD:capital/vendor/manifest.json`:
+  all five hashes match and the manifest is byte-identical.
+- `git branch --show-current`: `agent/capital-adapter-identity-claims`.
+- `git status --short -- capital/vendor .aiops docs/decisions capital/observation.py capital/ports.py tests/vectors/provider_facts.json`:
+  empty. All protected implementation/corpus/reference paths remain untouched.
+- Read-only `/proc` command/cwd scan: no `capital.server` or `scripts/fake_gate.py`
+  process remains for this worktree. The unrelated host listeners were untouched.
+- `git diff --check`: exit 0.
+
+The node is complete with the planned method divergence preserved. The only
+implementation/verification adjustments were the separate SIMULATED output line,
+the narrow-test import path, and normal-user isolated loopback verification.
+
+## lifecycle-claims-conformance — conflict-fix round 1 (2026-10-24)
+
+This pending merge combines lifecycle HEAD
+`a49ff2f517c2722953a0e3e27b801797242e05f3` with main/MERGE_HEAD
+`ff123d54f864d1338575f0bf2e6c33eb1061d46f`. The eight supplied conflicts in
+README, integration, validation, acceptance, CE1 tests, closeout tests and the
+closeout/finance JSON vectors were resolved. Both claim implementations and all
+main additions are retained. The existing upstream-claims stage keeps CE1 fourth
+and adapter identity fifth, and adds lifecycle sixth:
+87+94+39+49+30+12=311 claims. Cleanly merged acceptance, agent, read-model and
+handbook assertions also needed the combined order/count. No stage, test,
+assertion, timeout or CI requirement was removed or weakened.
+
+README and the operator handbook now describe the six-command stage. Both
+integration sections and both preceding validation histories survive; those
+histories describe their own trees, not this merged tree. Closeout artifacts
+follow CAPITAL-CLOSEOUT-REGEN-V1: preserve main's actual prior snapshot until a
+successful combined acceptance run, regenerate with the two existing tools, add
+the sixth command to the independent closeout-test expectation, then rerun the
+complete ladder and compare its projected bytes. Historical or failed evidence
+is never relabelled as a combined success.
+
+Host loopback ports 8765 and 8766 belong to unrelated services and were left
+running. Verification uses the already available local user/network namespaces:
+
+```sh
+unshare --user --map-current-user --keep-caps --net bash -c 'ip link set lo up && setpriv --inh-caps=-all --ambient-caps=-all --bounding-set=-all python3 scripts/acceptance.py'
+```
+
+This retains the normal UID, drops capabilities before Python starts, and runs
+the checked-in acceptance plan and unchanged `npm run test:browser` on isolated
+loopback. No dependency install, public endpoint or paid service is involved.
+All evidence is local SIMULATED / CLAIM_CONFORMANCE; funds_executed and integrated
+remain false. This is not SEMANTIC_CONFORMANCE or human product acceptance.
+
+Initial checks and corrections actually executed:
+
+| Command/check | Result |
+|---|---|
+| Focused acceptance, agent, read-model, CE1, lifecycle, adapter-identity and closeout unittest modules | Exit 0; 136 passed. |
+| Handbook and docs-surface unittest modules | First run: 20 tests, one failure from the stale five-command handbook assertion. After updating it to six and retaining the explicit CE1 fourth-position documentation: exit 0, 20 passed. |
+| `python3 scripts/lifecycle_claims_check.py` | Exit 0; citation SKIPPED, verified=0/12, no behavior pass count. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; behaviors 12/12, citation SKIPPED. |
+| `python3 scripts/lifecycle_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behaviors 12/12, pinned citations 12/12. Each row's CLAIM_CONFORMANCE, SIMULATED and funds_executed false labels checked separately. |
+| `python3 scripts/adapter_identity_claims_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; behaviors 30/30, citations 30/30. |
+| First isolated complete acceptance run | Exit 1: unit 988 run, 987 passed, one stale handbook assertion loaded before its correction; Chromium 67 passed, two UI update timing failures; all seven other stages passed, including 311 claims. |
+| `npm run test:browser -- --grep "advanced UNBOUND\|organizer advances sim_day"` in the same isolated environment | Exit 0; both previously failing cases passed (6.2s total), with unchanged assertions and timeouts. |
+
+The initial failed evidence is retained in ignored
+`build/conflict-round1-failed-evidence.json`, with browser traces in
+`build/conflict-round1-failed-traces/`. Logs use the ignored
+`build/conflict-round1-*.log` paths. No artifact was generated from that failed
+run. The first failure summary names the assertion's old expected value even
+though Python's traceback reads its corrected source line from disk.
+
+Successful combined verification and regeneration:
+
+| Command/check | Actual result |
+|---|---|
+| Isolated unchanged `python3 scripts/acceptance.py`, before regeneration | Exit 0; all nine stages passed: unit 988, storage 19, pinned vendor 7, upstream CLAIM_CONFORMANCE 311, JS syntax, Chromium 69, packaged smoke 8, seeded demo 1, integrated journeys 4. Saved as `build/conflict-round1-pre-regen-evidence.json`. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0; generated 4516 bytes from that successful evidence. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; generated 97240 bytes. All unrelated groups and candidate metadata remain identical to main. |
+| `python3 -m unittest tests.test_closeout_digest -v` after adding lifecycle sixth to the independent STAGES expectation | Exit 0; 61 passed. |
+| Isolated unchanged `python3 scripts/acceptance.py`, after regeneration | Exit 0; all nine stages passed again with the same counts: unit 988, storage 19, vendor 7, claims 311, Chromium 69, smoke 8, demo 1, journeys 4, JS syntax pass. |
+| `python3 scripts/closeout_digest.py --check-evidence` after the final run | Exit 0; 4516 bytes match the fresh evidence. Both successful evidence projections and the regenerated digest are byte-identical. |
+| `python3 scripts/closeout_digest.py --check` and `python3 scripts/finance_vectors.py --check` | Exit 0; matching embedded closeout copy and canonical finance pack. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed standalone, also passed in both successful ladders. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Exit 0; repeated after regeneration. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 30 routes, 40 artifacts, nine stages. No new vectors paths require registry entries. |
+| Python stdlib SHA256 and byte comparisons | All five vendor files and manifest match HEAD, MERGE_HEAD and origin/main. Export construction, ports and their baseline guard tests match main. No changes under vendor or `.aiops/`. |
+| `git diff --check origin/main`, `git diff --cached --check`, conflict-marker scan and `git ls-files -u` | Clean whitespace, no conflict markers and no unresolved index entries. |
+| Read-only `/proc` scan for this worktree's Capital, fake-gate and zipapp servers | No remaining servers. Unrelated services were left running. |
+
+The final ignored `build/acceptance-evidence.json` has ok true, all nine stages
+passed, label SIMULATED, funds_executed false and integrated false. The packaged
+LOCAL_SIMULATION_ARTIFACT SHA256 is
+`02a9d68e02b43f0fb0c6125807a385e383a1cc8afa25f447e01623281fbb2ae3`.
+The full unit command is `python3 -m unittest discover -s tests -v`; it passed
+all 988 tests in both successful ladders. The unchanged `npm run test:browser`
+passed all 69 Chromium tests in each. Initial failures remain documented above.
+
+The merge remains pending and staged for the supervisor. HEAD and MERGE_HEAD
+are unchanged. No commit, push, reset, rebase, merge abort, external message,
+Protocol/Commerce edit, deployment, financial/provider operation or consequential
+product decision was made.

@@ -277,3 +277,5 @@ lifecycle compliance. Lifecycle source pin e2313ab473ea1b5a7b5b9246a564749188c1c
 is separate from the unchanged FSM vendor pin. Missing Protocol means citation
 SKIPPED; supplied checkouts must match the pinned document blob and each cited
 section-local needle. No route or lifecycle behavior changes.
+
+어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
