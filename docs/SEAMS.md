@@ -1,5 +1,14 @@
 # Local port seams
 
+`tests/test_observation_port.py` exposes `run_observation_vectors(factory)` for a
+fresh no-argument ObservationPort factory. Local replay is a fixture gate only,
+not SEMANTIC_CONFORMANCE. `LOCAL_SYNTHETIC_JSON_SHA256_V1` uses full SHA256 local
+JSON diagnostic IDs, retains full scoped keys and rejects alias collisions. No
+16-byte alias, KIX-BCS encoding, domain/schema allocation or provider key is adopted.
+The contract document is pinned separately at `e2a029d8ac3af7575888dac22fc4bf173ebec232`
+with SHA256 `e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`;
+`7481b0e` is the FSM pin and does not contain this document.
+
 Registry of Capital facade ports. A later node adds its port as a new row here and a `typing.Protocol` in `capital/ports.py`. The test in `tests/test_seams.py` fails when a Protocol has no row, or when a row says `ADOPTED` without an upstream receipt reference.
 
 `ADOPTED` means an upstream contract has actually replaced the local implementation and a receipt (commit, review URL, or profile digest) is cited in **Upstream receipt**. None of the rows below are `ADOPTED`. Local classes are stand-ins. They are not SEMANTIC_CONFORMANCE, and they do not bind the CAP-16 exact producer/SDK tuple. That tuple stays `NOT_BOUND`.
@@ -12,6 +21,7 @@ Registry of Capital facade ports. A later node adds its port as a new row here a
 
 | Port | Local implementation | Upstream contract | Readiness | Status | Upstream receipt |
 | --- | --- | --- | --- | --- | --- |
+| ObservationPort | `LocalFakeObservation` in `capital/observation.py`; pure synthetic fold, no recording | `docs/contracts/ADAPTER_EVENT_IDENTITY.md` draft 0.1; local diagnostic profile only, not production identity or wire encoding | CAP-14 | NOT_BOUND | NONE |
 | StoragePort | `InMemoryStorage` and opt-in `FileWorkspace` in `capital/store.py` | `k-stage5-durable-tx` adopted backend. The local JSON file is not that contract. | CAP-11 | NOT_BOUND | NONE |
 | ProjectionPort | `SimulationProjection` in `capital/projection.py`; additive `CoaCandidateProjection` in `capital/coa.py` (`SIMULATION_FIXED_V2`, `mode=coa-candidate` only, `SYNTHETIC_UNADOPTED`) | `fin-ledger-contract` and an adopted finance chart. `SIMULATION_FIXED_V1` is `SYNTHETIC_UNADOPTED`. | CAP-13 | NOT_BOUND | NONE |
 | AuthorizerPort | `LocalRoleAuthorizer` in `capital/auth.py` | Identity provider plus AgentGrant/ActionPermit. Synthetic loopback roles are not authentication. | CAP-19 | NOT_BOUND | NONE |
@@ -20,5 +30,7 @@ Registry of Capital facade ports. A later node adds its port as a new row here a
 | TermsPolicyPort | `DecisionNoteTermsPolicy` in `capital/terms.py` | `f04-mock-deepening` decided revision of CREDIT_ADVANCE_F04 section 5. The local note `docs/decisions/CAPITAL_FINANCIAL_TERMS.md` is a provisional input, not an upstream adoption. | CAP-01, CAP-04 | NOT_BOUND | NONE |
 | SettlementPolicyPort | `DecisionNoteSettlementPolicy` in `capital/policy.py` | `settlement-policy-deepening` plus `fin-multi-payee-refund-proof`. The local note `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md` is a provisional input, not an upstream adoption. | CAP-02, CAP-05, CAP-06 | NOT_BOUND | NONE |
 | UnderwritingPort | `DecisionNoteUnderwriting` in `capital/underwriting.py` | `cr-04-underwriting-consent` plus `ai-delegation-contract-mock`. The local note's `underwriting_depth` is a provisional input; the record is a proposal, not a consent artifact. | CAP-01 | NOT_BOUND | NONE |
-| SetoffQuotePort | `DecisionNoteSetoff` in `capital/setoff.py` | `cr-05` payout observation plus `cr-07-delinquency-recovery` and `settlement-policy-deepening`. The local notes' `collateral_execution.primary` and class table are provisional inputs; the quote is a proposal, never an execution, and the overlay recovery ledger is not built. | CAP-04 | NOT_BOUND | NONE |
+| SetoffQuotePort | `DecisionNoteSetoff` in `capital/setoff.py` | `cr-05` payout observation plus `cr-07-delinquency-recovery` and `settlement-policy-deepening`. The local notes' `collateral_execution.primary` and class table are provisional inputs; the quote is a proposal, never an execution. The SIMULATED overlay recovery ledger in `capital/recovery.py` reuses its arithmetic under `CAPITAL_DEFAULT_RECOVERY.md`; operator postings remain local memos, and loss-reserve and real collection bindings remain NOT_BOUND. | CAP-04 | NOT_BOUND | NONE |
 | ShadowPolicyPort | `DecisionNoteShadow` in `capital/shadow.py` | `fin-multi-payee-refund-proof` and `ps-03-resale-contract` plus `settlement-policy-deepening`. The local notes' reason-class table and resale triggers are provisional inputs; every result is `SHADOW_NOT_APPLIED` with constant false flags, never an applied distribution or a funds movement. | CAP-02, CAP-03, CAP-05, CAP-06 | NOT_BOUND | NONE |
+
+어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.

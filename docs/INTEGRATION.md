@@ -1,5 +1,38 @@
 # Capital local API and future integration
 
+## Observation fixture seam
+
+`ObservationPort` exposes `fold(facts, *, bindings) -> dict`; `LocalFakeObservation`
+is an in-process read-only stand-in, not a service constructor argument or HTTP route.
+Inputs require SYNTHETIC_FIXTURE provenance and explicit synthetic bindings. It does
+not authenticate facts or infer orders. Every result is SIMULATED, applied=false,
+funds_executed=false; no storage, recording, producer calls or network access occurs.
+Transmission metadata is separate from normalized item content. Same scoped item
+key/content dedups; changed content retains the original and flags CONFLICT.
+UNMATCHED stays diagnostic with no effects. CAP-14/CAP-16 remain NOT_BOUND.
+
+The fixture profile `LOCAL_SYNTHETIC_JSON_SHA256_V1` derives `sim-event-<sha256>`
+from canonical local JSON `{profile, key}`, where `key` contains provider, account
+alias, environment, profile_version and the stable synthetic item_key. JSON uses
+sorted keys, UTF-8, compact separators and no NaN. The full scoped key is retained;
+an alias collision is rejected. This is a full 256-bit diagnostic, not a kernel ID.
+Payment/order/operation references, kind, integer KRW amount, currency, method,
+status, original occurred_at text, nullable offset, api_version and product remain
+in each normalized fact with its scope; their local JSON SHA256 excludes transmission
+ID, raw_evidence_ref and received_at. No timezone, provider status meaning or order
+binding is inferred. A state transition or partial cancellation needs a distinct
+synthetic item_key; reusing a key with changed content yields CONFLICT.
+
+Items and delivery diagnostics retain input encounter order. A conflicted item keeps
+its first normalized fact/digest, and replay of that original cannot clear CONFLICT.
+Its separate `binding_status` retains UNMATCHED/MATCHED_FIXTURE/BINDING_CONFLICT.
+Each conflict carries the incoming fact/digest and delivery_index; every delivery,
+including duplicates, retains its transmission metadata. Missing bindings yield
+UNMATCHED; a fact that disagrees with a scoped operation's explicit payment/order
+binding yields BINDING_CONFLICT. Malformed facts/bindings and contradictory binding
+configuration raise ValueError. Nothing in this profile chooses production identity,
+16-byte aliases, durable binding storage or a wire layout.
+
 `/api/*` is **Capital's local simulation facade**, not a promoted KIX Protocol catalogue, generated SDK, lending endpoint, or live provider adapter. No fallback to `offer_gift`, `settle_capture`, bank, PG or chain exists.
 
 ## DEV_ONLY keyset
@@ -223,3 +256,26 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+Lifecycle claim mappings (`tests/lifecycle_claims.json`,
+`scripts/lifecycle_claims_check.py --execute`) exercise the unchanged
+`POST /api/commands`, `GET /api/operations/{operation_id}?instance_id=...`,
+`GET /api/state` and `GET /api/scenarios/late-cash` routes over loopback.
+The SIMULATED stdlib client suppresses an actual HTTP reply after application,
+keeps UNKNOWN unresolved across a synthetic elapsed-time advance and state reads,
+and resolves only by receipt lookup; it emits no automatic retry. This documents
+client-owned fencing, not a server-wide prohibition on submitting an arbitrary
+new command. The existing browser UNKNOWN regressions remain the UI evidence.
+An injected producer TransportLost separately exercises absent receipts. Restart
+checks use disposable LOCAL_FILE_WORKSPACE directories, retain original writer
+receipts, and count producer applications during restore. Local instance IDs do
+not implement lease generations or C_g/H_g. The late-cash READ_ONLY_FIXTURE keeps
+synthetic cash unallocated after cancellation without changing the active book;
+it does not implement provider evidence custody, ingestion, or ACK durability.
+Results are CLAIM_CONFORMANCE / SIMULATED with funds_executed false, not full
+lifecycle compliance. Lifecycle source pin e2313ab473ea1b5a7b5b9246a564749188c1c2c8
+is separate from the unchanged FSM vendor pin. Missing Protocol means citation
+SKIPPED; supplied checkouts must match the pinned document blob and each cited
+section-local needle. No route or lifecycle behavior changes.
+
+어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
