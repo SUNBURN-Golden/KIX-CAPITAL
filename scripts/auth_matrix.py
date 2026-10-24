@@ -130,6 +130,7 @@ COMMAND_PROBE_ADVANCE = 'sim-mtx-probe'
 ASSET_NOTE = 'Static assets are served after the loopback boundary and before authentication. Role and token headers are not read.'
 
 CODE_MEANING = {
+    'RECOVERY_AGENT_FORBIDDEN': '부도·회수·상각은 사람 운영자 전용이다.',
     'ROLE_FORBIDDEN': '토큰의 역할에 그 권한이 없다.',
     'LOCAL_TOKEN_REQUIRED': '토큰이 없거나 알 수 없다. 모든 POST는 먼저 토큰을 본다.',
     'ROLE_MISMATCH': '`X-Capital-Role`이 토큰의 역할과 다르다. 헤더로 역할을 바꿀 수 없다.',
@@ -213,6 +214,8 @@ def _cell(route, caller):
 
 
 def _command_cell(op, caller):
+    if op == 'default' and caller == 'agent':
+        return 'DENY', {'status': 403, 'error': 'RECOVERY_AGENT_FORBIDDEN'}
     if caller == NO_TOKEN:
         return 'DENY', {'status': 403, 'error': 'LOCAL_TOKEN_REQUIRED'}
     if not _holds(caller, COMMAND_SUBMIT):

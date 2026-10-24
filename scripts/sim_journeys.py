@@ -514,8 +514,8 @@ def run_t05():
                      session.advance_row(a)['margin']['state'], 'CALLED')
         _tick(journey, session, 't-4', deadline, deadline + 1, 'advance_day deadline->deadline+1 acceleration')
         accelerated = session.advance_row(a)
-        journey.step('sim-a accelerated; interest is not re-based', 'HTTP', accelerated['margin']['state'],
-                     'ACCELERATED', interest_basis='NOT_REBASED', **_margin_facts(accelerated))
+        journey.step('sim-a accelerated; interest is re-based (CAPITAL_DEFAULT_RECOVERY.md §4.10)', 'HTTP', accelerated['margin']['state'],
+                     'ACCELERATED', interest_basis='REBASED', **_margin_facts(accelerated))
         eligible_day = accelerated['margin']['default_eligible_day']
 
         # Late cash after acceleration. The allocation endpoint refuses once the refund has lowered the

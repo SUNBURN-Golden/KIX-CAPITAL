@@ -270,6 +270,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `LOCAL_TOKEN_REQUIRED` | 토큰이 없거나 알 수 없다. 모든 POST는 먼저 토큰을 본다. |
 | `EXECUTE_AUTHORITY_DISABLED` | agent 레인이 EXECUTE를 거절한다. 게이트는 통과했다. |
 | `INVALID_ARGUMENTS` | 게이트를 통과한 뒤 인자 검사에서 쓰기 전에 거절됐다. |
+| `RECOVERY_AGENT_FORBIDDEN` | 부도·회수·상각은 사람 운영자 전용이다. |
 | `NOT_FOUND` | 등록되지 않은 (메서드, 경로)다. 기본 거절이다. |
 | `ROLE_MISMATCH` | `X-Capital-Role`이 토큰의 역할과 다르다. 헤더로 역할을 바꿀 수 없다. |
 | `SESSION_REQUIRED` | 토큰 없이 organizer가 아닌 역할을 주장했다. 먼저 `POST /api/session`이 필요하다. |
@@ -391,7 +392,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 ### portfolio-risk-analytics
 
-`GET /api/risk`는 읽기 전용 포트폴리오 위험 분석이다. 라벨은 `SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy`이고 `mode`는 `SIMULATED_RISK_ANALYTICS`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 수락된 저널, 오버레이 시계 `sim_day`, `CAPITAL-TERMS-V1` 노트를 정수 나눗셈으로만 접으며 영수증·저널·오버레이 항목을 쓰지 않는다. 등급별 노출, 만기 버킷(표준 만기까지 남은 일수 0-30, 31-60, 61-90, >90; 만기일 당일과 연체 노출은 0-30), 연체 경과(`NOT_DUE`, 만기 후 1-30, 31-60, 61-90, >90일, `DEFAULTED`)의 합은 총 미상환과 같고 `reconciliation`이 로컬 투영의 advance 미상환과 맞춘다. 집중도는 수익자(`beneficiary_role`)별 정수 permille HHI와 `underwriting_depth` U4 세 한도(단일 건, 수익자 합계, 포트폴리오)에 대한 사용률(permille)이다. 준비금 요구액은 노트 `reserve.provision_bps_of_outstanding` 표(현재 150/500/2500/10000 bps)를 건별로 적용해 `floor(미상환 × bps / 10000)`을 더한 값이며 회계 정책이 아니고 `applied`는 false다. 스트레스는 마진 조건이 있는 `DRAWN` 건의 `eligible_face`를 고정 정수 충격 `[500, 1000, 2500, 5000]` bps만큼 줄여 다시 재고, 충격이 클수록 마진콜 건수는 줄지 않는다. 이 마진콜은 가정이며 오버레이에 기록되지 않는다. 장부가 알고 있는 만기는 표준 60일뿐이라 실제 데이터에서는 61-90, >90 버킷이 비어 있고 순수 함수 시험으로만 확인한다. 마진 가속 후의 만기 재기준은 반영하지 않는다. 연체이자·상각일을 가속 만기로 다시 잡는 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`(`acceleration_interest_rebase`)가 잠정 제품 결정(PROVISIONAL)으로 정했지만 아직 구현되지 않았고(`overlay-recovery-writeoff` 노드 소유) 그때까지 `interest_rebased`는 false다. 노트가 없으면 `NOT_BOUND`이고 숫자가 없다. 브라우저 패널 `#risk`는 `textContent`만 쓴다. 확률 모형, 부동소수점, 외부 데이터, 회계 채택은 범위 밖이다.
+`GET /api/risk`는 읽기 전용 포트폴리오 위험 분석이다. 라벨은 `SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy`이고 `mode`는 `SIMULATED_RISK_ANALYTICS`, 권한은 `projection:read`라 observer·agent는 `403 ROLE_FORBIDDEN`이다. 수락된 저널, 오버레이 시계 `sim_day`, `CAPITAL-TERMS-V1` 노트를 정수 나눗셈으로만 접으며 영수증·저널·오버레이 항목을 쓰지 않는다. 등급별 노출, 만기 버킷(표준 만기까지 남은 일수 0-30, 31-60, 61-90, >90; 만기일 당일과 연체 노출은 0-30), 연체 경과(`NOT_DUE`, 만기 후 1-30, 31-60, 61-90, >90일, `DEFAULTED`)의 합은 총 미상환과 같고 `reconciliation`이 로컬 투영의 advance 미상환과 맞춘다. 집중도는 수익자(`beneficiary_role`)별 정수 permille HHI와 `underwriting_depth` U4 세 한도(단일 건, 수익자 합계, 포트폴리오)에 대한 사용률(permille)이다. 준비금 요구액은 노트 `reserve.provision_bps_of_outstanding` 표(현재 150/500/2500/10000 bps)를 건별로 적용해 `floor(미상환 × bps / 10000)`을 더한 값이며 회계 정책이 아니고 `applied`는 false다. 스트레스는 마진 조건이 있는 `DRAWN` 건의 `eligible_face`를 고정 정수 충격 `[500, 1000, 2500, 5000]` bps만큼 줄여 다시 재고, 충격이 클수록 마진콜 건수는 줄지 않는다. 이 마진콜은 가정이며 오버레이에 기록되지 않는다. 장부가 알고 있는 만기는 표준 60일뿐이라 실제 데이터에서는 61-90, >90 버킷이 비어 있고 순수 함수 시험으로만 확인한다. 마진 가속 후의 만기 재기준은 이 패널의 만기 버킷에 반영하지 않는다. 연체이자·상각일을 가속 만기로 다시 잡는 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`(`acceleration_interest_rebase`)의 잠정 제품 결정(PROVISIONAL)대로 `overlay-recovery-writeoff`가 구현했고 가속 건은 `interest_rebased` true다. 노트가 없으면 `NOT_BOUND`이고 숫자가 없다. 브라우저 패널 `#risk`는 `textContent`만 쓴다. 확률 모형, 부동소수점, 외부 데이터, 회계 채택은 범위 밖이다.
 
 <!-- /handbook-section -->
 
@@ -475,7 +476,7 @@ U4 한도 검사는 단건, 수혜자, 포트폴리오 순이다. 필드는 `sin
 
 `advance_day`마다 `additional_margin` 규칙을 평가하고 같은 원자 저장 안에 `margin_call`, `margin_cure`, `margin_acceleration`, `default_eligible_proposal` 항목을 쓴다. `GET /api/overlay`에는 최상위와 행마다 `margin` 블록이 붙는다.
 
-workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 가속 뒤 이자와 상각일은 아직 다시 기준을 잡지 않는다(`interest_rebased` false). 재기준은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`가 잠정 제품 결정(PROVISIONAL)으로 정했고 구현은 `overlay-recovery-writeoff`가 맡는다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
+workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `triggered` false, `limit` `FIXTURE_VIEWS_IMMUTABLE`(원천 `READ_ONLY_FIXTURE`)이고 아무것도 기록하지 않는다. 마진 콜은 버려지는 `ScenarioReplaySource` 장부(`SIMULATED_DISPOSABLE_BOOK`)에서만 일어난다. `DEFAULT_ELIGIBLE`은 사람 운영자를 위한 제안일 뿐이다. `proposal_only` true, `f04_default_called` false이고 F04 저널을 쓰지 않으며 F04 `default`를 호출하지 않는다. 치유 선택지 2와 3은 `NOT_BOUND`다. 가속 뒤 이자와 상각일은 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`의 잠정 제품 결정(PROVISIONAL)대로 다시 기준을 잡는다(가속 건은 `interest_rebased` true). 구현은 `overlay-recovery-writeoff`가 맡았다. 치유 기간과 이율 값은 여기에 옮겨 적지 않는다.
 
 <!-- /handbook-section -->
 
@@ -485,9 +486,9 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 
 `default-recovery-decision`(`docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`)과 `repayment-posting-decision`(`docs/decisions/CAPITAL_REPAYMENT_POSTING.md`)은 잠정 제품 결정(PROVISIONAL PRODUCT DECISION) 노트다. 시뮬레이션 전용이고 production은 `NOT_AUTHORIZED`이며 법무·회계 항목은 작업 가정이다.
 
-`overlay-repayment-posting`은 `post_repayment` 명령과 오버레이 납부 기록을 구현한다. `GET /api/overlay`의 `interest_payments.status`는 기장 여부에 따라 `NONE_YET` 또는 `RECORDED`다. 재기준·회수·상각은 아직 구현 전이며 `interest_rebased`는 false다. 후속 구현은 `overlay-recovery-writeoff`, `coa-payment-writeoff-postings` 노드가 맡는다. COA 납부 기장은 이 오버레이 기능의 범위 밖이다.
+`overlay-repayment-posting`은 `post_repayment` 명령과 오버레이 납부 기록을 구현한다. `GET /api/overlay`의 `interest_payments.status`는 기장 여부에 따라 `NONE_YET` 또는 `RECORDED`다. 재기준·회수·상각은 `overlay-recovery-writeoff`가 구현했고 가속 건은 `interest_rebased` true다. COA 분개는 `coa-payment-writeoff-postings` 노드가 맡는다. COA 납부 기장은 이 오버레이 기능의 범위 밖이다.
 
-이 절은 바로 위 `margin-cure-default` 절의 재기준 문장을 대체한다. 재기준은 잠정 결정됐지만 구현 전이다. 이율·일수·한도 같은 수치는 여기에 옮기지 않으며 `CAPITAL-TERMS-V1`에 둔다.
+이 절은 바로 위 `margin-cure-default` 절의 재기준 문장을 대체한다. 이율·일수·한도 같은 수치는 여기에 옮기지 않으며 `CAPITAL-TERMS-V1`에 둔다.
 
 <!-- /handbook-section -->
 
@@ -521,7 +522,7 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 
 `python3 scripts/sim_journeys.py`는 이름 붙은 합성 여정 `T05-sim`과 `T06-sim`을 루프백 HTTP API로 끝까지 돌린다. 둘 다 `label`은 `SIMULATED`, `funds_executed`는 false, `integrated`는 false다. `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`가 말하듯 T05/T06의 합성 변형을 Q0 안에 이름 붙이는 일이며, 통합 수용(Q3)도 T01–T06 자격 주장도 아니다. 사람 점검표 칸은 이 여정이 채우지 않는다. 고정 operation id와 고정 시드(`CAPITAL-SIM-JOURNEYS-V1`)로 돌고 시계·무작위 값·instance id·토큰·포트·경로를 기록하지 않는다.
 
-`T05-sim`(35단계)은 한 서버 프로세스 안의 일회용 정산 장부(`ScenarioReplaySource`) 위에서 돈다. 마진 규칙은 이 장부에서만 저널에 남기 때문이다. `--workspace` 서버의 fixture는 읽기 전용이다. 순서: 두 건의 advance가 정산채권의 주최자 줄 일부만 점유(부분 배정) → 상환 → 상환 중 부분 환불. Capital에는 정산 이벤트 HTTP 경로가 없으므로 환불은 장부에서 직접 재생하고, 그 단계에 `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT`를 붙인다. 이어서 고정 거절 `REFUND_OBLIGATION_OPEN`과 `DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED` 옆에 `GET /api/policy/shadow`의 환불 분할(`UNSUPPORTED_BY_PINNED_FSM`인 pinned 쪽과 `SHADOW_COMPUTED`인 shadow 쪽, `applied_to_fsm` false)을 나란히 기록한다. shadow 벡터는 고정 입력(`partial-after`)이지 이 장부가 아니다. 그 뒤 마진 콜 → 기한일 포함 → 하루 뒤 가속(`NOT_REBASED`, 이자·상각 기준일은 그대로) → 늦은 현금. 환불로 기준이 낮아져 할당 조회는 `NOT_APPLICABLE`이고, 사람이 `post_repayment` 대신 직접 F04 `repay`를 써서 `interest_payments.status`가 `NONE_YET`인 채 이자 우선 순서로 원금 몫만 상환한다. 가속은 되돌려지지 않는다. 다른 advance는 0까지 상환 후 `close`. 마지막으로 `DEFAULT_ELIGIBLE` 제안이 한 건 생기고(`f04_default_called` false) 사람이 `default` 명령을 낸다.
+`T05-sim`(35단계)은 한 서버 프로세스 안의 일회용 정산 장부(`ScenarioReplaySource`) 위에서 돈다. 마진 규칙은 이 장부에서만 저널에 남기 때문이다. `--workspace` 서버의 fixture는 읽기 전용이다. 순서: 두 건의 advance가 정산채권의 주최자 줄 일부만 점유(부분 배정) → 상환 → 상환 중 부분 환불. Capital에는 정산 이벤트 HTTP 경로가 없으므로 환불은 장부에서 직접 재생하고, 그 단계에 `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT`를 붙인다. 이어서 고정 거절 `REFUND_OBLIGATION_OPEN`과 `DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED` 옆에 `GET /api/policy/shadow`의 환불 분할(`UNSUPPORTED_BY_PINNED_FSM`인 pinned 쪽과 `SHADOW_COMPUTED`인 shadow 쪽, `applied_to_fsm` false)을 나란히 기록한다. shadow 벡터는 고정 입력(`partial-after`)이지 이 장부가 아니다. 그 뒤 마진 콜 → 기한일 포함 → 하루 뒤 가속(`REBASED`, `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` §4.10에 따라 이자·상각 기준일을 가속 만기로 다시 잡는다) → 늦은 현금. 환불로 기준이 낮아져 할당 조회는 `NOT_APPLICABLE`이고, 사람이 `post_repayment` 대신 직접 F04 `repay`를 써서 `interest_payments.status`가 `NONE_YET`인 채 이자 우선 순서로 원금 몫만 상환한다. 가속은 되돌려지지 않는다. 다른 advance는 0까지 상환 후 `close`. 마지막으로 `DEFAULT_ELIGIBLE` 제안이 한 건 생기고(`f04_default_called` false) 사람이 `default` 명령을 낸다.
 
 `T06-sim`(33단계)은 `python3 -m capital.server --port 0 --workspace TMP` 하위 프로세스를 쓴다. agent가 `query_grant`와 `propose_action`을 부르고, `POST /api/agent/execute`와 `kind: EXECUTE` 제안은 `403 EXECUTE_AUTHORITY_DISABLED`, agent 토큰의 명령은 `403 ROLE_FORBIDDEN`이며 digest와 operation 수는 그대로다. 사람(organizer)이 `proposal_id`를 인용해 `repay`하면 receipt에 `proposal_id`와 `role`이 남고 제안은 여전히 `HUMAN_PENDING`이다. 응답을 일부러 버린 요청은 UNKNOWN으로 막힌다: 하네스는 그동안 어떤 쓰기도 네트워크로 보내지 않고, operation id 조회만 한다. 조회 결과가 `UNKNOWN`이어도 `retry_authorized`는 false다. 그 다음 하위 프로세스를 SIGKILL로 죽이고 같은 작업공간으로 다시 띄운다. 옛 토큰은 `LOCAL_TOKEN_REQUIRED`, 새 토큰에 옛 `instance_id`를 쓰면 `SESSION_CHANGED`(명령과 조회 모두)다. `state_digest`·operation 수·오버레이 digest가 같고, receipt는 원래 `instance_id`와 `proposal_id` 그대로 복원되며, 새 프로세스의 명령 카운터는 0이다. 제안 등록부는 프로세스 메모리라 재시작 뒤 옛 `proposal_id` 인용은 `404 UNKNOWN_PROPOSAL`이다. 하네스는 같은 operation id를 두 번 보내지 않았음을 마지막에 확인한다.
 

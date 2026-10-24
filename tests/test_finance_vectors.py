@@ -783,7 +783,8 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(self.by_path['/api/statement']['closure'], [
             'approved_row', 'exposure_row', 'gap', 'refund_row', 'reserved_row', 'scope', 'settlement_row', 'statement'])
         self.assertEqual(self.by_path['/api/operations/{operation_id}']['closure'], [
-            'accepted_receipt', 'command_result', 'credit_view', 'rejected_receipt', 'repayment', 'unknown_operation'])
+            'accepted_receipt', 'command_result', 'credit_view', 'recovery_approvals',
+            'rejected_receipt', 'repayment', 'unknown_operation'])
         self.assertIn('statement', self.by_path['/api/export/manifest']['closure'])
         self.assertGreater(len(self.by_path['/api/export/manifest']['closure']), 40)
 

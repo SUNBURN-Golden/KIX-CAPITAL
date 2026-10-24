@@ -469,8 +469,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                         break
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
-                require(authorizer, principal, permission)
-                body = self.read_json()
+                if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
+                    body = self.read_json()
+                    if type(body) is dict and (body.get('op') in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration') or 'writeoff' in body):
+                        raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
+                    require(authorizer, principal, permission)
+                else:
+                    require(authorizer, principal, permission)
+                    body = self.read_json()
                 if path == '/api/commands' and type(body) is dict and type(body.get('operation_id')) is str:
                     operation_id = body.get('operation_id')
                 if path == '/api/session':

@@ -1678,3 +1678,62 @@ The merge remains pending and staged for the supervisor. HEAD and MERGE_HEAD
 are unchanged. No commit, push, reset, rebase, merge abort, external message,
 Protocol/Commerce edit, deployment, financial/provider operation or consequential
 product decision was made.
+
+
+## overlay-recovery-writeoff — conflict-fix round 2
+
+Merged `origin/main` at `79c5cc19e51367f1e3c8e38b17c168fe5535383e` into
+`agent/capital-overlay-recovery-writeoff` (pre-merge HEAD
+`a5b2e2d5b5ecfa820462298cf075cbc223ee60f0`) without committing the merge.
+Resolved `tests/decision_bindings.json`, `tests/test_decision_bindings.py` and
+`tests/vectors/finance_vectors.json`: all ten recovery decisions retain their
+built consumers and tests, all five closeout decisions retain main's built
+consumers and tests, and only the claim-slice registry remains pending among
+those conflict groups. Finance vectors were regenerated with the merged code;
+every main group is preserved, with the facade group matching this branch's
+complete recovery schema. Main's committed closeout digest and its embedded
+copy are unchanged; their check verifies the recorded artifact, not a fresh
+run of the full acceptance ladder.
+
+The active requirements and seam registry now describe the implemented
+SIMULATED recovery ledger and interest rebase. Earlier node-run limitations
+above describe their historical trees; the adopted
+`docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` and the recovery implementation
+supersede their unbuilt-overlay statements. This round adds no financial
+terms, no reserve ledger, no COA postings and no upstream adoption.
+
+Main's live COA byte guard initially rejected the intentional recovery changes
+to `capital/overlay.py` (the only failure in the first 1,018-test run). The guard
+now SHA256-pins that file to the exact reviewed recovery bytes at the pre-merge
+HEAD (`26c8fcdbe6074e39ff3ad1344d92e9575597ee3ab60baf0a21eed17c55d724dd`).
+The original historical COA guard, main's live export/projection/vendor/decision
+and V2 golden guards, and the append-only ObservationPort check remain active.
+The focused COA suite then passed all 36 tests.
+
+Verification for this combined tree (all local results are SIMULATED):
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Final run: 1,018 passed in 191.200s; first run's sole stale overlay byte-guard failure fixed as above. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `npm run test:browser -- --config build/overlay-recovery-round2.playwright.cjs` | 69 passed in 2.5m; all projects and assertions retained. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; docs surface: 30 routes, 40 artifacts, 9 stages. |
+| `finance_vectors`, `closeout_digest`, `manifest_vectors`, `workspace_vectors`, `auth_matrix`, `not_bound_checklist` scripts with `--check` | All exit 0; finance artifact 97,310 bytes, closeout 4,516 bytes, 19 manifest and 6 workspace vectors match. |
+| `python3 scripts/seed_overlay_recovery.py` | SIMULATED_DISPOSABLE_BOOK, 18 entries; margin call, acceleration, default, recovery, write-off and late recovery; manifest verified and overlay fold reconciliation MATCHED. |
+| `python3 scripts/seed_demo.py` | Existing V2 golden matches, `state_digest=a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`, `content_digest=2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca`, debit = credit = 385,000. |
+| Vendor, merge and marker checks | Five SHA256s match; manifest identical to HEAD and MERGE_HEAD; no unmerged index entries or conflict markers; `git diff --check` clean. |
+
+The direct `npm run test:browser` attempt could not start its servers because
+unrelated services from `/workspace/hanset-site-main` and `/workspace/pitchboard-site`
+already held loopback ports 8765 and 8766. An ignored temporary config cloned the
+repository config and changed only the four configured server ports/base URLs
+to 18765–18768, plus absolute config-relative paths needed by that temporary
+location. No unrelated process was stopped and no tracked browser config, test,
+assertion or CI setting was changed. The retry passed the complete 69-test suite;
+its four servers exited afterwards. The full acceptance ladder was not rerun.
+
+Merge resolutions and these supporting test/documentation fixes are staged for
+the supervisor. No merge commit or push was made. No vendor, `.aiops`, legacy
+export, existing V2 demo golden, Protocol or Commerce bytes were edited, and no
+real funds, credentials, providers or deployment were used.

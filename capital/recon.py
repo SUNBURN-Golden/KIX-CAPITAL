@@ -168,6 +168,12 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         # Conditional on a non-empty overlay (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
         overlay_ok, overlay_digest, overlay_detail = overlay_fold_check(
             overlay_entries, overlay_persisted, len(journal))
+        if overlay_ok:
+            try:
+                from capital.recovery import validate_links
+                validate_links(overlay_entries, journal)
+            except ValueError:
+                overlay_ok, overlay_detail = False, 'recovery_default_link'
         checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
     if coa_port is not None:
         checks.extend(_coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
