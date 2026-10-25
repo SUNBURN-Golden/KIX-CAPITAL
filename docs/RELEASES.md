@@ -29,6 +29,14 @@ Two builds with the same interpreter and the same source tree produce the same S
 - Authorized archive scope and manifest format are unchanged. `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`; every rehearsal is SIMULATED/provisional.
 - The initial 0.2.0 build record above and 0.1.0 record below remain historical records. Current merge verification is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
 
+### 0.2.0 — CI fix round 2 rehearsal (2026-10-26)
+
+- Artifacts: `dist/capital-0.2.0.pyz` and `dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `30454a639a424758f22796b6d2f5dd3cbdf9ab2c34ff1f7600548a84a7991b7d` (local unsigned build).
+- The ledger loader reuses compiled parser code by exact source bytes and filename, while reading the selected source and creating a fresh module on every load. Edits, corruption and missing files retain the existing fail-closed behavior.
+- Removed the obsolete tracked `dist2/capital-0.1.0.pyz` and ignored `dist2/`, so the existing two-build CI glob compares exactly the current artifacts.
+- All 11 packaged smoke checks pass. Scope, manifest format and labels remain unchanged: `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`, SIMULATED/provisional.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).

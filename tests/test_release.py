@@ -12,10 +12,11 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from capital import __version__
 from capital.readiness import source_integrity
-from capital.resources import VENDOR, install_vendor_path, read_note, read_static, vendor_manifest, vendor_sys_path
+from capital.resources import VENDOR, install_vendor_path, load_ledger, read_note, read_static, vendor_manifest, vendor_sys_path
 from capital.service import CapitalService
 
 REPO = Path(__file__).resolve().parents[1]
@@ -35,6 +36,26 @@ _BANNED = ('tests/', '.git', 'node_modules', '.aiops', '.github')
 
 
 class ResourceTests(unittest.TestCase):
+    def test_ledger_compilation_reuse_observes_source_changes_and_missing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'ledger.py'
+            path.write_bytes(b'value = []\n')
+            timestamp = path.stat().st_mtime_ns
+            with patch('capital.resources.compile', wraps=compile) as compiler:
+                first = load_ledger(path)
+                first.value.append('SIMULATED mutation')
+                self.assertEqual(load_ledger(path).value, [])
+                self.assertEqual(compiler.call_count, 1)
+                # Same size and timestamp must not hide different source bytes.
+                path.write_bytes(b'value = {}\n')
+                os.utime(path, ns=(timestamp, timestamp))
+                self.assertEqual(load_ledger(path).value, {})
+                self.assertEqual(compiler.call_count, 2)
+                path.write_bytes(b'invalid python !')
+                self.assertIsNone(load_ledger(path))
+                path.unlink()
+                self.assertIsNone(load_ledger(path))
+
     def test_note_is_read_once_and_an_explicit_missing_parser_has_no_fallback(self):
         class Note:
             reads = 0
@@ -327,6 +348,7 @@ class ReleaseDocTests(unittest.TestCase):
         for token in ('LOCAL_SIMULATION_ARTIFACT', 'signed', 'published', 'capital/__init__.py', 'PyPI'):
             self.assertIn(token, notes)
         self.assertIn('dist/', (REPO / '.gitignore').read_text(encoding='utf-8'))
+        self.assertIn('dist2/', (REPO / '.gitignore').read_text(encoding='utf-8'))
         workflow = (REPO / '.github' / 'workflows' / 'verify.yml').read_text(encoding='utf-8')
         package = workflow.split('\n  package:\n', 1)[1]
         for step in (

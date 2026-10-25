@@ -1,7 +1,7 @@
 # Bundled policy runtime — local verification evidence
 
-The original node record follows. The conflict-fix round 1 record at the end
-contains the current merged-tree build and verification results.
+The original node record follows. The CI fix round 2 record at the end
+contains the current build and verification results; earlier rounds remain historical.
 
 Date: 2026-10-25. Branch: `agent/capital-bundled-policy-runtime`.
 Node baseline: `02bc3e5feef72d56f2f905d045746bedf455c927`.
@@ -294,3 +294,80 @@ note is byte-identical to incoming main and was preserved; the diff against
 `origin/main` has no whitespace errors.
 
 Result: **STATUS: READY**. No consequential product decision was required.
+
+
+## CI fix round 2 — 2026-10-26
+
+Both reported CI failures were reproduced or traced to concrete causes. The
+tracked `dist2/capital-0.1.0.pyz` made the unchanged package-job glob expand to
+three arguments after building 0.2.0. The obsolete generated binary is removed
+and `dist2/` is ignored; no workflow or acceptance timeout was changed.
+
+The ledger loader previously compiled the same parser on every note read.
+A ten-service snapshot profile measured 110 compilations and 0.481 seconds;
+with exact-byte/filename compiled-code reuse it measured one compilation and
+0.233 seconds. These are local diagnostic measurements, not a performance SLA.
+The bounded cache stores code only: every load still reads the selected source
+and executes it in a fresh module. The regression checks compilation reuse,
+module-state isolation, equal-size/equal-timestamp source edits, malformed
+source and missing source. There is no fallback or cached policy value.
+
+Current artifacts: `dist/capital-0.2.0.pyz` and
+`dist2/capital-0.2.0.pyz`, SHA256
+`30454a639a424758f22796b6d2f5dd3cbdf9ab2c34ff1f7600548a84a7991b7d`.
+Both were built with Python 3.13.5 and compare byte-identically using the exact
+CI glob command. The stdlib archive audit found 77 members, exactly the 18
+authorized extra inputs, and matching per-file manifest hashes. Five vendor
+files match their locked SHA256 and HEAD bytes; the vendor manifest,
+`capital/export.py` and `capital/overlay.py` also match HEAD bytes.
+`.aiops/`, decision-note bytes, goldens and vector fixtures are unchanged.
+Everything exercised is SIMULATED/provisional, unsigned and unpublished.
+No commit, push or external post was made.
+
+The host browser command encountered an existing service on a default test
+port. The acceptance ladder therefore runs with its unchanged configuration
+inside an isolated loopback namespace (`unshare -Urn`, then `ip link set lo up`).
+Existing services were left untouched. Preliminary runs were interrupted when
+the final cache fix and namespace setup were ready; the completed final run is
+recorded below. Logs use `/tmp/capital-round2-*`.
+
+
+The first completed acceptance run passed the unit stage (1,133 tests in
+267.409 seconds, below the unchanged 300-second limit) and seven other stages.
+Chromium passed 68/69; the unknown-check trace showed a gap from monotonic
+8320.424 ms to 24972.6 ms while waiting for the first render, before the
+reconciliation request began. The unchanged browser rerun passed that case but
+timed out in failed-get (68/69 overall). Its trace is preserved at
+`build/round2-browser-stall-trace.zip`; local API response times were milliseconds.
+A concurrent preliminary Python 3.12 full-unit run also hit its external
+300-second cap. These failed attempts are retained in the logs; no assertions,
+timeouts or product logic were changed in response. A final complete acceptance
+run uses Python 3.12.15 alone in an isolated loopback namespace.
+
+
+Final acceptance result: **PASS**, exit 0, `ok:true` in
+`build/acceptance-evidence.json`. Python 3.12.15 unit discovery completed all
+1,133 tests in 257.375 seconds under the unchanged 300-second limit.
+The same final ladder passed all 69 Chromium tests and every required stage.
+
+| Command / check | CI fix round 2 result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3.12 scripts/acceptance.py'` | Exit 0; all nine stages passed; evidence `ok:true`. |
+| Unit discovery through final acceptance | 1,133 passed; 257.375 seconds; legacy golden checks and export byte guards pass. |
+| Storage conformance / crash replay | 19 passed. |
+| Pinned vendor tests | 7 passed; all five SHA256 locks and manifest bytes unchanged. |
+| Upstream claim checks | 311 passed; local claims only, no adoption. |
+| Chromium through final acceptance | All 69 passed, unchanged suite/configuration in isolated loopback namespace. |
+| Packaged smoke through final acceptance | All 11 checks passed; actual terms accrual, sim_day advance, workspace restart and matching overlay/provenance. |
+| Seeded demo / integrated journeys | 1 / 4 passed, SIMULATED; integrated=false, funds_executed=false. |
+| Release tests with Python 3.13.5 / 3.12.15 | 14 passed on each interpreter, including the new parser-cache regression. |
+| Two builds and exact CI `cmp dist/capital-*.pyz dist2/capital-*.pyz` | Exit 0; byte-identical; SHA256 recorded above. Python 3.12 rebuild pair and smoke also pass. |
+| `python3 -m compileall -q capital` / `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, 9 stages. |
+| `python3 scripts/decision_bindings.py --check` / decision ledger | Exit 0. |
+| Finance / pack vector checks | Exit 0; 97,980 bytes / all 9 fixtures match; no regeneration or fixture edits. |
+| Archive and preservation audit | Exact authorized additions; all 77 members accounted for; vendor, legacy export, overlay, decision notes, goldens and `.aiops/` preserved. |
+| `git diff --check` | Exit 0. |
+
+Result: **STATUS: READY**. No consequential product decision was needed.
+No commit, push or external post was made.

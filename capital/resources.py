@@ -10,6 +10,7 @@ import importlib.resources
 import json
 import sys
 import types
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = importlib.resources.files('capital')
@@ -60,6 +61,12 @@ def resource_source(resource, *, override=False):
     return 'CHECKOUT' if isinstance(resource, Path) else 'BUNDLED_IN_ARTIFACT'
 
 
+@lru_cache(maxsize=8)
+def _ledger_code(raw, filename):
+    """Reuse compilation by exact source bytes, never by path or timestamp alone."""
+    return compile(raw, filename, 'exec')
+
+
 def load_ledger(path=None):
     """Execute only the selected parser source; Markdown is always data."""
     source = ARCHIVE_ROOT / 'scripts' / 'decision_ledger.py' if path is None else as_resource(path)
@@ -67,7 +74,7 @@ def load_ledger(path=None):
         raw = source.read_bytes()
         module = types.ModuleType('capital_decision_ledger')
         module.__file__ = str(source)
-        exec(compile(raw, str(source), 'exec'), module.__dict__)
+        exec(_ledger_code(raw, str(source)), module.__dict__)
         return module
     except (OSError, ValueError, ImportError, SyntaxError):
         return None
