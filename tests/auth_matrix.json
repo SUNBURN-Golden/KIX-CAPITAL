@@ -146,6 +146,7 @@
       "probes": [
         "/api/terms",
         "/api/terms/portfolio?instance_id=@instance&as_of_day=1",
+        "/api/terms/portfolio/forecast?instance_id=@instance",
         "/api/terms/sim-mtx?instance_id=@instance&draw_day=0&as_of_day=1",
         "/api/terms/sim-mtx/allocation?instance_id=@instance&as_of_day=1&cash=1",
         "/api/terms/sim-mtx/setoff?instance_id=@instance&as_of_day=1"
@@ -159,6 +160,26 @@
       "permission": "projection:read",
       "probes": [
         "/api/overlay"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay/slices",
+      "children": false,
+      "handler": "_get_overlay_slices",
+      "permission": "projection:read",
+      "probes": [
+        "/api/overlay/slices"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "children": false,
+      "handler": "_get_portfolio_snapshot",
+      "permission": "projection:read",
+      "probes": [
+        "/api/portfolio/snapshot?instance_id=@instance"
       ]
     },
     {
@@ -850,6 +871,108 @@
     {
       "method": "GET",
       "route": "/api/overlay",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay/slices",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay/slices",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay/slices",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay/slices",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/overlay/slices",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/portfolio/snapshot",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {
@@ -2606,9 +2729,7 @@
       "outcome": "DENY",
       "expect": {
         "status": 403,
-        "error": "ROLE_FORBIDDEN",
-        "permission": "command:submit",
-        "role": "agent"
+        "error": "RECOVERY_AGENT_FORBIDDEN"
       }
     },
     {
@@ -3597,6 +3718,84 @@
         "op": "reconcile",
         "advance_id": "sim-mtx",
         "args": {}
+      }
+    },
+    {
+      "name": "agent cannot post a claim slice",
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "SLICE_AGENT_FORBIDDEN"
+      },
+      "body": {
+        "op": "register_slice"
+      }
+    },
+    {
+      "name": "agent cannot post a claim slice",
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "SLICE_AGENT_FORBIDDEN"
+      },
+      "body": {
+        "op": "open_slice"
+      }
+    },
+    {
+      "name": "agent cannot post a claim slice",
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "SLICE_AGENT_FORBIDDEN"
+      },
+      "body": {
+        "op": "impair_slice"
+      }
+    },
+    {
+      "name": "agent cannot post a claim slice",
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "SLICE_AGENT_FORBIDDEN"
+      },
+      "body": {
+        "op": "post_slice_recourse"
+      }
+    },
+    {
+      "name": "agent cannot post a claim slice",
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "SLICE_AGENT_FORBIDDEN"
+      },
+      "body": {
+        "op": "resolve_slice"
+      }
+    },
+    {
+      "name": "agent cannot post a claim slice",
+      "method": "POST",
+      "path": "/api/overlay/commands",
+      "token": "agent",
+      "expect": {
+        "status": 403,
+        "error": "SLICE_AGENT_FORBIDDEN"
+      },
+      "body": {
+        "op": "void_slice"
       }
     },
     {

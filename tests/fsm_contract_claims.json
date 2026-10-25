@@ -1,0 +1,358 @@
+{
+  "format": "KIX_CAPITAL_FSM_CONTRACT_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "note": "Executable contract claims for the pinned F04 and F01-F03 mocks. Each claim cites a section and a needle of the pinned contract prose and drives one deterministic vector through the vendored machines. Results are SIMULATED. A missing protocol checkout is SKIPPED and is not a pass.",
+  "claims": [
+    {
+      "id": "vendor-commit",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The vendor manifest commit equals the pinned protocol SHA.",
+      "check_id": "vendor.commit",
+      "needle": "reference/credit_advance_f04/credit_fsm.py",
+      "expected": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"
+    },
+    {
+      "id": "vendor-hashes",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "All five vendored files match the manifest SHA256 values.",
+      "check_id": "vendor.hashes",
+      "needle": "reference/credit_advance_f04/mock_credit.py",
+      "expected": true
+    },
+    {
+      "id": "vendor-credit-fsm-sha",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Vendored credit_fsm.py bytes match the manifest hash.",
+      "check_id": "vendor.credit_fsm",
+      "needle": "reference/credit_advance_f04/credit_fsm.py",
+      "expected": "f4f6b3698dd848538d2efa10b276cb33659eb4877fcbea0feb7429b28456491b"
+    },
+    {
+      "id": "vendor-mock-credit-sha",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Vendored mock_credit.py bytes match the manifest hash.",
+      "check_id": "vendor.mock_credit",
+      "needle": "reference/credit_advance_f04/mock_credit.py",
+      "expected": "5e75fcc76fb0857f671b2fa33ca0fc851e9d676d4b5db8f357393367bc725d95"
+    },
+    {
+      "id": "vendor-test-mock-credit-sha",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Vendored test_mock_credit.py bytes match the manifest hash.",
+      "check_id": "vendor.test_mock_credit",
+      "needle": "reference/credit_advance_f04/mock_credit.py",
+      "expected": "75cd55f773e3e71553392f674d1595af66cf82560565cc5603bf829a9a29e99d"
+    },
+    {
+      "id": "vendor-mock-settlement-sha",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Vendored mock_settlement.py bytes match the manifest hash.",
+      "check_id": "vendor.mock_settlement",
+      "needle": "reference/settlement_f01_f03/mock_settlement.py",
+      "expected": "9e9c25571fdbe7b90b7539df2cc71afaee83d81905293dc56dbeb9faaf864170"
+    },
+    {
+      "id": "vendor-settlement-fsm-sha",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "0. 이 웨이브가 하는 일",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Vendored settlement_fsm.py bytes match the manifest hash.",
+      "check_id": "vendor.settlement_fsm",
+      "needle": "reference/settlement_f01_f03/settlement_fsm.py",
+      "expected": "c6d7ae79fe0c3289def2d3c195212247d1ab2c2e913feb80612fcd9ff64c77c8"
+    },
+    {
+      "id": "f04-shared-face-exceeds",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A second advance beyond the unreserved face of the same claim is ADVANCE_EXCEEDS_OPEN_FACE.",
+      "check_id": "f04.shared_face.exceeds",
+      "needle": "ADVANCE_EXCEEDS_OPEN_FACE",
+      "expected": "ADVANCE_EXCEEDS_OPEN_FACE"
+    },
+    {
+      "id": "f04-shared-face-phase",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The refused later draw leaves that offer in APPROVED.",
+      "check_id": "f04.shared_face.phase",
+      "needle": "그 제안은 `APPROVED`로 남는다",
+      "expected": "APPROVED"
+    },
+    {
+      "id": "f04-shared-face-reserved",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A drawn 60000 note reserves 60000 of the shared 100000 open face.",
+      "check_id": "f04.shared_face.reserved",
+      "needle": "reserved_open",
+      "expected": 60000
+    },
+    {
+      "id": "f04-shared-face-residual",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "After the 60000 reservation the unreserved remainder of the shared face is 40000.",
+      "check_id": "f04.shared_face.residual",
+      "needle": "open_face - reserved_open",
+      "expected": 40000
+    },
+    {
+      "id": "f04-shared-face-repay-keeps",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A partial repay of 20000 does not lower reserved_open.",
+      "check_id": "f04.shared_face.repay_keeps",
+      "needle": "부분 상환은 `reserved_open`을 줄이지 않는다",
+      "expected": 60000
+    },
+    {
+      "id": "f04-shared-face-close-returns",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "After a full repay, close releases the note and reserved_open returns to 0.",
+      "check_id": "f04.shared_face.close_returns",
+      "needle": "`close`의 `release_note`만 그 금액만큼 천장을 되돌린다",
+      "expected": 0
+    },
+    {
+      "id": "f04-shared-face-default-holds",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.2 전이",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "default does not return the ceiling: reserved_open stays 60000.",
+      "check_id": "f04.shared_face.default_holds",
+      "needle": "`default`는 되돌리지 않는다",
+      "expected": 60000
+    },
+    {
+      "id": "f04-face-snapshot-frozen",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "2. 입력 — Wave 3 청구 조회 스냅샷",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A different face for a claim already noted is FACE_SNAPSHOT_FROZEN.",
+      "check_id": "f04.face_snapshot_frozen",
+      "needle": "이후 같은 청구의 다른 조회는 `FACE_SNAPSHOT_FROZEN`이다",
+      "expected": "FACE_SNAPSHOT_FROZEN"
+    },
+    {
+      "id": "f04-binding-conflict",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "1. 공통 한계",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The same advance_id with a different binding is ADVANCE_BINDING_CONFLICT.",
+      "check_id": "f04.binding_conflict",
+      "needle": "ADVANCE_BINDING_CONFLICT",
+      "expected": "ADVANCE_BINDING_CONFLICT"
+    },
+    {
+      "id": "f04-refund-open",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "3. 게이트 호출",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "An offer on a face with an unallocated refund is REFUND_OBLIGATION_OPEN.",
+      "check_id": "f04.refund_open",
+      "needle": "REFUND_OBLIGATION_OPEN",
+      "expected": "REFUND_OBLIGATION_OPEN"
+    },
+    {
+      "id": "f04-refund-open-no-journal",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.3 멱등키",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A refused offer does not enter the journal.",
+      "check_id": "f04.refund_open_no_journal",
+      "needle": "거절된 명령은 저널에 들어가지 않는다",
+      "expected": 0
+    },
+    {
+      "id": "f04-recovery-face-not-capacity",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "2. 입력 — Wave 3 청구 조회 스냅샷",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "On a fully reclassified face recovery_due is not advance capacity: a 1-unit draw is ADVANCE_EXCEEDS_OPEN_FACE.",
+      "check_id": "f04.recovery_face_not_capacity",
+      "needle": "회수채권은 선지급 한도가 아니다",
+      "expected": "ADVANCE_EXCEEDS_OPEN_FACE"
+    },
+    {
+      "id": "f04-recovery-due-copied",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "2. 입력 — Wave 3 청구 조회 스냅샷",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "recovery_due is copied onto the offer as recovery_due_on_face and does not raise the ceiling.",
+      "check_id": "f04.recovery_due_copied",
+      "needle": "recovery_due",
+      "expected": 97000
+    },
+    {
+      "id": "f04-restore-digest",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Replaying the accepted journal restores the same state_digest.",
+      "check_id": "f04.restore_digest",
+      "needle": "`canonical_state`와 `state_digest`가 같다",
+      "expected": true
+    },
+    {
+      "id": "f04-restore-duplicate",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The same key and arguments against the restored machine are a duplicate.",
+      "check_id": "f04.restore_duplicate",
+      "needle": "duplicate이고 노출은 한 번이다",
+      "expected": true
+    },
+    {
+      "id": "f04-reconcile",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "reconcile on the drawn machine replays the journal and reports matched true.",
+      "check_id": "f04.reconcile",
+      "needle": "matched: true",
+      "expected": true
+    },
+    {
+      "id": "f04-refusal-no-journal",
+      "source_doc": "docs/contracts/CREDIT_ADVANCE_F04.md",
+      "section": "7.3 멱등키",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A refused second draw does not append a journal entry; the accepted count stays 3.",
+      "check_id": "f04.refusal_no_journal",
+      "needle": "거절된 명령은 저널에 들어가지 않는다",
+      "expected": 3
+    },
+    {
+      "id": "settlement-distribution-blocked",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Distribution while the refund bearer is undefined is DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED.",
+      "check_id": "settlement.distribution_blocked",
+      "needle": "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+      "expected": "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED"
+    },
+    {
+      "id": "settlement-partial-bearer",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "7.6 부분 환불의 부담자",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A partial refund keeps refund_bearer_policy UNDEFINED.",
+      "check_id": "settlement.partial_bearer",
+      "needle": "refund_bearer_policy = UNDEFINED",
+      "expected": "UNDEFINED"
+    },
+    {
+      "id": "settlement-acceptance-required",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "6. 오류 코드",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A mock cancel acceptance with no refund obligation is REFUND_OBLIGATION_REQUIRED.",
+      "check_id": "settlement.acceptance_required",
+      "needle": "REFUND_OBLIGATION_REQUIRED",
+      "expected": "REFUND_OBLIGATION_REQUIRED"
+    },
+    {
+      "id": "settlement-acceptance-exceeds",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "6. 오류 코드",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A mock cancel acceptance beyond the refund obligation is REFUND_ACCEPTANCE_EXCEEDS_OBLIGATION.",
+      "check_id": "settlement.acceptance_exceeds",
+      "needle": "REFUND_ACCEPTANCE_EXCEEDS_OBLIGATION",
+      "expected": "REFUND_ACCEPTANCE_EXCEEDS_OBLIGATION"
+    },
+    {
+      "id": "settlement-full-bearer",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "A one-shot full-gross refund marks refund_bearer_policy FIXTURE_FULL_GROSS_RECLASS.",
+      "check_id": "settlement.full_bearer",
+      "needle": "FIXTURE_FULL_GROSS_RECLASS",
+      "expected": "FIXTURE_FULL_GROSS_RECLASS"
+    },
+    {
+      "id": "settlement-recovery-due-sum",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "After distributing 97000 then a full-gross reclass, recovery_due totals 97000.",
+      "check_id": "settlement.recovery_due_sum",
+      "needle": "이미 배정한 금액은 그 수취인의 `recovery_due`가 된다",
+      "expected": 97000
+    },
+    {
+      "id": "settlement-recovery-per-line",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "5. F03",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Already distributed amounts become each payee's recovery_due: organizer 95000, platform 2000.",
+      "check_id": "settlement.recovery_per_line",
+      "needle": "이미 배정한 금액은 그 수취인의 `recovery_due`가 된다",
+      "expected": {"organizer": 95000, "platform": 2000}
+    },
+    {
+      "id": "settlement-restore-digest",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Replaying the accepted journal restores the same state_digest.",
+      "check_id": "settlement.restore_digest",
+      "needle": "`canonical_state`가 같고, `state_digest`도 같다",
+      "expected": true
+    },
+    {
+      "id": "settlement-restore-duplicate",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "The same key and arguments against the restored machine are a duplicate.",
+      "check_id": "settlement.restore_duplicate",
+      "needle": "duplicate이고 금액은 한 번이다",
+      "expected": true
+    },
+    {
+      "id": "settlement-idempotent-replay",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.3 멱등키",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "Resending an accepted command with the same key and arguments is a duplicate.",
+      "check_id": "settlement.idempotent_replay",
+      "needle": "duplicate: true",
+      "expected": true
+    },
+    {
+      "id": "settlement-reconcile",
+      "source_doc": "docs/contracts/SETTLEMENT_DISTRIBUTION_F01_F03.md",
+      "section": "9.4 재생",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "claim": "reconcile on the reclassified book replays the journal and reports matched true.",
+      "check_id": "settlement.reconcile",
+      "needle": "matched: true",
+      "expected": true
+    }
+  ]
+}
