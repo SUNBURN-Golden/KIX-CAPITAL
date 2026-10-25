@@ -2087,3 +2087,98 @@ NOT_BOUND, and no real funds or provider calls occur.
 
 No product decision or external action was needed. No merge abort, commit, push,
 rebase or reset was performed.
+
+## coa-payment-writeoff-postings (2026-10-25)
+
+The CAPITAL-COA-V1 candidate now consumes repayment, recovery and write-off
+entries in overlay order. Payment principal remains in the F04 mapping; interest
+cash reduces 1110, suspended interest received credits 4110 and releases the
+9700/9790 memo, principal recovery reduces 1100, full-principal write-off debits
+5200, recognized interest is reversed, and late recovery credits 4300. The three
+new candidate reconciliation checks compare the union of folded and posted
+advance IDs, including unexpected postings against an empty overlay. The V1
+principal tie independently verifies the recovery/write-off credit adjustment.
+
+Candidate-only memo accounts for reviewer consideration: reused **9790
+MEMO_SUSPENDED_INTEREST_CONTRA**, new **9810 MEMO_UNAPPLIED_CASH_HELD**
+(debit-normal), and **9890 MEMO_UNAPPLIED_CASH_CONTRA** (credit-normal). These
+three have `adopted_in_note=false`. Unapplied cash is the only newly unmapped
+amount. No allowance/reserve postings, tax treatment or revenue-recognition
+adoption was added. Accounting policy remains SYNTHETIC_UNADOPTED; tax, legal and
+the operating ledger remain NOT_BOUND. All journeys are SIMULATED.
+
+`tests/test_coa_payment_writeoff.py` adds independent amount assertions for partial
+payments, payoff, held cash, both interest kinds, oldest recognized interest,
+principal recovery, write-off and late recovery. It exercises the disposable seed,
+a combined book, actual loopback GETs, schema validation, immutable default
+projection/reconciliation/manifest responses, and tampered/missing/unexpected
+postings. Existing chart and reconciliation-count assertions are extended without
+changing any compatibility guard. Only the existing finance vector is regenerated,
+through `scripts/finance_vectors.py --write`; only the facade contract, definitions and `/api/projection` closure digests
+change within that vector.
+
+Plan deviations and initial failures:
+
+- The proposed repayment-before-recovery combined journey encounters an existing
+  `RECOVERY_QUOTE_STALE` during overlay replay: recovery quotes stamp the final
+  folded repayment close gate, whereas replay encounters its intermediate value.
+  The protected overlay/recovery implementation is unchanged. The combined test
+  instead performs recoveries/write-off/late recovery before repayments; it has
+  both paths on one book and every reconciliation check MATCHED. Its payoff also
+  accounts for the existing margin acceleration caused by the shared source.
+- Initial new-test runs failed on that ordering and test assumptions about response
+  labels, the F04 outstanding field and accelerated maturity. Those tests were
+  corrected against the existing interfaces; no production interfaces or policy
+  values were changed. The focused final run passes.
+- The disposable seed retains its known `fixtures_digest` mismatch because its
+  settlement observation changes after the offer. All five candidate checks pass
+  on it; the combined bound-claim book has the complete report MATCHED.
+- The stock browser command encountered occupied loopback ports 8765/8766.
+  The same browser suite was rerun using a temporary config under
+  `/tmp/coa-payment-writeoff-evidence/playwright.config.cjs`, changing only config
+  path resolution and the four suite server ports to 18765–18768. Repository
+  browser configuration and tests are unchanged; other processes were untouched.
+
+Commands actually run and their results (transient logs are under
+`/tmp/coa-payment-writeoff-evidence/`):
+
+<!-- coa-payment-writeoff-evidence -->
+
+| Command | Result |
+| --- | --- |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; existing vector regenerated, 97,980 bytes; only three facade-derived digest fields changed. |
+| `python3 -m unittest discover -s tests -p test_coa_candidate.py -v` | Exit 0; 36 passed. |
+| `python3 -m unittest discover -s tests -p test_coa_payment_writeoff.py -v` | Initial runs failed on test assumptions/order as described above; all 18 new tests pass in the focused and full runs below. |
+| `PYTHONPATH=tests:. python3 -m unittest test_coa_payment_writeoff test_coa_candidate test_handbook -v` | Exit 0; 65 passed in 17.549 s. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,130 passed in 211.940 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 40 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 97,980 bytes match. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4,518 bytes and embedded copy match; no closeout regeneration. |
+| `npm ci` | Exit 0; three packages installed, zero vulnerabilities. |
+| `npm run test:browser` | Exit 1; occupied default ports, before browser tests. |
+| `npm run test:browser -- --config=/tmp/coa-payment-writeoff-evidence/playwright.config.cjs` | Exit 0; 69 passed in 2.2 minutes. |
+| `python3 scripts/build_release.py --out /tmp/coa-payment-writeoff-evidence/dist` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/coa-payment-writeoff-evidence/dist2` | Exit 0. |
+| `cmp /tmp/coa-payment-writeoff-evidence/dist/capital-*.pyz /tmp/coa-payment-writeoff-evidence/dist2/capital-*.pyz` | Exit 0; deterministic package SHA256 `3182c5b39f7115e83ca16ab868bfccdb7ffce2e3b04a1198708a64cb40990644`. |
+| `python3 scripts/smoke_release.py /tmp/coa-payment-writeoff-evidence/dist/capital-*.pyz` | Exit 0; all eight package smoke checks pass. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references validated. |
+| `python3 scripts/seed_demo.py` | Exit 0; existing demo golden, F04 state/content digests and debit=credit=385,000 preserved. |
+| `python3 scripts/sim_journeys.py` | Exit 0; T03/T04/T05/T06-sim pass with 22/38/35/33 steps; existing goldens preserved. |
+| `python3 scripts/upstream_claims_check.py --execute` | Exit 0; 87/87 local claim checks. |
+| `python3 scripts/agent_claims_check.py --execute` | Exit 0; 94/94 local claim checks. |
+| `python3 scripts/read_model_claims_check.py --execute` | Exit 0; 39/39 local claim checks. |
+| `python3 scripts/ce1_claims_check.py --execute` | Exit 0; 49/49 local claim checks. |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | Exit 0; 30/30 local claim checks. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; 12/12 local SIMULATED vectors; optional upstream drift execution reports SKIPPED, verified=0. No upstream conformance/adoption claim. |
+| `PYTHONPATH=tests:. python3 /tmp/coa-payment-writeoff-evidence/recovery-replay-probe.py` | Exit 0; confirms the existing repayment-close-gate replay mismatch without changing protected code. |
+| `python3 /tmp/coa-payment-writeoff-evidence/verify-protected.py` | Exit 0; all 36 snapshotted protected files byte-identical, including vendor references/manifest, legacy paths, decision notes, .aiops and goldens. |
+| `git diff --name-only origin/main -- capital/vendor capital/export.py capital/projection.py capital/overlay.py capital/recovery.py capital/ports.py .aiops docs/decisions tests/golden` | Exit 0; empty. |
+| `git diff --check` | Exit 0. |
+| `ss -ltnp '( sport = :18765 or sport = :18766 or sport = :18767 or sport = :18768 )'` | Exit 0; no remaining suite listeners after Playwright shutdown. |
+
+No git/GitHub writes or upstream edits were performed. The listed commands are
+individual local CI equivalents; no fresh consolidated acceptance evidence or
+closeout pin was generated.

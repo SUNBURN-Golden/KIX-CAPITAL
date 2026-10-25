@@ -5773,7 +5773,10 @@
           "enum": [
             "EVIDENCE",
             "JOURNAL",
-            "OVERLAY_INTEREST"
+            "OVERLAY_INTEREST",
+            "OVERLAY_REPAYMENT",
+            "OVERLAY_RECOVERY",
+            "OVERLAY_WRITEOFF"
           ]
         },
         "txn_id": {

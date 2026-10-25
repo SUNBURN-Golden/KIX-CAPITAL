@@ -56,7 +56,7 @@ class ChartFenceTests(unittest.TestCase):
         note = {row['code']: (row['name'], row['class'], row['normal']) for row in note_value()['accounts']}
         self.assertEqual(len(note), 23)
         self.assertEqual({code: spec for code, spec in coa.CHART.items() if code not in coa.CANDIDATE_ONLY}, note)
-        self.assertEqual(set(coa.CHART) - set(note), {'9790'})
+        self.assertEqual(set(coa.CHART) - set(note), {'9790', '9810', '9890'})
         self.assertEqual(coa.CHART['9790'][2], 'credit')
         self.assertEqual(coa.CHART['9700'][2], 'debit')
 
@@ -731,7 +731,7 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(body['status'], 'MATCHED')
         plain = json.loads(self.get('/api/reconciliation')[1])
         self.assertEqual(len(plain['checks']), 6 + (recon.OVERLAY_CHECK_ID in [c['id'] for c in plain['checks']]))
-        self.assertEqual(len(body['checks']), len(plain['checks']) + 2)
+        self.assertEqual(len(body['checks']), len(plain['checks']) + len(recon.COA_CHECK_IDS))
         self.assertNotIn('coa_candidate', plain)
         facade_schema.validate(plain, self.route('/api/reconciliation')['response'], self.doc)
 

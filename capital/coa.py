@@ -6,7 +6,7 @@ professional review. Nothing here is a ledger of record, a revenue-recognition
 adoption or a tax position, and no posting is a payment. SIMULATION_FIXED_V1
 (capital/projection.py) stays the default and is not touched: the candidate runs
 V1 first, which validates the journal and the evidence, then renames V1 accounts
-to COA codes and adds the interest postings recorded in the overlay ledger.
+to COA codes and adds interest, payment, recovery and write-off overlay postings.
 
 The chart is a literal because the zipapp carries no docs/ to read it from (same
 precedent as capital/assets.py). tests/test_coa_candidate.py fences it against the note.
@@ -22,7 +22,7 @@ CHART_VERSION = 'SIMULATION_FIXED_V2'
 COA_VERSION = 'CAPITAL-COA-V1'
 MODE = 'coa-candidate'
 TERMS_NOT_BOUND = 'NOT_BOUND'
-CANDIDATE_ONLY = ('9790',)
+CANDIDATE_ONLY = ('9790', '9810', '9890')
 
 # code -> (name, class, normal side). Names, classes and sides follow the note's accounts table.
 # 9790 is not in the note: a candidate-only credit-normal counterpart so the 9700 memo posts
@@ -52,6 +52,8 @@ CHART = MappingProxyType({
     '9500': ('MEMO_SUPPLEMENTARY_TOKEN_COLLATERAL_ZERO_CREDIT_VALUE', 'MEMO_OFF_BALANCE', 'debit'),
     '9700': ('MEMO_SUSPENDED_INTEREST_AFTER_DEFAULT', 'MEMO_OFF_BALANCE', 'debit'),
     '9790': ('MEMO_SUSPENDED_INTEREST_CONTRA', 'MEMO_OFF_BALANCE', 'credit'),
+    '9810': ('MEMO_UNAPPLIED_CASH_HELD', 'MEMO_OFF_BALANCE', 'debit'),
+    '9890': ('MEMO_UNAPPLIED_CASH_CONTRA', 'MEMO_OFF_BALANCE', 'credit'),
 })
 
 # Each V1 account maps to exactly one COA code and keeps its side (draw: Dr 1100 / Cr 1000,
@@ -66,7 +68,7 @@ V1_TO_COA = MappingProxyType({
 
 STATUS_POSTED = 'POSTED'
 _DERIVED = ('9150', '9160')
-_NOT_RECORDED = ('1190', '3100', '3200', '4300', '5100', '5200')
+_NOT_RECORDED = ('1190', '3100', '3200', '5100')
 _RESERVED = ('1300', '2300')
 _NOT_POSTED = ('9200', '9300', '9400', '9500')
 _EVIDENCE_CODES = frozenset({'9100', '9110'})
@@ -160,6 +162,66 @@ def _interest_lines(payload, suspended):
     return lines
 
 
+NEW_SOURCES = ('OVERLAY_REPAYMENT', 'OVERLAY_RECOVERY', 'OVERLAY_WRITEOFF')
+KNOWN_SOURCES = frozenset(('EVIDENCE', 'JOURNAL', 'OVERLAY_INTEREST') + NEW_SOURCES)
+_ALLOWED = {
+    'OVERLAY_REPAYMENT': frozenset(('1000', '1110', '4110', '9700', '9790', '9810', '9890')),
+    'OVERLAY_RECOVERY': frozenset(('1000', '1100', '1110', '4110', '4300', '9700', '9790')),
+    'OVERLAY_WRITEOFF': frozenset(('5200', '1100', '4100', '4110', '1110', '9700', '9790')),
+}
+
+
+class _Open:
+    """Unpaid recognized and suspended interest, in overlay order, per advance/kind."""
+
+    def __init__(self):
+        self.balances = {}
+
+    def accrue(self, advance, payload, suspended):
+        for kind, field in (('CONTRACT', 'posted_contract_krw'), ('DEFAULT', 'posted_default_krw')):
+            self.balances.setdefault((advance, kind), [0, 0])[int(suspended)] += payload[field]
+
+    def cash(self, advance, allocation):
+        lines = []
+        for kind, field in (('DEFAULT', 'default_interest_krw'), ('CONTRACT', 'interest_krw')):
+            amount = allocation[field]
+            balances = self.balances.setdefault((advance, kind), [0, 0])
+            recognized = min(amount, balances[0])
+            suspended = amount - recognized
+            if suspended > balances[1]:
+                _fail()
+            balances[0] -= recognized
+            balances[1] -= suspended
+            if amount:
+                lines.append(_line('1000', 'debit', amount, interest_kind=kind))
+            if recognized:
+                lines.append(_line('1110', 'credit', recognized, interest_kind=kind))
+            if suspended:
+                lines.extend((_line('4110', 'credit', suspended, interest_kind=kind),
+                              _line('9790', 'debit', suspended, interest_kind=kind),
+                              _line('9700', 'credit', suspended, interest_kind=kind)))
+        return lines
+
+    def writeoff(self, advance, payload):
+        lines = []
+        reversed_total = released_total = 0
+        for kind, income in (('CONTRACT', '4100'), ('DEFAULT', '4110')):
+            recognized, suspended = self.balances.setdefault((advance, kind), [0, 0])
+            if recognized:
+                lines.extend((_line(income, 'debit', recognized, interest_kind=kind),
+                              _line('1110', 'credit', recognized, interest_kind=kind)))
+            if suspended:
+                lines.extend((_line('9790', 'debit', suspended, interest_kind=kind),
+                              _line('9700', 'credit', suspended, interest_kind=kind)))
+            reversed_total += recognized
+            released_total += suspended
+            self.balances[advance, kind] = [0, 0]
+        if reversed_total != payload['accrued_interest_reversed_krw'] or \
+                released_total != payload['suspended_interest_released_krw']:
+            _fail()
+        return lines
+
+
 class CoaCandidateProjection(ProjectionPort):
     """Second ProjectionPort implementation. Selected only by mode=coa-candidate."""
 
@@ -212,18 +274,46 @@ class CoaCandidateProjection(ProjectionPort):
                                 'dimensions': dims, 'lines': lines})
         # A tick records its accrual at after_journal_index = journal length, and the clock only moves
         # in a tick that accrues first, so a segment never straddles the accepted default.
+        open_interest = _Open()
         for record in overlay_entries:
-            if record['kind'] != overlay.KIND_INTEREST:
+            kind, payload = record['kind'], record['payload']
+            if kind not in (overlay.KIND_INTEREST, overlay.KIND_REPAYMENT, 'RECOVERY', 'WRITEOFF'):
                 continue
-            payload = record['payload']
-            advance_id = payload['advance_id']
-            suspended = advance_id in default_index and record['after_journal_index'] > default_index[advance_id]
-            lines = _interest_lines(payload, suspended)
+            advance_id = payload['advance_ref'] if kind == overlay.KIND_REPAYMENT else payload['advance_id']
+            if kind == overlay.KIND_INTEREST:
+                suspended = advance_id in default_index and record['after_journal_index'] > default_index[advance_id]
+                open_interest.accrue(advance_id, payload, suspended)
+                lines = _interest_lines(payload, suspended)
+                source, terms = 'OVERLAY_INTEREST', payload['terms_version']
+            elif kind == overlay.KIND_REPAYMENT:
+                lines = open_interest.cash(advance_id, payload['allocation'])
+                delta = payload['allocation']['unapplied_after_krw'] - payload['unapplied_before_krw']
+                if delta:
+                    lines.extend((_line('9810', 'debit' if delta > 0 else 'credit', abs(delta)),
+                                  _line('9890', 'credit' if delta > 0 else 'debit', abs(delta))))
+                source, terms = 'OVERLAY_REPAYMENT', payload['terms_binding']['terms_version']
+            elif kind == 'RECOVERY':
+                source, terms = 'OVERLAY_RECOVERY', payload['policy']['terms_version']
+                if payload['phase'] == 'POST_WRITEOFF':
+                    lines = [_line('1000', 'debit', payload['amount_krw']),
+                             _line('4300', 'credit', payload['amount_krw'])]
+                else:
+                    allocation = payload['allocation']
+                    if sum(allocation.values()) != payload['amount_krw']:
+                        _fail()
+                    lines = open_interest.cash(advance_id, allocation)
+                    if allocation['principal_krw']:
+                        lines.extend((_line('1000', 'debit', allocation['principal_krw']),
+                                      _line('1100', 'credit', allocation['principal_krw'])))
+            else:
+                source, terms = 'OVERLAY_WRITEOFF', payload['policy']['terms_version']
+                lines = [_line('5200', 'debit', payload['writeoff_principal_krw']),
+                         _line('1100', 'credit', payload['writeoff_principal_krw'])]
+                lines.extend(open_interest.writeoff(advance_id, payload))
             if lines:
                 entries.append({
-                    'step': len(entries) + 1, 'source': 'OVERLAY_INTEREST', 'txn_id': record['overlay_id'],
-                    'dimensions': _dimensions(asset, advance_id, claim_of.get(advance_id), record['sim_day'],
-                                              payload['terms_version']),
+                    'step': len(entries) + 1, 'source': source, 'txn_id': record['overlay_id'],
+                    'dimensions': _dimensions(asset, advance_id, claim_of.get(advance_id), record['sim_day'], terms),
                     'lines': lines})
         for entry in entries:
             codes = {line['account'] for line in entry['lines']}
@@ -235,7 +325,9 @@ class CoaCandidateProjection(ProjectionPort):
         balances = {row['code']: row for row in accounts}
         principal = balances.get('1100', {'balance': 0, 'credit_total': 0})
         memo = {'9150': principal['balance'], '9160': principal['credit_total']}
-        interest_by_kind = _interest_totals(accounts)
+        interest_by_kind = _interest_totals(accounts, entries)
+        reductions = sum(r['principal_recovered_krw'] + r['written_off_krw']
+                         for r in state.get('recovery', {}).get('advances', {}).values())
         conservation = [
             {'predicate': 'DEBITS_EQUAL_CREDITS_PER_ASSET_SIM_DAY', 'matched': all(row['matched'] for row in groups)},
             {'predicate': 'CLAIM_FACE_ONLY_IN_MEMO_9100_9110', 'matched': True},
@@ -243,8 +335,15 @@ class CoaCandidateProjection(ProjectionPort):
              'matched': balances.get('9100', {'debit_total': 0})['debit_total']
              == balances.get('9110', {'credit_total': 0})['credit_total']},
             {'predicate': 'PRINCIPAL_1100_EQUALS_V1_OUTSTANDING',
-             'matched': principal['balance'] == sum(row['outstanding'] for row in v1['read_model']['advances'])},
+             'matched': principal['balance'] == sum(row['outstanding'] for row in v1['read_model']['advances']) - reductions},
             {'predicate': 'ACCRUED_1110_EQUALS_INCOME_4100_4110', 'matched': interest_by_kind},
+            {'predicate': 'MEMO_9810_EQUALS_9890',
+             'matched': balances.get('9810', {'balance': 0})['balance']
+             == balances.get('9890', {'balance': 0})['balance']},
+            {'predicate': 'WRITTEN_OFF_ADVANCE_HAS_NO_OPEN_1110_9700',
+             'matched': all(not any(open_interest.balances.get((advance, kind), (0, 0)))
+                            for advance, r in state.get('recovery', {}).get('advances', {}).items()
+                            if r['writeoff_sim_day'] is not None for kind in ('CONTRACT', 'DEFAULT'))},
             {'predicate': 'NO_REAL_EFFECT', 'matched': True},
         ]
         if not all(row['matched'] for row in conservation):
@@ -283,14 +382,18 @@ def _aggregate(entries):
     return accounts, subledger
 
 
-def _interest_totals(accounts):
+def _interest_totals(accounts, entries=()):
     by = {row['code']: row for row in accounts}
 
     def get(code, field):
         return by.get(code, {field: 0})[field]
 
-    return get('1110', 'debit_total') == get('4100', 'credit_total') + get('4110', 'credit_total') \
-        and get('9700', 'debit_total') == get('9790', 'credit_total')
+    cash_income = sum(line['amount'] for entry in entries
+                      if entry['source'] in ('OVERLAY_REPAYMENT', 'OVERLAY_RECOVERY')
+                      for line in entry['lines'] if line['account'] == '4110' and line['side'] == 'credit')
+    return get('1110', 'debit_total') == get('4100', 'credit_total') + get('4110', 'credit_total') - cash_income \
+        and get('9700', 'debit_total') == get('9790', 'credit_total') \
+        and get('9700', 'credit_total') == get('9790', 'debit_total')
 
 
 # ---------------------------------------------------------------- reconciliation checks
@@ -311,7 +414,7 @@ def _sum(rows, prefix, field):
     return sum(row.get(field, 0) for row in rows if str(row.get('code', '')).startswith(prefix + ':'))
 
 
-def totals_match_v1(coa, v1):
+def totals_match_v1(coa, v1, overlay_entries=()):
     """coa_candidate_totals_vs_v1: the renamed accounts carry the same totals as V1."""
     by = _code_totals(coa)
     v1_accounts = v1.get('accounts') if type(v1) is dict else None
@@ -321,10 +424,20 @@ def totals_match_v1(coa, v1):
     def field(code, name):
         return by.get(code, {}).get(name, 0)
 
+    state = _fold(overlay_entries)
+    if state is None:
+        return False
+    reduction = sum(r['principal_recovered_krw'] + r['written_off_krw']
+                    for r in state.get('recovery', {}).get('advances', {}).values())
+    posted_reduction = sum(line['amount'] for entry in coa.get('entries', ())
+                           if entry.get('source') in ('OVERLAY_RECOVERY', 'OVERLAY_WRITEOFF')
+                           for line in entry.get('lines', ())
+                           if line.get('account') == '1100' and line.get('side') == 'credit')
     return (
-        field('1100', 'balance') == _sum(v1_accounts, 'SIM_ADVANCE_OBLIGATION', 'balance')
+        posted_reduction == reduction
+        and field('1100', 'balance') + reduction == _sum(v1_accounts, 'SIM_ADVANCE_OBLIGATION', 'balance')
         and field('1100', 'debit_total') == _sum(v1_accounts, 'SIM_ADVANCE_EXPOSURE', 'debit_total')
-        and field('1100', 'credit_total') == _sum(v1_accounts, 'SIM_REPAY_MEMO', 'credit_total')
+        and field('1100', 'credit_total') - reduction == _sum(v1_accounts, 'SIM_REPAY_MEMO', 'credit_total')
         and field('9100', 'debit_total') == _sum(v1_accounts, 'SIM_CLAIM_FACE', 'debit_total')
         and field('9110', 'credit_total') == _sum(v1_accounts, 'SIM_PAYEE_OBLIGATION', 'credit_total')
     )
@@ -351,4 +464,120 @@ def interest_matches_ledger(coa, overlay_entries):
               if row['posted_contract_krw'] + row['posted_default_krw']}
     if posted != folded:
         return False
-    return _interest_totals(list(by.values()))
+    return _interest_totals(list(by.values()), entries)
+
+
+def _fold(entries):
+    try:
+        return overlay.fold(list(entries))
+    except overlay.OverlayError:
+        return None
+
+
+def _overlay_postings(coa):
+    """Collect new-source lines; unknown sources and cross-source accounts fail closed."""
+    postings = {}
+    try:
+        for entry in coa['entries']:
+            source = entry['source']
+            if source not in KNOWN_SOURCES:
+                return None
+            if source not in NEW_SOURCES:
+                continue
+            advance = entry['dimensions']['advance_id']
+            if not isinstance(advance, str) or not advance:
+                return None
+            target = postings.setdefault((source, advance), {})
+            for line in entry['lines']:
+                if line['account'] not in _ALLOWED[source] or line['side'] not in _SIDES \
+                        or type(line['amount']) is not int or line['amount'] < 0:
+                    return None
+                key = (line['account'], line['side'], line.get('interest_kind'))
+                target[key] = target.get(key, 0) + line['amount']
+    except (KeyError, TypeError):
+        return None
+    return postings
+
+
+def _account_guard(coa):
+    by = _code_totals(coa)
+    if by is None:
+        return False
+    for code in ('4300', '5200', '9810', '9890'):
+        totals = {'debit': 0, 'credit': 0}
+        for entry in coa['entries']:
+            for line in entry['lines']:
+                if line['account'] != code:
+                    continue
+                if entry['source'] not in NEW_SOURCES or line['side'] not in _SIDES:
+                    return False
+                totals[line['side']] += line['amount']
+        if any(by.get(code, {}).get(side + '_total', 0) != amount for side, amount in totals.items()):
+            return False
+    return True
+
+
+def _expected(state, source):
+    """Independent expected metrics from folded totals and recovery ledger records."""
+    expected = {}
+    if source == 'OVERLAY_REPAYMENT':
+        for advance, row in state.get('repayment', {}).get('advances', {}).items():
+            expected[advance] = (row['paid_default_krw'], row['paid_interest_krw'],
+                                 row['paid_default_krw'] + row['paid_interest_krw'], row['unapplied_cash_krw'])
+    elif source == 'OVERLAY_RECOVERY':
+        for advance, row in state.get('recovery', {}).get('advances', {}).items():
+            records = [r for r in state['sections']['recovery_ledger']
+                       if r['advance_id'] == advance and r['entry_kind'] == 'RECOVERY']
+            expected[advance] = (row['principal_recovered_krw'], row['paid_default_krw'], row['paid_interest_krw'],
+                                 sum(r['amount_krw'] for r in records if r['phase'] == 'POST_WRITEOFF'),
+                                 sum(r['amount_krw'] for r in records))
+    else:
+        for row in state['sections']['recovery_ledger']:
+            if row['entry_kind'] == 'WRITEOFF':
+                expected[row['advance_id']] = (row['writeoff_principal_krw'], row['accrued_interest_reversed_krw'],
+                                                row['suspended_interest_released_krw'])
+    return expected
+
+
+def _matches_overlay(coa, overlay_entries, source):
+    state, postings = _fold(overlay_entries), _overlay_postings(coa)
+    if state is None or postings is None or not _account_guard(coa):
+        return False
+    actual = {}
+    for (entry_source, advance), amounts in postings.items():
+        if entry_source != source:
+            continue
+
+        def total(accounts, side, kind=None):
+            return sum(amount for (account, line_side, line_kind), amount in amounts.items()
+                       if account in accounts and line_side == side and (kind is None or line_kind == kind))
+
+        if source == 'OVERLAY_REPAYMENT':
+            metrics = (total(('1110', '4110'), 'credit', 'DEFAULT'),
+                       total(('1110', '4110'), 'credit', 'CONTRACT'), total(('1000',), 'debit'),
+                       total(('9810',), 'debit') - total(('9810',), 'credit'))
+        elif source == 'OVERLAY_RECOVERY':
+            metrics = (total(('1100',), 'credit'), total(('1110', '4110'), 'credit', 'DEFAULT'),
+                       total(('1110', '4110'), 'credit', 'CONTRACT'), total(('4300',), 'credit'),
+                       total(('1000',), 'debit'))
+        else:
+            metrics = (total(('5200',), 'debit'), total(('4100', '4110'), 'debit'), total(('9700',), 'credit'))
+        actual[advance] = metrics
+    # Equality over the union rejects both missing and unexpected advance IDs.
+    return {key: value for key, value in _expected(state, source).items() if any(value)} == \
+        {key: value for key, value in actual.items() if any(value)}
+
+
+def payments_match_ledger(coa, overlay_entries):
+    """payment_ledger_vs_projection: interest cash and held memo equal the payment fold."""
+    return _matches_overlay(coa, overlay_entries, 'OVERLAY_REPAYMENT')
+
+
+def recoveries_match_ledger(coa, overlay_entries):
+    """recovery_ledger_vs_projection: principal, interest, late recovery and cash tie per advance."""
+    return _matches_overlay(coa, overlay_entries, 'OVERLAY_RECOVERY')
+
+
+def writeoffs_match_ledger(coa, overlay_entries):
+    """writeoff_ledger_vs_projection: principal loss, interest reversal and memo release tie."""
+    return _matches_overlay(coa, overlay_entries, 'OVERLAY_WRITEOFF')
