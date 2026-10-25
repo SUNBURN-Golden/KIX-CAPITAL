@@ -6,22 +6,21 @@ runs it on a disposable book. Entries the note marks fsm_expressible false
 are listed and never computed. The note asks for shadow math on those
 entries; this node does not calculate them.
 
-A missing or malformed note is NOT_BOUND. The zipapp does not bundle docs/,
-so that run stays NOT_BOUND. Nothing here is an executed distribution or a
+A missing or malformed note is NOT_BOUND. Checkout and bundled artifacts use the same decision inputs. Nothing here is an executed distribution or a
 bank movement.
 """
 from __future__ import annotations
 
 import datetime
 import hashlib
-import importlib.resources
 import json
 import re
-from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from capital.protocol import SettlementError, SettlementMachine
 from capital.scenarios import public_invariants
+
+from capital.resources import as_resource, note_path, read_note, provenance
 
 POLICY_LABEL = 'simulated policy application — not executed distribution, not bank movement'
 POLICY_NOT_BOUND = 'policy not bound'
@@ -31,7 +30,6 @@ UPSTREAM_FSM = 'upstream FSM change'
 UNSUPPORTED = 'UNSUPPORTED_BY_PINNED_FSM'
 SCENARIO_ID = 'derived-order-v1'
 
-_FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
 _ISO_DATE = re.compile(r'\d{4}-\d{2}-\d{2}\Z')
 _RESIDUAL_KIND_PREFIX = 'primary residual_payee'
 _FEE_KIND_PREFIX = 'primary fee_payee'
@@ -42,18 +40,8 @@ _DEBTOR = 'fixture-merchant'
 
 
 def default_note_path():
-    """Checkout path of the settlement-policy note. Absent inside the zipapp."""
-    package = importlib.resources.files('capital')
-    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_SETTLEMENT_POLICY.md'
-
-
-def _reject_duplicate_keys(pairs):
-    obj = {}
-    for key, value in pairs:
-        if key in obj:
-            raise ValueError('duplicate key')
-        obj[key] = value
-    return obj
+    """Financial decision input as a checkout or archive Traversable."""
+    return note_path('CAPITAL_SETTLEMENT_POLICY.md')
 
 
 def _canonical(value):
@@ -226,7 +214,8 @@ class DecisionNoteSettlementPolicy:
     """Load one capital-decision-v1 settlement note. No copied order literals."""
 
     def __init__(self, path=None):
-        self.path = default_note_path() if path is None else Path(path)
+        self.path = default_note_path() if path is None else as_resource(path)
+        self.note = read_note(self.path, override=path is not None)
         self.policy_version = None
         self.alloc_version = None
         self.policy_digest = None
@@ -239,17 +228,9 @@ class DecisionNoteSettlementPolicy:
         self._load()
 
     def _load(self):
-        path = self.path
-        try:
-            if not path.is_file():
-                return
-            text = path.read_text(encoding='utf-8')
-            blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
-        except (OSError, UnicodeError, ValueError, RecursionError):
+        block = self.note['block']
+        if block is None:
             return
-        if len(blocks) != 1 or type(blocks[0]) is not dict:
-            return
-        block = blocks[0]
         if block.get('schema') != 'capital-decision-v1':
             return
         version = block.get('policy_version')
@@ -334,6 +315,7 @@ class DecisionNoteSettlementPolicy:
 
     def status(self) -> dict:
         return {
+            **provenance(self.note),
             'label': POLICY_LABEL,
             'mode': 'SIMULATED_POLICY_APPLICATION',
             'provisional': True,

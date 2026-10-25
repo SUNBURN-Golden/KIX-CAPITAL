@@ -82,6 +82,8 @@ class DecisionNoteUnderwriting:
             'status': 'NOT_BOUND',
             'reason': UNDERWRITE_NOT_BOUND,
             'terms_version': getattr(self.terms, 'version', None),
+            **{key: self.terms.status().get(key, 'NONE' if key == 'notes_source' else None)
+               for key in ('notes_source', 'note_sha256')},
             'rules_version': None,
             'advance_id': subject['advance_id'],
             'candidate': subject['candidate'],
@@ -281,6 +283,8 @@ class DecisionNoteUnderwriting:
             'status': 'BOUND',
             'reason': None,
             'terms_version': getattr(self.terms, 'version', None),
+            **{key: self.terms.status().get(key, 'NONE' if key == 'notes_source' else None)
+               for key in ('notes_source', 'note_sha256')},
             'rules_version': rules['version'],
             'advance_id': subject['advance_id'],
             'candidate': subject['candidate'],

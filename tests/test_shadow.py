@@ -552,7 +552,7 @@ class ShadowHttpTests(unittest.TestCase):
 
 
 class ShadowZipappTests(unittest.TestCase):
-    def test_zipapp_reports_not_bound(self):
+    def test_zipapp_reports_bundled_shadow(self):
         spec = importlib.util.spec_from_file_location('build_release', ROOT / 'scripts' / 'build_release.py')
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -569,7 +569,7 @@ class ShadowZipappTests(unittest.TestCase):
             proc = subprocess.run([sys.executable, '-c', code, str(pyz)],
                                   capture_output=True, text=True, check=False)
             self.assertEqual(proc.returncode, 0, proc.stderr)
-            self.assertEqual(proc.stdout.splitlines(), ['NOT_BOUND', 'SHADOW_NOT_BOUND'])
+            self.assertEqual(proc.stdout.splitlines(), ['BOUND', 'SHADOW_INCONSISTENT'])
 
 
 if __name__ == '__main__':

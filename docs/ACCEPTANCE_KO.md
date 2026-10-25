@@ -13,6 +13,8 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 
 ## zipapp에서 실행
 
+0.2.0은 결정 노트를 번들하므로 체크아웃 밖에서도 조건·정책·심사·결정 인덱스가 같은 잠정 정책을 읽는다. `notes_source=BUNDLED_IN_ARTIFACT`와 실제 노트의 `note_sha256`을 manifest에서 대조한다. 금융 조건/심사/결정 본문은 금융 조건 노트, 정책은 정산 노트, 결정 행은 자기 노트 해시다. smoke는 `sim_day` 이자 누적과 workspace 재시작 후 동일 overlay 상태·출처도 확인한다. 실자금이나 사람 수용 결과가 아니다.
+
 `<version>`은 `capital/__init__.py`의 `__version__`이다. 이 문서에 해시나 빌드 횟수를 적지 않는다. 아티팩트는 서명되지 않았고 게시되지 않았다.
 
 1. `python3 scripts/build_release.py --out dist`로 `dist/capital-<version>.pyz`를 만든다. 검증: tests/test_release.py::BuildTests.test_two_builds_match_and_archive_is_pinned

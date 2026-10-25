@@ -98,7 +98,7 @@ class DecisionRowsTests(unittest.TestCase):
         self.assertEqual(sorted(Path(row['note']).name for row in body['rows']), files)
         for row in body['rows']:
             block = _block(ROOT / row['note'])
-            self.assertEqual(set(row), {'note', 'decision_id', 'status', 'provisional', 'version', 'entries'})
+            self.assertEqual(set(row), {'note', 'decision_id', 'status', 'provisional', 'version', 'entries', 'notes_source', 'note_sha256'})
             self.assertEqual(row['decision_id'], block['decision_id'], row['note'])
             self.assertEqual(row['status'], block['status'], row['note'])
             self.assertIs(row['provisional'], block['provisional'], row['note'])
@@ -132,7 +132,9 @@ class DecisionRowsTests(unittest.TestCase):
         ledger = _load('ledger_for_surface', ROOT / 'scripts' / 'decision_ledger.py')
         coverage = (DOCS / 'CAP_COVERAGE.md').read_text(encoding='utf-8')
         expected = ledger.build_index(NOTES, ledger.expected_note_paths(coverage))
-        self.assertEqual(self.service.decisions()['rows'], expected)
+        actual = [{k: v for k, v in row.items() if k not in ('notes_source', 'note_sha256')}
+                  for row in self.service.decisions()['rows']]
+        self.assertEqual(actual, expected)
 
     def test_envelope_is_read_only_and_does_not_touch_the_book(self):
         before = (self.service.machine.state_digest(), len(self.service.receipts))
@@ -172,7 +174,7 @@ class DecisionIndexEdgeTests(unittest.TestCase):
                 'ABSENT.md': None,
             })
             rows = {Path(row['note']).name: row for row in DecisionIndex(docs).rows()}
-        self.assertEqual(list(rows['GOOD.md'].values())[1:], ['good', 'PROVISIONAL_PRODUCT_DECISION', True, 'GOOD-V3', {'item': 'ADOPTED'}])
+        self.assertEqual([rows['GOOD.md'][k] for k in ('decision_id', 'status', 'provisional', 'version', 'entries')], ['good', 'PROVISIONAL_PRODUCT_DECISION', True, 'GOOD-V3', {'item': 'ADOPTED'}])
         self.assertEqual(rows['WITHDRAWN.md']['status'], 'WITHDRAWN')
         self.assertEqual(rows['BROKEN.md']['status'], 'INVALID')
         self.assertEqual((rows['BROKEN.md']['provisional'], rows['BROKEN.md']['version']), (None, None))
@@ -356,7 +358,7 @@ class DecisionsHttpTests(unittest.TestCase):
 
 
 class DecisionsZipappTests(unittest.TestCase):
-    def test_zipapp_has_no_docs_so_the_route_is_not_bound(self):
+    def test_zipapp_reports_bundled_decision_index(self):
         build = _load('build_release_decisions', ROOT / 'scripts' / 'build_release.py')
         with tempfile.TemporaryDirectory() as tmp:
             pyz = build.build(tmp, ROOT)
@@ -373,11 +375,12 @@ class DecisionsZipappTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         result = json.loads(proc.stdout)
         body = result['decisions']
-        self.assertEqual((body['status'], body['reason'], body['rows']), ('NOT_BOUND', DECISIONS_NOT_BOUND, []))
+        self.assertEqual((body['status'], body['reason']), ('BOUND', None))
+        self.assertTrue(body['rows'])
+        self.assertEqual(body['notes_source'], 'BUNDLED_IN_ARTIFACT')
         self.assertEqual(body['mode'], 'READ_ONLY_DECISION_INDEX')
         self.assertFalse(_has_number(body))
-        self.assertIn('NOT_BOUND per docs/decisions/CAPITAL_FINANCIAL_TERMS.md', result['blockers'])
-        self.assertFalse(any('PROVISIONAL' in item and 'docs/decisions' in item for item in result['blockers']))
+        self.assertIn(TERMS_LINE, result['blockers'])
 
 
 if __name__ == '__main__':

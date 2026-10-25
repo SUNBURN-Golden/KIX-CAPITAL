@@ -109,6 +109,26 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_bundled_policy_runtime_is_documented_with_provenance_and_override_failure(self):
+        handbook = HANDBOOK.read_text(encoding='utf-8')
+        start = handbook.index('<!-- handbook-section:artifact-docs-bundling -->')
+        section = handbook[start:handbook.index('<!-- /handbook-section -->', start)]
+        for word in ('### artifact-docs-bundling', 'docs/decisions/*.md',
+                     'docs/CAP_COVERAGE.md', 'scripts/decision_ledger.py',
+                     'RELEASE-MANIFEST.json', 'notes_source', 'note_sha256',
+                     'CAPITAL_FINANCIAL_TERMS.md', 'CAPITAL_SETTLEMENT_POLICY.md',
+                     'CHECKOUT', 'BUNDLED_IN_ARTIFACT', 'OVERRIDE_FILE', 'NONE',
+                     'PENDING', 'INVALID', '--terms-note', '--policy-note',
+                     'signed:false', 'published:false', 'sim_day'):
+            self.assertIn(word, section)
+        for path in (README, ROOT / 'docs' / 'INTEGRATION.md', HANDBOOK,
+                     ROOT / 'docs' / 'RELEASES.md'):
+            text = path.read_text(encoding='utf-8')
+            self.assertIn('note_sha256', text, path)
+            self.assertIn('빌드 시점' if path in (README, HANDBOOK) else 'build-time', text, path)
+            self.assertNotIn('zipapp does not bundle', text, path)
+            self.assertNotIn('zipapp은 `docs/`를 담지 않아', text, path)
+
     def test_readme_links_the_three_docs(self):
         readme = README.read_text(encoding='utf-8')
         for doc in DOCS:

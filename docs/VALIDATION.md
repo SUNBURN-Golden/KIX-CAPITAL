@@ -943,3 +943,7 @@ Commands actually run, in order:
 - `npm ci --no-audit --no-fund`: exit 0, 3 packages. `npm run test:browser` (run inside the acceptance ladder, Chromium from `~/.cache/ms-playwright`): **62 passed**; no server left running.
 - `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 819, storage-conformance 19, pinned-vendor 7, upstream-claims `passed=269 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4.
 - `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
+
+## Bundled policy runtime 0.2.0
+
+Current zipapps bundle the authorized decision inputs and serve bound provisional terms, decided settlement policy, underwriting and the decision index outside checkout. The older 0.1.0 NOT_BOUND observations above are historical evidence. Current packaged smoke also checks note-byte provenance and persisted simulation-clock accrual across a temporary workspace restart. Local verification commands and measured results for this node are recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; all journeys are SIMULATED.

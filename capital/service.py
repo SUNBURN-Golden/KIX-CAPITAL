@@ -33,6 +33,7 @@ from capital.scenarios import ORDER, POLICY, STATEMENT, replay_scenarios
 from capital.shadow import DecisionNoteShadow, SHADOW_LABEL, SHADOW_MODE, SHADOW_PROVENANCE
 from capital.statement import build_statement
 from capital.setoff import DecisionNoteSetoff
+from capital.resources import note_path
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
@@ -134,7 +135,8 @@ class CapitalService:
         self.case_fixtures = {}
         self.workspace_status = 'ACTIVE'
         self.overlay_entries = []
-        self.overlay_bounds = overlay_bounds if overlay_bounds is not None else overlay.load_bounds()
+        self.overlay_bounds = overlay_bounds if overlay_bounds is not None else overlay.load_bounds(
+            note_path(overlay.STATE_NOTE), note_path(overlay.EXPORT_NOTE))
         self.source = vendor_manifest()
         self.scenario_results = replay_scenarios()
         self._load_workspace()
@@ -325,6 +327,11 @@ class CapitalService:
                       'all_predicates_matched': row['all_predicates_matched']}
                      for row in self.scenario_results.values()]}
 
+    def _terms_provenance(self):
+        status = self.terms.status()
+        return {key: status.get(key, 'NONE' if key == 'notes_source' else None)
+                for key in ('notes_source', 'note_sha256')}
+
     def _terms_quote(self):
         policy = self.terms.status()
         if policy.get('status') == 'NOT_BOUND':
@@ -338,6 +345,7 @@ class CapitalService:
             'status': policy['status'],
             'reason': policy['reason'],
             'terms_version': policy['terms_version'],
+            **self._terms_provenance(),
         }
 
     def _terms_decision_line(self):
@@ -420,7 +428,7 @@ class CapitalService:
                     expected_settlement_cash_day=expected_settlement_cash_day, gate=gate)
                 body = dict(body)
                 body['advance_id'] = advance_id
-                return self._terms_envelope(body)
+                return self._terms_envelope({**body, **self._terms_provenance()})
             finally:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
@@ -447,7 +455,7 @@ class CapitalService:
                     expected_settlement_cash_day=expected_settlement_cash_day, gate=gate, cash=cash)
                 body = dict(body)
                 body['advance_id'] = advance_id
-                return self._terms_envelope(body)
+                return self._terms_envelope({**body, **self._terms_provenance()})
             finally:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
@@ -632,6 +640,7 @@ class CapitalService:
             'provisional': True,
             'outcome': outcome,
             'policy_version': note['policy_version'],
+            **{key: note.get(key) for key in ('notes_source', 'note_sha256')},
             'policy_digest': applied['policy_digest'],
             'decided': decided,
             'comparison': rows,
@@ -656,6 +665,7 @@ class CapitalService:
             try:
                 applied = self.policy.allocation(POLICY)
                 return self._policy_envelope({
+                    **{key: self.policy.status().get(key) for key in ('notes_source', 'note_sha256')},
                     'label': POLICY_LABEL,
                     'mode': 'SIMULATED_POLICY_APPLICATION',
                     'provisional': True,

@@ -5,6 +5,7 @@ helpers, never read back from the code under test. The chart is fenced against t
 CAPITAL_ACCOUNTS_TAX_LEGAL note.
 """
 import copy
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -141,6 +142,28 @@ class V1UnchangedTests(unittest.TestCase):
                 if added_on_main.returncode == 0:
                     absent = set(added_on_main.stdout.split())
                     changed = [path for path in changed if path not in absent or (ROOT / path).exists()]
+                # Main can also revise a guarded file after this worktree was
+                # cut. Exempt only bytes still identical to the common ancestor,
+                # never export.py: its direct main-baseline byte guard stays.
+                upstream_only = []
+                for path in changed:
+                    if path == 'capital/export.py':
+                        continue
+                    ancestor = subprocess.run(
+                        ['git', 'show', f'{merge_base.stdout.strip()}:{path}'],
+                        cwd=ROOT, capture_output=True)
+                    if (ancestor.returncode == 0 and (ROOT / path).is_file()
+                            and (ROOT / path).read_bytes() == ancestor.stdout):
+                        upstream_only.append(path)
+                changed = [path for path in changed if path not in upstream_only]
+        # The adopted 2026-10-23 supervisor ruling explicitly authorizes this
+        # provenance clarification. Pin the entire resulting note, so no other
+        # policy or prose change is hidden by this one-file exception.
+        clarification = 'docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md'
+        if clarification in changed:
+            self.assertEqual(hashlib.sha256((ROOT / clarification).read_bytes()).hexdigest(),
+                             'a87f5f3cde492ac31c4d90a3c785a827c067e9c066dbed15027f3b53e3672103')
+            changed.remove(clarification)
         self.assertEqual(changed, [])
         # Goldens: every value pinned on the base stays equal and no golden disappears. Another node may
         # add a key through its explicit regeneration path (seed_demo.py --update-golden adds `risk` to
@@ -166,6 +189,16 @@ class V1UnchangedTests(unittest.TestCase):
             shown = subprocess.run(['git', 'show', f'{base}:{name}'], cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(shown.returncode, 0, name)
             pinned = json.loads(shown.stdout)
+            if base == 'origin/main':
+                ancestor = subprocess.run(['git', 'merge-base', 'HEAD', base], cwd=ROOT,
+                                          capture_output=True, text=True)
+                self.assertEqual(ancestor.returncode, 0)
+                original = subprocess.run(['git', 'show', f'{ancestor.stdout.strip()}:{name}'],
+                                          cwd=ROOT, capture_output=True)
+                # Later main may regenerate its own journey pins. This branch
+                # must still match its original bytes exactly to use that pin.
+                if original.returncode == 0 and (ROOT / name).read_bytes() == original.stdout:
+                    pinned = json.loads(original.stdout)
             current = json.loads((ROOT / name).read_text(encoding='utf-8'))
             self.assertIsInstance(current, dict, name)
             for key, value in pinned.items():

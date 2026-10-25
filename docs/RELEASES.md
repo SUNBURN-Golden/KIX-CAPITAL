@@ -8,6 +8,19 @@ The version is only `__version__` in `capital/__init__.py`. `--version` and `GET
 
 Two builds with the same interpreter and the same source tree produce the same SHA256. That check is same-environment only. It is not a cross-platform reproducibility claim.
 
+## 0.2.0
+
+- Version source: `capital/__init__.py` `__version__` = `0.2.0`, synchronized with `package.json` and its lockfile.
+- Artifact: `build/bundled-a/capital-0.2.0.pyz` (local build only).
+- Protocol pin: `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`; vendor bytes and manifest unchanged.
+- Mode: `LOCAL_SIMULATION_ARTIFACT`; signed: false; published: false.
+- Contents: the existing stdlib simulation, static assets and five pinned vendor files, plus exactly nonrecursive `docs/decisions/*.md`, `docs/CAP_COVERAGE.md` and `scripts/decision_ledger.py`. Raw bytes are hashed per file in `RELEASE-MANIFEST.json`; no tests, keysets or workspace files are added (the pinned vendor test remains).
+- Runtime: checkout-free provisional bound terms, decided settlement policy, underwriting and decision index. `notes_source` distinguishes checkout, bundled bytes, explicit override or no readable input. `note_sha256` hashes each actual input: terms/underwriting and decision-body anchor use the financial-terms note, policy uses the settlement-policy note, and rows use their named notes. Missing expected rows remain `PENDING`; readable invalid rows retain `INVALID` and their source/hash. Explicit overrides never fall back, including failure.
+- A `.pyz` serves build-time note bytes and does not follow later checkout edits. Bundling grants no upstream adoption or operational authority. Legal/tax entries remain working assumptions pending professional review.
+- Verification: same-interpreter byte-identical builds and stdlib loopback smoke with note-derived interest, remainder, sim-day and workspace restart provenance checks; see `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
+- SHA256: `f3b2f3db744c88fb85b435e03950b4a24450c68397cf5a87438ef25644ca1af2` (same interpreter; local unsigned build).
+- Out of scope: publishing, external signing, credentials, deployment, policy changes and upstream adoption.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).
