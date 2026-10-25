@@ -188,6 +188,7 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', '/api/evidence', '/api/evidence', None),
             ('GET', '/api/projection', '/api/projection', None),
             ('GET', '/api/terms', '/api/terms', None),
+            ('GET', f'/api/portfolio/snapshot?instance_id={instance}', '/api/portfolio/snapshot', None),
             ('GET', f'/api/terms/portfolio?instance_id={instance}&as_of_day=30', '/api/terms/portfolio', None),
             ('GET', f'/api/terms/portfolio/forecast?instance_id={instance}&expected_settlement_cash_day=45', '/api/terms/portfolio/forecast', None),
             ('GET', '/api/policy', '/api/policy', None),

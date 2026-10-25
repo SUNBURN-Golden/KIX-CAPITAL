@@ -5,7 +5,7 @@ The artifact is SIMULATED and deterministic: no clock, no random instance id, no
 path. It supplies INPUT_VECTOR_CANDIDATE material for FINANCE_PENDING_NODES
 candidates, which is the vector-supplier role of
 docs/decisions/CAPITAL_UPSTREAM_BINDING.md (entry stage6_finance_candidates).
-Seven groups, each naming one candidate id:
+Eight groups, each naming one candidate id:
 
 - scenario_obligations -> fin-multi-payee-refund-proof: the nine F01-F03
   scenarios of capital/scenarios.py, 35 steps, with the per-payee obligation
@@ -26,8 +26,12 @@ Seven groups, each naming one candidate id:
 - facade_read_model -> fin-catalogue-read-model: the response definition
   digests of every GET route in capital/contract/facade-v1.json.
 
-fin-finance-closeout has no vectors. Its named input, build/acceptance-evidence.json,
-is an untracked per-run file, so the candidates index says why and holds null.
+- closeout_digest -> fin-finance-closeout: the committed deterministic digest of the
+  acceptance ladder, tests/vectors/closeout_digest.json (format
+  KIX_CAPITAL_CLOSEOUT_DIGEST_V1), embedded as it is. scripts/closeout_digest.py
+  --write is its only writer; head_sha, tool versions, timestamps and instance ids
+  are stripped from it. Regenerate it first, then this file.
+
 The report, statement and preview bodies are stored with instance id keys removed
 (capital.export.strip_volatile), so the artifact carries no instance id.
 
@@ -87,13 +91,10 @@ GROUP_CANDIDATES = {
     'statement_and_previews': 'fin-credit-exposure-reconciliation',
     'manifest_section_digests': 'fin-consistent-accounting-export',
     'facade_read_model': 'fin-catalogue-read-model',
+    'closeout_digest': 'fin-finance-closeout',
 }
-CLOSEOUT = 'fin-finance-closeout'
-CLOSEOUT_REASON = (
-    'build/acceptance-evidence.json is an untracked per-run file (it records the git head_sha and the local '
-    'tool versions), so no stable bytes exist to pin as a vector. The input stays named in '
-    'docs/decisions/CAPITAL_UPSTREAM_BINDING.md only.'
-)
+CLOSEOUT_FILE = ROOT / 'tests' / 'vectors' / 'closeout_digest.json'
+CLOSEOUT_FORMAT = 'KIX_CAPITAL_CLOSEOUT_DIGEST_V1'
 PROBE_OPERATION_ID = 'op-never-issued'
 STATEMENT_CATEGORIES = ('approved', 'exposure', 'reserved', 'settlement', 'refund')
 DEFINITION_PREFIX = '#/definitions/'
@@ -379,11 +380,26 @@ def facade_read_model():
     }
 
 
+def closeout_digest():
+    """The committed closeout digest, embedded as parsed. Only scripts/closeout_digest.py --write makes the file."""
+    try:
+        raw = CLOSEOUT_FILE.read_bytes()
+        document = json.loads(raw.decode('ascii'))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise VectorError(f'closeout digest unreadable: {CLOSEOUT_FILE}: {exc}; run scripts/closeout_digest.py --write') from exc
+    _require(type(document) is dict and document.get('format') == CLOSEOUT_FORMAT, 'closeout digest format changed')
+    _require(dump(document) == raw, 'closeout digest bytes are not canonical')
+    _require(document.get('candidate') == GROUP_CANDIDATES['closeout_digest'], 'closeout digest names another candidate')
+    _require(document.get('label') == ROLE and document.get('data_label') == 'SIMULATED', 'closeout digest label changed')
+    _require(document.get('semantic_conformance') is False and document.get('upstream_nodes_completed') == [],
+             'closeout digest claims conformance or completion')
+    return document
+
+
 def candidate_row(name):
-    """Index row: the group that supplies the candidate, or null with the reason none does."""
-    group = next((group for group, held in GROUP_CANDIDATES.items() if held == name), None)
-    return {'id': name, 'vectors': group,
-            'reason': CLOSEOUT_REASON if group is None and name == CLOSEOUT else None}
+    """Index row: the group that supplies the candidate. All eight carry one, so reason is null."""
+    group = next(group for group, held in GROUP_CANDIDATES.items() if held == name)
+    return {'id': name, 'vectors': group, 'reason': None}
 
 
 def build_body() -> dict:
@@ -398,6 +414,7 @@ def build_body() -> dict:
             'statement_and_previews': statement_and_previews(service),
             'manifest_section_digests': manifest_section_digests(service),
             'facade_read_model': facade_read_model(),
+            'closeout_digest': closeout_digest(),
         }
     finally:
         seed._release(service.producer)
