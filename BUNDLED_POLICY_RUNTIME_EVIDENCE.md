@@ -1,6 +1,6 @@
 # Bundled policy runtime — local verification evidence
 
-The original node record follows. The CI fix round 2 record at the end
+The original node record follows. The CI fix round 3 record at the end
 contains the current build and verification results; earlier rounds remain historical.
 
 Date: 2026-10-25. Branch: `agent/capital-bundled-policy-runtime`.
@@ -370,4 +370,89 @@ The same final ladder passed all 69 Chromium tests and every required stage.
 | `git diff --check` | Exit 0. |
 
 Result: **STATUS: READY**. No consequential product decision was needed.
+No commit, push or external post was made.
+
+## CI fix round 3 — 2026-10-26
+
+The reported failure was the unit stage exceeding its unchanged 300-second
+limit. Profiling found that each decision-index read parsed every note twice,
+including unchanged notes during repeated readiness requests. The index now
+reads and hashes every selected note on every request, validates it once with
+the existing ledger parser, and reuses only the summary for exactly matching
+bytes. Its cache retains the most recently indexed corpus, and returned rows are deep
+copies. No financial values, parser rules, CI limits or test assertions changed.
+This removes redundant work; it does not establish the sole cause of the
+historical CI timeout or promise a runtime under arbitrary host contention.
+
+A local 100-read diagnostic changed from 1.019 seconds to 0.137 seconds.
+The new regression verifies equal-size/equal-timestamp revisions, invalid UTF-8,
+removal, restoration, current provenance, and isolation from caller mutations.
+All 19 decision-surface tests pass on Python 3.13.5 and Python 3.12.15; all
+14 release tests pass, including damaged archives and exclusive overrides.
+
+Preserved unsuccessful diagnostics:
+
+- The initial Python 3.13 discovery ran 1,133 tests in 234.894 seconds with
+  one no-write snapshot failure because `capital/decisions.py` was edited while
+  the fold-fuzz check was running. This was a verification-order mistake; no
+  test was changed to bypass it. Subsequent full runs keep sources untouched.
+- The first Python 3.12 acceptance run timed out in the 200-sequence storage
+  test after earlier unit checks had completed, and Chromium passed 68/69.
+  The browser trace shows an unfinished `app.js` request and no API requests
+  during the stalled navigation. Host load was approximately 26 when inspected.
+  Failed evidence and the trace remain in ignored `build/` as
+  `fix-round3-acceptance-failed.json` and `fix-round3-browser-failed-trace.zip`.
+  The unchanged ladder was rerun when observed load fell to approximately 5.
+
+Current Python 3.13.5 artifacts: `dist/capital-0.2.0.pyz` and
+`dist2/capital-0.2.0.pyz`, byte-identical with SHA256
+`86b763eece31758c04fcea10f8fcb26ff02f69921a24fcc4fd879da5783c3119`.
+An independent archive audit verified all 77 members and per-file manifest
+hashes, including exactly the 18 authorized additional inputs. No tests,
+keysets or workspace files were added; the previously pinned vendor test stays.
+All five vendor files match their locked SHA256 and HEAD bytes. Their manifest,
+`capital/export.py`, `capital/overlay.py`, decision notes, goldens, existing
+vectors and `.aiops/` are unchanged. No Protocol or Commerce reference was edited.
+All rehearsals remain SIMULATED/provisional, `LOCAL_SIMULATION_ARTIFACT`,
+`signed:false`, `published:false`, with no real funds or provider calls.
+
+Completed local checks and final acceptance results are recorded below.
+
+Final Python 3.12 acceptance: exit 0, `ok:true` in
+`build/acceptance-evidence.json` (also preserved as
+`build/fix-round3-acceptance-passed.json`). All 1,134 unit tests passed in
+258.880 seconds, under the unchanged 300-second timeout; all 69 Chromium tests
+passed in 1.9 minutes. The command uses an isolated loopback namespace because
+the host's default browser ports are shared; it changes no tests or limits.
+Evidence describes the local uncommitted working tree based on HEAD
+`6a7aa0f8279f1207b43873ee13d6fd2f4b9fca52`; it is not a new exact-head CI result.
+
+| Command / check | CI fix round 3 result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3.12 scripts/acceptance.py'` | Exit 0; all nine stages passed; `ok:true`. |
+| Unit stage, Python 3.12.15 | 1,134 passed in 258.880s; includes new cache regression, legacy golden checks and export byte guards. |
+| `python3 -m unittest discover -s tests -v`, Python 3.13.5, final unchanged sources | Exit 0; 1,134 passed in 257.152s. |
+| Storage conformance / crash replay | 19 passed. |
+| Pinned vendor tests | 7 passed; five SHA256 locks and manifest preserved. |
+| Upstream claim checks | 311 passed; local conformance only, no upstream adoption. |
+| `npm run test:browser`, through acceptance | 69 passed in 1.9 min with unchanged suite/configuration. |
+| Packaged smoke | All 11 checks passed, including bound terms/policy/index/underwriting provenance, advance draw, sim-day accrual and identical overlay/provenance after temporary workspace restart. |
+| Seeded demo / integrated journeys | 1 / 4 passed, SIMULATED; `integrated:false`, `funds_executed:false`. |
+| Decision-surface tests, Python 3.13.5 and 3.12.15 | 19 passed on each interpreter. |
+| Release tests, Python 3.13.5 | 14 passed. |
+| `python3 -m unittest discover -s tests -p test_coa_candidate.py -v` | 36 passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed. |
+| `python3 -m compileall -q capital` / `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, 9 stages. |
+| `python3 scripts/decision_bindings.py --check` / decision ledger | Exit 0. |
+| Finance / pack vector checks | Exit 0; 97,980 bytes / all 9 fixtures match, without regeneration. |
+| Two builds and `cmp dist/capital-*.pyz dist2/capital-*.pyz` | Exit 0; byte-identical SHA256 recorded above. |
+| Archive / preservation audit | Exact scope, all member hashes verified; protected files and `.aiops/` preserved. |
+
+Final logs: `build/fix-round3-unit-final.log`,
+`build/fix-round3-acceptance-final.log`, `build/fix-round3-decisions.log`,
+`build/fix-round3-decisions-py312.log`, `build/fix-round3-release.log` and
+`build/fix-round3-legacy.log`. `git diff --check` passes.
+
+Result: **STATUS: READY**. No consequential product decision was required.
 No commit, push or external post was made.

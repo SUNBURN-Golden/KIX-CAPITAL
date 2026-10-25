@@ -1,6 +1,8 @@
 """Read-only decision index using the single ledger parser in either runtime."""
 from __future__ import annotations
 
+import copy
+
 from capital.resources import (
     ARCHIVE_ROOT, as_resource, load_ledger, provenance, read_note,
 )
@@ -22,6 +24,7 @@ class DecisionIndex:
         self.ledger_path = (ARCHIVE_ROOT / 'scripts' / 'decision_ledger.py'
                             if ledger_path is None else as_resource(ledger_path))
         self._ledger = None
+        self._row_cache = {}
 
     def _load_ledger(self):
         if self._ledger is None:
@@ -38,9 +41,22 @@ class DecisionIndex:
         if ledger is None or not notes.is_dir():
             return None
 
+        current = {}
+
         def validate(path):
-            note = self._read(path)
-            errors, row = ledger.validate_note_bytes(note['raw_bytes'], f'docs/decisions/{path.name}')
+            # Read and hash on every request; only reuse validation when the
+            # actual bytes match. No timestamp or file-presence cache can hide
+            # changed, malformed or removed notes. The ledger parses once.
+            note = read_note(path, override=self.override, ledger=None)
+            name = f'docs/decisions/{path.name}'
+            cached = self._row_cache.get(name)
+            if cached is not None and cached[0] == note['raw_bytes']:
+                errors, summary = cached[1]
+            else:
+                errors, summary = ledger.validate_note_bytes(note['raw_bytes'], name)
+            current[name] = (note['raw_bytes'], (errors, summary))
+            # Returned rows belong to the caller, never to the validation cache.
+            row = copy.deepcopy(summary)
             row.update(provenance(note))
             return errors, row
 
@@ -49,6 +65,7 @@ class DecisionIndex:
             rows = ledger.build_index(notes, ledger.expected_note_paths(coverage), validator=validate)
         except (OSError, ValueError, RecursionError):
             return None
+        self._row_cache = current
         for row in rows:
             if row['status'] == 'PENDING':
                 row.update(notes_source='NONE', note_sha256=None)

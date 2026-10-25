@@ -1,7 +1,9 @@
 """GET /api/decisions: the machine-readable summary of the capital-decision-v1 notes."""
 import http.client
+import hashlib
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -9,6 +11,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from capital.auth import ROUTE_PERMISSIONS, LocalRoleAuthorizer, Principal, route_permission
 from capital.decisions import DECISIONS_NOT_BOUND, DecisionIndex
@@ -165,6 +168,49 @@ class DecisionRowsTests(unittest.TestCase):
 
 
 class DecisionIndexEdgeTests(unittest.TestCase):
+    def test_validation_reuse_tracks_bytes_removal_and_recovery_without_shared_rows(self):
+        name = 'CAPITAL_FINANCIAL_TERMS.md'
+        with tempfile.TemporaryDirectory() as tmp:
+            original = _note_text('terms', version='VERSION-A')
+            docs = _docs(tmp, {name: original, 'OTHER.md': _note_text('other')})
+            path = docs / 'decisions' / name
+            timestamp = path.stat().st_mtime_ns
+            index = DecisionIndex(docs)
+            ledger = index._load_ledger()
+            with patch.object(ledger, 'validate_note_bytes', wraps=ledger.validate_note_bytes) as validate:
+                first = index.rows()
+                self.assertEqual(validate.call_count, 2)
+                first[0]['entries'].clear()
+                again = index.rows()
+                self.assertTrue(again[0]['entries'])
+                self.assertEqual(validate.call_count, 2)
+
+                # Equal size and timestamp must not conceal a policy revision.
+                changed = original.replace('VERSION-A', 'VERSION-B').encode('utf-8')
+                path.write_bytes(changed)
+                os.utime(path, ns=(timestamp, timestamp))
+                row = index.rows()[0]
+                self.assertEqual(validate.call_count, 3)
+                self.assertEqual(row['version'], 'VERSION-B')
+                self.assertEqual(row['note_sha256'], hashlib.sha256(changed).hexdigest())
+
+                path.write_bytes(b'\xff')
+                self.assertEqual(index.rows()[0]['status'], 'INVALID')
+                self.assertEqual(validate.call_count, 4)
+                path.unlink()
+                row = index.rows()[0]
+                self.assertEqual((row['status'], row['notes_source'], row['note_sha256']),
+                                 ('PENDING', 'NONE', None))
+                self.assertEqual(validate.call_count, 4)
+                path.write_bytes(b'\xff')
+                self.assertEqual(index.rows()[0]['status'], 'INVALID')
+                self.assertEqual(validate.call_count, 5)
+                path.write_text(original, encoding='utf-8')
+                row = index.rows()[0]
+                self.assertEqual(row['version'], 'VERSION-A')
+                self.assertEqual(row['notes_source'], 'OVERRIDE_FILE')
+                self.assertEqual(validate.call_count, 6)
+
     def test_pending_invalid_and_live_status_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             docs = _docs(tmp, {

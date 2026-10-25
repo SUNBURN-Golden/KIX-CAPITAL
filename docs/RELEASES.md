@@ -37,6 +37,14 @@ Two builds with the same interpreter and the same source tree produce the same S
 - Removed the obsolete tracked `dist2/capital-0.1.0.pyz` and ignored `dist2/`, so the existing two-build CI glob compares exactly the current artifacts.
 - All 11 packaged smoke checks pass. Scope, manifest format and labels remain unchanged: `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`, SIMULATED/provisional.
 
+### 0.2.0 — CI fix round 3 rehearsal (2026-10-26)
+
+- Artifacts: `dist/capital-0.2.0.pyz` and `dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `86b763eece31758c04fcea10f8fcb26ff02f69921a24fcc4fd879da5783c3119` (local unsigned build).
+- Decision-index requests read and hash every note, then reuse ledger validation only for identical bytes. Changed, malformed, missing and restored notes remain visible; returned rows cannot mutate the cached summaries.
+- The exact authorized bundle scope, per-file manifest hashes and labels remain unchanged: `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`, SIMULATED/provisional.
+- Local check results and acceptance timing are recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).
