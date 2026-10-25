@@ -1,5 +1,5 @@
 {
-  "digest": "3f1b9a11b24fffa6e0c4bda50800638d4ff84b952793f05f884b276d9f72ad43",
+  "digest": "bd1435d3870f241636a9115bb007d874b6b51c4cb921e6797b654304c21fcf58",
   "funds_executed": false,
   "integrated": false,
   "journey": "T05-sim",
@@ -527,14 +527,14 @@
         "base_krw": 46750,
         "cure_deadline": 8,
         "default_eligible_day": 19,
-        "interest_basis": "NOT_REBASED",
-        "interest_rebased": false,
+        "interest_basis": "REBASED",
+        "interest_rebased": true,
         "margin_state": "ACCELERATED",
         "principal_outstanding_krw": 48000
       },
       "kind": "HTTP",
       "n": 22,
-      "name": "sim-a accelerated; interest is not re-based",
+      "name": "sim-a accelerated; interest is re-based (CAPITAL_DEFAULT_RECOVERY.md \u00a74.10)",
       "status": "ACCELERATED"
     },
     {
@@ -562,14 +562,14 @@
       ],
       "facts": {
         "cash": 5000,
-        "default_interest_due_krw": 0,
-        "interest_due_krw": 18,
+        "default_interest_due_krw": 13,
+        "interest_due_krw": 73,
         "order": [
           "DEFAULT_INTEREST",
           "INTEREST",
           "PRINCIPAL"
         ],
-        "principal_share_krw": 4982
+        "principal_share_krw": 4914
       },
       "kind": "HTTP",
       "n": 24,
@@ -601,7 +601,7 @@
     {
       "expect": "ACCELERATED",
       "facts": {
-        "principal_outstanding_krw": 43018
+        "principal_outstanding_krw": 43086
       },
       "kind": "HTTP",
       "n": 26,
@@ -729,7 +729,7 @@
       "facts": {
         "funds_executed": false,
         "operation_count": 14,
-        "state_digest": "12ac77bc89686edc8b419e7c77d39fea15c866f1b7ff30dd8a6cb14df6fb8dd0"
+        "state_digest": "7b48e64e2c82a0e79ed5c247c5e21469734307dbcee4f6c190e7b4ef6b73a85f"
       },
       "kind": "HTTP",
       "n": 34,

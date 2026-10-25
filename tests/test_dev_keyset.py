@@ -26,7 +26,12 @@ class DevKeysetTests(unittest.TestCase):
         self.path.chmod(0o600)
 
     def manifest(self, signer=None, v3=False):
-        return build_manifest(sections={name: {} for name in (SECTION_IDS_V3 if v3 else SECTION_IDS)},
+        sections = {name: {} for name in (SECTION_IDS_V3 if v3 else SECTION_IDS)}
+        if v3:
+            from capital import overlay
+            sections['overlay'] = overlay.export_section([], 0)
+            sections['journal'] = {'entries': []}
+        return build_manifest(sections=sections,
                               instance_id='SIMULATED', signer=signer or self.signer,
                               status='COMPLETE', incomplete_reasons=[])
 

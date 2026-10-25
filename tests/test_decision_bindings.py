@@ -61,8 +61,7 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(identities, sorted(set(identities)))
 
     def test_each_parked_entry_is_pending_with_node_and_anchor(self):
-        nodes = {'default-recovery-decision': 'overlay-recovery-writeoff',
-                 'claim-slice-registry-decision': 'claim-slice-registry'}
+        nodes = {'claim-slice-registry-decision': 'claim-slice-registry'}
         for row in self.data['entries']:
             if row['decision_id'] in nodes:
                 for binding in row['bindings']:
@@ -70,6 +69,14 @@ class BindingTests(unittest.TestCase):
                     self.assertEqual(binding['consumer_node'], nodes[row['decision_id']])
                     self.assertTrue(binding['reason'])
                     self.assertTrue((ROOT / binding['path']).is_file())
+
+    def test_recovery_is_consumed_with_live_code_and_test_bindings(self):
+        rows = [row for row in self.data['entries'] if row['decision_id'] == 'default-recovery-decision']
+        self.assertEqual(len(rows), 10)
+        for row in rows:
+            self.assertEqual(row['bindings'], [
+                {'kind': 'module', 'path': 'capital/recovery.py', 'status': 'CONSUMED'},
+                {'kind': 'test_module', 'path': 'tests/test_recovery.py', 'status': 'CONSUMED'}])
 
     def test_closeout_policy_has_built_consumers(self):
         expected = {
@@ -151,7 +158,7 @@ class BindingTests(unittest.TestCase):
                 self.assertDrift('invalid binding shape')
 
     def test_pending_metadata_required(self):
-        row = next(row for row in self.data['entries'] if row['decision_id'] == 'default-recovery-decision')
+        row = next(row for row in self.data['entries'] if row['decision_id'] == 'claim-slice-registry-decision')
         for key in ('consumer_node', 'reason'):
             old = row['bindings'][0].pop(key)
             self.assertDrift('pending consumer metadata')

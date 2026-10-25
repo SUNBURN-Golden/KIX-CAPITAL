@@ -8,6 +8,7 @@ from pathlib import Path
 import capital.ports as ports
 from capital.auth import LocalRoleAuthorizer
 from capital.export import UnsignedSigner
+from capital.idp_fake import FakeIdpAuthorizer
 from capital.producer import PinnedFsmProducer
 from capital.observation import LocalFakeObservation
 from capital.projection import SimulationProjection
@@ -106,6 +107,9 @@ class SeamRegistryTests(unittest.TestCase):
         self.assertIn('InMemoryStorage', by_port['StoragePort']['Local implementation'])
         self.assertIn('SimulationProjection', by_port['ProjectionPort']['Local implementation'])
         self.assertIn('LocalRoleAuthorizer', by_port['AuthorizerPort']['Local implementation'])
+        self.assertIn('FakeIdpAuthorizer', by_port['AuthorizerPort']['Local implementation'])
+        self.assertIn('LOCAL_FAKE_IDP', by_port['AuthorizerPort']['Local implementation'])
+        self.assertEqual(by_port['AuthorizerPort']['Status'], 'NOT_BOUND')
         self.assertIn('UnsignedSigner', by_port['SignaturePort']['Local implementation'])
         self.assertIn('DecisionNoteSettlementPolicy', by_port['SettlementPolicyPort']['Local implementation'])
         self.assertIn('DecisionNoteSetoff', by_port['SetoffQuotePort']['Local implementation'])
@@ -147,6 +151,7 @@ class SeamRegistryTests(unittest.TestCase):
                 workspace.close()
         self.assertIsInstance(SimulationProjection(), ports.ProjectionPort)
         self.assertIsInstance(LocalRoleAuthorizer(), ports.AuthorizerPort)
+        self.assertIsInstance(FakeIdpAuthorizer(), ports.AuthorizerPort)
         self.assertIsInstance(UnsignedSigner(), ports.SignaturePort)
         producer = PinnedFsmProducer()
         self.assertIsInstance(producer, ports.ProducerPort)
