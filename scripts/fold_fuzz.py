@@ -152,9 +152,8 @@ def capture(service, raw):
     require(len(entries) <= bounds['OVERLAY_MAX_ENTRIES'], 'entry capacity')
     require(all(overlay.entry_size(e) <= bounds['OVERLAY_ENTRY_MAX_BYTES'] for e in entries), 'entry size')
     require(state['sim_day'] <= bounds['SIM_DAY_MAX'], 'day capacity')
-    require(sum(e['kind'] == overlay.KIND_TERMS for e in entries) <= bounds['DECISION_RECORDS_MAX'],
-            'decision capacity')
     capacity = service._overlay_capacity(entries)
+    require(capacity['decision_records']['current'] <= bounds['DECISION_RECORDS_MAX'], 'decision capacity')
     require(capacity['agent_proposals']['current'] <= bounds['AGENT_PROPOSALS_MAX'], 'proposal capacity')
     require(overlay.section_size(document['payload'], entries) <= bounds['ENVELOPE_MAX_BYTES'],
             'service envelope capacity')

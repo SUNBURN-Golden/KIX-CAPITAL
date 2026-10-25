@@ -181,6 +181,17 @@ class FoldFuzzTests(unittest.TestCase):
         receipts = document['payload']['receipts']
         journal = document['payload']['journal']
         entries = document['overlay']['journal']
+        defaults = [c for c in commands if c['op'] == 'default']
+        anchors = [e for e in entries if e['kind'] == 'default_anchor']
+        self.assertEqual([e['payload']['f04_operation_id'] for e in anchors],
+                         [c['operation_id'] for c in defaults])
+        for command in defaults:
+            receipt = receipts[command['operation_id']]['receipt']
+            self.assertEqual(receipt['approvals'], [])
+            offer = next(c for c in commands if c['op'] == 'offer'
+                         and c['advance_id'] == command['advance_id'])
+            self.assertEqual(receipt['recovery_authority']['principal_krw'],
+                             offer['args']['amount'])
         self.assertTrue(any(e['kind'] == overlay.KIND_INTEREST and
                             e['payload']['posted_contract_krw'] > 0 for e in entries))
         for command in commands:

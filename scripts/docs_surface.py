@@ -78,6 +78,8 @@ ROUTE_NEEDLES = {
         '`GET /api/terms/portfolio/forecast',
     ),
     ('GET', '/api/overlay'): ('- `GET /api/overlay`:',),
+    ('GET', '/api/overlay/slices'): ('- `GET /api/overlay/slices`:',),
+    ('GET', '/api/portfolio/snapshot'): ('- `GET /api/portfolio/snapshot`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
     ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
     ('GET', '/api/policy'): (
@@ -108,11 +110,14 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
     'pack/': ('tests/vectors/pack/', 'scripts/pack_vectors.py --check'),
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
+    'closeout_digest.json': (
+        'tests/vectors/closeout_digest.json', 'scripts/closeout_digest.py --check'),
     'gate_faults.json': (
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
     'forecast_vectors.json': (
@@ -124,6 +129,16 @@ VECTOR_NEEDLES = {
     'export-dev.key': ('tests/vectors/export-dev.key',),
     'dev-keyset-active.json': ('tests/vectors/dev-keyset-active.json', 'scripts/manifest_vectors.py --check'),
     'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),
+}
+
+
+# Claim artifacts live outside tests/vectors/.
+CLAIM_NEEDLES = {
+    'tests/lifecycle_claims.json': (
+        'tests/lifecycle_claims.json', 'scripts/lifecycle_claims_check.py --execute',
+        'e2313ab473ea1b5a7b5b9246a564749188c1c2c8',
+        'citation SKIPPED',
+    ),
 }
 
 
@@ -233,6 +248,13 @@ def find_drift(integration=DEFAULT_INTEGRATION, readme=DEFAULT_README,
         for needle in VECTOR_NEEDLES[key]:
             if needle not in docs['README.md']:
                 findings.append(f'README.md drops tests/vectors/{key}: needle {needle!r} is absent')
+
+    for artifact, needles in CLAIM_NEEDLES.items():
+        if not (ROOT / artifact).is_file():
+            findings.append(f'claim artifact missing: {artifact}')
+        for needle in needles:
+            if needle not in docs['README.md']:
+                findings.append(f'README.md drops {artifact}: needle {needle!r} is absent')
 
     required = acceptance_stages()
     for label in STAGE_DOCS:
