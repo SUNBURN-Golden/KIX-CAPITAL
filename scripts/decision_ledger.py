@@ -8,6 +8,8 @@ block. ADOPTED requires value, provided_by and date. UNDETERMINED rejects
 those three fields. DEFERRED and NOT_ADOPTED require a null value, provided_by,
 date and target. This script does not import the Capital product and does not
 invent decision values.
+
+--check explicitly selects the default validation and index behavior.
 """
 from __future__ import annotations
 
@@ -277,6 +279,8 @@ def format_index(rows):
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check', action='store_true',
+                        help='Validate notes and print the index (also the default).')
     parser.add_argument('--coverage', type=Path, default=COVERAGE)
     parser.add_argument('--decisions', type=Path, default=DECISIONS)
     args = parser.parse_args(argv)
