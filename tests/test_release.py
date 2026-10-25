@@ -200,6 +200,9 @@ if 'policy' in options:
 service = CapitalService(**ports)
 print(json.dumps({'terms': service.terms_status(), 'policy': service.policy_status(),
     'decisions': service.decisions(), 'state_terms': service.snapshot()['terms'],
+    'runtime_policies': {'recovery': service.recovery_policy is not None,
+        'slices': service.slice_policy is not None, 'repayment': service.repayment_bounds is not None},
+    'shadow': service.policy_shadow(),
     'underwriting': service.underwrite('sim-committed', service.instance_id, 'organizer', amount=60000)}))
 '''
         env = dict(os.environ)
@@ -222,6 +225,27 @@ print(json.dumps({'terms': service.terms_status(), 'policy': service.policy_stat
     def assert_provenance(self, body, source, raw):
         self.assertEqual(body['notes_source'], source)
         self.assertEqual(body['note_sha256'], None if raw is None else hashlib.sha256(raw).hexdigest())
+
+    def test_merged_policy_consumers_load_bundled_notes_and_fail_closed(self):
+        body = self.probe()
+        self.assertEqual(body['runtime_policies'], dict.fromkeys(('recovery', 'slices', 'repayment'), True))
+        for item in body['shadow']['items']:
+            shadow = item['shadow']
+            if item['item'] in ('revenue_participation', 'claim_purchase', 'residual_and_late_cash'):
+                self.assertTrue(shadow['vectors'])
+                self.assertTrue(all(row['status'] == 'SHADOW_COMPUTED' for row in shadow['vectors']))
+        notes = {
+            'recovery': 'CAPITAL_DEFAULT_RECOVERY.md',
+            'slices': 'CAPITAL_CLAIM_SLICE_REGISTRY.md',
+            'repayment': 'CAPITAL_REPAYMENT_POSTING.md',
+        }
+        for name, note in notes.items():
+            for raw in (None, b'SIMULATED malformed decision note'):
+                with self.subTest(policy=name, raw=raw):
+                    broken = self.probe(self.damaged({'docs/decisions/' + note: raw}))
+                    self.assertIs(broken['runtime_policies'][name], False)
+                    for other in notes.keys() - {name}:
+                        self.assertIs(broken['runtime_policies'][other], True)
 
     def test_explicit_overrides_win_including_missing_and_unusable_files(self):
         overrides = {}

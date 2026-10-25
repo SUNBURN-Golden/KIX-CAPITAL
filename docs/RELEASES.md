@@ -21,6 +21,14 @@ Two builds with the same interpreter and the same source tree produce the same S
 - SHA256: `f3b2f3db744c88fb85b435e03950b4a24450c68397cf5a87438ef25644ca1af2` (same interpreter; local unsigned build).
 - Out of scope: publishing, external signing, credentials, deployment, policy changes and upstream adoption.
 
+### 0.2.0 — merged-main rehearsal (2026-10-25)
+
+- Artifact: `build/merge-bundled-a/capital-0.2.0.pyz`; identical second build in `build/merge-bundled-b/`.
+- SHA256: `29dc4a74bba45cfac215f1e77b0f2ea7577bdb7e686b0f155c8751d57c020448` (same interpreter; local unsigned build).
+- Retains main's repayment posting, default recovery, claim slices and shadow vectors. Their decision-note loaders read the bundled Traversables; absent or malformed inputs stay unbound.
+- Authorized archive scope and manifest format are unchanged. `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`; every rehearsal is SIMULATED/provisional.
+- The initial 0.2.0 build record above and 0.1.0 record below remain historical records. Current merge verification is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).

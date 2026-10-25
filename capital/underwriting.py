@@ -170,8 +170,8 @@ class DecisionNoteUnderwriting:
     def _u4(self, subject, caps):
         amount = subject['amount']
         incremental = subject['incremental']
-        beneficiary = subject['beneficiary_outstanding'] + incremental
-        portfolio = subject['portfolio_outstanding'] + incremental
+        beneficiary = subject['beneficiary_outstanding'] + incremental + subject.get('slice_exposure_beneficiary_krw', 0)
+        portfolio = subject['portfolio_outstanding'] + incremental + subject.get('slice_exposure_portfolio_krw', 0)
         remaining = {
             'single_advance_krw': caps['single_advance_cap_krw'] - amount,
             'beneficiary_aggregate_krw': caps['beneficiary_aggregate_cap_krw'] - beneficiary,
@@ -222,6 +222,8 @@ class DecisionNoteUnderwriting:
             eligible = sum(
                 line['outstanding'] for line in claim['obligations']
                 if line['payee'] in payees) - claim['refund_face']
+        if eligible is not None:
+            eligible -= subject.get('slice_encumbered_krw', 0)
         base = None
         if eligible is not None and _nonneg_int(rate):
             base = eligible * rate // BPS_SCALE
@@ -276,6 +278,7 @@ class DecisionNoteUnderwriting:
             'decided_by_role': decided_by_role,
             'sim_day': sim_day,
         }
+        inputs.update({k: subject[k] for k in ('slice_encumbered_krw', 'slice_exposure_beneficiary_krw', 'slice_exposure_portfolio_krw') if subject.get(k)})
         return {
             'label': UNDERWRITE_LABEL,
             'mode': _MODE,
@@ -297,6 +300,7 @@ class DecisionNoteUnderwriting:
                 'eligible_face': eligible,
                 'advance_rate_bps': rate,
                 'base_krw': base,
+                **({'slice_encumbered_krw': subject['slice_encumbered_krw']} if subject.get('slice_encumbered_krw') else {}),
             },
             'caps_remaining': caps_remaining,
             'decided_by_role': decided_by_role,

@@ -1,5 +1,8 @@
 # Bundled policy runtime — local verification evidence
 
+The original node record follows. The conflict-fix round 1 record at the end
+contains the current merged-tree build and verification results.
+
 Date: 2026-10-25. Branch: `agent/capital-bundled-policy-runtime`.
 Node baseline: `02bc3e5feef72d56f2f905d045746bedf455c927`.
 Tools: Python 3.13.5, Node v20.19.2, npm 11.21.1, Playwright 1.58.2 / local Chromium.
@@ -195,3 +198,99 @@ module.exports = config;
 - `tests/vectors/pack/truncated.json`
 - `tests/vectors/pack/volatile.json`
 - `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`
+
+## Conflict-fix round 1 — 2026-10-25
+
+Resolved the supervisor-started merge of `origin/main` into
+`agent/capital-bundled-policy-runtime` without aborting, committing, pushing,
+rebasing or resetting. Both bundled policy runtime and main's repayment,
+recovery, claim slices, shadow arithmetic, lifecycle/identity claims and
+verification surfaces are retained. No messages were posted externally.
+All runtime exercises use SIMULATED, provisional local data.
+
+The combined service loads the clock/export bounds and repayment bounds through
+Traversables without changing `capital/overlay.py`. Recovery and slice loaders
+now use `capital.resources.note_path`, including the slice settlement-policy
+input. Shadow retains main's added arguments, policy reads and calculations,
+using the shared ledger parser for each bundled or explicitly selected note.
+Explicit overrides remain exclusive; missing and malformed notes stay unbound.
+
+The preservation tests retain main's historical and live byte guards plus the
+reviewed node's exact-hash exception for the adopted bundling provenance
+clarification. The shadow test still checks the original pre-bundling policy
+result digest and now checks the two added provenance fields separately.
+The release regression test exercises all newly combined loaders outside the
+checkout, including missing/malformed recovery, slice and repayment inputs.
+
+Resolved files (18):
+
+- `README.md`
+- `capital/service.py`
+- `capital/shadow.py`
+- `docs/INTEGRATION.md`
+- `docs/OPERATOR_HANDBOOK_KO.md`
+- `docs/VALIDATION.md`
+- `tests/test_coa_candidate.py`
+- `tests/test_decision_bindings.py`
+- `tests/vectors/finance_vectors.json`
+- `tests/vectors/pack/clean.json`
+- `tests/vectors/pack/content-digest.json`
+- `tests/vectors/pack/section-auth_matrix.json`
+- `tests/vectors/pack/section-decisions.json`
+- `tests/vectors/pack/section-export_manifest.json`
+- `tests/vectors/pack/section-reconciliation.json`
+- `tests/vectors/pack/section-workspace_audit.json`
+- `tests/vectors/pack/truncated.json`
+- `tests/vectors/pack/volatile.json`
+
+Additional combination fixes: `capital/recovery.py`, `capital/slices.py`,
+`tests/test_release.py`, `tests/test_shadow_slice_uc.py`, `docs/RELEASES.md`
+and this evidence record. Finance and pack fixtures were regenerated from the
+combined code through their existing writers, retaining all main sections.
+
+The merged local artifact is `build/merge-bundled-a/capital-0.2.0.pyz`:
+SHA256 `29dc4a74bba45cfac215f1e77b0f2ea7577bdb7e686b0f155c8751d57c020448`.
+`build/merge-bundled-b/capital-0.2.0.pyz` has identical bytes. The authorized
+additional set is exactly 18 paths (the 16 top-level decision Markdown files,
+coverage and ledger parser). All archive members are accounted for by the
+manifest, except the manifest itself, and each file's SHA256 matches.
+Labels remain `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`.
+
+Current logs use `/tmp/bundled-merge-*.log`. The initial targeted run used a
+module invocation incompatible with main's `test_overlay` import and exposed
+the expected provenance-only shadow digest change. Corrected discovery and
+separate provenance assertions pass. An earlier full-suite run was interrupted
+when test edits completed, then restarted against the final test sources.
+The default browser command failed because host ports were occupied; the same
+unchanged command/configuration passed in an isolated loopback namespace.
+
+| Command / check | Conflict-fix round 1 result |
+|---|---|
+| `python3 -m unittest discover -s tests -p test_coa_candidate.py -v` | Exit 0; 36 tests, including historical/live guards and golden checks. |
+| `python3 -m unittest discover -s tests -p test_release.py -v` | Exit 0; 13 tests, including the combined policy-loader regression. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 pinned tests. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm run test:browser` | Host environment port collision; no service was stopped or reused. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 1.9 min; unchanged suite and configuration. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, 9 stages. |
+| `python3 scripts/decision_ledger.py` | Exit 0; combined decision corpus validates. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; bundling consumed and main consumers retained. |
+| `python3 scripts/not_bound_checklist.py --check` | Exit 0. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0. |
+| `python3 scripts/pack_vectors.py --write` / `--check` | Exit 0; all 9 regenerated pack fixtures match. |
+| `python3 scripts/finance_vectors.py --write` / `--check` | Exit 0; regenerated 97,980-byte fixture matches. |
+| `python3 scripts/build_release.py --out build/merge-bundled-a` / `build/merge-bundled-b` | Exit 0; identical SHA256 recorded above. |
+| `cmp build/merge-bundled-a/capital-0.2.0.pyz build/merge-bundled-b/capital-0.2.0.pyz` | Exit 0; byte-identical. |
+| `python3 scripts/smoke_release.py build/merge-bundled-a/capital-0.2.0.pyz` | Exit 0; all 11 checks, including actual terms accrual and persisted overlay/provenance after workspace restart outside checkout. |
+| Inline stdlib archive audit | Every member matches its manifest hash; exactly the 18 authorized extra paths; tests/keysets/workspaces excluded except the pre-existing pinned vendor test. |
+| Inline stdlib preservation audit | All five vendor SHA256 locks and file bytes, vendor manifest, `capital/export.py` and `capital/overlay.py` match incoming main exactly. `.aiops/` has no change against either parent. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,132 tests passed in 489.148 seconds on the final combined sources. |
+| Merge hygiene | All 18 conflicts resolved; no unmerged index entries or conflict markers; `git diff --check origin/main` passes. The merge remains uncommitted for the supervisor. |
+
+`git diff --cached --check` also reports three existing Markdown hard-break
+spaces on lines 7–9 of the incoming `CAPITAL_UPSTREAM_REPINS.md` note. That
+note is byte-identical to incoming main and was preserved; the diff against
+`origin/main` has no whitespace errors.
+
+Result: **STATUS: READY**. No consequential product decision was required.
