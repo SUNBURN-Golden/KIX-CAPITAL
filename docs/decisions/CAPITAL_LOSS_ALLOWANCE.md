@@ -2,9 +2,9 @@
 
 **PROVISIONAL PRODUCT DECISION — 시뮬레이션·제품 설계 전용.** 실자금과 청약은 없고 production은 `NOT_AUTHORIZED`다. `accounting_policy = SYNTHETIC_UNADOPTED`, `tax = NOT_BOUND`, `legal = NOT_BOUND`, `operating_ledger = NOT_BOUND`를 유지한다. 회계·세무 내용은 전문가 검토 전 작업 가정이며 upstream 채택이나 운영 회계 정책 채택을 주장하지 않는다.
 
-**지정 결정자/기존 결정 귀속:** Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07). **결정일:** 2026-10-26. **기준:** Capital main `aab0a73`, kix-protocol `58dd527`.
+**지정 결정자/기존 결정 귀속:** Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07). **결정일:** 2026-10-26. **기준:** Capital main `aab0a73`, kix-protocol `e00e68e`.
 
-**개정 실행 이력:** 이번 개정은 Codex가 작성했다. Claude CLI의 Sonnet 3회 및 Fable 대체 1회는 모두 `Not logged in`으로 추론 전에 실패했다. 아래 `decided_by`·`provided_by`는 요청된 기존 위임 표기를 보존하며 이번 실행 모델의 증명이 아니다.
+**개정 실행 이력:** 라운드 1 개정은 Codex가 작성했다(Claude CLI Sonnet 3회·Fable 1회가 `Not logged in`으로 추론 전 실패). 라운드 2 개정(준비금 풀 바닥 정합)은 Claude Opus 5.5(`claude-opus-5-5`)가 작성했다. 아래 `decided_by`·`provided_by`는 요청된 기존 위임 표기를 보존하며 실행 모델의 증명이 아니다.
 
 정책 근거는 supervisor pack과 제공된 기존 결정문이다. 잘린 선행 파일의 나머지, TERMS 원문, risk·COA 코드는 열지 않았다. 개정 확인에 사용한 파일은 이 노트와 추가 허용된 `tests/decision_bindings.json`이며, 명시된 검증 명령을 실행했다. 변경 허용 범위는 이 노트·바인딩·`tests/vectors/pack/`이고 이번에 새 벡터는 만들지 않는다. 일곱 항목의 `ADOPTED`는 잠정 제품값이며 구현 완료가 아니다. 모든 항목에 담당 역할과 전문가 검토 플래그를 둔다.
 
@@ -16,8 +16,8 @@
 | `allowance_posting_timing` | ADOPTED: 사건·파생 전이점 true-up을 cut까지 재생 | CAP-04, CAP-13, CAP-14 | `loss-allowance-postings` |
 | `allowance_true_up_and_reversal` | ADOPTED: 1190/5100 차액만 게시; 종결 환입 | CAP-13 | `loss-allowance-postings` |
 | `allowance_after_acceleration_and_default` | ADOPTED: 가속 2,500, 부도 명령 10,000; 상각 전 충당금 해제 | CAP-04, CAP-13 | `loss-allowance-postings` |
-| `reserve_pool_3100_3200_appropriation_link` | ADOPTED: 3100→3200 게시 없이 준비금 메모 | CAP-04, CAP-13 | `loss-allowance-postings` |
-| `recon_check_allowance_vs_risk_reserve` | ADOPTED: 동일 cut의 Σ1190와 risk 필요액 정확 일치 | CAP-04, CAP-13, CAP-14 | `loss-allowance-postings` |
+| `reserve_pool_3100_3200_appropriation_link` | ADOPTED: 3100→3200 게시 없이 준비금 메모; 풀 목표 = max(Σ1190, TERMS 포트폴리오 바닥) | CAP-04, CAP-13 | `loss-allowance-postings` |
+| `recon_check_allowance_vs_risk_reserve` | ADOPTED: 동일 cut의 풀 목표와 risk 필요액 정확 일치, Σ1190은 구성요소로 분해 | CAP-04, CAP-13, CAP-14 | `loss-allowance-postings` |
 | `cut_scope_and_export_section` | ADOPTED: 이중 digest·논리일·전체 KRW 장부; 후보 표면만 노출 | CAP-13, CAP-14, CAP-15 | `loss-allowance-postings` |
 
 ## 2. KIX 비전 연결
@@ -60,15 +60,22 @@
 
 ### 3.5 reserve_pool_3100_3200_appropriation_link
 
-`RESERVE_POOL_MEMO_V1`을 채택한다. `appropriation_target_krw = Σ1190`, 이 후보에서 인식한 `funded_krw = 0`, `shortfall_krw = target`, `status = MEMO_NOT_POSTED`다. 0은 후보가 인식한 재원이며 외부 준비금 존재 여부를 단정하지 않는다.
+`RESERVE_POOL_MEMO_V1`을 채택한다. 준비금 풀 목표는 선행 TERMS의 공식 `max(충당금 합계, 포트폴리오 잔액 바닥)`을 그대로 따른다. 충당금 연결 하위 목표와 전체 풀 목표를 분리한다.
 
-`Dr 3100 / Cr 3200`은 게시하지 않는다. 1190은 차감 자산이지 현금 준비금이 아니다. 폭포 ③ `LOSS_RESERVE`는 `NOT_BOUND`, `absorbed_krw = 0`을 유지한다. 실제 가용 3100 잔액 증거, 3200 분류의 전문가 검토, 별도 준비금 바인딩 결정·버전 구현이 모두 있어야 적립 게시로 전환한다. 이 노트는 미래 이용형 상각을 현재 승인하지 않는다.
+- `allowance_component_krw = Σ1190` — 이 노트의 건별 내림 충당금 합계.
+- `portfolio_floor_krw = floor(Σ effective_principal(cut 모집단) × TERMS 포트폴리오 바닥 bps / 10000)` — 포트폴리오 단위로 한 번 내림한다(현재 설명값 100 bps). bps는 TERMS reserve 정의에서 읽고 복제하지 않는다.
+- `pool_target_krw = max(allowance_component_krw, portfolio_floor_krw)`, `binding_component ∈ {ALLOWANCE, PORTFOLIO_FLOOR}`(같으면 ALLOWANCE).
+- 이 후보가 인식한 `funded_krw = 0`, `shortfall_krw = pool_target_krw − funded_krw`, `status = MEMO_NOT_POSTED`.
+
+예: 정상 T1 두 건의 실효 원금이 각 66원이면 건별 level은 `floor(0.99) = 0`이라 Σ1190 = 0이지만 바닥은 `floor(132 × 100 / 10000) = 1`이므로 풀 목표와 부족액은 1원이다. 바닥 초과분은 1190에 게시하지 않는다. 1190은 건별 기대손실 측정이고 바닥은 준비금 풀 요건이다. funded 0은 후보가 인식한 재원이며 외부 준비금 존재 여부를 단정하지 않는다.
+
+`Dr 3100 / Cr 3200`은 게시하지 않는다. 1190은 차감 자산이지 현금 준비금이 아니다. 폭포 ③ `LOSS_RESERVE`는 `NOT_BOUND`, `absorbed_krw = 0`을 유지한다. 실제 가용 3100 잔액 증거, 3200 분류의 전문가 검토, 별도 준비금 바인딩 결정·버전 구현이 모두 있어야 적립 게시로 전환한다. 이 노트는 미래 이용형 상각을 현재 승인하지 않는다. TERMS의 바닥 정의를 읽을 수 없으면 `portfolio_floor_krw`와 풀 목표는 `NOT_BOUND`이며 Σ1190으로 대체하지 않는다.
 
 ### 3.6 recon_check_allowance_vs_risk_reserve
 
-후보 검사 `allowance_vs_risk_reserve`는 같은 cut·대상 집합·정책 버전에서 `Σ1190 대변잔액 == GET /api/risk reserve.requirement_krw`를 검사한다. 허용 오차는 0이다. `MATCH`, `MISMATCH`, `CUT_MISMATCH`, 필수 증거 부재의 `NOT_BOUND`를 구분하며 마지막 셋은 통과가 아니다.
+후보 검사 `allowance_vs_risk_reserve`는 같은 cut·대상 집합·정책 버전에서 `pool_target_krw = max(Σ1190 대변잔액, portfolio_floor_krw) == GET /api/risk reserve.requirement_krw`를 검사한다. 허용 오차는 0이다. risk 필요액은 TERMS 준비금 요건의 구현이므로 비교 대상은 Σ1190 단독이 아니라 §3.5의 풀 목표다. `MATCH`, `MISMATCH`, `CUT_MISMATCH`, 필수 증거 부재의 `NOT_BOUND`를 구분하며 마지막 셋은 통과가 아니다.
 
-차이는 후보 금액 minus risk 금액으로 표시하고 advance_id·버킷·실효 원금·bps·level·carried를 제공한다. 공용 bucket/level 함수와 §3.3 보존식을 사용한다. 공용 코드의 같은 오류가 양쪽에 나타날 수 있으므로 독립 손계산 벡터로도 검증한다. risk가 다르면 근거를 대조해 양쪽을 정합시키며 이 노트만으로 선행 정책을 덮어쓰지 않는다. V1 대사와 export 검사는 그대로 둔다.
+결과에는 `allowance_component_krw`, `portfolio_floor_krw`, `binding_component`, `delta_krw = pool_target − requirement`를 함께 낸다. risk가 건별 충당액을 노출하면 보조 검사 `Σ1190 == Σ risk 건별 충당액`도 수행하고 advance_id·버킷·실효 원금·bps·level·carried를 제공한다. risk 필요액이 바닥 없이 충당금 합계만 보고하면 TERMS 공식과의 불일치로 `MISMATCH`를 내고, 이 노트로 TERMS를 덮어쓰지 않는다. 공용 bucket/level/floor 함수와 §3.3 보존식을 사용하되 공용 코드의 같은 오류가 양쪽에 나타날 수 있으므로 독립 손계산 벡터(§3.5의 66원 두 건 포함)로도 검증한다. V1 대사와 export 검사는 그대로 둔다.
 
 ### 3.7 cut_scope_and_export_section
 
@@ -88,7 +95,7 @@ KRW AssetSpec 하나와 해당 cut 장부의 모든 advance_id를 포함한다. 
   "status": "PROVISIONAL_PRODUCT_DECISION",
   "bases": {
     "capital_main": "aab0a73",
-    "kix_protocol": "58dd527",
+    "kix_protocol": "e00e68e",
     "terms_version": "CAPITAL-TERMS-V1",
     "chart_version": "CAPITAL-COA-V1"
   },
@@ -96,8 +103,7 @@ KRW AssetSpec 하나와 해당 cut 장부의 모든 advance_id를 포함한다. 
   "tax": "NOT_BOUND",
   "consumers": ["loss-allowance-postings"],
   "revision_execution": {
-    "editor": "Codex",
-    "requested_cli": "Sonnet three attempts, then Fable one attempt: all failed before inference; Not logged in",
+    "editor": "round 1 Codex (Sonnet three attempts, then Fable one attempt, all failed before inference: Not logged in); round 2 Claude Opus 5.5 (claude-opus-5-5)",
     "attribution": "decided_by and provided_by preserve the supplied delegation attribution, not proof of this revision model execution"
   },
   "entries": {
@@ -193,11 +199,17 @@ KRW AssetSpec 하나와 해당 cut 장부의 모든 advance_id를 포함한다. 
         "mode": "RESERVE_POOL_MEMO_V1",
         "post_3100_to_3200": false,
         "memo": {
-          "appropriation_target_krw": "sum 1190 credit balances",
+          "allowance_component_krw": "sum 1190 credit balances (per-advance floored levels)",
+          "portfolio_floor_krw": "floor(sum effective_principal over cut population * TERMS reserve portfolio-floor bps / 10000); one rounding at portfolio level; current descriptive value 100 bps",
+          "pool_target_krw": "max(allowance_component_krw, portfolio_floor_krw) per CAPITAL-TERMS-V1 reserve pool formula",
+          "binding_component": "ALLOWANCE | PORTFOLIO_FLOOR (tie -> ALLOWANCE)",
           "funded_krw": 0,
-          "shortfall_krw": "target",
+          "shortfall_krw": "pool_target_krw - funded_krw",
           "status": "MEMO_NOT_POSTED"
         },
+        "floor_not_posted_to_1190": true,
+        "missing_floor_definition": "portfolio_floor_krw and pool_target_krw NOT_BOUND; never substitute sum 1190",
+        "worked_vector": "two performing T1 advances, effective principal 66 each -> allowance 0, floor 1, pool target 1, shortfall 1",
         "funding_source_ref": "CAPITAL-TERMS-V1.reserve.funding_source -> 3100",
         "waterfall": "LOSS_RESERVE NOT_BOUND; absorbed_krw 0",
         "future_gate": ["evidenced available 3100 balance", "professional review of 3200 classification", "separate reserve-binding decision and versioned implementation"]
@@ -208,7 +220,7 @@ KRW AssetSpec 하나와 해당 cut 장부의 모든 advance_id를 포함한다. 
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-10-26",
       "cap_rows": ["CAP-04", "CAP-13"],
-      "rationale": "A contra-asset allowance is not funded cash; memo treatment avoids inventing reserve resources.",
+      "rationale": "A contra-asset allowance is not funded cash; memo treatment avoids inventing reserve resources, and the pool target keeps the adopted TERMS portfolio floor distinct from per-advance allowance.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -216,14 +228,17 @@ KRW AssetSpec 하나와 해당 cut 장부의 모든 advance_id를 포함한다. 
       "status": "ADOPTED",
       "value": {
         "check_id": "allowance_vs_risk_reserve",
-        "predicate": "same complete cut, population, terms and chart versions AND sum 1190 credit balances == GET /api/risk reserve.requirement_krw",
+        "predicate": "same complete cut, population, terms and chart versions AND max(sum 1190 credit balances, portfolio_floor_krw) == GET /api/risk reserve.requirement_krw",
+        "components": ["allowance_component_krw", "portfolio_floor_krw", "binding_component"],
+        "auxiliary_per_advance": "when risk exposes per-advance provisions: sum 1190 == sum risk per-advance provisions",
+        "risk_without_floor": "MISMATCH against TERMS pool formula; do not override TERMS",
         "tolerance_krw": 0,
         "outcomes": ["MATCH", "MISMATCH", "CUT_MISMATCH", "NOT_BOUND"],
         "missing_evidence": "NOT_BOUND, never zero or MATCH",
-        "delta_krw": "candidate allowance minus risk requirement",
+        "delta_krw": "candidate pool_target_krw minus risk requirement",
         "per_advance": ["advance_id", "bucket", "effective_principal", "bps", "level", "carried"],
         "auxiliary": ["0 <= 1190(a) <= effective_principal(a)", "closing 1190 = opening 1190 + allowance-related net 5100"],
-        "shared_function": "risk and candidate share bucket/level; independent hand-calculated vectors test correctness"
+        "shared_function": "risk and candidate share bucket/level/floor; independent hand-calculated vectors, including the 66+66 floor case, test correctness"
       },
       "owner": "Capital Reconciliation Owner",
       "professional_review_required": true,
@@ -267,15 +282,15 @@ KRW AssetSpec 하나와 해당 cut 장부의 모든 advance_id를 포함한다. 
 
 ## 5. 수용 기준 매핑
 
-- 이 노트에는 결정 블록 하나와 일곱 ADOPTED 항목이 있다. 모든 항목에 owner, professional_review_required, consumer가 있으며 회계·세무 라벨을 유지한다.
+- 이 노트에는 결정 블록 하나와 일곱 ADOPTED 항목이 있다. TERMS reserve bps(150/500/2500/10000)와 포트폴리오 바닥은 참조로만 재사용하고 COA 1190/5100/3100/3200을 바꾸지 않는다. 모든 항목에 owner, professional_review_required, consumer가 있으며 회계·세무 라벨을 유지한다.
 - 현재 worktree의 `tests/decision_bindings.json`에는 이미 이 결정의 일곱 행이 있다. 모두 `PENDING_CONSUMER`, `consumer_node: loss-allowance-postings`, 이유와 기존 module anchor를 갖춘다. 측정은 `capital/risk.py`, 대사는 `capital/recon.py`, 나머지 다섯 항목은 `capital/coa.py`를 가리킨다. 중복 행을 추가하지 않는다. anchor는 구현 증거가 아니다.
-- 2026-10-26 `python3 scripts/decision_bindings.py --check`는 종료 0과 `decision bindings ok: declared references only; pending anchors are not implementation`을 반환했다. 따라서 첫 blocking finding의 누락 상태는 현재 worktree에서 재현되지 않는다.
+- 라운드 2 개정 후에도 2026-10-26 `python3 scripts/decision_bindings.py --check`는 종료 0과 `decision bindings ok: declared references only; pending anchors are not implementation`을 반환했다. 결정 블록은 하나이며 JSON으로 파싱된다.
 - `python3 scripts/decision_ledger.py`는 종료 0으로 이 노트와 일곱 `=ADOPTED` 항목을 출력했다. 현재 체크아웃에서 추가 CAP_COVERAGE 편집 없이 색인되는 것을 확인했다. coverage 파일 자체는 읽거나 수정하지 않았으며 모든 미등록 노트에 대한 일반 동작을 추정하지 않는다.
 - `GET /api/decisions` HTTP 호출은 이번에 검증하지 않았다. 색인 성공을 HTTP 검증 성공으로 바꾸어 적지 않는다. endpoint 노출의 직접 확인은 남은 수용 검증이다. CLI 모델 실행 실패도 위에 별도로 기록했다.
 
 ## 6. Open risks
 
-TERMS 버킷 매핑·risk 계산·COA 세부 구현은 직접 확인하지 못했다. 충돌·증거 부재는 소비자가 NOT_BOUND 또는 실패로 드러내야 한다. 제품 버킷은 규정상 ECL 단계 적합성을 주장하지 않는다. 원금 전용 측정, 5200 표시, 3200 분류와 세무 처리의 전문 검토는 남는다. HTTP 노출은 미검증이며 운영·upstream 승인 영수증은 없다.
+TERMS 버킷 매핑·포트폴리오 바닥 필드명·risk 필요액의 바닥 포함 여부·COA 세부 구현은 직접 확인하지 못했다(바닥 공식은 라운드 2 검토자 인용). 충돌·증거 부재는 소비자가 NOT_BOUND 또는 실패로 드러내야 한다. 제품 버킷은 규정상 ECL 단계 적합성을 주장하지 않는다. 원금 전용 측정, 5200 표시, 3200 분류와 세무 처리의 전문 검토는 남는다. HTTP 노출은 미검증이며 운영·upstream 승인 영수증은 없다.
 
 ## 7. 후속 작업
 
