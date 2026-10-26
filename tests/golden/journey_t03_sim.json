@@ -1,5 +1,5 @@
 {
-  "digest": "2d88e8d3c3c331611193dad6428dbe387e7f6521b500d4998ccfdebd2344ff60",
+  "digest": "eef5ff525592d703fbd054b982d8d64178987117f13f7bfc62f642ed8430a92f",
   "funds_executed": false,
   "integrated": false,
   "journey": "T03-sim",
@@ -323,7 +323,7 @@
         "DRAWN",
         0,
         false,
-        "NOT_RECORDED"
+        "NONE_YET"
       ],
       "facts": {
         "interest_due_krw": 172
@@ -335,7 +335,7 @@
         "DRAWN",
         0,
         false,
-        "NOT_RECORDED"
+        "NONE_YET"
       ]
     },
     {
@@ -408,7 +408,7 @@
       },
       "facts": {
         "funds_executed": false,
-        "interest_payments": "NOT_RECORDED",
+        "interest_payments": "NONE_YET",
         "operation_count": 6,
         "overlay_state_digest": "a54dc45838b21c848c3201d8752d85904617e10765fd709a696a9feb4afba23e",
         "risk_digest": "b66a67f5903378210d2a790eb040066b7044c21468fea609204c2b4d31702477",
