@@ -477,7 +477,9 @@ class ServiceShadowTests(unittest.TestCase):
         premium = next(t for t in resale['triggers'] if t['vector_id'] == 'worked-ru1-premium')
         self.assertEqual(premium['shadow_holder_entitlement'], 113000)
         for name in ('revenue_participation', 'claim_purchase', 'residual_and_late_cash'):
-            self.assertEqual(by_item[name]['shadow']['status'], DEFERRED)
+            self.assertEqual(by_item[name]['shadow']['status'], COMPUTED)
+            self.assertTrue(by_item[name]['shadow']['deferred'])
+            self.assertTrue(all(row['status'] == DEFERRED for row in by_item[name]['shadow']['deferred']))
 
     def test_read_only_flags_and_digest_unchanged(self):
         before = (self.service.machine.state_digest(), self.service.machine.canonical_state(),
