@@ -68,7 +68,7 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 - [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): 수익·원가 정의와 배분 순서/상한
 - [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): 채권 양도량·보유자·대가·우선순위
 - [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): PROVISIONAL_PRODUCT_DECISION per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)
-- [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): UNSUPPORTED_BY_PINNED_FSM · requires upstream FSM change · 환불 부담·리셀 취소 부담은 그림자 산술(SHADOW_NOT_APPLIED · 적용·집행 아님)로만 계산, 수익 참여·채권 매입·잔여·늦은 현금은 이 노드에서도 계산하지 않음(SHADOW_DEFERRED)
+- [ ] financial-contracts (DECISION_REQUIRED; CAP-02, CAP-03, CAP-04): UNSUPPORTED_BY_PINNED_FSM · requires upstream FSM change · 환불 부담·리셀 취소 부담·단일 청구 수익 참여·채권 슬라이스 크기/가격·UC1~UC4 잔여 분할은 그림자 산술(SHADOW_NOT_APPLIED · 적용·집행 아님)로만 계산, 다중 청구 기준·90일 창·슬라이스 등록부·180일 타이머·D+1 배치는 SHADOW_DEFERRED
 - [ ] producer-binding (UPSTREAM_REQUIRED; CAP-07, CAP-16): 확대 catalogue와 generated SDK의 exact source/manifest
 - [ ] producer-binding (UPSTREAM_REQUIRED; CAP-07, CAP-16): SEMANTIC_CONFORMANCE profile과 양성/음성 vectors
 - [ ] producer-binding (UPSTREAM_REQUIRED; CAP-07, CAP-16): Commerce/Protocol 동일 producer tuple과 실제 서비스 qualification
