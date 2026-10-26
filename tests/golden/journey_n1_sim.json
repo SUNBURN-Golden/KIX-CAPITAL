@@ -1,5 +1,5 @@
 {
-  "digest": "d136b7620412ec7ffbb6b4a1077f0e6212a5497d9fc9b188d24629810cd9f495",
+  "digest": "2ebfc1d0d764b94fc51435c3868c06279427090db9daf314cd4d9daa3aaad4d1",
   "funds_executed": false,
   "integrated": false,
   "journey": "N1-sim",
@@ -208,7 +208,7 @@
         "base_krw": 46750,
         "cure_deadline": 6,
         "default_eligible_day": 17,
-        "interest_rebased": false,
+        "interest_rebased": true,
         "margin_state": "ACCELERATED",
         "principal_outstanding_krw": 48000
       },

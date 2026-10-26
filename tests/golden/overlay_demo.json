@@ -1,7 +1,7 @@
 {
-  "decision_note": "docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4 (overlay-digest-export-decision), node audit60-fix2",
-  "entry_count": 7,
-  "export_manifest_v3_content_digest": "bd992375bf4c856bd042905ec467e68b21c415a9f25e06527ac0cf36d05639ff",
+  "decision_note": "docs/decisions/CAPITAL_REPAYMENT_POSTING.md 3.9 (repayment-posting-decision), node overlay-repayment-posting; docs/decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2, 3.4",
+  "entry_count": 8,
+  "export_manifest_v3_content_digest": "f315060fc697a3d58ef2554a4c219c623f79b26627dba3e572c498fe01320db6",
   "export_manifest_v3_format": "KIX_CAPITAL_EXPORT_MANIFEST_V3",
   "interest_krw": {
     "sim-defaulted": {
@@ -10,12 +10,20 @@
     },
     "sim-unbound": {
       "contract": 320,
-      "default": 65
+      "default": 92
     }
   },
   "label": "SIMULATED",
   "overlay_schema": 1,
-  "overlay_state_digest": "73f255996907e7bc662523ff8214c7942cd34a0f399c94097bd72496323c7367",
-  "scenario": "terms binding -> advance_day 0->60 -> repay sim-unbound 5000 -> advance_day 60->75",
+  "overlay_state_digest": "03b2fa50b2280ddd43dbe5129ec83a1cd743960b07ddc02cd187b560677566eb",
+  "repayments_krw": {
+    "sim-unbound": {
+      "default_interest": 0,
+      "interest": 320,
+      "principal": 1000,
+      "unapplied": 0
+    }
+  },
+  "scenario": "terms binding -> advance_day 0->60 -> post_repayment sim-unbound interest plus 1000 principal -> advance_day 60->75",
   "sim_day": 75
 }

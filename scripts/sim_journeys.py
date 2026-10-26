@@ -8,8 +8,8 @@ acceptance ladder, claim no qualification, move no funds, and call no provider.
 T03-sim: the zero-exception full lifecycle of one advance in process (default pinned
 FSM): offer, approve, bind_settlement, draw, advance_day accrual under the ACT/365
 memo ledger, a full F04 repay of the outstanding principal, and close. Interest stays
-a memo (interest_payments NOT_RECORDED): post_repayment is parked, so nothing is
-posted for it and the overlay is never close-ready on its own.
+a memo (interest_payments.status NONE_YET): these journeys deliberately use direct
+F04 repay, so no overlay payment is posted and unpaid interest keeps close_ready false.
 
 T04-sim: the auditor evidence chain on a ``python3 -m capital.server --workspace``
 subprocess. The seeded demo book is replayed over HTTP and its state_digest is checked
@@ -376,8 +376,8 @@ def run_t03():
         row = session.advance_row(advance)
         journey.step('principal is zero; the unpaid interest memo keeps it not close-ready', 'HTTP',
                      (row['phase'], row['principal_outstanding_krw'], row['close_ready'],
-                      session.overlay()['interest_payments']),
-                     ('DRAWN', 0, False, 'NOT_RECORDED'),
+                      session.overlay()['interest_payments']['status']),
+                     ('DRAWN', 0, False, 'NONE_YET'),
                      interest_due_krw=row['interest_due_krw'])
         _drive(journey, session, f'close {advance}', 'close', advance, 't03-close')
         state = session.refresh()
@@ -395,7 +395,7 @@ def run_t03():
         journey.step('final phases and digests', 'HTTP',
                      {c['advance_id']: c['phase'] for c in state['cases']}, {advance: 'CLOSED'},
                      sim_day=overlay['sim_day'], overlay_state_digest=overlay['overlay_state_digest'],
-                     interest_payments=overlay['interest_payments'],
+                     interest_payments=overlay['interest_payments']['status'],
                      risk_digest=risk['risk_digest'], state_digest=state['state_digest'],
                      operation_count=state['operation_count'], funds_executed=state['funds_executed'])
         _audit_no_replay(journey, session.client.posted_operation_ids())
@@ -521,8 +521,8 @@ def run_t05():
                      session.advance_row(a)['margin']['state'], 'CALLED')
         _tick(journey, session, 't-4', deadline, deadline + 1, 'advance_day deadline->deadline+1 acceleration')
         accelerated = session.advance_row(a)
-        journey.step('sim-a accelerated; interest is not re-based', 'HTTP', accelerated['margin']['state'],
-                     'ACCELERATED', interest_basis='NOT_REBASED', **_margin_facts(accelerated))
+        journey.step('sim-a accelerated; interest is re-based (CAPITAL_DEFAULT_RECOVERY.md §4.10)', 'HTTP', accelerated['margin']['state'],
+                     'ACCELERATED', interest_basis='REBASED', **_margin_facts(accelerated))
         eligible_day = accelerated['margin']['default_eligible_day']
 
         # Late cash after acceleration. The allocation endpoint refuses once the refund has lowered the
@@ -536,8 +536,8 @@ def run_t05():
         dues = session.advance_row(a)
         interest = dues['interest_due_krw'] + dues['default_interest_due_krw']
         late_principal = T05_LATE_CASH - interest
-        journey.step('late cash splits interest first; interest payments stay NOT_RECORDED', 'HTTP',
-                     (late_principal > 0, session.overlay()['interest_payments']), (True, 'NOT_RECORDED'),
+        journey.step('late cash splits interest first; interest payments stay NONE_YET', 'HTTP',
+                     (late_principal > 0, session.overlay()['interest_payments']['status']), (True, 'NONE_YET'),
                      cash=T05_LATE_CASH, order=dues['allocation']['order'],
                      interest_due_krw=dues['interest_due_krw'],
                      default_interest_due_krw=dues['default_interest_due_krw'], principal_share_krw=late_principal)
@@ -552,8 +552,8 @@ def run_t05():
         _drive(journey, session, 'repay sim-b to zero', 'repay', b, 'b-repay-final', amount=remaining, sequence=2)
         closing = session.advance_row(b)
         journey.step('interest payments are not recorded, so the overlay is not close-ready', 'HTTP',
-                     (closing['close_ready'], session.overlay()['interest_payments']),
-                     (False, 'NOT_RECORDED'))
+                     (closing['close_ready'], session.overlay()['interest_payments']['status']),
+                     (False, 'NONE_YET'))
         _drive(journey, session, 'human close sim-b', 'close', b, 'b-close')
 
         # Default-eligible proposal, then a human default.
@@ -868,7 +868,7 @@ def run_t04():
                          (200, T04_TICK_DAYS, 'BOUND', 'INCLUDED_IN_MANIFEST_V3'),
                          overlay_state_digest=overlay['overlay_state_digest'],
                          advances=len(overlay['advances']),
-                         interest_payments=overlay['interest_payments'])
+                         interest_payments=overlay['interest_payments']['status'])
             status, risk = auditor_get('/api/risk')
             journey.step('auditor reads the risk rollup', 'HTTP',
                          (status, risk['status'], risk['reconciliation']['matched']),

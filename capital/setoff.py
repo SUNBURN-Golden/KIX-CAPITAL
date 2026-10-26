@@ -64,6 +64,11 @@ def _na_section(reason):
     return {'status': 'NOT_APPLICABLE', 'reason': reason}
 
 
+def observed_distribution(line):
+    """Unencumbered observed cash on one payee line, shared by recovery quotes."""
+    return max(0, line['distributed'] - line['recovery_due'])
+
+
 @runtime_checkable
 class SetoffQuotePort(Protocol):
     """Quote the decided primary recovery step on one bound settlement view. Not an execution."""
@@ -162,7 +167,7 @@ class DecisionNoteSetoff:
                 return row['class']
         return None
 
-    def _lines(self, claim, payees, classes, counterparty_class):
+    def _lines(self, claim, payees, classes, counterparty_class, source_holds=None):
         """Classified copies of the view's obligation lines. None when a value is not a usable integer."""
         obligations = claim.get('obligations')
         if type(obligations) is not list:
@@ -181,9 +186,7 @@ class DecisionNoteSetoff:
             cls = row['class'] if type(row) is dict else None
             mapped = payee in payees
             counted = mapped and cls is not None and cls == counterparty_class
-            eligible = values['distributed'] - values['recovery_due']
-            if eligible < 0:
-                eligible = 0
+            eligible = max(0, observed_distribution(values) - (source_holds or {}).get(payee, 0))
             rows.append({
                 'payee': payee,
                 'class': cls,
@@ -214,7 +217,7 @@ class DecisionNoteSetoff:
         settlement_id = case.get('settlement_id')
         return _nonempty_str(settlement_id) and settlement_id == claim.get('claim_id')
 
-    def _quote(self, case, claim, gate):
+    def _quote(self, case, claim, gate, source_holds=None):
         """(settlement_view section, setoff section). Either may be NOT_BOUND or NOT_APPLICABLE."""
         margin = self._value('additional_margin')
         if margin is None:
@@ -232,7 +235,7 @@ class DecisionNoteSetoff:
         if counterparty_class is None:
             return _unbound_section(COUNTERPARTY_CLASS_NOT_FOUND), _unbound_section(COUNTERPARTY_CLASS_NOT_FOUND)
         facts = self._view_facts(claim)
-        lines = self._lines(claim, payees, policy['classes'], counterparty_class)
+        lines = self._lines(claim, payees, policy['classes'], counterparty_class, source_holds)
         outstanding = case.get('outstanding_exposure')
         if facts is None or lines is None or not _nonneg_int(outstanding):
             return _unbound_section(SETTLEMENT_VIEW_UNREADABLE), _unbound_section(SETTLEMENT_VIEW_UNREADABLE)
@@ -280,14 +283,14 @@ class DecisionNoteSetoff:
         }
         return view, setoff
 
-    def proposal(self, case, claim, *, draw_day, as_of_day, expected_settlement_cash_day, gate) -> dict:
+    def proposal(self, case, claim, *, draw_day, as_of_day, expected_settlement_cash_day, gate, source_holds=None) -> dict:
         advance_id = case.get('advance_id') if type(case) is dict else None
         top, reason = self._top()
         if top == 'NOT_BOUND' or type(case) is not dict or type(claim) is not dict:
             return self._unbound(advance_id)
         echo, authority, execution_reason = self._execution()
         if execution_reason is None:
-            view, setoff = self._quote(case, claim, gate)
+            view, setoff = self._quote(case, claim, gate, source_holds)
         else:
             view, setoff = _unbound_section(execution_reason), _unbound_section(execution_reason)
         cash = setoff['setoff_amount'] if setoff['status'] == 'BOUND' else 0

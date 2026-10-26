@@ -68,7 +68,9 @@ function reconValid(data,next){
  if(data.label!=='SIMULATED'||data.diagnostic!=='LOCAL_ONLY'||data.provider_authenticated_completeness!=='NOT_BOUND'||data.source_cut!=='NOT_BOUND')return false;
  if(data.instance_id!==next.instance_id||!Number.isSafeInteger(data.entry_count)||(data.status!=='MATCHED'&&data.status!=='RECON_MISMATCH'&&data.status!=='WORKSPACE_UNREADABLE'))return false;
  if(data.status==='MATCHED'&&(data.state_digest!==next.state_digest||data.cut!==next.state_digest||data.replay_matched!==true))return false;
- if(!Array.isArray(data.checks)||(data.status!=='WORKSPACE_UNREADABLE'&&data.checks.length!==6))return false;
+ const ids=['receipts_vs_journal_keys','rejected_receipts_absent_from_journal','replay_digest_equals_state_digest','case_fixture_map_vs_journal_offers','projection_totals_vs_case_views','fixtures_digest'];
+ if(data.scope?.overlay_state_digest!==undefined)ids.push('overlay_fold_digest_equals_persisted');
+ if(!Array.isArray(data.checks)||(data.status!=='WORKSPACE_UNREADABLE'&&data.checks.map(row=>row.id).join(',')!==ids.join(',')))return false;
  if(!data.checks.every(row=>typeof row.id==='string'&&(row.status==='MATCHED'||row.status==='RECON_MISMATCH')))return false;
  if(!Array.isArray(data.not_bound)||data.not_bound.length<3||data.not_bound.some(row=>row.status!=='NOT_BOUND'))return false;
  const gaps=data.not_bound.map(row=>row.id);
@@ -151,13 +153,13 @@ async function refreshCore(){
  if(next.auth.role!==currentRole()){await bindSession(currentRole());next=await request('/api/state');validateState(next);if(next.auth.role!==currentRole())throw Error('INVALID_STATE');}
  sessionToken=next.local_token;
  const projectionDecision=next.auth.permissions['projection:read'];
- let projection;
+ let projection,evidence;
  if(!projectionDecision?.allowed){
   const reason=projectionDecision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`;
   $('evidence-rows').replaceChildren();$('evidence-json').textContent='';$('evidence-scope').textContent=reason;
   projection={error:reason};
  }else{
-  const evidence=await request('/api/evidence');
+  evidence=await request('/api/evidence');
   if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
   projection=await loadProjection(next);
   paintEvidence(evidence);
@@ -167,7 +169,7 @@ async function refreshCore(){
  const policyView=await loadPolicy(next);
  const portfolio=await loadPortfolio(next);
  const riskView=await loadRisk(next);
- const deskView=deskOpen()?await loadDesk(next,riskView):null;
+ const deskView=deskOpen()?await loadDesk(next,riskView,evidence,diagnostics.recon):null;
  state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
@@ -574,10 +576,10 @@ function deskOpen(){return location.hash==='#desk';}
 function applyDeskVisibility(){const open=deskOpen();document.body.classList.toggle('desk-open',open);$('desk').hidden=!open;return open;}
 function overlayOk(body,next){return !!body&&body.mode==='SIMULATED_OVERLAY'&&body.label===MEMO_LABEL&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.f04_journal_written===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&Array.isArray(body.advances)&&!!body.margin;}
 function covenantsOk(body,next){return !!body&&body.mode==='SIMULATED_COVENANT_WATCH'&&body.label.startsWith('SIMULATED covenant watch')&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.enforced===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&(body.status==='NOT_BOUND'||Array.isArray(body.advances)&&body.advances.every(row=>['CLEAR','WATCH','BREACH'].includes(row.status)&&Array.isArray(row.reasons)));}
-async function loadDesk(next,riskView){
+async function loadDesk(next,riskView,evidence,reconciliation){
  const decision=next.auth.permissions['projection:read'];
  if(!decision?.allowed)return {forbidden:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
- const view={risk:riskView};
+ const view={risk:riskView,audit:{evidence,reconciliation}};
  try{const body=await request('/api/risk/covenants');if(covenantsOk(body,next))view.covenants=body;else view.covenantsError='코버넌트 응답이 현재 절단면과 맞지 않습니다.';}
  catch{view.covenantsError='코버넌트 watch-list를 확인하지 못했습니다.';}
  try{const body=await request('/api/overlay');if(overlayOk(body,next))view.overlay=body;else view.overlayError='오버레이 응답이 라벨 또는 절단면과 맞지 않습니다. sim_day와 이자를 표시하지 않습니다.';}
@@ -733,7 +735,40 @@ function paintDeskTimeline(c){
  note.textContent=`${c.advance_id} · 행 ${rows.length}건 · F04 저널과 오버레이를 같은 순서 기준(after_journal_index)으로 합쳤습니다. 오버레이 이벤트는 같은 위치의 F04 행 앞에 옵니다.`;
  body.replaceChildren(...rows.map(row=>{const tr=document.createElement('tr');tr.dataset.source=row.cells[1];for(const value of row.cells)tr.append(textElement('td',value));return tr;}));
 }
+function paintDeskAudit(c){
+ const panel=$('desk-audit');
+ panel.hidden=currentRole()!=='auditor'||state?.auth.role!=='auditor'||!!deskData?.forbidden;
+ for(const id of ['desk-audit-chain','desk-audit-receipts','desk-audit-checks','desk-audit-gaps'])$(id).replaceChildren();
+ $('desk-audit-fixture').textContent='';$('desk-audit-unknown').textContent='';
+ if(panel.hidden)return;
+ const manifest=deskData?.manifest,audit=deskData?.audit,report=audit?.reconciliation?.report;
+ const sections=manifest?.sections,overlay=sections?.overlay?.body;
+ const entries=sections?.journal.body.entries,receipts=sections?.receipts.body.receipts;
+ const sourcesValid=Array.isArray(entries)&&entries.every(row=>row&&typeof row.idempotency_key==='string')&&receipts&&typeof receipts==='object'&&!Array.isArray(receipts)&&Object.values(receipts).every(row=>row&&row.receipt&&typeof row.receipt==='object')&&Array.isArray(audit?.evidence?.rows)&&audit.evidence.rows.every(row=>row&&typeof row.claim_id==='string')&&(!overlay||Array.isArray(overlay.journal)&&overlay.journal.every(row=>row&&Number.isSafeInteger(row.after_journal_index)));
+ const compatible=sourcesValid&&report&&report.cut===state.state_digest&&sections.reconciliation.body.cut===state.state_digest&&sections.projection.body.cut===state.state_digest&&audit.evidence.instance_id===state.instance_id&&report.fixtures_digest===sections.fixtures.body.fixtures_digest&&report.scope.overlay_state_digest===overlay?.overlay_state_digest&&(!overlay||overlay.overlay_state_digest===deskData.overlay?.overlay_state_digest);
+ $('desk-audit-error').textContent=compatible?'':(audit?.reconciliation?.error||deskData?.timelineError||'Evidence snapshot unavailable or incompatible · 조회 결과를 결합하지 않습니다.');
+ $('desk-audit-content').hidden=!compatible;
+ if(!compatible)return;
+ $('desk-audit-scope').textContent=`${manifest.label} · ${manifest.status} · cut=${report.cut} · overlay_state_digest=${overlay?.overlay_state_digest??'—'} · bank_reconciliation=${report.bank_reconciliation}`;
+ if(c){
+  $('desk-audit-chain').replaceChildren(...timelineRows(manifest,c).map(row=>{
+   const tr=document.createElement('tr');
+   const entry=row.cells[1]==='F04 저널'?entries[row.key[0]]:null;
+   const receipt=entry?receipts[entry.idempotency_key]?.receipt:null;
+   for(const value of [...row.cells,receipt?JSON.stringify(receipt):'—'])tr.append(textElement('td',value));
+   return tr;
+  }));
+  const fixture=audit.evidence.rows.filter(row=>typeof c.claim_id==='string'&&row.claim_id===c.claim_id||typeof c.settlement_id==='string'&&row.claim_id===c.settlement_id);
+  $('desk-audit-fixture').textContent=fixture.length?JSON.stringify(fixture,null,2):'READ_ONLY_FIXTURE · 선택 사례의 서버 식별자와 연결된 근거 없음';
+ }
+ const keys=new Set(entries.map(entry=>entry.idempotency_key));
+ $('desk-audit-receipts').replaceChildren(...Object.entries(receipts).filter(([key])=>!keys.has(key)).map(([key,value])=>textElement('li',`${key} · no F04 journal row · ${JSON.stringify(value.receipt)}`)));
+ $('desk-audit-checks').replaceChildren(...report.checks.map(check=>{const tr=document.createElement('tr');for(const value of [check.id,check.status,check.detail??'—'])tr.append(textElement('td',value));return tr;}));
+ $('desk-audit-gaps').replaceChildren(...report.not_bound.map(row=>textElement('li',`${row.id} · ${row.status} · ${row.meaning??'—'}`)));
+ $('desk-audit-unknown').textContent=JSON.stringify({unknown_policy:report.unknown_policy,unknown_unresolved:report.unknown_unresolved},null,2);
+}
 function renderDesk(){
+ paintDeskAudit(state?.cases?.find(item=>item.advance_id===selected));
  const open=applyDeskVisibility();
  if(!open||!state)return;
  const forbidden=$('desk-forbidden'),panel=$('desk-body');
