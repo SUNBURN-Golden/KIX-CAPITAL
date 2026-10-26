@@ -456,3 +456,81 @@ Final logs: `build/fix-round3-unit-final.log`,
 
 Result: **STATUS: READY**. No consequential product decision was required.
 No commit, push or external post was made.
+
+
+## Acceptance timeout follow-up — 2026-10-26
+
+The supplied CI tail omitted the failing stage. Read-only retrieval of run
+40244287984 and its acceptance evidence confirms unit discovery was killed by
+the existing 300-second limit (exit 124), during the 200-sequence storage test.
+All eight other stages passed, including 69 browser tests and 11 packaged
+smoke checks. The run identifies PR head `d6f922b1b4b3a2173c48ef36ee8af14cd6ad8ee8`;
+its acceptance evidence records GitHub's merge checkout
+`789f31396de2b7ff0a93989d63a0e71d50f234af`. No assertion failure was reported in
+the captured timeout tail. The available independent review has no findings.
+
+Profiling repeated service creation and readiness requests identified
+Markdown-fence regex scanning as avoidable work in the existing ledger parser.
+The parser now searches for the unchanged opening-fence pattern, then uses
+`str.find` for its first closing triple backtick. It retains non-overlapping
+matches, the same JSON validator and error behavior. There is no new parser,
+policy-value copy, parsed-policy cache or source fallback. Runtime inputs,
+CI timeouts, test workload, financial terms and export construction are unchanged.
+
+A local Python 3.12.15 diagnostic of 500 passes over the actual note corpus
+measured 1.863–1.896 seconds with the previous regex and 0.896–0.921 seconds
+with the changed parser (three samples each). This demonstrates the targeted
+improvement, not a CI timing guarantee or a claim that parsing was the sole
+cause of the historical timeout. Two regressions check corpus equivalence and
+fence/JSON edge cases, including a malformed first block followed by a valid
+block. All 44 targeted ledger, decision-surface and release tests passed.
+
+The untouched starting tree passed 1,134 tests in 261.325 seconds on Python
+3.13.5. Its browser command initially hit unrelated host services on ports
+8765/8766. The unchanged suite then passed all 69 tests in an isolated loopback
+namespace; those existing services were left untouched. Final acceptance uses
+that same isolation and Python 3.12.15, retaining the 300-second unit timeout.
+
+The changed tree produces byte-identical `dist/capital-0.2.0.pyz` and
+`dist2/capital-0.2.0.pyz`, SHA256
+`11a78ed934c9bbb6e6c59d6440cc5c135654cee7e2a6142cdb2fab78353bfca2`.
+An independent archive audit verified 77 members, exactly 18 authorized
+additional inputs, and all per-file manifest hashes. All 11 stdlib smoke checks
+pass, including bundled provenance, note-derived accrual and temporary workspace
+restart equality. Five vendor hashes, vendor manifest bytes and legacy export
+bytes match the starting HEAD. Decision notes, goldens, existing vectors,
+`.aiops/`, Protocol and Commerce references are untouched. Artifacts remain
+SIMULATED/provisional, LOCAL_SIMULATION_ARTIFACT, unsigned and unpublished.
+No commit, push, external post or consequential product decision was made.
+
+
+Final acceptance passed with exit 0 and `ok:true` in
+`build/bundled-fix-validation.json`. Unit discovery completed 1,136 tests in
+249.142 seconds, below the unchanged 300-second cap. Chromium passed all 69
+checks in 1.9 minutes. This is local working-tree evidence, not a new remote
+exact-head CI result. Python was 3.12.15, Node 20.19.2 and Playwright 1.58.2;
+CI's Node version is 24. No test configuration was changed.
+
+| Verification | Result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3.12 scripts/acceptance.py --evidence build/bundled-fix-validation.json'` | All nine stages pass; exit 0; `ok:true`. |
+| Full unit discovery, final Python 3.12.15 tree | 1,136 passed in 249.142s, including legacy golden and export byte guards. |
+| Storage conformance / crash replay | 19 passed. |
+| Vendored credit tests | 7 passed; also rerun with the requested standalone command. |
+| Local upstream claim checks | 311 passed; no upstream adoption claimed. |
+| `npm run test:browser`, through acceptance | 69 passed; unchanged configuration in isolated loopback namespace. |
+| Packaged smoke | 11 passed; advance draw, sim-day accrual, restart overlay equality and policy provenance. |
+| Seeded demo / integrated journeys | 1 / 4 passed; SIMULATED, integrated=false, funds_executed=false. |
+| Targeted ledger / decision-surface / release suites | 44 passed, including two new parser regressions. |
+| `python3 -m compileall -q capital` / `node --check capital/static/app.js` | Pass. |
+| `python3 scripts/docs_surface.py --check` | Pass; 31 routes, 41 artifacts, 9 stages. |
+| `python3 scripts/decision_bindings.py --check` | Pass. |
+| Two builds / exact CI glob `cmp` / archive audit | Byte-identical; 77 members, 18 authorized additions; all hashes match. |
+| Vendor / legacy / forbidden-path audit | Five pins, manifest and export unchanged; no policy, `.aiops/` or upstream reference edits. |
+| `git diff --check` | Pass. |
+
+Logs are retained locally as `build/bundled-fix-acceptance.log`,
+`build/bundled-fix-targeted.log`, and `build/bundled-baseline-unit.log`.
+Only the parser, its regressions and release/evidence notes changed.
+
+STATUS: READY

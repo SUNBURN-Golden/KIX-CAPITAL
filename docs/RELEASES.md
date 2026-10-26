@@ -45,6 +45,14 @@ Two builds with the same interpreter and the same source tree produce the same S
 - The exact authorized bundle scope, per-file manifest hashes and labels remain unchanged: `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`, SIMULATED/provisional.
 - Local check results and acceptance timing are recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
 
+### 0.2.0 — acceptance timeout follow-up (2026-10-26)
+
+- Artifacts: `dist/capital-0.2.0.pyz` and `dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `11a78ed934c9bbb6e6c59d6440cc5c135654cee7e2a6142cdb2fab78353bfca2` (local unsigned build).
+- The single ledger parser locates closing Markdown fences with a string search, avoiding per-character regex backtracking. Opening-fence rules, first-closing-fence behavior, JSON validation and policy values are unchanged; no parsed policy cache is introduced.
+- Corpus equivalence and malformed-fence regressions accompany the change. All 11 packaged smoke checks pass, including simulated accrual and workspace restart provenance.
+- Exact archive scope, per-file manifest hashes and labels remain `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`. Local acceptance evidence is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; no remote CI success is claimed.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).

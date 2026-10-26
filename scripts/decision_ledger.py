@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 COVERAGE = ROOT / 'docs' / 'CAP_COVERAGE.md'
 DECISIONS = ROOT / 'docs' / 'decisions'
 
-_FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
+_FENCE_START = re.compile(r'```capital-decision-v1[ \t]*\n')
 _NOTE_PATH = re.compile(r'docs/decisions/[A-Za-z0-9][A-Za-z0-9_.-]*\.md')
 _CAP = re.compile(r'CAP-(?:0[1-9]|1[0-9]|20)\Z')
 _ISO_DATE = re.compile(r'\d{4}-\d{2}-\d{2}\Z')
@@ -57,8 +57,15 @@ def _parse_object(raw):
 def extract_blocks(text):
     """Return the parsed JSON object of each capital-decision-v1 fence."""
     blocks = []
-    for raw in _FENCE.findall(text):
-        blocks.append(_parse_object(raw))
+    position = 0
+    while match := _FENCE_START.search(text, position):
+        # Preserve the first closing fence and non-overlapping matches of the
+        # original lazy regex, without backtracking over every JSON character.
+        end = text.find('```', match.end())
+        if end < 0:
+            break
+        blocks.append(_parse_object(text[match.end():end]))
+        position = end + 3
     return blocks
 
 
