@@ -1,0 +1,265 @@
+{
+  "format": "KIX_CAPITAL_LIFECYCLE_CLAIMS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "simulation": "SIMULATED",
+  "funds_executed": false,
+  "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+  "note": "Local lifecycle analogues only. No SEMANTIC_CONFORMANCE, LC-TERM operational closure, provider custody, distributed fencing, stage5 durability or financial execution. Source pin is separate from the unchanged 7481b0e FSM vendor pin. Missing Protocol checkout means citation SKIPPED, never pass.",
+  "claims": [
+    {
+      "id": "first-accepted",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 2. 서로 다른 수명",
+      "needle": "command 최초 결과",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "Accepted first receipt survives duplicate submission.",
+      "mapping": "POST /api/commands and GET /api/operations preserve the first local receipt; no operational LC-TERM closure.",
+      "check_id": "first.accepted",
+      "expected": {
+        "outcome": "ACCEPTED",
+        "repeat": true,
+        "lookup_original": true,
+        "unchanged": true,
+        "repeat_applications": 0
+      }
+    },
+    {
+      "id": "first-rejected",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 2. 서로 다른 수명",
+      "needle": "업무상 거절도 기록",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "Business rejection remains first even after the missing case is created.",
+      "mapping": "The valid approve command on an absent advance is rejected, then its original receipt survives a later offer.",
+      "check_id": "first.rejected",
+      "expected": {
+        "outcome": "REJECTED",
+        "repeat": true,
+        "lookup_original": true,
+        "unchanged": true,
+        "repeat_applications": 0
+      }
+    },
+    {
+      "id": "first-conflict",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 2. 서로 다른 수명",
+      "needle": "command 최초 결과",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "Changed body cannot replace a first receipt.",
+      "mapping": "A conflicting local operation ID returns HTTP 409 and leaves the original receipt intact.",
+      "check_id": "first.conflict",
+      "expected": {
+        "outcome": "ACCEPTED",
+        "repeat": [
+          409,
+          "IDEMPOTENCY_CONFLICT"
+        ],
+        "lookup_original": true,
+        "unchanged": true,
+        "repeat_applications": 0
+      }
+    },
+    {
+      "id": "unknown-timeout",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "### 5.3 시간 조건과 15일의 관계 — 시간만으로 종결하지 않음",
+      "needle": "시간 경과만으로 UNKNOWN을 실패 처리하지 않는다",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "Synthetic elapsed time never converts a lost response into a failure.",
+      "mapping": "The SIMULATED stdlib client advances its own clock after actual HTTP reply loss; this is client-owned fencing, not provider TTL or operational closure.",
+      "check_id": "unknown.timeout",
+      "expected": {
+        "initial": "UNKNOWN",
+        "after_timeout": "UNKNOWN",
+        "resubmit": "FENCED",
+        "unchanged": true
+      }
+    },
+    {
+      "id": "unknown-producer_loss",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "### 5.2 객관적 조건 — 하나라도 미충족/미확인이면 승인 없음",
+      "needle": "소켓 timeout 후 로컬 송신 작업이 종료돼도",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "Producer uncertainty is never a business rejection.",
+      "mapping": "An injected SIMULATED TransportLost is observed through HTTP; repeated absent receipt reads authorize no retry and create no receipt.",
+      "check_id": "unknown.producer_loss",
+      "expected": {
+        "outcome": "UNKNOWN",
+        "lookups": [
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN"
+        ],
+        "retry_authorized": [
+          false,
+          false,
+          false
+        ],
+        "resubmit": "FENCED",
+        "applications": 1,
+        "unchanged": true
+      }
+    },
+    {
+      "id": "unknown-receipt_lookup",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 2. 서로 다른 수명",
+      "needle": "UNKNOWN operation",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "A lost reply resolves only when the original receipt is looked up.",
+      "mapping": "The HTTP response is suppressed after application; state reads do not resolve the synthetic client pending operation; GET receipt does.",
+      "check_id": "unknown.receipt_lookup",
+      "expected": {
+        "initial": "UNKNOWN",
+        "state_read_unresolved": true,
+        "lookup": [
+          200,
+          "ACCEPTED"
+        ],
+        "resolved": true,
+        "unchanged": true,
+        "original_receipt": true
+      }
+    },
+    {
+      "id": "unknown-no_retry",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 4. LC-CUT — 회수 후 재생 경계",
+      "needle": "새 키나 다른 PG로 재송신할 허가가 아니다",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-CUT",
+      "claim": "Recovery emits no automatic retry.",
+      "mapping": "The SIMULATED stdlib client emits exactly one original POST and GET-only recovery after losing that reply; this does not claim global server fencing.",
+      "check_id": "unknown.no_retry",
+      "expected": {
+        "resubmit": "FENCED",
+        "posts": 1,
+        "unchanged": true,
+        "unresolved": false
+      }
+    },
+    {
+      "id": "receipt-absent",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 2. 서로 다른 수명",
+      "needle": "cache miss를 새 명령으로 실행",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-TERM",
+      "claim": "A missing receipt lookup never executes the operation.",
+      "mapping": "GET for a never-submitted local ID returns UNKNOWN and retry_authorized false with no journal, overlay or receipt changes.",
+      "check_id": "receipt.absent",
+      "expected": {
+        "outcomes": [
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN"
+        ],
+        "retry_authorized": [
+          false,
+          false,
+          false
+        ],
+        "unchanged": true,
+        "posts": 0
+      }
+    },
+    {
+      "id": "fence-session",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 4. LC-CUT — 회수 후 재생 경계",
+      "needle": "회수 후 옛 generation의 새로운 예약/발행 허가는 적용하지 않는다",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-CUT",
+      "claim": "Stale local instance command and lookup are fenced.",
+      "mapping": "Local instance_id is a process fence only; it is not lease_generation, C_g, H_g or a distributed revocation proof.",
+      "check_id": "fence.session",
+      "expected": {
+        "command": [
+          409,
+          "SESSION_CHANGED"
+        ],
+        "lookup": [
+          409,
+          "SESSION_CHANGED"
+        ],
+        "unchanged": true
+      }
+    },
+    {
+      "id": "fence-restart",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 4. LC-CUT — 회수 후 재생 경계",
+      "needle": "새 외부 실행은 복원 이후 현재 권위와 실제 전송 허용 조건을 다시 만족해야 한다",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-CUT",
+      "claim": "A restart invalidates old local token and instance access.",
+      "mapping": "The same temporary LOCAL_FILE_WORKSPACE starts a new instance; a fresh local token cannot bypass its instance gate.",
+      "check_id": "fence.restart",
+      "expected": {
+        "old_token_status": 403,
+        "old_token_error": "LOCAL_TOKEN_REQUIRED",
+        "fresh_token": [
+          409,
+          "SESSION_CHANGED"
+        ],
+        "lookup": [
+          409,
+          "SESSION_CHANGED"
+        ],
+        "unchanged": true
+      }
+    },
+    {
+      "id": "restore-replay",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 4. LC-CUT — 회수 후 재생 경계",
+      "needle": "historical replay에서 외부 호출을 실행하지 않는다",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-CUT",
+      "claim": "Workspace restoration restores the original receipt without a new command.",
+      "mapping": "Disposable LOCAL_FILE_WORKSPACE replay preserves state, journal, overlay and original writer receipt; this is not stage5 durable recovery.",
+      "check_id": "restore.replay",
+      "expected": {
+        "new_instance": true,
+        "original_writer": true,
+        "original_receipt": true,
+        "restored": true,
+        "command_posts": 0,
+        "applications_on_restore": 0
+      }
+    },
+    {
+      "id": "fact-late",
+      "source_doc": "docs/contracts/STATE_LIFECYCLE.md",
+      "section": "## 3. LC-FACT — 늦은 사실 보존",
+      "needle": "추가 대사·의무 판단 대상으로 남긴다",
+      "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
+      "clause": "LC-FACT",
+      "claim": "Late synthetic cash remains recorded without reviving cancelled obligations.",
+      "mapping": "GET /api/scenarios/late-cash reads an existing disposable READ_ONLY_FIXTURE; it is not provider ingestion, ACK custody, real reconciliation or refund execution.",
+      "check_id": "fact.late",
+      "expected": {
+        "step_ops": [
+          "bind_refund",
+          "observe_settlement_statement",
+          "apply_distribution"
+        ],
+        "confirmed_cash": 100000,
+        "distributed_cash": 0,
+        "undistributed_cash": 100000,
+        "cancelled_unpaid": 100000,
+        "outstanding": 0,
+        "all_predicates_matched": true,
+        "unchanged": true
+      }
+    }
+  ]
+}
