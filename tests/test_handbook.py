@@ -255,6 +255,7 @@ class HandbookTests(unittest.TestCase):
             'audit70-fix1': ('interest_rebased', 'overlay-recovery-writeoff', 'overlay-repayment-posting', 'CAPITAL_DEFAULT_RECOVERY.md', 'CAPITAL_REPAYMENT_POSTING.md'),
             'coa-candidate-projection': ('GET /api/projection?mode=coa-candidate', 'GET /api/reconciliation?mode=coa-candidate', 'SIMULATION_FIXED_V2', 'SYNTHETIC_UNADOPTED', '9790', 'coa_candidate_totals_vs_v1', 'interest_ledger_vs_projection'),
             'audit60-fix2': ('KIX_CAPITAL_EXPORT_MANIFEST_V2', 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'overlaypart', 'SECTION_SET', 'overlay_fold_digest_equals_persisted', 'tests/golden/overlay_demo.json'),
+            'overlay-repayment-posting': ('post_repayment', 'REPAYMENT_ADVANCE_STATE', 'REPAYMENT_UNAPPLIED_CAP', 'SIM_UNAPPLIED_MEMO', 'UNPOSTED_F04_REPAY'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')
@@ -300,6 +301,12 @@ class HandbookTests(unittest.TestCase):
                 'INV-1', 'INV-5', 'SIGKILL', 'SIMULATION_CAPACITY', 'SKIPPED_LOOPBACK',
                 'DOCUMENTED_DIVERGENCE', 'PENDING_NOTE_REGISTRATION',
                 'upstream-repin-inventory-contract-invariants', 'tests/test_contract_invariants.py'),
+            'adapter-identity-claims': (
+                'tests/adapter_identity_claims.json', 'KIX_CAPITAL_ADAPTER_IDENTITY_CLAIMS_V1',
+                'scripts/adapter_identity_claims_check.py --execute', 'CLAIM_CONFORMANCE',
+                'ADAPTER_EVENT_IDENTITY.md', 'SIMULATED', 'ISOLATION_ONLY',
+                'METHOD_IS_CONTENT_NOT_SCOPE_IN_LOCAL_PROFILE', 'SOURCE_SHA256',
+                'SKIPPED', 'tests/test_adapter_identity_claims.py', 'upstream-claims'),
             'ce1-canonical-claims': (
                 'tests/ce1_claims.json', 'KIX_CAPITAL_CE1_CLAIMS_V1',
                 'scripts/ce1_claims_check.py --execute', 'CLAIM_CONFORMANCE',
@@ -327,7 +334,7 @@ class HandbookTests(unittest.TestCase):
         self.assertLess(
             unit_commands.index(next(c for c in unit_commands if 'discover' in c)),
             unit_commands.index(fence[0]))
-        self.assertEqual(len(upstream_commands), 4)
+        self.assertEqual(len(upstream_commands), 6)
         for argv in upstream_commands:
             self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
