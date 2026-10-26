@@ -36,6 +36,8 @@ class AcceptanceTests(unittest.TestCase):
         commands = {stage['id']: stage['commands'] for stage in plan}
         self.assertEqual(commands['unit'][0][1:5], ['-m', 'unittest', 'discover', '-s'])
         self.assertEqual(commands['unit'][0][5], 'tests')
+        self.assertEqual(commands['unit'][2][1:],
+                         ['scripts/finance_properties.py', '--seeds', '200', '--check'])
         self.assertEqual(commands['storage-conformance'][0][1:], [
             '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
         ])

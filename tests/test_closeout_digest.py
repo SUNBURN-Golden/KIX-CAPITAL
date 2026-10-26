@@ -46,7 +46,8 @@ acceptance_ladder = _load('acceptance_for_closeout', ROOT / 'scripts' / 'accepta
 # Written by hand: the acceptance ladder and the exact command texts per stage.
 STAGES = (
     ('unit', ['python3 -m unittest discover -s tests -v',
-              'python3 scripts/decision_bindings.py --check']),
+              'python3 scripts/decision_bindings.py --check',
+              'python3 scripts/finance_properties.py --seeds 200 --check']),
     ('storage-conformance', ['python3 -m unittest discover -s tests -p test_storage_conformance.py -v',
                              'python3 -m unittest tests.test_crash_replay -v']),
     ('pinned-vendor', ['python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v']),

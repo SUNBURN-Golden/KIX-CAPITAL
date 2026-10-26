@@ -2132,3 +2132,70 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 1.8 min. Existing host ports 8765/8766 were occupied; unchanged browser configuration ran inside an isolated loopback network namespace. |
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
+
+
+## finance-property-fuzz
+
+Local SIMULATED arithmetic verification only. `capital/finance_properties.py` uses
+stdlib `random.Random`, separate property streams and pinned seeds starting at
+74820000. Six properties cover clock-step accrual and rational carry (including
+partial repayments and effective-maturity acceleration boundaries), allocation
+conservation and note order, principal-scaled rational cost caps, risk bucket
+conservation, scheduled forecast legs and stress monotonicity. Every forecast seed
+checks both provided and absent settlement days. Half the cap cases retain the
+adopted note; the other half use deep-copied, in-memory `SYNTHETIC_PROBE` policies
+for exact cap boundaries and a one-bps synthetic fee. These are arithmetic probes,
+not new terms or an offer. No server, persistence or external service is used.
+
+Each property has a one-won fold mutation; cap and annualized cost mutations are
+checked separately with a principal-scaled +1 KRW cost. Counterexamples report the
+seed and regenerated valid spec, retain the original violation code, and disclose
+shrinking budget exhaustion instead of claiming a proven minimum. Local minima
+refer only to the documented greedy drop/halving candidates. No new vector file
+is introduced. Goldens, decision notes, vendor files/manifest and `.aiops/` are
+unchanged. Runtime folds and `capital/export.py` are unchanged.
+
+| Command | Actual local result |
+|---|---|
+| `python3 -m unittest tests.test_finance_properties -v` | Exit 0; 18 tests, 2.814 s; 200 pinned cases per property and six one-won mutations detected. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` (initial implementation) | Exit 0; six properties, 200 cases each, zero violations. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three packages installed from local cache; lockfile unchanged. |
+| `unshare -Urn -- bash -c 'ip link set lo up && echo isolated-loopback-ok'` | Exit 0; isolated loopback available for unchanged browser ports. |
+| `python3 -m unittest tests.test_finance_properties tests.test_acceptance tests.test_decision_bindings tests.test_closeout_digest -v` | Exit 0; 111 tests, 20.741 s. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 scripts/finance_properties.py --seeds 1000 --check` | Exit 0; six properties, 1000 cases each, zero violations. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests, 0.002 s. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references match. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; 16 seeds, 736 commands. |
+| `python3 scripts/seed_demo.py` | Exit 0; existing golden matches; debit = credit = 385000 synthetic units. |
+| `git diff --check` | Exit 0. |
+| `git diff --stat origin/main -- tests/golden docs/decisions capital/vendor .aiops capital/export.py` and stdlib SHA256 verification of the manifest's five files | Exit 0; no protected-path diff; all five locked hashes match. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (pass 1) | Exit 0; `ok:true`, all nine stages passed. Unit: 1142 tests, 278.314 s; storage: 19; vendor: 7; claims: 311; Chromium: 69; packaged smoke: 8; seeded demo: 1; integrated journeys: 4. |
+| `cp build/acceptance-evidence.json build/finance-props-pass1.json` | Exit 0; first-pass evidence preserved before regeneration. |
+| `python3 scripts/closeout_digest.py --write` then `python3 scripts/finance_vectors.py --write` | Both exit 0; 4578-byte digest and 98040-byte finance pack generated from successful first-pass evidence. No manual vector edits. |
+| `python3 -m unittest tests.test_closeout_digest -v` (after regeneration and STAGES update) | Exit 0; 61 tests, 0.476 s. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (pass 2) | Exit 0; `ok:true`, all nine stages passed with the same counts as pass 1. Unit: 1142 tests, 245.944 s; Chromium: 69. No timeout or test weakening. |
+| `python3 -m unittest discover -s tests -v` (executed by both ladder passes) | Exit 0 twice; 1142 tests each. |
+| `npm run test:browser` (executed in isolated loopback by both ladder passes) | Exit 0 twice; all 69 Chromium tests passed each time. |
+| `cp build/acceptance-evidence.json build/finance-props-pass2.json` | Exit 0; second-pass evidence preserved. |
+| `python3 scripts/closeout_digest.py --check-evidence`; `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | All exit 0; new evidence matches the generated digest and embedded copy; 98040-byte finance pack matches. |
+| stdlib `build_artifact(pass1)` / `build_artifact(pass2)` / candidate-byte comparison | Exit 0; all equal, including the finance pack embedded copy. Digest SHA256 `ca8f82597636658107954c5d894361dddb079fdf0c26a3529c6b3868a3fc76af`; packaged SHA256 `d05e28cda5f792611b7b92e22ed8e661561762e0c1ad3458e0dc8be4c52007f0`. |
+| stdlib `/proc` inspection scoped to this worktree | Exit 0; no `capital.server` process remains. |
+
+The two-pass CAPITAL-CLOSEOUT-REGEN-V1 procedure completed: preserve the successful
+first evidence, generate the digest and pack once, update the hand-maintained
+closeout command expectation, run the second ladder, then compare without rewriting
+either vector. Only the unit command, unit test count and packaged SHA256 changed
+in the digest and its embedded copy. Evidence is retained locally in
+`build/finance-props-pass1.json` and `build/finance-props-pass2.json` (untracked).
+
+Implementation detail relative to the plan: repayment cash is materialized with
+an independent Fraction oracle rather than the folds under mutation, so the
+one-won mutants cannot corrupt the generator itself. Acceleration inputs adjust
+the effective maturity at segment boundaries; this verifies accrual arithmetic
+and does not introduce margin-policy or envelope-replay testing. Existing host
+ports are avoided with the already-proven isolated-loopback runner; no browser
+configuration or timeout was changed. No product decision, external action,
+commit, push, PR, issue or comment was made. All results are local and SIMULATED.

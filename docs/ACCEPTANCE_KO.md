@@ -43,6 +43,7 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 아래 칸은 사람이 `build/acceptance-evidence.json`을 읽고 채운다. 자동 사다리가 파일을 만들어도 이 점검표가 통과한 것은 아니다. 칸은 비워 둔다.
 
 `stages[*]`는 stage id `unit`, `storage-conformance`, `pinned-vendor`, `upstream-claims`, `node-check`, `browser`, `packaged-smoke`, `seeded-demo`, `integrated-journeys` 아홉 전부다.
+`unit`의 세 번째 명령은 `python3 scripts/finance_properties.py --seeds 200 --check`이며, 서버 없이 여섯 금융 산술 속성을 고정 시드로 검사합니다. 실패 시 seed와 축소 입력을 출력하고 1로 끝납니다. 라벨은 `SIMULATED`, cap 경계 입력은 메모리 안의 `SYNTHETIC_PROBE`입니다.
 
 - [ ] 사다리 결과
   - PASS: evidence.ok == true 이고 evidence.stages[*].status == "passed"
