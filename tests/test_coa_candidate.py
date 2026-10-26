@@ -105,15 +105,22 @@ class ChartFenceTests(unittest.TestCase):
 class V1UnchangedTests(unittest.TestCase):
     def assert_ports_append_only(self, baseline, current):
         # Supervisor-authorized compatibility check: preserve every existing AST
-        # node (including Protocol bodies/imports), permitting only the new port.
+        # node (including Protocol bodies/imports), permitting only ObservationPort
+        # and the exact reviewed fake-idp-session vector function.
         import ast
         pinned = ast.parse(baseline).body
         actual = ast.parse(current).body
         self.assertEqual([ast.dump(node) for node in actual[:len(pinned)]],
                          [ast.dump(node) for node in pinned])
         additions = actual[len(pinned):]
-        self.assertLessEqual(len(additions), 1)
+        self.assertLessEqual(len(additions), 2)
+        self.assertEqual(len({node.name for node in additions if hasattr(node, 'name')}), len(additions))
         for node in additions:
+            if isinstance(node, ast.FunctionDef):
+                self.assertEqual(node.name, 'run_authorizer_vectors')
+                self.assertEqual(hashlib.sha256(ast.get_source_segment(current, node).encode()).hexdigest(),
+                                 '9e818434bcda31ca77882524634c16355662b300a0131c12cd3b3b602ed24046')
+                continue
             self.assertIsInstance(node, ast.ClassDef)
             self.assertEqual(node.name, 'ObservationPort')
             self.assertEqual([ast.dump(base) for base in node.bases],
@@ -126,6 +133,17 @@ class V1UnchangedTests(unittest.TestCase):
         addition = ('\n@runtime_checkable\nclass ObservationPort(Protocol):\n'
                     '    def fold(self, facts, *, bindings) -> dict: ...\n')
         self.assert_ports_append_only(baseline, baseline + addition)
+        import ast
+        ports = (ROOT / 'capital/ports.py').read_text()
+        vector = next(node for node in ast.parse(ports).body
+                      if isinstance(node, ast.FunctionDef) and node.name == 'run_authorizer_vectors')
+        vector_source = '\n' + ast.get_source_segment(ports, vector) + '\n'
+        self.assert_ports_append_only(baseline, baseline + addition + vector_source)
+        for changed in (vector_source.replace('factory()', 'factory(1)'),
+                        vector_source.replace('run_authorizer_vectors', 'other_vectors'),
+                        vector_source + vector_source):
+            with self.subTest(changed=changed), self.assertRaises(AssertionError):
+                self.assert_ports_append_only(baseline, baseline + addition + changed)
         for changed in (baseline.replace('load(self)', 'load(self, changed)'),
                         baseline.replace('Protocol', 'object'), '',
                         baseline + addition.replace('ObservationPort', 'OtherPort'),
@@ -194,6 +212,14 @@ class V1UnchangedTests(unittest.TestCase):
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
             self.assertEqual(guarded.stdout.split(), [])
+            # Also preserve the closeout binding note against the incoming reviewed
+            # commit during a merge, when HEAD still points at the old branch tip.
+            binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
+            reviewed_ref = ('MERGE_HEAD' if self._git(
+                'rev-parse', '--verify', '-q', 'MERGE_HEAD').returncode == 0 else 'HEAD')
+            reviewed = self._git('show', f'{reviewed_ref}:{binding_note}')
+            self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
+            self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
         # Preserve the exact reviewed overlay bytes from a5b2e2d5b5ecfa820462298cf075cbc223ee60f0,
         # rather than main's earlier overlay. Export, V1 projection and vendor remain pinned to main.
