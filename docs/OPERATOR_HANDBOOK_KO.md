@@ -705,5 +705,7 @@ python3 scripts/lifecycle_claims_check.py --execute
 
 `sim_day`, `snapshot_digest`, 가정, 행과 선택 상세는 함께 갱신한다. 이전 새로고침·역할 세션·데스크 이탈의 지연 응답은 버린다. 별도 오버레이는 sim_day와 overlay_state_digest가 일치할 때만 함께 표시한다. `INCOMPLETE`, null 절, `NOT_BOUND`, 잘못된 응답 또는 맞지 않는 절단면에서는 이전 예측 숫자·상세·타일을 지우고 진단을 표시한다. 별도 예측·코버넌트 API로 대체하지 않는다. 준비금 coverage와 funding_source의 `NOT_BOUND`, `RESERVE_POOL_NOT_BOUND`는 그대로 보인다. 코버넌트는 자문이며 applied=false, enforced=false다.
 
+snapshot 조회 자체가 실패하면 `INCOMPLETE · portfolio snapshot unavailable`로 표시하고 이전 digest와 가정도 지운다. 서버가 다른 instance_id를 돌려주거나 절단면이 없을 때도 이전 숫자를 재사용하지 않는다. 시계 진행만으로 F04 state_digest가 유지되더라도 상세 사전점검은 snapshot 식별자로 이전 응답을 구분하며, 이전 역할 세션의 지연 응답이 현재 토큰을 바꾸지 않는다.
+
 organizer와 auditor는 `projection:read`로 읽는다. auditor의 명령 조작은 숨겨지고 observer는 금지 안내만 보며 snapshot 요청을 보내지 않는다. 새 접근 가능 영역과 링크는 기존 타임라인 뒤에 있어 기존 키보드 순서를 유지한다. 표는 375px에서 영역 안으로 스크롤된다. 접근성·CSP·서버 금액 소유권은 `tests/test_portfolio_cashflow_desk.py`, 실제 브라우저 동작과 지연 응답은 `tests/browser/portfolio-cashflow-desk.spec.cjs`로 검사한다. stdlib 루프백 여정은 HTTP offer/approve/bind/draw 뒤 시계 명령과 읽기만으로 만기 창·만기·만기 다음 날을 확인하고 F04 저널·영수증·노출·operation_count·state_digest 불변을 확인한다.
 <!-- /handbook-section -->

@@ -118,6 +118,8 @@ test('incomplete, unbound, malformed and mismatched cuts clear all old forecast 
       body=>{body.forecast.advances.find(row=>row.status==='BOUND').legs[0].exact='invalid';},
       body=>{body.cut.state_digest='0'.repeat(64);},
       body=>{body.covenants.sim_day+=1;},
+      body=>{body.instance_id='obsolete-instance';},
+      body=>{body.cut=null;body.complete=false;body.status='INCOMPLETE';body.completeness.reasons=['STORAGE_STATE_MISMATCH'];},
     ];
     for (const mutate of variants) {
       const body=JSON.parse(JSON.stringify(valid));mutate(body);
@@ -132,6 +134,15 @@ test('incomplete, unbound, malformed and mismatched cuts clear all old forecast 
       await expect(page.locator('#desk-actions')).toBeEmpty();
       await page.unroute('**/api/portfolio/snapshot?**');
     }
+    await page.route('**/api/portfolio/snapshot?**', route=>route.fulfill({status:503,json:{error:'SNAPSHOT_UNAVAILABLE'}}));
+    await page.locator('#desk-refresh').click();
+    await expect(page.locator('#desk-cash-status')).toHaveText('INCOMPLETE · portfolio snapshot unavailable');
+    for (const id of ['desk-cash-buckets','desk-cash-unscheduled','desk-cash-watch','desk-cash-detail-body','desk-tiles','desk-overlay-rows','desk-actions']) {
+      await expect(page.locator('#'+id)).toBeEmpty();
+    }
+    await expect(page.locator('#desk-cash-cut')).toBeEmpty();
+    await expect(page.locator('#desk-cash-assumptions')).toBeEmpty();
+    await page.unroute('**/api/portfolio/snapshot?**');
     await page.locator('#desk-refresh').click();
     await expect(page.locator('#desk-cash-cut')).toContainText(valid.snapshot_digest);
     await expect(page.locator('#desk-cash-buckets tr[data-advance]').first()).toBeVisible();

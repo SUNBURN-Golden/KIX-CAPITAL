@@ -118,6 +118,37 @@ async function main(){
   open=false;vm.runInContext('invalidateRefresh()',scope);
   waiting[0].reject(Error('desk exit failure'));assert.equal(await exitOld,false);
   assert.equal(posted.length,3);await flush();
+  // A delayed session response cannot replace the token for a newer session.
+  vm.runInContext(app.slice(app.indexOf('async function bindSession('),app.indexOf('function projectionValid(')),scope);
+  waiting=[];scope.sessionToken='active-session-token';
+  const obsoleteSession=vm.runInContext("bindSession('organizer',()=>false)",scope);
+  waiting[0].resolve({role:'organizer',identity:'NOT_BOUND',authentication:'NOT_BOUND',
+    role_provenance:'SYNTHETIC_LOCAL_ROLE',local_token:'obsolete-session-token'});
+  await assert.rejects(obsoleteSession,/OBSOLETE_REFRESH/);
+  assert.equal(scope.sessionToken,'active-session-token');
+  // A clock-only refresh keeps the F04 digest; snapshot identity must also fence
+  // case previews, including late successful and failed responses.
+  vm.runInContext(app.slice(app.indexOf('async function loadDeskCase('),app.indexOf("$('desk-advance').onclick=")),scope);
+  const caseRow={advance_id:'sim-late-preview',phase:'APPROVED',settlement_id:'fixture'};
+  const snapshotA=structuredClone(input.snapshot),snapshotB=structuredClone(input.snapshot);
+  let actionPaints=0;
+  Object.assign(scope,{can:()=>true,deskOpen:()=>true,
+    state:{...input.state,cases:[caseRow]},selected:caseRow.advance_id,
+    deskKey:()=>caseRow.advance_id,renderDeskActions:()=>actionPaints++});
+  for(const fail of [false,true]){
+    waiting=[];scope.deskData={cashflow:snapshotA};
+    const obsoleteCase=vm.runInContext('loadDeskCase()',scope);
+    assert.equal(waiting.length,1);
+    scope.deskData={cashflow:snapshotB}; // same instance, case, state digest and epoch
+    if(fail)waiting[0].reject(Error('obsolete preview'));
+    else waiting[0].resolve({instance_id:input.state.instance_id,advance_id:caseRow.advance_id,
+      observed_state_digest:input.state.state_digest,workspace_mutated:false,write_authorized:false});
+    const before=actionPaints;
+    await obsoleteCase;
+    assert.equal(actionPaints,before);
+    assert.equal(scope.deskExtra.preview,undefined);
+    assert.equal(scope.deskExtra.previewError,undefined);
+  }
   console.log('cashflow model/render checks ok · SIMULATED · no HTTP/browser claim');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
