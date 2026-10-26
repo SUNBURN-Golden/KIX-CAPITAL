@@ -945,3 +945,92 @@ Commands actually run, in order:
 - `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
 
 Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v` covers detached-input component parity, independent cut digests, read-only workspace bytes, deterministic snapshots across sessions, controlled reader/writer ordering for repayment and clock commands, unsupported producers/fixtures, degraded storage, unbound terms, identity, authorization and closed facade schemas. `python3 scripts/docs_surface.py --check` guards the route documentation and the auth matrix includes the route. All data is SIMULATED; no authenticated or cross-process source cut is claimed.
+
+## Contract invariant claims — local builder evidence (2026-10-26)
+
+`capital/contract_invariants.py`, `tests/contract_invariants.json`,
+`scripts/contract_invariants_check.py` and `tests/test_contract_invariants.py`
+implement six `CLAIM_CONFORMANCE` / `SIMULATED` rows covering Capital analogues
+of INV-1..INV-5 at kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`,
+`docs/contracts/CONTRACT_INVARIANTS.md` §3. The Rust kernel is a read-only contract
+source; no upstream code is added or executed, and no semantic conformance,
+performance or real financial effect is claimed.
+
+Twelve pinned stdlib-random seeds each execute 16 main cells through the real
+CapitalService + FileWorkspace facade. Dedicated cells guarantee concurrent
+shared-face competition on v1 and both large caps fixtures, receipt/overlay
+saturation and replay before/after reopen, and repayment. One seed also runs
+through the loopback HTTP facade. The SIGKILL cell uses the existing crash-matrix
+boundary and subprocess harness, verifies complete pre/post lost-write recovery,
+replays the draw and resumes the matrix through repayment and another day advance.
+
+INV-3 checks canonical receipt projection bytes after every later step, including
+errors and reopen; missing probes fail the predicate. Command receipts keep the
+original instance_id, while reads require the current session. The documented
+`inv.3.overlay_projection` divergence excludes rebuilt instance_id,
+overlay_state_digest and transport_duplicate; all operation payload fields remain
+covered, and the initial overlay digest must equal the folded state. INV-5 retains
+journal bytes, overlay reservation ids, claim/trade/currency/amount, drawn amount,
+draw binding and journal index; repayment may lower outstanding exposure.
+Mutation tests corrupt copies of observed traces for every predicate.
+
+The table self-declares an EXECUTABLE_CITATION consumer, with
+`PENDING_NOTE_REGISTRATION` and named follow-up
+`upstream-repin-inventory-contract-invariants` for binding-note §3.2 bound_tables,
+§3.6 impact list and a decision_bindings test_module record. This follows the
+approved plan/current tests; the supervisor ruling permits this alignment without
+blocking on note registration. No note, binding map, service, vendor, CI or
+existing invariant test was changed. This checker is outside upstream-claims.
+
+Commands actually run in this completion round (all results are local SIMULATED
+verification; expected drift messages inside negative tests are not failures):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_contract_invariants -v` | Initial inherited implementation: 26 tests pass in 10.276 s; HTTP/SIGKILL executed, zero skips. |
+| `time python3 -m unittest tests.test_contract_invariants -v` | Strengthened implementation: 28 tests pass in 10.767 s (10.890 s wall), below the 20 s target. Includes two script subprocesses and a fresh second corpus. |
+| `python3 -m unittest tests.test_handbook tests.test_coverage tests.test_docs_surface -v` | 26 tests pass. |
+| `python3 scripts/contract_invariants_check.py` | Explicit SKIPPED, no execution requested, not a pass. |
+| `python3 scripts/contract_invariants_check.py --execute` | Six of six rows pass; loopback EXECUTED. Citation verification separately SKIPPED without checkout. |
+| `python3 scripts/contract_invariants_check.py --check` | Six of six rows pass; all 12 pinned seed digests MATCH; loopback EXECUTED. Repeated after strengthening. |
+| `python3 scripts/contract_invariants_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Six of six citation needles verified, read-only. |
+| `python3 scripts/contract_invariants_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Final combined run: six rows pass, loopback EXECUTED, six citation needles verified. |
+| `python3 -m unittest discover -s tests -v` | Branch checkout: 868 tests in 158.862 s, one failure (867 pass), zero errors/skips. The pre-existing V1 byte guard compares untouched capital/overlay.py, capital/ports.py and docs/decisions/CAPITAL_UPSTREAM_BINDING.md to newer origin/main revisions. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven tests pass. The node test independently verifies all five locked SHA256 values and manifest commit. |
+| `python3 -m compileall -q capital` | Pass. |
+| `node --check capital/static/app.js` | Pass. |
+| `python3 scripts/docs_surface.py --check` | Pass: 30 routes, 38 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Pass, zero findings. |
+| `npm ci --offline --ignore-scripts` | Three pinned packages installed from cache, zero vulnerabilities, lockfile unchanged. |
+| `npm run test:browser` | Initial run could not start: host ports 8765/8766 belong to unrelated workspaces. Their services were left running. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | 69 Chromium tests pass in 1.8 min; unchanged configuration, isolated loopback only. Servers cleaned up by Playwright. |
+| `python3 scripts/build_release.py --out /tmp/capital-contract-invariants-dist-one` | Pass; deterministic zipapp built. |
+| `python3 scripts/build_release.py --out /tmp/capital-contract-invariants-dist-two` | Pass; independent second build. |
+| `cmp /tmp/capital-contract-invariants-dist-one/capital-*.pyz /tmp/capital-contract-invariants-dist-two/capital-*.pyz` | Identical bytes, SHA256 fb4108f3a4c007e14e79086fc6ab11b41f4ac29f739c617f53dd6aeeca07d4af. |
+| `python3 scripts/smoke_release.py /tmp/capital-contract-invariants-dist-one/capital-*.pyz` | Eight smoke checks pass, including restarted receipts. |
+| `git diff --check` | Pass. |
+| `git diff --name-only HEAD -- capital/vendor .aiops .github docs/decisions tests/decision_bindings.json` | Empty: protected paths unchanged by this node. An origin/main comparison includes inherited main-only note/binding changes, not local edits. |
+
+Integration verification uses an isolated detached checkout of current
+origin/main (`aab0a7364c79ef00d34e031e4a827a817f7ae544`) at `/tmp/capital-contract-invariants-integration`, with this
+node's four new files and five tracked-file edits applied. The three text
+conflicts in requirements/validation/handbook tests were resolved there by
+preserving both main and node additions. No original branch/ref was changed,
+no tests or guards were weakened and no git commit/push/PR/issue/comment occurred.
+`python3 -m unittest tests.test_contract_invariants -v` there passes all 28 tests
+in 12.050 s. `scripts/docs_surface.py --check` passes (31 routes, 41 artifacts,
+nine stages), and `scripts/decision_bindings.py --check` has zero findings.
+The complete `python3 -m unittest discover -s tests -v` integration run passes
+**1,152 tests in 294.084 s**, zero failures/errors/skips. The 27 integration
+handbook/coverage/docs-surface tests also pass after syncing final documentation.
+This passing integration result supersedes the old branch baseline mismatch;
+it does not relabel the original 868-test run as green.
+
+Deviations from rev 2: competing draws and saturation are guaranteed dedicated
+cells rather than probabilistic insertions; one seed runs over HTTP and the
+other seeds use the same facade in process. Coverage was strengthened for missing
+receipt probes, immutable draw identity/amount and overlay saturation after
+reopen. Current-main integration verification addresses the old branch's baseline
+comparison without altering its guard; browser verification isolates occupied
+host ports without changing test configuration. Pin registration remains the
+explicit named follow-up allowed by the plan and supervisor ruling.

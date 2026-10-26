@@ -621,3 +621,17 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 수용 사다리의 `upstream-claims` 단계는 이제 명령을 넷 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행), 넷째가 `scripts/ce1_claims_check.py --execute`(49행)다. 단계의 `passed`와 `total`은 네 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39+49=269이고 label은 그대로 `CLAIM_CONFORMANCE`다. 위 절들(`read-model-claims-conformance`의 "셋"과 220 합계, `fsm-contract-claims`의 "셋뿐이다" 문장 포함)의 옛 열거는 표가 적었을 때의 문장이며 고치지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:contract-invariants-claims -->
+
+### contract-invariants-claims
+
+`tests/contract_invariants.json` (`KIX_CAPITAL_CONTRACT_INVARIANTS_V1`) maps six `CLAIM_CONFORMANCE` rows to `CONTRACT_INVARIANTS.md` §3 INV-1..INV-5 at kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. `capital/contract_invariants.py` observes the real CapitalService + FileWorkspace facade: twelve pinned seeds, concurrent duplicate ids, shared-face competing draws on demo-beta-festival/demo-gamma-tour, capacity `SIMULATION_CAPACITY` refusals without eviction, repay/cancel, advance_day, reopen and the crash-matrix SIGKILL boundary. Rust is a read-only contract source, nothing is vendored or executed upstream. Labels are `SIMULATED` / `CLAIM_CONFORMANCE`; finite traces prove no general correctness or bank exactly-once guarantee.
+
+Run `python3 scripts/contract_invariants_check.py --execute`, then `python3 scripts/contract_invariants_check.py --check`. `--seed N` reproduces a sequence without modifying pins; `--write` explicitly regenerates the default seed digests after successful predicates. `--protocol-dir PATH` reads section needles only. No checkout gives citation `SKIPPED`; forbidden loopback bind gives `SKIPPED_LOOPBACK` for HTTP/SIGKILL, not a pass. Tests are `tests/test_contract_invariants.py`; sensitivity corrupts copies of observed traces. This is not an `upstream-claims` stage command.
+
+INV-3 compares canonical receipt projection bytes after every later step, including reopen and errors. Command receipts retain the original instance_id; post-restart reads require the current session and reject the old session with SESSION_CHANGED. `inv.3.overlay_projection` is a `DOCUMENTED_DIVERGENCE`: replay rebuilds the overlay instance and omits overlay_state_digest, so those envelope fields and transport_duplicate are excluded. Operation payload fields remain covered and the initial overlay digest must equal the folded state digest. INV-5 retains claim/trade/currency/amount, drawn_exposure/draw_id/journal index and journal/overlay entries; repayment may lower outstanding exposure. These are mock reservation and capture facts, not money.
+
+The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Follow-up `upstream-repin-inventory-contract-invariants` registers `tests/contract_invariants.json` in binding-note §3.2 bound_tables and §3.6 default impact list, plus a decision_bindings test_module record for `tests/test_contract_invariants.py`. Stage5 durability and external authority stay `NOT_BOUND`.
+
+<!-- /handbook-section -->

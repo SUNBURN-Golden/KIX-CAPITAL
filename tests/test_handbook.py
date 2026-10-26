@@ -294,6 +294,12 @@ class HandbookTests(unittest.TestCase):
                 'CreditMachine', 'SettlementMachine', 'capital/vendor/manifest.json',
                 'VENDOR_HASH_MISMATCH', '--protocol-dir', 'SKIPPED',
                 'tests/test_fsm_contract_claims.py', 'upstream-claims'),
+            'contract-invariants-claims': (
+                'tests/contract_invariants.json', 'KIX_CAPITAL_CONTRACT_INVARIANTS_V1',
+                'scripts/contract_invariants_check.py --execute', 'CLAIM_CONFORMANCE',
+                'INV-1', 'INV-5', 'SIGKILL', 'SIMULATION_CAPACITY', 'SKIPPED_LOOPBACK',
+                'DOCUMENTED_DIVERGENCE', 'PENDING_NOTE_REGISTRATION',
+                'upstream-repin-inventory-contract-invariants', 'tests/test_contract_invariants.py'),
             'ce1-canonical-claims': (
                 'tests/ce1_claims.json', 'KIX_CAPITAL_CE1_CLAIMS_V1',
                 'scripts/ce1_claims_check.py --execute', 'CLAIM_CONFORMANCE',
