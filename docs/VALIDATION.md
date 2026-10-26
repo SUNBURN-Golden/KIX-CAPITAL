@@ -2135,51 +2135,40 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 
 ## sql-projection-crosscheck
 
-Resumed builder verification on 2026-10-26, branch `agent/capital-sql-projection-crosscheck`, HEAD `cde0bc778573ef8d543f2e1bb70a521e06bf4e44`. This record supersedes the inherited interrupted-attempt verification section. The design fits the repository: V1 posting/read-model claims are the three `sim-*` claims, while statement settlement/refund checks cover every embedded fixture. The stdlib-only auditor verifies a pack before opening SQLite `:memory:`, derives arithmetic and exact transaction headers/lines in SQL, and never invokes the projection, reconciliation builder, service restore or a key loader. Generated semantic mutants first pass the shared pack verifier, then fail a named semantic check. No vectors or goldens were added or regenerated.
+Builder verification on 2026-10-26, branch `agent/capital-sql-projection-crosscheck`, after the supervisor's main merge at `4de0aca`. This section supersedes the earlier interrupted-attempt record. The inherited baseline differences are resolved; the obsolete root `DECISION_REQUIRED.md` has been removed. No product decision is needed for this disposable in-memory SQLite check.
 
-Plan additions: explicitly check the declared fixture-row digest against the embedded rows (the shared pack verifier checks its section hash, not this relationship), the statement's SIMULATED / LOCAL_ONLY mode labels, and prohibited-effect flags on all manifest section bodies. A genuine two-repayment book also exercises the cumulative remaining-principal check. Scope remains `LOCAL_ONLY / SYNTHETIC_UNADOPTED`, `SIMULATED`, `funds_executed:false`; V3 overlay accounting is `NOT_CHECKED`, and stage7, authentication/completeness and independent external assurance remain `NOT_BOUND`.
+The design matches the repository: V1 posting/read-model claims are the three `sim-*` claims, while statement settlement/refund checks cover all embedded fixtures. The stdlib auditor verifies a pack before opening SQLite `:memory:`, uses fixed schemas and parameterized inserts, independently derives principal, claims, headers, lines and accounts in SQL, and never calls projection/reconciliation builders or service restore. Reports remain `SIMULATED / LOCAL_ONLY / SYNTHETIC_UNADOPTED`, with `funds_executed:false`. Overlay accounting is `NOT_CHECKED`; source authentication, completeness, stage7 and external assurance remain `NOT_BOUND`.
 
-Commands actually run in this resumed attempt are below. Long-command stdout/stderr is under `/tmp/sql-audit-*.log`; the deterministic clean report is `/tmp/sql-audit-clean-report.json`.
+Review found and fixed one additional scope edge case: a legitimate journal transaction named `evidence:<non-posted-fixture>` could accidentally join that fixture's payee rows. The regression first failed at `posting_lines`; requiring an `EVIDENCE` source header fixes it. The design's fixture-row digest, strict statement-mode labels and section non-execution checks are retained. There are no new vectors, dependencies, financial terms, storage backends or upstream changes.
+
+Commands actually run in this builder turn are recorded below. Logs are in `/tmp/sql-crosscheck-*.log`; the final clean JSON report is `/tmp/sql-crosscheck-clean-final.json`. The acceptance ladder executes the unchanged workflow-equivalent unit, vendor, browser, packaging, claim and journey commands and writes untracked `build/acceptance-evidence.json`.
 
 | Command | Actual result |
 |---|---|
-| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0. SIMULATED totals: drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
-| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Initial inherited implementation: 32 passed (4.432s). After eligibility/digest checks: 34 passed (4.702s). The added two-repayment test initially failed with `SYNTHETIC_ID_REQUIRED` because its test advance ID lacked `sim-`; corrected the test input, then **35 passed** (4.832s), exit 0. |
-| `python3 scripts/docs_surface.py --check` | Exit 0, repeated after documentation changes: **30 routes, 38 artifacts, 9 stages**. No new vector registration required. |
-| `python3 scripts/pack_vectors.py --check` | Exit 0, repeated: **9 files match**. |
-| `python3 -m unittest discover -s tests -v` | Initial exit 1: **874 ran, 873 passed, 1 failure** (151.229s). Final-state rerun through the acceptance ladder: **875 ran, 874 passed, 1 failure** (155.612s), including all 35 passing SQL-auditor tests. The existing V1 byte guard compares against the advanced `origin/main` baseline; details below. No socket-denial errors in this environment. |
-| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0, **7 passed**. |
-| `python3 -m compileall -q capital` | Exit 0, repeated after final source changes. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0, repeated after the fix. SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
+| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Initial inherited implementation: 35 passed (5.671s). Final corrected source: 36 passed (5.370s), exit 0. Covers empty book, rehashed semantic mutants, exact bounds, identity/order, CLI exits, independence and non-mutation. |
+| `python3 -m unittest tests.test_sql_audit.SqlAuditTests.test_journal_identity_cannot_expand_evidence_posting_scope -v` | Before the SQL fix: exit 1, expected regression failure at `posting_lines` (also `account_totals`). Included in the passing final narrow suite. |
+| `python3 scripts/docs_surface.py --check` | Exit 0, repeated; 31 routes, 41 artifacts, 9 stages. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match. |
+| `python3 scripts/acceptance.py` | Initial run: exit 1. Unit stage passed all 1,159 tests (284.495s) and decision bindings passed; storage, vendor, all 311 claim-conformance rows, JS syntax, packaging, seeded demo and simulated journeys passed. Browser startup failed with `Address already in use` on the host's default ports. Evidence preserved in `/tmp/sql-crosscheck-acceptance-initial.json`. This run started before the new regression was added. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 1. The unit command reached the storage chaos sequence test without assertion failures, then the wrapper's 300s unit budget expired (exit 124). All other 8 stages passed, including 69 Chromium tests, 7 vendor tests and 311 claim-conformance rows. Evidence preserved in `/tmp/sql-crosscheck-acceptance-isolated.json`. The unit count parsed from partial subprocess output is not a complete-suite result. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 /tmp/sql-crosscheck-acceptance-local.py'` | Exit 0; all 9 stages passed, `build/acceptance-evidence.json` has `ok:true`. Unit stage uses a 600s local budget, with every original command/test retained; details below. |
+| `python3 -m unittest discover -s tests -v` (final ladder unit command) | Exit 0; **1,160 passed**, 479.225s, including all 36 SQL-auditor tests and the unchanged V1/golden byte guard. Decision bindings also passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` (ladder command) | Exit 0; **7 passed**. |
+| `npm run test:browser` (final isolated ladder command) | Exit 0; **69 passed**, 2.3m, using the unchanged Chromium configuration. |
+| `python3 -m compileall -q capital` | Exit 0, repeated after the SQL fix. |
 | `node --check capital/static/app.js` | Exit 0. |
-| `npm ci --offline --no-audit --no-fund` | Exit 0; **3 existing locked development packages** installed from cache, without a browser download or source dependency change. |
-| `npm run test:browser` | Exit 1 before tests: default ports 8765/8766 are occupied by unrelated pre-existing services in other workspaces. Those processes were left untouched. |
-| `npm run test:browser -- --config /tmp/sql-audit-playwright.cjs` | Exit 0: **69 passed** (1.9m), installed Chromium. Same test files, projects, assertions and worker count; temporary config loads the unchanged repository config and maps its four application ports 8765..8768 to 18765..18768 (also adds the first server's explicit port and absolute paths). No repository CI/config/test change or skipped test. |
-| `python3 scripts/decision_bindings.py --check` | Exit 0: declared references only; pending anchors are not implementation. |
-| `python3 scripts/build_release.py --out /tmp/sql-audit-release1` | Exit 0. |
-| `python3 scripts/build_release.py --out /tmp/sql-audit-release2` | Exit 0. |
-| `cmp /tmp/sql-audit-release1/capital-*.pyz /tmp/sql-audit-release2/capital-*.pyz` | Exit 0: deterministic same-interpreter package bytes; both SHA256 `8ccf2e2c9703562ccc3743bb832af77c03d37e652c85fa094e35de43a2ca8587`. |
-| `python3 scripts/smoke_release.py /tmp/sql-audit-release1/capital-*.pyz` | Exit 0: **8 checks** (version, state, static index, accepted synthetic journey, source integrity, restart instance/receipts/closed case). |
-| Inline Python malformed-root probe using `audit_bytes` | Exit 0: **7 malformed root shapes** fail without aggregate totals. |
-| Inline Python SHA256/`git show` protected-file checks | Exit 0: **57 protected files unchanged from HEAD**; `capital/export.py` also matches `origin/main`; all **5 vendor SHA256 pins matched**. Includes projection/reconciliation, vendor manifest, all existing vectors/goldens, and the three inherited baseline differences. |
-| Inline Python loopback-bind probe | Exit 0: ephemeral `127.0.0.1` bind works. Default browser port probes exposed the unrelated listeners on 8765/8766. |
-| `python3 /tmp/sql-audit-acceptance.py` | Exit 1; `build/acceptance-evidence.json` records `ok:false`. Executes the unchanged `scripts.acceptance.build_plan` / `execute_plan`, with only the browser command extended by `-- --config /tmp/sql-audit-playwright.cjs`; all 9 stages run. **8 passed**, unit failed only at the inherited baseline guard. |
-| Inline Python `/proc` process inspection | Exit 0 after the ladder: **no Capital, fake-gate or packaged server remains in this worktree**. The unrelated existing services were left untouched. |
-| `git diff --check` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/sql-crosscheck-release1` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/sql-crosscheck-release2` | Exit 0. |
+| `cmp /tmp/sql-crosscheck-release1/capital-*.pyz /tmp/sql-crosscheck-release2/capital-*.pyz` | Exit 0; identical SHA256 `3a2fa41fc02347f3d434ddc57c8c909aedaf9bce367f4f1cb8a63f78a3f7bf76`. |
+| `python3 scripts/smoke_release.py /tmp/sql-crosscheck-release1/capital-*.pyz` | Exit 0; all 8 checks pass. |
+| Inline Python SHA256 and `git show` protected-file checks | Exit 0; 59 protected files unchanged from HEAD; `capital/export.py` matches `origin/main`; all 5 vendor SHA256 pins match. Includes vendor manifest, projection/reconciliation and existing vectors/goldens. |
+| Inline Python loopback-port probe | Exit 0; unrelated services occupy 8765/8766. They were left untouched. |
+| Inline Python process cleanup probe | Initial overly broad substring probe matched its own shell command and exited 1; corrected exact argv matching exited 0. No Capital, fake-gate or packaged server remains in this worktree. |
+| `git diff --check` | Exit 0, repeated after final documentation changes. |
 
-Final-state acceptance stage results (Python 3.13.5, Node v20.19.2, npm 11.21.1, Playwright 1.58.2; these are local equivalents, not the CI runners' Python 3.12 / Node 24):
+The final local driver `/tmp/sql-crosscheck-acceptance-local.py` imports `scripts.acceptance`, calls `build_plan(root)`, sets only the unit stage's `timeout` to 600 seconds, then calls `execute_plan(plan, root=root, evidence_path=root / 'build/acceptance-evidence.json')`. Every stage and command remains present, with unchanged tests and assertions. It runs inside an isolated user/network namespace so all application servers can use the existing loopback ports. This is a local execution-budget adjustment; the repository's 300-second acceptance budget and CI files remain unchanged. Local tools are Python 3.13.5 / Node v20.19.2 / npm 11.21.1 / Playwright 1.58.2, versus the workflow's Python 3.12 / Node 24.
 
-| Stage | Actual result |
-|---|---|
-| unit | Failed: 874/875 passed; one inherited V1 byte-guard failure. The follow-on decision-bindings command is not run after unit failure; it passed directly above. |
-| storage-conformance | Passed: 19 tests across storage conformance and crash replay. |
-| pinned-vendor | Passed: 7 tests, all pins verified. |
-| upstream-claims | Passed: 269/269 claim-conformance rows (87 + 94 + 39 + 49), no external assurance/integration claimed. |
-| node-check | Passed. |
-| browser | Passed: 69/69, temporary port-only config. |
-| packaged-smoke | Passed: build and 8 smoke checks. |
-| seeded-demo | Passed: 1 golden check; no golden rewritten. |
-| integrated-journeys | Passed: 4 **SIMULATED** journeys, no integrated acceptance or real-funds claim. |
+Final local stage results: unit **1,160/1,160**, storage-conformance **19/19**, pinned-vendor **7/7**, upstream-claims **311/311**, JS syntax passed, browser **69/69**, packaged smoke **8/8**, seeded golden **1/1**, and integrated-journeys **4/4 SIMULATED**. The default wrapper's timeout result is retained above; no claim is made that its unchanged 300-second budget passed locally. All requested test commands completed successfully under the documented local budget. This provides no performance, durability, production-accounting or external-assurance qualification.
 
-The full-suite failure is `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`. `origin/main` at `aab0a73` includes changes after this node's base to `capital/overlay.py`, `capital/ports.py` and `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`; the test reports exactly those three paths. They are byte-identical to this node's HEAD and were not edited here. The builder did not change the guard, overwrite guarded files or alter git refs to disguise this baseline difference. Root `DECISION_REQUIRED.md` requests supervisor integration onto the current main baseline and an unchanged-suite rerun. This is not a passing full local CI result.
-
-No git commit, push, rebase, PR, issue or external comment was made. No `.aiops/`, vendored reference, CI, Protocol or Commerce files were changed. All verification jobs ran in the foreground under the tool session; no long job was shell-backgrounded.
+All jobs used foreground tool sessions. No git commit, push, PR, issue or comment was made; no `.aiops/`, CI, Protocol, Commerce or protected file was changed. No server started by this verification remains running. There is no unresolved product decision.

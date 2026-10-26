@@ -426,6 +426,19 @@ class SqlAuditTests(unittest.TestCase):
         result = audit.audit_bytes(raw)
         self.assertTrue(result['ok'], result)
 
+    def test_journal_identity_cannot_expand_evidence_posting_scope(self):
+        # V1 only posts three sim-* claims. A legitimate journal identity may
+        # resemble an evidence identity for another embedded fixture; it must
+        # still produce the journal event's own (empty) posting lines.
+        txn_id = 'evidence:demo-alpha-arena'
+        body(self.pack, 'journal')['entries'][0]['idempotency_key'] = txn_id
+        body(self.pack, 'projection')['entries'][3]['txn_id'] = txn_id
+        raw = reseal(self.pack)
+        self.assertTrue(evidence.verify_pack(json.loads(raw))['ok'])
+        result = audit.audit_bytes(raw)
+        self.assertTrue(result['ok'], result)
+        self.assertEqual(result['totals']['debit'], 385000)
+
     def test_unreadable_and_unsupported_path_arguments(self):
         for path in (None, [], '\0', ROOT):
             with self.subTest(path=path):

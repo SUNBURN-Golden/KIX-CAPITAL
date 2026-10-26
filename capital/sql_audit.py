@@ -294,7 +294,8 @@ CREATE VIEW expected_lines AS
  UNION ALL
  SELECT h.position,1+ROW_NUMBER() OVER (PARTITION BY p.claim_id ORDER BY p.payee),
  'SIM_PAYEE_OBLIGATION:'||p.claim_id||':'||p.payee,'credit',p.face
- FROM payees p JOIN expected_headers h ON h.txn_id='evidence:'||p.claim_id
+ FROM payees p JOIN expected_headers h
+ ON h.source='EVIDENCE' AND h.txn_id='evidence:'||p.claim_id
  UNION ALL
  SELECT h.position,1,'SIM_ADVANCE_EXPOSURE:'||j.advance_id,'debit',o.amount
  FROM journal j JOIN journal o ON o.advance_id=j.advance_id AND o.op='offer'
