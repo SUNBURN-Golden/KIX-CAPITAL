@@ -61,10 +61,7 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(identities, sorted(set(identities)))
 
     def test_each_parked_entry_is_pending_with_node_and_anchor(self):
-        nodes = {'repayment-posting-decision': 'overlay-repayment-posting',
-                 'default-recovery-decision': 'overlay-recovery-writeoff',
-                 'claim-slice-registry-decision': 'claim-slice-registry',
-                 'closeout-artifact-decision': 'closeout-evidence-vector'}
+        nodes = {'claim-slice-registry-decision': 'claim-slice-registry'}
         for row in self.data['entries']:
             if row['decision_id'] in nodes:
                 for binding in row['bindings']:
@@ -72,6 +69,44 @@ class BindingTests(unittest.TestCase):
                     self.assertEqual(binding['consumer_node'], nodes[row['decision_id']])
                     self.assertTrue(binding['reason'])
                     self.assertTrue((ROOT / binding['path']).is_file())
+
+    def test_recovery_is_consumed_with_live_code_and_test_bindings(self):
+        rows = [row for row in self.data['entries'] if row['decision_id'] == 'default-recovery-decision']
+        self.assertEqual(len(rows), 10)
+        for row in rows:
+            self.assertEqual(row['bindings'], [
+                {'kind': 'module', 'path': 'capital/recovery.py', 'status': 'CONSUMED'},
+                {'kind': 'test_module', 'path': 'tests/test_recovery.py', 'status': 'CONSUMED'}])
+
+    def test_closeout_policy_has_built_consumers(self):
+        expected = {
+            'check_wiring': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
+            'committed_artifact_choice': {'scripts/closeout_digest.py', 'scripts/finance_vectors.py'},
+            'honesty_label_policy': {'scripts/closeout_digest.py', 'scripts/finance_vectors.py'},
+            'regeneration_trigger_policy': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
+            'stripped_fields_policy': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
+        }
+        rows = {row['entry']: row['bindings'] for row in self.data['entries']
+                if row['decision_id'] == 'closeout-artifact-decision'}
+        self.assertEqual(set(rows), set(expected))
+        for entry, bindings in rows.items():
+            with self.subTest(entry=entry):
+                self.assertEqual({binding['path'] for binding in bindings}, expected[entry])
+                self.assertTrue(all(binding['status'] == 'CONSUMED' for binding in bindings))
+
+    def test_repayment_posting_is_consumed_with_live_code_and_test_bindings(self):
+        rows = [row for row in self.data['entries'] if row['decision_id'] == 'repayment-posting-decision']
+        self.assertEqual(len(rows), 9)
+        for row in rows:
+            with self.subTest(entry=row['entry']):
+                self.assertTrue(all(binding['status'] == 'CONSUMED' for binding in row['bindings']))
+                self.assertTrue(any(binding['kind'] == 'module' for binding in row['bindings']))
+                self.assertIn({'kind': 'test_module', 'path': 'tests/test_repayment_posting.py',
+                               'status': 'CONSUMED'}, row['bindings'])
+        for name in ('capacity_and_envelope_effect', 'unapplied_cash_handling'):
+            row = next(row for row in rows if row['entry'] == name)
+            self.assertIn({'kind': 'module', 'path': 'capital/overlay.py', 'status': 'CONSUMED'},
+                          row['bindings'])
 
     def test_partial_builds_do_not_claim_future_bundling_or_seed_budget(self):
         expected = {
@@ -123,7 +158,7 @@ class BindingTests(unittest.TestCase):
                 self.assertDrift('invalid binding shape')
 
     def test_pending_metadata_required(self):
-        row = next(row for row in self.data['entries'] if row['decision_id'] == 'repayment-posting-decision')
+        row = next(row for row in self.data['entries'] if row['decision_id'] == 'claim-slice-registry-decision')
         for key in ('consumer_node', 'reason'):
             old = row['bindings'][0].pop(key)
             self.assertDrift('pending consumer metadata')
