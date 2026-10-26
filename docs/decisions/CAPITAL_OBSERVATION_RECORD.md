@@ -8,12 +8,13 @@
 | 결정 노드 | `observation-record-decision` (Decision: recorded external-fact model — classes, verification labels, recording authority and consumers) · deps `upstream-binding-decision`, `settlement-policy-decision` · kind `decision` · user_merge `False` |
 | 결정자 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
 | 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
-| 결정일 | 2026-10-21 |
-| KIX-CAPITAL 기준 | main `4cf1de3` |
-| kix-protocol 기준 | `a114b5b` (읽기 전용 `/workspace/capital-run/kixproto-ro`) |
+| 결정일 | 2026-10-25 |
+| KIX-CAPITAL 기준 | main `e56224a` |
+| kix-protocol 기준 | `53c16b2` (읽기 전용 `/workspace/capital-run/kixproto-ro`) |
 | vendor pin | `capital/vendor/manifest.json` commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, 다섯 파일 SHA256 불변 |
 | 읽기 범위 | supervisor pack이 허용한 경로만 읽었다. deps 두 노트(`CAPITAL_UPSTREAM_BINDING.md`, `CAPITAL_SETTLEMENT_POLICY.md`)는 허용 경로 밖이라 **이 결정자가 직접 열지 않았다.** 필드·라벨 이름은 허용된 노트의 인용(`fsm_expressible`, AI lane QUERY/PROPOSE·HUMAN_PENDING·effects_executed false, §3.9 핀 `e2a029d`)과 `docs/CAPITAL_REQUIREMENTS_KO.md` CAP-19·CAP-12 행으로만 참조한다. **이름이 충돌하면 선행 노트가 이기고, 사실 모델의 구조·라벨·소비 규칙은 이 노트가 이긴다.** |
 | 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. 여덟 항목 모두 ADOPTED |
+| 개정 | 리뷰 라운드(blocking, 범위 초과): 이 노드의 허용 diff는 이 노트·`tests/decision_bindings.json`·`tests/vectors/pack/`뿐이다. 브랜치에 섞인 `scripts/decision_ledger.py`(`--check` 별칭)·`tests/test_coa_candidate.py`(이 노트 바이트 핀)·`tests/test_decisions.py` 변경은 **이 결정의 일부가 아니며 철회 대상**이다 — 별도 선행 변경(prerequisite PR)으로 분리하거나 허용 범위를 공식 개정한 뒤에만 들어올 수 있다. 결정 내용은 그 세 파일에 의존하지 않는다. 기준값을 main `e56224a`·kix `53c16b2`로 갱신했다 |
 
 ## 1. 결정 요약
 
@@ -107,11 +108,11 @@
   "schema": "capital-decision-v1",
   "decision_id": "observation-record-decision",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-  "date": "2026-10-21",
+  "date": "2026-10-25",
   "provisional": true,
   "status": "PROVISIONAL_PRODUCT_DECISION",
   "scope": "KIX-CAPITAL simulation and product design only; not an offer; no real money; production NOT_AUTHORIZED; every recorded fact is an unverified operator assertion, not provider/bank/chain confirmation; no upstream contract claimed adopted",
-  "bases": {"capital_main": "4cf1de3", "kix_protocol": "a114b5b", "vendor_pin_commit": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"},
+  "bases": {"capital_main": "e56224a", "kix_protocol": "53c16b2", "vendor_pin_commit": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe"},
   "profile_version": "CAPITAL-OBSERVED-FACT-V1",
   "recorded_fact_constants": {"label": "SIMULATED", "verification": "UNVERIFIED_ASSERTED", "recorded_by_role": "organizer", "funds_executed": false, "provider_call_made": false, "legal_effect": "NOT_ASSESSED"},
   "upstream_adoption_claimed": false,
@@ -132,7 +133,7 @@
         "constants": {"label": "SIMULATED", "verification": "UNVERIFIED_ASSERTED", "funds_executed": false, "provider_call_made": false, "legal_effect": "NOT_ASSESSED"}
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-09", "CAP-14"],
       "rationale": "Three classes cover the named external fact kinds (capture, settlement cash, refund) with the minimal schema; real-evidence classes like bank statements are kept NOT_ADOPTED_V1 so assertions stay distinguishable from evidence.",
       "provisional": true,
@@ -147,7 +148,7 @@
         "fold_status": "ACTIVE | SUPERSEDED (derived flag; supersede does not delete)"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-09", "CAP-14", "CAP-19"],
       "rationale": "A three-layer vocabulary (recorded asserted / declared-not-bound confirmed / derived) keeps every simulated observation honest today while pre-declaring the upgrade path a real provider integration would use.",
       "provisional": true,
@@ -163,7 +164,7 @@
         "authentication_honesty": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED; role label is not authentication"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-01", "CAP-19"],
       "rationale": "Reusing the organizer-only overlay seam keeps one authority boundary; agent proposals stay in the existing simulated QUERY/PROPOSE lane, and two-person is reserved for actions with financial effect.",
       "provisional": true,
@@ -180,7 +181,7 @@
         "overlay_schema": "1; if OVERLAY_STATE requires a bump for a new fold key, that rule wins -> overlay_schema 2 plus new golden, decision content unchanged"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-10", "CAP-14"],
       "rationale": "One kind plus a class discriminator minimises consumer branching; folding into the existing overlay journal keeps the no-new-storage-engine rule and the empty-equals-absent digest invariant.",
       "provisional": true,
@@ -198,7 +199,7 @@
         "boundary": "asserted cash is not ledger-observed cash and is never a set-off source"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-09", "CAP-14"],
       "rationale": "Recon compares journal to assertions and forecast displays asserted actuals; both are read surfaces, so facts stay useful without ever feeding the pinned FSM, slice arithmetic, borrowing base or set-off sources.",
       "provisional": true,
@@ -215,7 +216,7 @@
         "determinism": "integer arithmetic only; no wall-clock, sim_day-of-read or instance_id inputs"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-01", "CAP-14"],
       "rationale": "Unstored pure derivations cannot drift from the journal, inherited provenance keeps honesty, and absent-when-empty preserves golden digests on fact-free books.",
       "provisional": true,
@@ -235,7 +236,7 @@
         "script_budget": "<= 30 operations if fact commands count toward MAX_OPERATIONS 500"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-08", "CAP-11"],
       "rationale": "Bounded enumerable facts fit the ten-claim demo book with headroom, keep fold cost flat, and refuse growth rather than evicting recorded assertions.",
       "provisional": true,
@@ -251,7 +252,7 @@
         "closeout": "implementation node's test_count change requires CAPITAL-CLOSEOUT-REGEN-V1 digest regeneration"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-21",
+      "date": "2026-10-25",
       "cap_rows": ["CAP-13", "CAP-14", "CAP-15"],
       "rationale": "Keeping facts inside the existing V3 overlay fold guarantees byte-identical digests and exports on fact-free books, no new manifest section, and no accounting claim from unverified assertions.",
       "provisional": true,
@@ -265,16 +266,18 @@
 
 - `docs/decisions/CAPITAL_OBSERVATION_RECORD.md`에 여덟 항목(`fact_class_set`·`verification_label_vocabulary`·`recording_authority`·`fact_fold_location`·`recon_consumption_rule`·`derived_value_source_rule`·`capacity_bounds`·`digest_export_effect`) 각각의 status를 담은 `capital-decision-v1` 블록 하나 → §4.
 - 모든 기록 사실은 `SIMULATED` + `UNVERIFIED_ASSERTED` + organizer-only + `funds_executed: false` → 상수를 §3 공통, 각 entry의 `value.constants`, 블록 최상위 `recorded_fact_constants`에 고정.
-- `python3 scripts/decision_ledger.py --check`: 블록 스키마·필드는 main의 MERGED 노트(`default-recovery`, `claim-slice-registry`)와 같은 형태다.
+- `python3 scripts/decision_ledger.py --check`: 블록 스키마·필드는 main의 MERGED 노트(`default-recovery`, `claim-slice-registry`)와 같은 형태이고, 같은 검증 경로인 인자 없는 `python3 scripts/decision_ledger.py`가 이 노트를 schema finding 없이 파싱한다. main `e56224a`의 스크립트는 `--check` 플래그를 아직 받지 않으므로, 플래그 형태 그대로의 통과는 별도 선행 변경(§6)이 merge된 뒤에 성립한다 — 이 노트는 그 변경을 포함하지 않는다.
 
 ## 6. Open risks
 
 - deps 두 노트를 직접 읽지 못했다(허용 경로 밖). `fsm_expressible`·agent lane 이름이 인용과 다르면 선행 노트가 이긴다 — 구현 노드가 인용 검사 시 확인한다.
 - `SETTLEMENT_CASH_ARRIVAL`의 `payee_label`이 pinned 줄이 아닐 때의 라벨은 V1에서 거절로 닫았다; 다수 수취인 FSM이 오면 재검토.
 - `PROVIDER_CONFIRMED` 승격 경로는 선언뿐이라 제공자 연결 계약(`fin-observation-reconciliation` 후보)이 정본을 정한다.
+- 범위 분리: `--check` 별칭이 없으면 수용 기준 3의 문자 그대로 명령이 argparse 오류로 끝난다. 또 main의 `test_coa_candidate` 바이트 가드가 새 결정 노트를 diff로 잡는다면 그 처리도 이 노트가 아닌 선행 변경의 몫이다.
 
 ## 7. 후속 작업
 
+- 선행 변경(이 노드 밖): `decision_ledger.py --check` 별칭과 그 테스트, 새 결정 노트에 대한 `test_coa_candidate` 가드 처리. 이 노트의 바이트를 테스트에 핀하지 않는다.
 - `observation-record` 구현 노드: `record_external_fact` 명령·폴드·거절 코드·`/api/overlay` 조회·recon 세 검사·forecast `recorded_actuals` 구현, 골든 `overlay_external_facts.json` 추가, `scripts/docs_surface.py`·README needle·`scripts/decision_ledger.py --check` 갱신.
 - recon 표면과 `fin-observation-reconciliation` upstream 후보의 대조는 별도 노드; 이 결정은 그 노드를 완료로 표시하지 않는다.
 - `test_count` 변화 시 `CAPITAL-CLOSEOUT-REGEN-V1`으로 클로즈아웃 다이제스트 재생성.
