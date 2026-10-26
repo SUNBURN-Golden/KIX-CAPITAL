@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, forecast, margin, overlay, risk, portfolio_snapshot
+from capital import coa, covenants, forecast, margin, overlay, risk, portfolio_snapshot, dossier
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1427,6 +1427,21 @@ class CapitalService:
                 return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def dossier(self, advance_id, instance_id):
+        """Compose one read-only case document under a single workspace lock."""
+        with self.lock:
+            if not instance_id or instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if advance_id not in self.case_fixtures:
+                raise ApiError('CASE_NOT_FOUND', 404)
+            frozen = self._frozen()
+            journal_length = len(self.machine.export_journal())
+            try:
+                return self._terms_envelope(dossier.build(self, instance_id, advance_id))
+            finally:
+                if not self._same_frozen(frozen) or len(self.machine.export_journal()) != journal_length:
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
     def portfolio_snapshot(self, instance_id):

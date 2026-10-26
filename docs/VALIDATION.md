@@ -945,3 +945,125 @@ Commands actually run, in order:
 - `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
 
 Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v` covers detached-input component parity, independent cut digests, read-only workspace bytes, deterministic snapshots across sessions, controlled reader/writer ordering for repayment and clock commands, unsupported producers/fixtures, degraded storage, unbound terms, identity, authorization and closed facade schemas. `python3 scripts/docs_surface.py --check` guards the route documentation and the auth matrix includes the route. All data is SIMULATED; no authenticated or cross-process source cut is claimed.
+
+## advance-case-dossier (2026-10-26)
+
+Completed the interrupted worktree implementation after checking the design
+against the route/auth registries, sibling read envelopes, terms fallbacks,
+overlay journal and operations desk. All dossier data is SIMULATED; settlement
+rows are READ_ONLY_FIXTURE. The dossier copies existing reader outputs at the
+recorded overlay day, introduces no financial arithmetic, and grants no decision
+or execution authority. Added direct coverage for underwriting and terms-line
+NOT_BOUND exceptions as well as propagation of other errors.
+
+Design deviations:
+
+- The existing evidence-pack vectors were refreshed because their auth-matrix
+  section includes the new route. Comparing all eight parseable pack fixtures
+  against HEAD confirmed that only that section and derived digests changed;
+  the ninth fixture is the derived truncated pack. Dossiers are not included in
+  evidence packs, and no pack implementation changed.
+- Browser verification used an ignored, temporary
+  `build/dossier-playwright.config.cjs`. Unrelated applications owned ports
+  8765 and 8766; they were left running. The override maps the four configured
+  server/baseURL ports 8765–8768 to 8965–8968, explicitly adds `--port 8965` to
+  the default server command, and resolves the config's cwd/test/output paths
+  back to this repository. Every project, assertion, timeout and server cleanup
+  setting is inherited unchanged. The dossier spec retains its own port 8944.
+  The acceptance plan's browser command alone receives this config argument.
+
+Actual verification commands and results (exit 0 unless stated otherwise):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_dossier tests.test_facade_contract tests.test_auth_matrix tests.test_docs_surface tests.test_handbook -v` | Initial 74 passed; after adding fallback coverage, 75 passed in 5.457s. Final narrow output: `build/dossier-narrow.log`. |
+| `npm ci --no-audit --no-fund` | Installed the three locked development packages. |
+| `npx playwright test tests/browser/case-dossier.spec.cjs --project=workspace --config build/dossier-playwright.config.cjs` | 7 passed in 10.5s. Organizer/auditor downloads and captures at 1280px/375px; literal hostile text, fallback, manifest independence and incompatible-response withholding. |
+| `python3 scripts/auth_matrix.py --write` / `--check` | Both passed; matrix and generated documentation synchronized. |
+| `python3 scripts/dossier_vectors.py --write` / `--check` | Both passed; six seeded dossier files match. |
+| `python3 scripts/pack_vectors.py --check` | Nine existing pack vectors match. |
+| `python3 scripts/docs_surface.py --check` | 31 routes, 44 artifacts, 9 stages; no findings. |
+| `python3 -m compileall -q capital` | Passed. |
+| `node --check capital/static/app.js` | Passed. |
+| `python3 scripts/seed_demo.py` | SIMULATED golden unchanged: state `a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`, content `2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca`. |
+| `python3 scripts/build_release.py --out build/dossier-dist1` / `--out build/dossier-dist2` | Both passed, artifact SHA256 `d933cf5e36a70a22b8ef0d28bdf812373ef2fbaaa1cacd569365e5dcf8232839`. |
+| `cmp build/dossier-dist1/capital-*.pyz build/dossier-dist2/capital-*.pyz` | Byte-identical. |
+| `python3 scripts/smoke_release.py build/dossier-dist1/capital-*.pyz` | All eight smoke checks passed. |
+| Python SHA256 recomputation over `capital/vendor/manifest.json` file entries | All five source files match `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. |
+| `git diff --exit-code -- capital/vendor .aiops capital/export.py tests/golden` | No changes. |
+| `git diff --check` | Passed. |
+
+Verification setup failures, corrected before the passing browser run: the
+first `npx playwright test ... --project=workspace` exited 1 with “unknown
+command 'test'” before `npm ci`; the next exited 1 because port 8765 was already
+occupied. Two temporary-config attempts exited 1 while correcting its cwd
+(`ModuleNotFoundError: capital`) and the implicit default server port
+(`Address already in use`). No repository test or CI setting was weakened.
+
+The full-suite run revealed a second catalog-dependent artifact omitted from
+the plan: `tests/vectors/finance_vectors.json`. Regenerated it with the existing
+script, added the dossier to the explicit `FACADE_READS` expectation, increased
+the exact route counts by one, and asserted the new route's permission and
+operation ID. Existing catalog assertions remain enforced.
+
+| Additional actual command | Result |
+|---|---|
+| `python3 scripts/finance_vectors.py --write` / `--check` | 93,847 bytes; regenerated facade catalog matches. |
+| `python3 -m unittest discover -s tests -p test_finance_vectors.py -v` | First run after regeneration: 52 passed, 2 exact-route-count failures; after extending the explicit expectations: all 54 passed in 3.247s (`build/dossier-finance-final.log`). |
+| `python3 -m unittest discover -s tests -v` (first acceptance run; then diagnostic rerun) | Both ran 855 tests: 845 passed, 9 failures and 1 error. Nine findings came from the stale finance catalog/expectations and were fixed above. The remaining finding is the moved-main guard described below. Diagnostic output: `build/dossier-full-unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | All 7 passed, both in acceptance and standalone. |
+| `npm run test:browser -- --config build/dossier-playwright.config.cjs` | All 76 passed inside acceptance, including the seven dossier specs. |
+| `python3 scripts/decision_bindings.py --check` | Passed. |
+| `PYTHONPATH=tests python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 1: moved `origin/main` differs in `capital/overlay.py`, `capital/ports.py`, `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`. All remain unchanged from node HEAD. |
+| `git diff --name-only HEAD -- capital/projection.py capital/ports.py capital/overlay.py capital/export.py capital/vendor .aiops docs/decisions tests/golden` | No output; guarded inputs unchanged by this task. |
+| `ss -ltnp '( sport >= :8965 and sport <= :8968 or sport = :8944 or sport = :8941 )'` | No listeners; every test server stopped. |
+
+The complete acceptance ladder ran through its normal Python API, with only
+the browser's port override added. This was the exact invocation:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+from scripts.acceptance import build_plan, execute_plan, ROOT
+plan=build_plan()
+for stage in plan:
+    if stage['id']=='browser':
+        stage['commands'][0].extend(['--','--config','build/dossier-playwright.config.cjs'])
+raise SystemExit(execute_plan(plan,root=ROOT,evidence_path=Path('build/advance-case-dossier-acceptance.json')))
+PY
+```
+
+It exited 1, with `ok=false`, because the first unit run had the findings above.
+All other stages passed: storage-conformance 19; pinned-vendor 7;
+upstream-claims 269 (CLAIM_CONFORMANCE); JavaScript syntax; browser 76;
+packaged-smoke 8; seeded-demo 1; integrated-journeys 4 (SIMULATED). The JSON
+records actual subprocess commands and their output tails; it has not been
+rewritten to conceal the failed unit stage.
+
+`DECISION_REQUIRED.md` records the supervisor-owned baseline/integration choice.
+Node HEAD is `5c2398937e12f5a88a2cbd747f5a1edf2f97d95a`; the observed
+`origin/main` was `aab0a73`. No guard was weakened, no refs were moved, and
+no Git commit, push, PR, issue or comment was created.
+
+Final full-unit rerun after fixing the catalog:
+
+| Command | Final result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 1: **855 run, 854 passed, 1 failure** in 152.471s. Sole failure: `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`, the moved-main comparison described above. Full output: `build/dossier-full-unit-final.log`. |
+| `python3 scripts/docs_surface.py --check`, `python3 scripts/dossier_vectors.py --check`, `python3 scripts/finance_vectors.py --check` | Passed after the finance catalog fix and decision record. |
+| `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `git diff --check` | Passed. |
+| `git diff --exit-code -- capital/vendor .aiops capital/export.py tests/golden` | No changes. |
+
+Changed files: `capital/dossier.py`, `capital/auth.py`,
+`capital/contract/facade-v1.json`, `capital/server.py`, `capital/service.py`,
+`capital/static/app.js`, `capital/static/index.html`; `scripts/dossier_vectors.py`,
+`scripts/auth_matrix.py`, `scripts/docs_surface.py`; `tests/test_dossier.py`,
+`tests/test_facade_contract.py`, `tests/test_finance_vectors.py`,
+`tests/test_handbook.py`, `tests/browser/case-dossier.spec.cjs`,
+`tests/auth_matrix.json`; the six `tests/vectors/dossiers/*.json`,
+`tests/vectors/finance_vectors.json`, the nine `tests/vectors/pack/*.json`;
+`README.md`, `docs/INTEGRATION.md`, `docs/OPERATOR_HANDBOOK_KO.md`,
+`docs/VALIDATION.md`, `DECISION_REQUIRED.md`.
+
+Final status: DECISION_REQUIRED for baseline alignment; no claim of a passing
+full CI or acceptance ladder. All task-related failures have been corrected.

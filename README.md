@@ -123,3 +123,31 @@ python3 scripts/acceptance.py
 CI는 동일 검사를 새 HEAD마다 실행합니다. UI 자동 검증과 독립 코드 리뷰는 실제 사용자 수용·아키텍처 승인·운영 승인과 구분합니다. Python HTTP 서버, 기본 메모리 receipt, 옵트인 `LOCAL_FILE_WORKSPACE` 파일은 개발용입니다. 내구 원장·멀티테넌트 인증·분산 잠금·stage5 durable transaction이 아닙니다.
 
 `GET /api/portfolio/snapshot?instance_id=<current instance>` returns one SIMULATED local diagnostic cut of terms rollup, risk, covenant watch and forecast. It requires `projection:read`; current session identity is mandatory. `COMPLETE` is limited to the in-process pinned producer with immutable fixture views, bound loaded terms and healthy reconciled storage. Gate-fake, mutable sources and degraded/unbound inputs return explicit `INCOMPLETE` diagnostics, never fabricated totals. The cut carries business, overlay, fixture and policy-input digests plus a deterministic snapshot digest. Terms rollup keeps draw day 0 while risk/covenants/forecast use recorded draw days; settlement cash day remains `EXPECTED_DAY_NOT_PROVIDED`. No workspace writes or real funds occur. Authentication, cross-process cuts and historical storage remain NOT_BOUND/out of scope. See `tests/test_portfolio_snapshot.py` for controlled concurrency and read-only evidence and `docs/INTEGRATION.md` for the contract.
+
+### Advance case dossier · SIMULATED
+
+`GET /api/cases/{advance_id}/dossier?instance_id=` returns a deterministic
+`KIX_CAPITAL_CASE_DOSSIER_V1` document for one advance. Organizer and auditor
+can download it from the operations desk; observer and agent receive 403.
+The document copies the case, receipt chain, recorded overlay day and rows,
+underwriting rule evaluation, terms line, full-payoff allocation proposal,
+margin/covenant status and READ_ONLY_FIXTURE settlement evidence from existing
+readers under one lock. No new financial arithmetic or workspace writes occur.
+Underwriting `proposal`/`approve_authority` fields are copied rule outputs,
+not a decision or authority granted to the reader. Missing terms produce
+labelled `NOT_BOUND` blocks without numbers. Undrawn cases have
+`NOT_APPLICABLE / NOT_DRAWN` terms-dependent blocks when terms are bound.
+
+`dossier_digest` is SHA256 over the canonical document without that field,
+with established volatile session/time keys removed recursively. It is a local
+content digest; authentication, real identity and remote attestation remain
+NOT_BOUND. Receipts without F04 journal rows are workspace-wide and labelled
+`case_association: NOT_INFERRED`. PDF, multi-advance bundles and evidence-pack
+inclusion are out of scope. The response carries its own cut and does not depend
+on the desk manifest's availability.
+
+The six demo dossiers are pinned in `tests/vectors/dossiers/`.
+Run `python3 scripts/dossier_vectors.py --check` to detect drift, or use
+`--write` to regenerate and `--dir` to target another dossier directory.
+Coverage: `tests/test_dossier.py` and `tests/browser/case-dossier.spec.cjs`
+(organizer/auditor captures at 1280px and 375px).

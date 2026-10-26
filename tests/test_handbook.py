@@ -248,6 +248,7 @@ class HandbookTests(unittest.TestCase):
         text = (Path(__file__).resolve().parent.parent / 'docs' / 'OPERATOR_HANDBOOK_KO.md').read_text(encoding='utf-8')
         self.assertEqual(text.count('<!-- handbook-section:'), text.count('<!-- /handbook-section -->'))
         needed = {
+            'advance-case-dossier': ('GET /api/cases/{advance_id}/dossier', 'dossier_digest', 'SIMULATED', 'NOT_BOUND', 'CASE_NOT_FOUND', 'tests/test_dossier.py'),
             'shadow-refund-resale': ('SHADOW_NOT_APPLIED', 'SHADOW_DEFERRED'),
             'caps-binding-fixtures': ('CAPITAL-DEMO-BOOK-V1', 'portfolio_cap_krw'),
             'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),

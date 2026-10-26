@@ -278,6 +278,10 @@
 {
       "code": "OVERLAY_VOLATILE_KEY",
       "status": 400
+    },
+    {
+      "code": "CASE_NOT_FOUND",
+      "status": 404
     }
   ],
   "commands": {
@@ -319,6 +323,35 @@
     }
   },
   "routes": [
+    {
+      "method": "GET",
+      "path": "/api/cases/{advance_id}/dossier",
+      "operationId": "local_case_dossier",
+      "dispatch": "/api/cases/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/case_dossier"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT",
+        "CASE_NOT_FOUND"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id"
+      ]
+    },
     {
       "method": "GET",
       "path": "/api/portfolio/snapshot",
@@ -13133,6 +13166,487 @@
           "$ref": "#/definitions/portfolio_snapshot_incomplete"
         }
       ]
+    },
+    "dossier_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "dossier_skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_APPLICABLE"
+        },
+        "reason": {
+          "const": "NOT_DRAWN"
+        }
+      }
+    },
+    "dossier_terms_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "status",
+        "reason",
+        "tier",
+        "principal",
+        "schedule",
+        "accrual",
+        "collateral",
+        "borrowing_base",
+        "reserve_provision",
+        "not_applied"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "principal": {
+          "type": "integer"
+        },
+        "schedule": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "accrual": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "collateral": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "borrowing_base": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "reserve_provision": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "not_applied": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/terms_not_applied"
+            },
+            {
+              "$ref": "#/definitions/terms_unbound_section"
+            }
+          ]
+        }
+      }
+    },
+    "case_dossier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "label",
+        "mode",
+        "advance_id",
+        "sim_day",
+        "clock_source",
+        "cut",
+        "terms_status",
+        "terms_reason",
+        "drawn",
+        "case",
+        "receipt_chain",
+        "workspace_receipts_without_journal_rows",
+        "overlay_rows",
+        "ledger_row",
+        "allocation_quote",
+        "margin_status",
+        "covenant_status",
+        "terms_line",
+        "underwriting",
+        "underwriting_note",
+        "settlement_evidence",
+        "not_bound",
+        "dossier_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_CASE_DOSSIER_V1"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "READ_ONLY_CASE_DOSSIER"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "cut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "overlay_state_digest",
+            "fixtures_digest",
+            "terms_version"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string"
+            },
+            "overlay_state_digest": {
+              "type": "string"
+            },
+            "fixtures_digest": {
+              "type": "string"
+            },
+            "terms_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "terms_status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL",
+            "NOT_BOUND"
+          ]
+        },
+        "terms_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "drawn": {
+          "type": "boolean"
+        },
+        "case": {
+          "$ref": "#/definitions/credit_view"
+        },
+        "receipt_chain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "journal"
+          ],
+          "properties": {
+            "journal": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "journal_index",
+                  "entry",
+                  "receipt"
+                ],
+                "properties": {
+                  "journal_index": {
+                    "type": "integer"
+                  },
+                  "entry": {
+                    "$ref": "#/definitions/journal_entry"
+                  },
+                  "receipt": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/accepted_receipt"
+                          },
+                          {
+                            "$ref": "#/definitions/rejected_receipt"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "workspace_receipts_without_journal_rows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "case_association",
+            "rows"
+          ],
+          "properties": {
+            "scope": {
+              "const": "WORKSPACE_WIDE"
+            },
+            "case_association": {
+              "const": "NOT_INFERRED"
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "idempotency_key",
+                  "receipt"
+                ],
+                "properties": {
+                  "idempotency_key": {
+                    "type": "string"
+                  },
+                  "receipt": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/accepted_receipt"
+                      },
+                      {
+                        "$ref": "#/definitions/rejected_receipt"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "overlay_rows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entries"
+          ],
+          "properties": {
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "overlay_index",
+                  "entry"
+                ],
+                "properties": {
+                  "overlay_index": {
+                    "type": "integer"
+                  },
+                  "entry": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ledger_row": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/overlay_row"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "allocation_quote": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "allocation",
+                "fsm_repay",
+                "close_ready"
+              ],
+              "properties": {
+                "allocation": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/definitions/allocation_split_section"
+                    }
+                  ]
+                },
+                "fsm_repay": {
+                  "$ref": "#/definitions/overlay_fsm_repay"
+                },
+                "close_ready": {
+                  "type": "boolean"
+                }
+              }
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "margin_status": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/overlay_row_margin"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "covenant_status": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/snapshot_covenant_row"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "terms_line": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/dossier_terms_line"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "underwriting": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/underwrite"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            }
+          ]
+        },
+        "underwriting_note": {
+          "const": "rule evaluation copied for audit; not a decision by the reader"
+        },
+        "settlement_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "rows"
+          ],
+          "properties": {
+            "label": {
+              "const": "READ_ONLY_FIXTURE"
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/evidence_row"
+              }
+            }
+          }
+        },
+        "not_bound": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/gap"
+          }
+        },
+        "dossier_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
     }
   }
 }
