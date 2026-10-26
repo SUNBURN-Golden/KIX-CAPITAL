@@ -1,5 +1,68 @@
 # Capital local API and future integration
 
+## Offline portfolio comparison contract
+
+`python3 -m capital.portfolio_compare --before DIR_A --after DIR_B` reads each explicit
+`workspace.json` once. `audit_workspace_bytes(raw, workspace=...)` audits those same
+bytes with the existing audit stages; both audits are attempted. The comparator uses
+`evidence.offline_service` with save-forbidden memory storage and detached
+`portfolio_snapshot.FrozenInputs`, then recomputes `risk.build` and `covenants.build`.
+It opens no FileWorkspace, lock or signing key and creates no directory. No HTTP/UI
+surface, collection, import/resume, forecast, what-if model or history database is added.
+
+The canonical sorted-key JSON format is `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1`, labeled
+`SIMULATED`. `inputs.before` and `inputs.after` each carry `workspace_sha256`,
+`payload_sha256`, the full `audit`, `state_digest`, `overlay_state_digest`, `sim_day`,
+`fixtures_digest`, `policy_inputs_digest`, `inputs_digest`, `risk_digest` and
+`covenant_digest`. Unavailable digests are null. Existing snapshot digest recipes are
+reused: `fixtures_digest` hashes fixture rows; compatibility also compares profiles,
+beneficiary mappings and projection IDs. `policy_inputs_digest` includes loaded terms,
+overlay bounds and the frozen-input assumptions. These hashes identify comparison-time
+local inputs; workspace envelopes do not archive complete historical fixtures/policy.
+No timestamp/session ID is generated in the report; existing audit envelope metadata
+is retained. Repeated comparisons of unchanged files/local inputs emit identical bytes.
+
+`comparability.checks` is ordered and contains `{id, side, status, reason, entries}`.
+Status is `MATCHED`, `MISMATCH` or `NOT_CHECKED` for dependent unavailable checks.
+Both sides explicitly require these entries to exist and be usable `ADOPTED` values
+after DecisionNoteTermsPolicy loading: `interest_rate`, `term`,
+`default_loss_treatment`, `reserve`, `additional_margin`, `underwriting_depth`.
+Missing names are `REQUIRED_POLICY_ENTRY_MISSING`; unusable names are
+`REQUIRED_POLICY_ENTRY_UNUSABLE`. Neither top-level BOUND nor matching hashes nor
+an empty book replaces this gate. Overlay bounds and risk terms must be usable.
+Applicable drawn tiers must supply `margin_terms`, including cure/rate/payee inputs;
+otherwise `APPLICABLE_MARGIN_TERMS_UNUSABLE`. No-matching-tier rows retain their
+legitimate `NOT_APPLICABLE` semantics; uncovered nonzero reserve exposure fails.
+Fees/forecast readiness is not a comparison requirement.
+An audited draw receipt can still lack usable nested result/gate evidence; absent,
+malformed, empty or non-string gates yield `DRAW_RECEIPT_GATE_MISSING` and leave
+dependent views `NOT_CHECKED`.
+
+Both recomputed views must be BOUND and reconciled, with complete risk reserve
+calculation coverage. Covenant reserve-pool funding/coverage legitimately remains
+`NOT_BOUND`. Pair checks require identical fixture inputs and policy-input digests,
+nondecreasing sim_day, canonical F04/overlay prefixes (legacy v1 overlay is empty),
+new overlay entries at `after_journal_index >= len(before F04 journal)`, stable existing
+advance mappings and draw-receipt gates, and recorded terms bindings compatible with
+loaded terms. Any failure gives `status: NON_COMPARABLE`, `changes: null`, and exit 1.
+Argument misuse exits 2; comparable results exit 0.
+
+`changes.advances` joins sorted drawn IDs, retaining presence, endpoint beneficiary,
+phase, exposure, maturity/aging, reserve class/requirement, covenant status, original
+reasons and margin facts. `watch_change` reports entry, exit and changed reasons.
+`changes.beneficiaries` aggregates by synthetic beneficiary_role.
+`changes.totals` and beneficiary rows contain `before`, `after` and `delta` for
+outstanding/reserve, maturity/aging-bucket exposure and watch-status counts. Deltas
+are after minus before, using zero for absent additive measures only; categorical
+endpoints remain null if absent. Per-advance reserves use existing integer floor
+arithmetic. `changes.reconciliation` checks endpoint views, beneficiary totals and all
+additive deltas; ratios and categorical transitions are never summed.
+
+The report describes observed differences only. `historical_policy_provenance`,
+`authentication`, `common_ownership` and `actual_payments` are `NOT_BOUND`;
+`funds_executed` and `workspace_mutated` are false. No payment, causal explanation,
+authenticated ownership, reserve booking or new accounting policy is inferred.
+
 `/api/*` is **Capital's local simulation facade**, not a promoted KIX Protocol catalogue, generated SDK, lending endpoint, or live provider adapter. No fallback to `offer_gift`, `settle_capture`, bank, PG or chain exists.
 
 ## DEV_ONLY keyset

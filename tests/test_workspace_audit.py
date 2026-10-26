@@ -15,7 +15,7 @@ import threading
 import unittest
 from pathlib import Path
 
-from capital.audit import CHECK_ORDER, audit_workspace
+from capital.audit import CHECK_ORDER, audit_workspace, audit_workspace_bytes
 from capital.recon import CHECK_IDS
 from capital.server import make_server
 from capital.store import FILE_NAME, FileWorkspace, WorkspaceError, canonical_bytes, section_checksum
@@ -283,6 +283,27 @@ class AuditArgumentTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 2)
             proc = self.cli()
             self.assertEqual(proc.returncode, 2)
+
+
+class AuditBytesTests(unittest.TestCase):
+    def test_captured_bytes_match_directory_entry_point_at_every_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            path = directory / FILE_NAME
+            self.assertEqual(audit_workspace(directory), audit_workspace_bytes(None, workspace=tmp))
+            seed_overlay_workspace(directory / 'source')
+            document = json.loads((directory / 'source' / FILE_NAME).read_bytes())
+            legacy = json.loads(canonical_bytes(document))
+            del legacy['overlay']
+            del legacy['envelope_version']
+            corrupt = json.loads(canonical_bytes(document))
+            corrupt['payload_sha256'] = '0' * 64
+            for raw in (canonical_bytes(document), canonical_bytes(legacy), canonical_bytes(corrupt),
+                        b'{}', b'{', b'{"x":1,"x":2}', b'\xff'):
+                with self.subTest(raw=raw[:50]):
+                    path.write_bytes(raw)
+                    self.assertEqual(audit_workspace(directory), audit_workspace_bytes(raw, workspace=tmp))
+                    self.assertEqual(path.read_bytes(), raw)
 
 
 if __name__ == '__main__':

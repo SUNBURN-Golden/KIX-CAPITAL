@@ -1,5 +1,86 @@
 # Validation scope
 
+## Portfolio history comparison builder verification
+
+2026-10-26, node `portfolio-history-comparison`; SIMULATED local fixtures only.
+This record replaces the interrupted attempt's environment-specific results. The
+current runner permits loopback sockets. The implementation follows the supplied
+plan: audit each captured workspace once, restore with save-forbidden memory
+storage, detach inputs, apply explicit policy completeness gates, and recompute
+existing risk/covenant views without forecast or terms-rollup readiness.
+
+`tests/test_portfolio_compare.py` covers new draw (+10,000 exposure/+150 reserve),
+partial principal reduction (10,000→6,000; 150→90 reserve), day 60→61 clock-only
+aging (150→2,500 reserve), default before maturity (150→10,000 reserve, unchanged
+exposure), empty books, combined independently expected deltas, per-advance floor
+arithmetic, aging boundaries, watch entry/exit/reasons, required policies on empty
+and nonempty books, loaded unusable notes, applicable margin cure/rate/payee inputs,
+NOT_APPLICABLE rows, compatibility failures, strict/corrupt input, captured-byte
+replacement, input hashes, one-read capture, held locks, unchanged recursive
+names/bytes/modes, CLI exits and deterministic canonical JSON. Audit byte-entry
+parity covers legacy and overlay documents, malformed JSON and checksum failures.
+Review found that an otherwise audited draw receipt can have a null/list nested
+result or credit object. The comparator now reports DRAW_RECEIPT_GATE_MISSING
+instead of raising AttributeError; regression cases cover those shapes and the CLI.
+
+Commands actually run in this builder session (logs are local `/tmp/portfolio-current-*.log`):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_portfolio_compare tests.test_workspace_audit tests.test_evidence_pack tests.test_risk tests.test_covenant_watch tests.test_portfolio_snapshot -v` | Initial 104 passed; after receipt regression 105 passed, including final rerun after CLI assertions |
+| `python3 -m unittest tests.test_portfolio_compare.ComparisonTests.test_audited_draw_receipts_with_missing_or_malformed_gates -v` | 1 passed, eight malformed/missing gate shapes |
+| `python3 scripts/workspace_vectors.py --check` | Exit 0; 6 files match |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 30 routes, 38 artifacts, 9 stages |
+| `python3 -m unittest discover -s tests -v` | 864 tests: 863 passed, 1 baseline guard failure, 0 errors; acceptance reran the final code with 865 tests: 864 passed and the same single guard failure |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `node -p "require.resolve('@playwright/test')"` | Initially MODULE_NOT_FOUND; installed locked dependencies from cache below |
+| `npm ci --offline --ignore-scripts` | Exit 0; 3 packages installed, 0 reported vulnerabilities |
+| `npm run test:browser` | Exit 1 at webServer startup: ports 8765/8766 occupied by unrelated local services |
+| `npm run test:browser -- --config /tmp/portfolio-playwright.config.cjs` | Exit 0; all 69 Chromium tests passed |
+| `python3 scripts/build_release.py --out /tmp/portfolio-current-dist-a` | Exit 0; package SHA256 `7e189dd47905a27576c4264417fc234c54855403c414a79ea7582e91fc3900be` |
+| `python3 scripts/build_release.py --out /tmp/portfolio-current-dist-b` | Exit 0; matching package SHA256 |
+| `cmp /tmp/portfolio-current-dist-a/capital-*.pyz /tmp/portfolio-current-dist-b/capital-*.pyz` | Exit 0; byte-identical builds |
+| `python3 scripts/smoke_release.py /tmp/portfolio-current-dist-a/capital-*.pyz` | Exit 0; all 8 packaged smoke checks passed |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 scripts/upstream_claims_check.py --execute` | Exit 0; 87/87 claims |
+| `python3 scripts/agent_claims_check.py --execute` | Exit 0; 94/94 claims |
+| `python3 scripts/read_model_claims_check.py --execute` | Exit 0; 39/39 claims |
+| `python3 scripts/ce1_claims_check.py --execute` | Exit 0; 49/49 claims |
+| `python3 scripts/acceptance.py` | Exit 1; 7/9 stages passed. Unit: 864/865 (same baseline guard); default browser: occupied ports. Storage 19, vendor 7, claims 269, package smoke 8, seeded demo 1 and all 4 SIMULATED journeys passed. Evidence: `build/acceptance-evidence.json` |
+| Inline Python SHA256 check of all five vendor manifest entries and comparison of manifest bytes to `git show HEAD:capital/vendor/manifest.json` | Exit 0; all pins and manifest bytes unchanged |
+| `git diff --check` | Exit 0 |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py capital/projection.py capital/ports.py capital/overlay.py docs/decisions tests/golden` | Exit 0; protected/reference files untouched relative to this node's baseline |
+
+The temporary browser config requires the original config, retains every project,
+assertion and setting, and remaps only the four configured server ports/base URLs
+8765–8768 to 18765–18768. Absolute test/output directories and the repository working
+directory are supplied because the override lives in `/tmp`. No unrelated service
+was stopped and no committed test/CI configuration changed. Test-created servers
+are stopped by their existing cleanup paths.
+
+The full unit failure is
+`test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`. Its
+existing origin/main byte guard sees `capital/overlay.py`, `capital/ports.py` and
+`docs/decisions/CAPITAL_UPSTREAM_BINDING.md` differ: the node's HEAD is
+`cde0bc778573ef8d543f2e1bb70a521e06bf4e44`, while local origin/main is
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`, 12 commits newer. None of these files
+has a builder edit. The guard was preserved; no passing full-CI claim is made.
+`DECISION_REQUIRED.md` asks the supervisor to select/update the integration baseline
+and rerun verification. The builder performs no git/GitHub mutation.
+
+Plan deviations: no product-scope change. The existing overlay service permits
+compatible BOUND/PARTIAL recorded terms bindings with matching version; unrelated
+fees remain outside readiness gates. Nonregular-file rejection preserves the
+auditor's predicate and avoids FIFO blocking. Added malformed receipt-result
+coverage after finding the gap during review. Used a temporary browser port override
+for this runner, and recorded the upstream baseline integration blocker explicitly.
+No new financial/legal/accounting values, policy notes, vectors, vendor bytes,
+`.aiops/`, legacy export construction, Protocol/Commerce, HTTP routes or UI files
+were changed. Results are local SIMULATED diagnostics only; nothing was posted.
+
 ## DEV_ONLY keyset coverage
 
 `tests/test_dev_keyset.py` covers secure creation/restart, strict schema and encoding,

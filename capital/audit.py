@@ -172,8 +172,23 @@ def _fingerprints_match(receipts, journal, mapping):
 
 def audit_workspace(directory):
     """Audit DIR/workspace.json read-only. Returns the JSON report dict."""
-    detail = {}
     workspace = str(directory)
+    try:
+        path = Path(directory) / FILE_NAME
+        if not path.is_file():
+            raise OSError('workspace file absent')
+        raw = path.read_bytes()
+    except (OSError, TypeError, ValueError):
+        raw = None
+    return audit_workspace_bytes(raw, workspace=workspace)
+
+
+def audit_workspace_bytes(raw, *, workspace):
+    """Audit captured bytes with the same stages as audit_workspace.
+
+    None represents a failed file capture. No path is opened by this entry point.
+    """
+    detail = {}
 
     def fail(reason, check, recon=None):
         return _report(workspace, _marks(check), reason=reason, failed_check=check,
@@ -182,12 +197,7 @@ def audit_workspace(directory):
     def unreadable(check):
         return fail('WORKSPACE_UNREADABLE', check)
 
-    try:
-        path = Path(directory) / FILE_NAME
-        if not path.is_file():
-            raise OSError('workspace file absent')
-        raw = path.read_bytes()
-    except (OSError, TypeError, ValueError):
+    if raw is None:
         return unreadable('workspace_file')
 
     try:

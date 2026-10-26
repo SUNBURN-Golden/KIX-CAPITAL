@@ -8,6 +8,33 @@ DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement �
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
 
+## portfolio-history-comparison
+
+`capital/portfolio_compare.py` / `tests/test_portfolio_compare.py`:
+`python3 -m capital.portfolio_compare --before SNAPSHOT_A --after SNAPSHOT_B`는
+명시한 두 디렉터리의 `workspace.json`을 각각 한 번 읽고 같은 바이트로 오프라인
+감사·메모리 복원을 수행한다. 기존 risk/covenant 계산을 재실행하여 advance별·합성
+beneficiary_role별 노출, 만기/연체, 준비금 요구량, watch 상태·사유의 관측 차이를
+결정적 `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1` JSON으로 출력한다. 입력 해시와
+순서가 고정된 비교 가능성 사유, 합계·증감 대사를 포함하며 입력 트리에 쓰거나
+잠금을 잡지 않는다. 결과는 `SIMULATED`다.
+
+필수 정책 6개(`interest_rate`, `term`, `default_loss_treatment`, `reserve`,
+`additional_margin`, `underwriting_depth`)가 모두 존재하고 사용 가능한 ADOPTED여야
+한다. 빈 장부나 BOUND 표시만으로 완전성을 대신하지 않는다. 적용 대상 tier의
+margin cure/rate/payee 입력도 필요하다. fixture/policy 입력 해시 및 fixture
+profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix 호환,
+기존 advance 매핑·draw gate 안정성, 기록된 terms binding 호환을 요구한다.
+추가 overlay는 이전 F04 journal 끝 이후에만 위치해야 한다. 불일치 시
+`NON_COMPARABLE`, `changes: null`(exit 1), 성공 exit 0, 인수 오류 exit 2다.
+
+차이는 after-before이며 준비금은 advance별 기존 정수 내림 계산이다. 실제 지급,
+인과관계, 파일의 인증된 공통 소유권은 추론하지 않는다. 비교 시점 로컬 정책을
+사용하므로 historical_policy_provenance/authentication/common_ownership/actual_payments는
+`NOT_BOUND`다. reserve funding/coverage도 `NOT_BOUND`이며 준비금을 기장하지 않는다.
+자동 수집·import·예측·what-if·영속 이력 DB·새 회계정책은 범위 밖이다.
+계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
+
 ## 권위와 전체 범위
 
 사용자의 2026-10-07 지시는 Capital을 `SUNBURN-Golden/KIX-CAPITAL`에 구현하며 KIX Protocol의 큰 청사진을 따르라는 것이다. 따라서 과거 Finance 후보의 “새 저장소 없음/화면은 Commerce” 토폴로지는 이번 **Capital 로컬 개발 위치**에 적용하지 않는다. 그것이 후보 금융 정책 채택·AIOPS 신규 프로그램 생성·upstream 노드 완료·운영 권한 확대를 뜻하지는 않는다. Protocol·Commerce는 수정하지 않는다.

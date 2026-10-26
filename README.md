@@ -1,5 +1,30 @@
 # KIX Capital
 
+## Offline portfolio history comparison
+
+```sh
+python3 -m capital.portfolio_compare --before SNAPSHOT_A --after SNAPSHOT_B
+```
+
+Both explicitly supplied directories must contain `workspace.json`. The stdlib CLI
+audits captured bytes, restores read-only memory services, and recomputes existing risk
+and covenant views. Deterministic `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1` JSON includes
+input hashes, comparability reasons, per-advance and synthetic-beneficiary exposure,
+maturity/aging, reserve-requirement and watch-list changes, and additive reconciliation.
+Deltas are after minus before. Exit codes: 0 comparable, 1 non-comparable/input failure,
+2 argument misuse. Incompatible inputs return `NON_COMPARABLE` with `changes: null`.
+
+Comparison requires matching local fixture and policy-input digests, usable required
+terms and applicable margin terms, nondecreasing `sim_day`, compatible F04/overlay
+journal prefixes, stable mappings/draw gates and compatible terms bindings. Fixture
+profiles and beneficiary mappings must match too. Neither input tree is written or
+locked. Results are `SIMULATED` observed differences; they infer neither actual payments
+nor causation. Historical policy provenance, authentication, common ownership and actual
+payments remain `NOT_BOUND`. No reserve is booked; reserve funding/coverage remains
+`NOT_BOUND`. Collection, import, forecasting, what-if scenarios and a history database
+are out of scope. See `tests/test_portfolio_compare.py`, `docs/INTEGRATION.md` and
+`docs/VALIDATION.md` for the contract and actual verification evidence.
+
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
 ## DEV_ONLY keyset integrity
