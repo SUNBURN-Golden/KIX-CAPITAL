@@ -1307,6 +1307,24 @@ Commands actually run after the second merge:
 - `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 733, storage-conformance 7, pinned-vendor 7, upstream-claims `passed=220 failed=0` (`CLAIM_CONFORMANCE`), node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4 (T03-sim 22, T04-sim 38, T05-sim 35, T06-sim 33 steps, all `SIMULATED`).
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output.
 
+## fold-fuzz-determinism
+
+Verification-only node: `scripts/fold_fuzz.py` plus the pinned corpus `tests/vectors/fold_fuzz.json` (format `KIX_CAPITAL_FOLD_FUZZ_V1`, label `SIMULATED`). Fixed LCG32 generator (`LCG32-LIFECYCLE-1`, seeds 74810048–74810063, ≤64 commands, six advances per seed) deterministically interleaves legal lifecycle heads covering all ten F04 operations, bound/unbound draws, partial/full repayment, close/default/reject/cancel and logical-day ticks; every seed produces 46 commands (736 total). For each seed the identical sequence is replayed through two fresh `FileWorkspace` directories with separate services and producers; per-prefix checkpoints pin `state_digest`, `overlay_state_digest`, `envelope_sha256`, `receipts_sha256` and `overlay_receipts_sha256`, and the two runs' raw `workspace.json` bytes are compared directly. Copied F04 journals and overlay entries are refolded independently each step; every completed sequence is closed and reopened with a fresh session identity to verify receipt/fingerprint mappings, overlay receipt cores and unchanged file bytes. Synthetic writer identity and the clock replacement are scoped to `capital.store` during saves; envelope byte equality is claimed only under those fixed inputs on the same interpreter and tree. `--check` exits 1 on any command/digest/byte drift and rewrites nothing; `--write` authors only this new corpus; `--file` isolates mutation tests. No `capital/` change, no new command semantics, rejection codes, routes or goldens; no durability or performance claim; CAP-11 stays `NOT_BOUND`. Complements the crash matrix (sequence-order determinism, not crash boundaries).
+
+Commands actually run:
+
+- `python3 -m unittest tests.test_fold_fuzz -v`: exit 0, **12 passed** (86.2s) — generator pins, coverage/legality, independent replays and reloads across `PYTHONHASHSEED` values 1 and 987654321, drift/malformed/no-rewrite checks, capacity-NOT_BOUND and unexpected-rejection failure modes.
+- `python3 scripts/fold_fuzz.py --check`: exit 0, `fold fuzz ok SIMULATED: 16 seeds, 736 commands`.
+- `python3 scripts/docs_surface.py --check`: exit 0, `docs surface ok: 29 routes, 39 artifacts, 9 stages`.
+- `python3 tests/crash_matrix.py --check`: exit 0, `crash matrix vectors ok: 23 cells match`. `python3 scripts/workspace_vectors.py --check`: exit 0, `workspace vectors ok: 6 files match`.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `python3 -m unittest discover -s tests -v`: exit 0, **817 passed** (193.5s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. All five vendored files match `capital/vendor/manifest.json` SHA256.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `npm run test:browser` (Chromium from `~/.cache/ms-playwright`): exit 0, **62 passed** (2.0m); playwright webServers stopped, none left running.
+- `python3 scripts/acceptance.py`: exit 0, evidence `build/acceptance-evidence.json` `ok` true; unit 817, storage-conformance 19, pinned-vendor 7, upstream-claims `passed=220 failed=0`, node-check pass, browser 62, packaged-smoke 8, seeded-demo 1, integrated-journeys 4.
+- `git status --short` after all runs: only `README.md`, `docs/INTEGRATION.md`, `docs/VALIDATION.md`, `scripts/docs_surface.py` modified; new `scripts/fold_fuzz.py`, `tests/test_fold_fuzz.py`, `tests/vectors/fold_fuzz.json`. No `capital/`, `.aiops/`, golden or `docs/decisions` change.
+
 ## lifecycle-claims-conformance — prior builder evidence (2026-10-23)
 
 Historical run below: its baseline integration blocker is superseded by the
@@ -2130,3 +2148,58 @@ Post-fix commands actually run:
 - All five vendored reference files match their manifest SHA256 values; those files and `capital/vendor/manifest.json` remain byte-identical to both merge parents. No `.aiops/` changes. `git diff --check origin/main` passes; no tracked conflict markers or unmerged index entries remain.
 
 The merge remains uncommitted for the supervisor. The catalog stays `SIMULATED` / `SYNTHETIC_LOCAL_ROLE`, with identity and authentication `NOT_BOUND`; no consequential product decision was required.
+
+## fold-fuzz-determinism — conflict-fix round 1 (2026-10-25)
+
+Resolved the append conflict against main `e56224a311dbcae93be363db8a5580311bc25b23` by retaining both conflicted validation additions byte-for-byte. The merge remains uncommitted for the supervisor.
+
+The first replay check correctly exited 1 at seed 74810048, step 37: main's accepted-default path now persists a recovery anchor and recovery-authority receipt fields. Regenerated only the fold-fuzz corpus after two independent replays and reload checks. Generator metadata, all 16 seeds, all 736 commands, checkpoint shapes and every F04 state digest remain unchanged. Changes occur only at or after each sequence's first default: 400 envelope hashes, 400 overlay digests, 400 receipt hashes and 332 overlay-receipt hashes changed. No legacy golden was rewritten. The verification harness now checks the service's full decision-record capacity count, including default anchors; its receipt regression also asserts the default-anchor operation references and recovery-authority principal amounts.
+
+All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks claim sequence-order determinism under fixed synthetic writer/clock inputs on the same interpreter and tree, without durability or performance claims. Capital runtime, goldens, decisions, vendor and manifest, CI and `.aiops/` match main. No external action or product decision was required.
+
+
+| Verification | Actual local result |
+|---|---|
+| Initial `python3 scripts/fold_fuzz.py --check` | Exit 1, seed 74810048 checkpoint 37 overlay digest drift; input was not rewritten. |
+| Initial `python3 -m unittest discover -s tests -v` | Exit 1; 1124 tests, two failures from the stale fold-fuzz hashes, 202.988 s. |
+| Candidate corpus comparison with this node's HEAD | Generator, seeds, all commands and every F04 state digest unchanged; affected hashes change only at/after the first default. |
+| Final `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds, 736 commands, independent replays and reloads match. |
+| Final `python3 -m unittest discover -s tests -v` | Exit 0; 1124 passed, 319.333 s, including all 12 fold-fuzz tests and both hash-seed subprocess replays. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, nine stages. |
+| `python3 tests/crash_matrix.py --check`; `python3 scripts/workspace_vectors.py --check` | Both exit 0; 23 crash cells and six workspace files match. |
+| `python3 scripts/seed_demo.py` | Exit 0; existing golden matches, state_digest `a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`, content_digest `2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca`; debit = credit = 385000 synthetic units. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; pinned local dependencies installed without changing the lockfile. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 1.8 min. Existing host ports 8765/8766 were occupied; unchanged browser configuration ran inside an isolated loopback network namespace. |
+| Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
+| Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
+
+## permission-catalog-surface — conflict-fix round 2 (2026-10-26)
+
+Resolved the sole append conflict in `docs/VALIDATION.md` against main
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`, retaining both parent documents
+verbatim and in order. The permission-catalog implementation and validation
+history survive alongside main's fold-fuzz implementation, tests, corpus and
+documentation. The incoming fold-fuzz code, tests and corpus are byte-identical
+to main. No integration failure required an implementation or fixture change.
+
+The pinned auth matrix preserves every main route, role permission set and
+existing cell; this node adds only `/api/permissions` and its five live role
+cells. All evidence is local and SIMULATED; identity and authentication remain
+NOT_BOUND. No external action or consequential product decision was required.
+The merge remains uncommitted for the supervisor.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1129 passed, 302.316 s. |
+| `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v` | Exit 0; 49 passed, including live role cells and served-catalog drift refusals. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 2.9 min. Existing host ports 8765/8766 were occupied; unchanged browser configuration ran in an isolated loopback network namespace. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0; served catalog, pinned matrix and both generated documentation blocks agree. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 32 routes, 41 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | Both exit 0; 98338 bytes and nine files match. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds and 736 commands replay and reload consistently. |
+| Vendor and protected paths | All five SHA256 locks match; files and manifest are byte-identical to both merge parents and main. No changes to `.aiops/`, `capital/export.py` or CI. |
+| Merge hygiene | Both parent validation histories preserved; no tracked conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
