@@ -149,6 +149,27 @@ class ScenarioTests(unittest.TestCase):
             self.assertIn('RESERVE_CLASS_ESCALATED', codes)
             self.assertEqual(row['status'], 'BREACH')
 
+    def test_all_watch_breach_preserves_an_already_overdue_book(self):
+        for current_day in (61, 100):
+            with self.subTest(sim_day=current_day):
+                service = seed.build_service()
+                tick(service, 'overdue-book', 0, current_day)
+                baseline_risk = service.risk()
+                baseline_cov = service.covenants()
+
+                body = service.risk_scenarios('all-watch-breach')
+
+                self.assertIs(body['evaluated'], True)
+                self.assertEqual(body['assumption_detail']['projected_sim_day'], current_day)
+                self.assertEqual(body['risk']['risk_digest'], baseline_risk['risk_digest'])
+                self.assertEqual(body['covenants']['covenant_digest'],
+                                 baseline_cov['covenant_digest'])
+                row = next(item for item in body['covenants']['advances']
+                           if item['advance_id'] == 'sim-unbound')
+                self.assertEqual(row['maturity_day'], 60)
+                self.assertEqual(row['days_past_maturity'], current_day - 60)
+                self.assertIs(body['reconciliation']['matched'], True)
+
     def test_concentration_cap_hit_breaches_the_tightest_cap(self):
         body = self.bodies['concentration-cap-hit']
         self.assertIs(body['evaluated'], True)

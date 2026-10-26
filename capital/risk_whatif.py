@@ -153,7 +153,7 @@ def _all_watch_breach(inputs, terms):
     maturities = [row['maturity_day'] for row in rows if row['outstanding_krw'] > 0]
     if not maturities:
         return _unevaluated(inputs, 'NO_OPEN_ADVANCE')
-    projected = max(maturities) + 1
+    projected = max(inputs['sim_day'], max(maturities) + 1)
     return {'evaluated': True, 'unevaluated_reason': None,
             'target': {'scope': 'ALL_OPEN_ADVANCES', 'advances': len(maturities)},
             'detail': {'projected_sim_day': projected},
