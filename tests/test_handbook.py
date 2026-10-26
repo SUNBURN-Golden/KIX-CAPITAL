@@ -309,6 +309,17 @@ class HandbookTests(unittest.TestCase):
             for word in words:
                 self.assertIn(word, body, (name, word))
 
+    def test_cashflow_desk_boundaries_and_verification(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        start = text.index('<!-- handbook-section:portfolio-cashflow-desk -->')
+        body = text[start:text.index('<!-- /handbook-section -->', start)]
+        for word in ('GET /api/portfolio/snapshot?instance_id=', 'snapshot_digest', 'sim_day',
+                     'SETTLEMENT_CASH_IN', 'PRINCIPAL', 'CONTRACT_INTEREST', 'EXPECTED_DAY_NOT_PROVIDED',
+                     'NOT_APPLICABLE', 'INCOMPLETE', 'NOT_BOUND', 'MATURITY_WINDOW', 'PAST_MATURITY',
+                     '가용 현금 잔액', '상환을 게시하지', 'tests/test_portfolio_cashflow_desk.py',
+                     'tests/browser/portfolio-cashflow-desk.spec.cjs', 'observer', '375px'):
+            self.assertIn(word, body)
+
     def test_docs_name_the_checkers_and_their_stage_placement(self):
         plan = {stage['id']: stage for stage in acceptance_ladder.build_plan()}
         unit_commands = [' '.join(map(str, argv)) for argv in plan['unit']['commands']]

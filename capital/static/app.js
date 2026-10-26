@@ -35,7 +35,7 @@ function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state
 function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();deskFence();}
 async function request(path, options={}) {const headers=new Headers(options.headers||{});if(sessionToken&&!headers.has('X-Capital-Token'))headers.set('X-Capital-Token',sessionToken);const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
 function validateState(next){const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||next.auth.authentication!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role)||typeof next.local_token!=='string'||!next.local_token||!next.auth.permissions)throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');}
-async function bindSession(role){const opened=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})});if(opened.role!==role||opened.identity!=='NOT_BOUND'||opened.authentication!=='NOT_BOUND'||opened.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||typeof opened.local_token!=='string'||!opened.local_token)throw Error('INVALID_SESSION');sessionToken=opened.local_token;return opened;}
+async function bindSession(role,current=()=>true){const opened=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})});if(opened.role!==role||opened.identity!=='NOT_BOUND'||opened.authentication!=='NOT_BOUND'||opened.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||typeof opened.local_token!=='string'||!opened.local_token)throw Error('INVALID_SESSION');if(!current())throw Error('OBSOLETE_REFRESH');sessionToken=opened.local_token;return opened;}
 function projectionValid(projection,next){
  if(!projection||projection.instance_id!==next.instance_id||projection.mode!=='LOCAL_PROJECTION_CANDIDATE'||projection.funds_executed!==false||projection.cut!==next.state_digest)return false;
  if(projection.accounting_policy!=='SYNTHETIC_UNADOPTED'||projection.tax!=='NOT_BOUND'||projection.legal!=='NOT_BOUND'||projection.operating_ledger!=='NOT_BOUND'||projection.chart!=='SIMULATION_FIXED_V1'||projection.policy_adopted!==false||projection.workspace_mutated!==false)return false;
@@ -139,38 +139,52 @@ async function loadDiagnostics(next){
  else{try{const body=await request('/api/statement');statement=statementValid(body,next)?{statement:body}:{error:'명세서 응답이 현재 절단면 또는 NOT_BOUND 표기와 맞지 않습니다. 최초 판매와 리셀을 합산하지 않습니다.'};}catch{statement={error:'명세서를 확인하지 못했습니다. 제안 상태는 유지하며 금액을 표시하지 않습니다.'};}}
  return {recon,statement};
 }
-let refreshInFlight=false,refreshDone=Promise.resolve();
+let refreshInFlight=false,refreshDone=Promise.resolve(),refreshGeneration=0,sessionGeneration=0;
+function invalidateRefresh(){refreshGeneration++;deskEpoch++;}
 function refresh(){
+ deskEpoch++;
+ const generation=++refreshGeneration,session=sessionGeneration,role=currentRole(),open=deskOpen();
+ const current=()=>generation===refreshGeneration&&session===sessionGeneration&&role===currentRole()&&open===deskOpen();
  refreshInFlight=true;
- const task=(async()=>{try{await refreshCore();}finally{refreshInFlight=false;}})();
+ const task=(async()=>{try{await refreshCore(current);return current();}catch(error){if(current())throw error;return false;}finally{if(generation===refreshGeneration){refreshInFlight=false;busy=false;fence();}}})();
  refreshDone=task.catch(()=>{});
  return task;
 }
-async function refreshCore(){
+async function refreshCore(current){
  let next=await request('/api/state');
+ if(!current())return;
  validateState(next);
  if(!sessionToken)sessionToken=next.local_token;
- if(next.auth.role!==currentRole()){await bindSession(currentRole());next=await request('/api/state');validateState(next);if(next.auth.role!==currentRole())throw Error('INVALID_STATE');}
+ if(next.auth.role!==currentRole()){
+  await bindSession(currentRole(),current);
+  if(!current())return;
+  next=await request('/api/state');
+  if(!current())return;
+  validateState(next);if(next.auth.role!==currentRole())throw Error('INVALID_STATE');
+ }
  sessionToken=next.local_token;
  const projectionDecision=next.auth.permissions['projection:read'];
  let projection,evidence;
  if(!projectionDecision?.allowed){
-  const reason=projectionDecision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`;
-  $('evidence-rows').replaceChildren();$('evidence-json').textContent='';$('evidence-scope').textContent=reason;
-  projection={error:reason};
+  projection={error:projectionDecision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
  }else{
   evidence=await request('/api/evidence');
+  if(!current())return;
   if(evidence.instance_id!==next.instance_id||evidence.provenance!=='MOCK_SETTLEMENT_ONLY'||evidence.funds_executed!==false)throw Error('INVALID_EVIDENCE');
   projection=await loadProjection(next);
-  paintEvidence(evidence);
+  if(!current())return;
  }
- const diagnostics=await loadDiagnostics(next);
- const terms=await loadTerms(next);
- const policyView=await loadPolicy(next);
- const portfolio=await loadPortfolio(next);
- const riskView=await loadRisk(next);
- const deskView=deskOpen()?await loadDesk(next,riskView,evidence,diagnostics.recon):null;
- state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ const diagnostics=await loadDiagnostics(next);if(!current())return;
+ const terms=await loadTerms(next);if(!current())return;
+ const policyView=await loadPolicy(next);if(!current())return;
+ const portfolio=await loadPortfolio(next);if(!current())return;
+ const riskView=deskOpen()?null:await loadRisk(next);if(!current())return;
+ const deskView=deskOpen()?await loadDesk(next,evidence,diagnostics.recon,current):null;
+ if(!current())return;
+ state=next;deskData=deskView;
+ if(evidence)paintEvidence(evidence);
+ else{$('evidence-rows').replaceChildren();$('evidence-json').textContent='';$('evidence-scope').textContent=projection.error;}
+ renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
@@ -560,7 +574,7 @@ async function writeFenced(path,makeBody,validate,applied){
  try{savePending(body);fence();const receipt=await request(path,{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validate(receipt,body);savePending(null);applied(receipt,body);}
  catch(error){if(error.knownRejection){try{savePending(null);}catch{}notice(`요청 거절: ${errors[error.message]||error.message}`,true);}else notice('요청 결과 UNKNOWN. 자동 재시도하지 않습니다. 원 요청 결과를 조회하세요.',true);}
  finally{try{await refresh();}catch{notice('현재 상태를 조회하지 못했습니다. 서버 연결을 확인하세요.',true);}}
- });}finally{busy=false;fence();}
+ });}finally{if(!refreshInFlight)busy=false;fence();}
 }
 async function command(op,advance_id,args){
  if(busy||pending||writesBlocked()||!state)return;
@@ -575,19 +589,99 @@ let deskData=null,deskExtra={},deskEpoch=0;
 function deskOpen(){return location.hash==='#desk';}
 function applyDeskVisibility(){const open=deskOpen();document.body.classList.toggle('desk-open',open);$('desk').hidden=!open;return open;}
 function overlayOk(body,next){return !!body&&body.mode==='SIMULATED_OVERLAY'&&body.label===MEMO_LABEL&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.f04_journal_written===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&Array.isArray(body.advances)&&!!body.margin;}
-function covenantsOk(body,next){return !!body&&body.mode==='SIMULATED_COVENANT_WATCH'&&body.label.startsWith('SIMULATED covenant watch')&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false&&body.enforced===false&&body.instance_id===next.instance_id&&body.observed_state_digest===next.state_digest&&Number.isSafeInteger(body.sim_day)&&(body.status==='NOT_BOUND'||Array.isArray(body.advances)&&body.advances.every(row=>['CLEAR','WATCH','BREACH'].includes(row.status)&&Array.isArray(row.reasons)));}
-async function loadDesk(next,riskView,evidence,reconciliation){
+const CASH_BUCKETS=['0-7','8-30','31-60','61-90','91+'];
+const CASH_STREAMS=['SETTLEMENT_CASH_IN','PRINCIPAL','CONTRACT_INTEREST'];
+const digestOk=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+function snapshotOk(body,next){
+ if(!body||body.format!=='KIX_CAPITAL_PORTFOLIO_SNAPSHOT_V1'||body.label!=='SIMULATED'||body.instance_id!==next.instance_id||body.authenticated_source_cut!=='NOT_BOUND'||body.funds_executed!==false||body.workspace_mutated!==false||body.write_authorized!==false||!body.cut||!body.assumptions||!body.completeness?.sections||!Array.isArray(body.completeness.reasons))return false;
+ return digestOk(body.snapshot_digest)&&body.cut.state_digest===next.state_digest&&Number.isSafeInteger(body.cut.sim_day)&&body.cut.sim_day>=0&&digestOk(body.cut.overlay_state_digest);
+}
+function snapshotComponentsOk(body){
+ const f=body.forecast,c=body.covenants,r=body.risk;
+ const int=value=>Number.isSafeInteger(value)&&value>=0;
+ const reason=value=>value&&typeof value.code==='string'&&['WATCH','BREACH'].includes(value.severity)&&typeof value.detail==='string';
+ const covenant=row=>row&&typeof row.advance_id==='string'&&typeof row.phase==='string'&&int(row.maturity_day)&&['CLEAR','WATCH','BREACH'].includes(row.status)&&Array.isArray(row.reasons)&&row.reasons.every(reason)&&row.applied===false&&row.enforced===false;
+ if(body.complete!==true||body.status!=='COMPLETE'||body.completeness.reasons.length||['terms_rollup','risk','covenants','forecast'].some(name=>body.completeness.sections[name]!=='AVAILABLE'||!body[name]))return false;
+ if(!f||f.mode!=='SIMULATED_CASH_FORECAST'||f.status!=='BOUND'||f.sim_day!==body.cut.sim_day||f.policy_adopted!==false||f.accounting_policy!=='SYNTHETIC_UNADOPTED'||!Array.isArray(f.assumptions)||!f.assumptions.every(value=>typeof value==='string')||!Array.isArray(f.advances)||f.buckets?.rows?.map(row=>row.id).join(',')!==CASH_BUCKETS.join(','))return false;
+ if(!f.advances.every(row=>typeof row.advance_id==='string'&&typeof row.phase==='string'&&(row.status==='NOT_APPLICABLE'?typeof row.reason==='string':row.status==='BOUND'&&typeof row.tier==='string'&&int(row.draw_day)&&int(row.maturity_day)&&int(row.principal_krw)&&Array.isArray(row.legs)&&row.legs.length===3&&CASH_STREAMS.every(kind=>row.legs.filter(leg=>leg.kind===kind).length===1)&&row.legs.every(leg=>typeof leg.exact==='string'&&/^[0-9]+\/[1-9][0-9]*$/.test(leg.exact)&&typeof leg.assumption==='string'&&(leg.bucket===null?leg.day===null&&leg.status==='EXPECTED_DAY_NOT_PROVIDED'&&leg.kind==='SETTLEMENT_CASH_IN':CASH_BUCKETS.includes(leg.bucket)&&int(leg.day)&&leg.status==='SCHEDULED')))))return false;
+ if(!c||c.mode!=='SIMULATED_COVENANT_WATCH'||c.status!=='BOUND'||c.sim_day!==body.cut.sim_day||c.enforced!==false||c.policy_adopted!==false||c.accounting_policy!=='SYNTHETIC_UNADOPTED'||!Array.isArray(c.advances)||!c.advances.every(covenant)||!Array.isArray(c.watch_list)||!c.watch_list.every(row=>covenant(row)&&row.status!=='CLEAR'&&c.advances.some(advance=>advance.advance_id===row.advance_id&&advance.status===row.status))||!c.advances.filter(row=>row.status!=='CLEAR').every(row=>c.watch_list.some(watch=>watch.advance_id===row.advance_id))||c.reserve?.coverage!=='NOT_BOUND'||c.reserve?.funding_source!=='NOT_BOUND'||c.reserve?.applied!==false||typeof c.reserve.coverage_reason!=='string')return false;
+ if(!r||r.mode!=='SIMULATED_RISK_ANALYTICS'||r.label!==RISK_LABEL||r.status!=='BOUND'||r.sim_day!==body.cut.sim_day||r.policy_adopted!==false||r.accounting_policy!=='SYNTHETIC_UNADOPTED'||!int(r.totals?.outstanding_krw)||!int(r.totals?.advances_open)||!int(r.totals?.advances_drawn)||!int(r.reserve?.requirement_krw)||!r.concentration||!(r.concentration.hhi_permille===null||int(r.concentration.hhi_permille))||!Array.isArray(r.stress?.rows)||!r.stress.rows.every(row=>int(row.shortfall_krw)&&int(row.shock_bps)))return false;
+ if(!f.advances.every(row=>c.advances.some(covenant=>covenant.advance_id===row.advance_id&&covenant.phase===row.phase&&(row.status==='NOT_APPLICABLE'||covenant.maturity_day===row.maturity_day)))||!c.advances.every(row=>f.advances.some(advance=>advance.advance_id===row.advance_id)))return false;
+ return f.reconciliation?.matched===true&&c.reconciliation?.matched===true&&r.reconciliation?.matched===true;
+}
+async function loadDesk(next,evidence,reconciliation,current){
  const decision=next.auth.permissions['projection:read'];
  if(!decision?.allowed)return {forbidden:decision?.reason||`${next.auth.role} 역할은 projection:read 권한이 없습니다.`};
- const view={risk:riskView,audit:{evidence,reconciliation}};
- try{const body=await request('/api/risk/covenants');if(covenantsOk(body,next))view.covenants=body;else view.covenantsError='코버넌트 응답이 현재 절단면과 맞지 않습니다.';}
- catch{view.covenantsError='코버넌트 watch-list를 확인하지 못했습니다.';}
- try{const body=await request('/api/overlay');if(overlayOk(body,next))view.overlay=body;else view.overlayError='오버레이 응답이 라벨 또는 절단면과 맞지 않습니다. sim_day와 이자를 표시하지 않습니다.';}
- catch{view.overlayError='오버레이 시계를 확인하지 못했습니다. 제안 상태는 유지합니다.';}
+ const view={audit:{evidence,reconciliation}};
+ try{
+  const body=await request(`/api/portfolio/snapshot?instance_id=${encodeURIComponent(next.instance_id)}`);
+  if(!current())return null;
+  if(!snapshotOk(body,next))view.snapshotError=`INCOMPLETE · incompatible or malformed snapshot · ${JSON.stringify(body?.completeness||{})}`;
+  else{
+   view.snapshot=body;
+   if(snapshotComponentsOk(body)){view.cashflow=body;view.covenants=body.covenants;view.risk={risk:body.risk};}
+   else view.snapshotError=`${body.status} · INCOMPLETE · ${JSON.stringify(body.completeness)} · NOT_BOUND sections are unavailable`;
+  }
+ }catch{if(!current())return null;view.snapshotError='INCOMPLETE · portfolio snapshot unavailable';}
+ try{
+  const body=await request('/api/overlay');if(!current())return null;
+  if(view.cashflow&&overlayOk(body,next)&&body.sim_day===view.cashflow.cut.sim_day&&body.overlay_state_digest===view.cashflow.cut.overlay_state_digest)view.overlay=body;
+  else view.overlayError='INCOMPLETE · overlay cut does not match portfolio snapshot; sim_day와 이자를 결합하지 않습니다.';
+ }catch{if(!current())return null;view.overlayError='오버레이 시계를 확인하지 못했습니다. 제안 상태는 유지합니다.';}
  const exportDecision=next.auth.permissions['export:read'];
  if(!exportDecision?.allowed)view.timelineError=exportDecision?.reason||`${next.auth.role} 역할은 export:read 권한이 없습니다.`;
- else{try{const body=await request('/api/export/manifest');if(manifestValid(body,next))view.manifest=body;else view.timelineError='타임라인 원본 응답이 현재 절단면과 맞지 않습니다. 타임라인을 표시하지 않습니다.';}catch{view.timelineError='타임라인 원본을 확인하지 못했습니다. 제안 상태는 유지합니다.';}}
+ else{try{const body=await request('/api/export/manifest');if(!current())return null;if(manifestValid(body,next))view.manifest=body;else view.timelineError='타임라인 원본 응답이 현재 절단면과 맞지 않습니다. 타임라인을 표시하지 않습니다.';}catch{if(!current())return null;view.timelineError='타임라인 원본을 확인하지 못했습니다. 제안 상태는 유지합니다.';}}
  return view;
+}
+function cashCaseLink(id){
+ const link=textElement('a',id);link.href=`?case=${encodeURIComponent(id)}#desk`;
+ const snapshot=deskData.cashflow;
+ link.onclick=event=>{event.preventDefault();if(!deskOpen()||deskData?.cashflow!==snapshot)return;selected=id;syncCaseUrl(id);render();renderDesk();void loadDeskCase();$('desk-cash-detail').focus();};
+ return link;
+}
+function cashReasons(rows){
+ return rows.map(reason=>textElement('li',`${reason.code} · ${reason.severity} · ${reason.detail} · facts=${JSON.stringify(Object.fromEntries(Object.entries(reason).filter(([key])=>!['code','severity','detail'].includes(key))))}`));
+}
+function cashLegRows(rows){
+ return rows.map(({advance,leg})=>{
+  const tr=document.createElement('tr');tr.dataset.advance=advance.advance_id;tr.dataset.stream=leg.kind;
+  const id=document.createElement('td');id.append(cashCaseLink(advance.advance_id));tr.append(id);
+  for(const value of [leg.kind,leg.day??'EXPECTED_DAY_NOT_PROVIDED',`${leg.exact} KRW (exact fraction)`,leg.status,leg.assumption])tr.append(textElement('td',value));
+  return tr;
+ });
+}
+function cashTable(rows,caption){
+ const table=document.createElement('table');table.append(textElement('caption',caption));
+ const head=document.createElement('thead'),header=document.createElement('tr');
+ for(const value of ['사례','Stream','sim_day','Exact KRW fraction','상태','서버 가정']){const th=textElement('th',value);th.scope='col';header.append(th);}
+ head.append(header);const body=document.createElement('tbody');body.append(...cashLegRows(rows));table.append(head,body);return table;
+}
+function paintCashflow(){
+ for(const id of ['desk-cash-buckets','desk-cash-unscheduled','desk-cash-inapplicable','desk-cash-watch','desk-cash-detail-body'])$(id).replaceChildren();
+ $('desk-cash-assumptions').textContent='';$('desk-cash-reserve').textContent='';
+ const snapshot=deskData?.cashflow,diagnostic=deskData?.snapshot;
+ $('desk-cash-status').textContent=deskData?.snapshotError||'SIMULATED · COMPLETE · advisory only · enforced=false';
+ $('desk-cash-cut').textContent=diagnostic?`sim_day ${diagnostic.cut.sim_day} · snapshot_digest ${diagnostic.snapshot_digest} · state_digest ${diagnostic.cut.state_digest} · authenticated_source_cut NOT_BOUND`:'';
+ if(!snapshot)return;
+ const forecast=snapshot.forecast,covenants=snapshot.covenants;
+ $('desk-cash-assumptions').textContent=`snapshot assumptions=${JSON.stringify(snapshot.assumptions)} · forecast assumptions=${JSON.stringify(forecast.assumptions)}`;
+ const legs=forecast.advances.flatMap(advance=>(advance.legs||[]).map(leg=>({advance,leg})));
+ $('desk-cash-buckets').replaceChildren(...forecast.buckets.rows.map(bucket=>{
+  const section=document.createElement('section');section.dataset.bucket=bucket.id;section.append(textElement('h4',`Bucket ${bucket.id}`));
+  for(const stream of CASH_STREAMS){section.append(textElement('h5',stream));const rows=legs.filter(row=>row.leg.bucket===bucket.id&&row.leg.kind===stream);if(rows.length)section.append(cashTable(rows,`${bucket.id} · ${stream}`));else section.append(textElement('p','해당 leg 없음 (합계 아님)'));}
+  return section;
+ }));
+ $('desk-cash-unscheduled').append(cashTable(legs.filter(row=>row.leg.bucket===null),'EXPECTED_DAY_NOT_PROVIDED · 날짜 미제공 (합계 제외)'));
+ $('desk-cash-inapplicable').replaceChildren(...forecast.advances.filter(row=>row.status==='NOT_APPLICABLE').map(row=>{const li=document.createElement('li');li.append(cashCaseLink(row.advance_id),textElement('span',` · ${row.phase} · ${row.status} · ${row.reason}`));return li;}));
+ $('desk-cash-reserve').textContent=`reserve coverage=${covenants.reserve.coverage} · funding_source=${covenants.reserve.funding_source} · ${covenants.reserve.coverage_reason} · applied=${covenants.reserve.applied} · enforced=${covenants.enforced}`;
+ $('desk-cash-watch').replaceChildren(...covenants.watch_list.map(row=>{const li=document.createElement('li');li.append(cashCaseLink(row.advance_id),textElement('span',` · ${row.status}`));const reasons=document.createElement('ul');reasons.append(...cashReasons(row.reasons));li.append(reasons);return li;}));
+ if(!covenants.watch_list.length)$('desk-cash-watch').append(textElement('li','서버 watch_list 비어 있음'));
+ const row=forecast.advances.find(advance=>advance.advance_id===selected),covenant=covenants.advances.find(advance=>advance.advance_id===selected);
+ const detail=$('desk-cash-detail-body');
+ if(!row){detail.append(textElement('p',`${selected||'선택 없음'} · snapshot forecast에 기록된 drawn advance 없음`));return;}
+ detail.append(textElement('p',`${row.advance_id} · phase=${row.phase} · status=${row.status}${row.reason?` · ${row.reason}`:''}`));
+ if(row.status==='BOUND')detail.append(textElement('p',`tier=${row.tier} · draw_day=${row.draw_day} · maturity_day=${row.maturity_day} · principal_krw=${row.principal_krw}`),cashTable(row.legs.map(leg=>({advance:row,leg})),'선택 사례 · 서버 일정'));
+ if(covenant){detail.append(textElement('p',`covenant=${covenant.status} · maturity_day=${covenant.maturity_day} · applied=${covenant.applied} · enforced=${covenant.enforced}`));const reasons=document.createElement('ul');reasons.append(...cashReasons(covenant.reasons));detail.append(reasons);}
 }
 function validateOverlayReceipt(receipt,body){
  const labeled=syntheticRoles.includes(receipt?.role)&&receipt?.role_provenance==='SYNTHETIC_LOCAL_ROLE';
@@ -606,7 +700,7 @@ function deskAdvanceState(){
  const step=typeof overlay.capacity==='object'?` · max_step_days=${overlay.capacity.max_step_days}`:'';
  return {enabled:true,reason:`${state.auth.permissions['overlay:command'].reason}${step}`};
 }
-function deskKey(c){return `${state.instance_id}:${state.state_digest}:${c.advance_id}:${deskData?.overlay?.sim_day}`;}
+function deskKey(c){return `${state.instance_id}:${state.state_digest}:${c.advance_id}:${deskData?.cashflow?.snapshot_digest}:${sessionGeneration}`;}
 function advisoryText(body){
  if(!body)return '';
  if(body.status!=='BOUND')return `심사 기록 ${body.status} · ${body.reason}`;
@@ -647,10 +741,11 @@ function deskActions(c){
  }
  return items;
 }
+function deskCommandsAllowed(){return can('overlay:command')||Object.entries(state?.auth?.permissions||{}).some(([name,item])=>name.startsWith('command:')&&item.allowed);}
 function renderDeskActions(){
  const c=state?.cases?.find(item=>item.advance_id===selected);
  const list=$('desk-actions');
- if(!c||!deskData||deskData.forbidden){list.replaceChildren();$('desk-next-help').textContent='';return;}
+ if(!c||!deskData?.cashflow||deskData.forbidden||!deskCommandsAllowed()){list.replaceChildren();$('desk-next-help').textContent=deskData?.snapshotError||'';return;}
  const items=deskActions(c);
  const covenant=deskData?.covenants?.advances?.find(row=>row.advance_id===c.advance_id);
  const covenantHelp=covenant&&covenant.status!=='CLEAR'?` 코버넌트 ${covenant.status} · ${covenant.reasons.map(reason=>reason.detail).join(' · ')}`:'';
@@ -778,13 +873,14 @@ function renderDesk(){
  error.hidden=!!deskData;error.textContent=deskData?'':'운영 데스크를 불러오는 중입니다.';
  if(!deskData)return;
  paintDeskTiles(deskData.risk);
+ paintCashflow();
  const ids=state.cases.map(item=>item.advance_id);
  const select=$('desk-case');
  if([...select.options].map(option=>option.value).join()!==ids.join())select.replaceChildren(...ids.map(id=>{const option=textElement('option',id);option.value=id;return option;}));
  if(selected)select.value=selected;
  paintDeskOverlay();
  paintDeskTimeline(state.cases.find(item=>item.advance_id===selected));
- const commandsAllowed=can('overlay:command')||Object.entries(state.auth.permissions).some(([name,item])=>name.startsWith('command:')&&item.allowed);
+ const commandsAllowed=deskCommandsAllowed();
  $('desk-commands').hidden=!commandsAllowed;
  $('desk-commands-note').hidden=commandsAllowed;
  $('desk-commands-note').textContent=commandsAllowed?'':`명령 조작 없음 · ${permissionReason('overlay:command')}`;
@@ -798,10 +894,11 @@ async function loadDeskCase(){
  const epoch=++deskEpoch;
  deskExtra={};
  const c=state?.cases?.find(item=>item.advance_id===selected);
- if(!deskOpen()||!c||!deskData||deskData.forbidden||!can('projection:read')){if(c&&deskOpen())renderDeskActions();return;}
+ if(!deskOpen()||!c||!deskData?.cashflow||deskData.forbidden||!can('projection:read')){if(c&&deskOpen())renderDeskActions();return;}
  const instance=state.instance_id,digest=state.state_digest,id=c.advance_id;
  const key=deskKey(c);
- const current=()=>epoch===deskEpoch&&state.instance_id===instance&&state.state_digest===digest&&selected===id;
+ const session=sessionGeneration,snapshot=deskData.cashflow;
+ const current=()=>deskOpen()&&epoch===deskEpoch&&session===sessionGeneration&&deskData?.cashflow===snapshot&&state.instance_id===instance&&state.state_digest===digest&&selected===id;
  deskExtra={key};
  renderDeskActions();
  if(c.phase==='APPROVED'&&c.settlement_id){
@@ -824,18 +921,22 @@ async function loadDeskCase(){
  if(current())renderDeskActions();
 }
 $('desk-advance').onclick=()=>{void deskAdvance();};
-$('desk-refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{await refresh();notice('운영 데스크를 다시 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('운영 데스크 조회에 실패했습니다.',true);}finally{busy=false;fence();}};
+$('desk-refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{if(!await refresh())return;notice('운영 데스크를 다시 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('운영 데스크 조회에 실패했습니다.',true);}finally{fence();}};
 $('desk-case').onchange=()=>{selected=$('desk-case').value;syncCaseUrl(selected);render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();};
 window.addEventListener('hashchange',()=>{
- const open=applyDeskVisibility();
- if(open&&state&&!busy){busy=true;fence();refresh().catch(()=>notice('운영 데스크를 조회하지 못했습니다.',true)).finally(()=>{busy=false;fence();});}
+ const wasOpen=!$('desk').hidden,open=applyDeskVisibility();
+ if(wasOpen===open)return;
+ const reading=refreshInFlight;
+ invalidateRefresh();
+ if(!open){deskData=null;deskExtra={};}
+ if((state||reading)&&(!busy||reading)){busy=true;fence();refresh().catch(()=>notice('운영 데스크를 조회하지 못했습니다.',true)).finally(()=>{fence();});}
 });
 applyDeskVisibility();
 // DESK END
 $('offer-form').onsubmit=event=>{event.preventDefault();const amount=Number($('amount').value);if(!Number.isSafeInteger(amount)||amount<1||amount>1e12){notice('금액은 1부터 10¹² 사이의 정수여야 합니다.',true);return;}command('offer','sim-'+crypto.randomUUID().slice(0,12),{fixture_id:$('fixture').value,amount});};
 $('repay').onclick=()=>{const c=state.cases.find(item=>item.advance_id===selected);const amount=Number($('repay-amount').value);if(!Number.isSafeInteger(amount)||amount<1){notice('상환 메모 금액은 양의 정수여야 합니다.',true);return;}command('repay',selected,{amount,sequence:c.next_repayment_sequence});};
 $('unbound-draw').onclick=()=>{const c=state?.cases.find(item=>item.advance_id===selected);if(!c||c.phase!=='APPROVED'||c.settlement_id)return;command('draw',c.advance_id,{});};
-$('refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{await refresh();notice('현재 상태를 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('상태 조회에 실패했습니다.',true);}finally{busy=false;fence();}};
+$('refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{if(!await refresh())return;notice('현재 상태를 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('상태 조회에 실패했습니다.',true);}finally{fence();}};
 async function pendingAction(action){
  if(busy||!navigator.locks)return;
  busy=true;fence();
@@ -928,7 +1029,7 @@ $('preview-draw').onclick=async()=>{
  }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
  finally{$('preview-draw').disabled=busy||!can('projection:read');}
 };
-$('role').addEventListener('change',async()=>{const role=currentRole();rememberRole(role);if(busy)return;busy=true;fence();try{await refresh();notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
+$('role').addEventListener('change',async()=>{const role=currentRole();rememberRole(role);sessionGeneration++;invalidateRefresh();if(busy&&!refreshInFlight)return;busy=true;fence();try{if(!await refresh())return;notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{fence();}});
 $('export-journal').onclick=async()=>{
  if(busy)return;
  if(!can('export:read')){notice(`역할 경계: ${permissionReason('export:read')}`,true);return;}
@@ -1015,5 +1116,6 @@ $('reconcile-readonly').onclick=async()=>{
 for(const id of ['terms-draw-day','terms-as-of-day','terms-settlement-day'])$(id).addEventListener('change',()=>{if(state){void loadCaseTerms();void loadCaseSetoff();void reloadPortfolio();}});
 $('underwrite-sim-day').addEventListener('change',()=>{if(state)void loadCaseUnderwrite();});
 for(const id of ['uw-fixture','uw-amount','uw-sim-day'])$(id).addEventListener('change',()=>{if(state)void loadCandidateUnderwrite();});
+let startupGeneration=0;
 try{const stored=sessionStorage.getItem(roleStorageKey);if(syntheticRoles.includes(stored))$('role').value=stored;}catch{}
-readPending();fence();refresh().then(async()=>{await loadReadOnlyTools();if(state.workspace&&state.workspace.status!=='ACTIVE')notice(`작업공간을 사용할 수 없습니다 (${state.workspace.status}). 쓰기를 차단했습니다. 빈 시뮬레이션으로 덮어쓰지 않습니다.`,true);else if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{busy=false;fence();});
+readPending();fence();refresh().then(async active=>{if(!active){await refreshDone;if(!state)return;}startupGeneration=refreshGeneration;await loadReadOnlyTools();if(startupGeneration!==refreshGeneration)return;if(state.workspace&&state.workspace.status!=='ACTIVE')notice(`작업공간을 사용할 수 없습니다 (${state.workspace.status}). 쓰기를 차단했습니다. 빈 시뮬레이션으로 덮어쓰지 않습니다.`,true);else if(!pending&&!storageBlocked)notice('합성 데이터로 시작하세요. 실제 자금 이동과 개인 신용판정은 수행하지 않습니다.');}).catch(()=>{if(startupGeneration&&startupGeneration!==refreshGeneration)return;storageBlocked=true;notice('로컬 서버에 연결할 수 없습니다. 연결을 확인한 후 새로고침하세요.',true);}).finally(()=>{fence();});

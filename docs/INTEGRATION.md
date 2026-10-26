@@ -223,3 +223,7 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+### portfolio-cashflow-desk consumer
+
+The earlier portfolio-consistent-read node excluded UI work from its own scope. This node consumes its existing `GET /api/portfolio/snapshot?instance_id=…` in `#desk` without changing the response schema or authorization. Forecast buckets, unscheduled legs, covenant reasons, risk tiles and linked advance details share that SIMULATED local cut. Embedded components are validated as components, without standalone endpoint envelopes. The current clock command, refresh controls, case URL and UNKNOWN recovery are reused. Separate overlay reads require matching sim_day and overlay_state_digest. Incomplete or incompatible data clears numeric content; delayed refresh/session responses cannot publish. Reserve coverage and authenticated source cut remain NOT_BOUND. Settlement, principal and contract interest are separate exact server streams; no spendable balance or repayment posting is introduced. CAP-01/CAP-20 evidence: `tests/test_portfolio_cashflow_desk.py` and `tests/browser/portfolio-cashflow-desk.spec.cjs`.
