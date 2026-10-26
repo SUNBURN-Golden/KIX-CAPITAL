@@ -1,16 +1,16 @@
 # Capital 일회성 만기 연장 결정 — 적격 창, 연체이자 유지, 연장구간 금리, 180일 하드캡, 가속·부도 적격 후 거절, 롤업·예측·cap_check, 오버레이 엔트리 형태
 
 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).**
-이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 청약이나 대출 제안이 아니고 실자금이 움직이지 않으며 production은 계속 `NOT_AUTHORIZED`다. 이자·기간 관련 내용 중 법·회계에 닿는 부분은 **전문가 검토 전 작업 가정**이며 자문이 아니다. 어떤 upstream 계약의 채택도 주장하지 않는다. diff는 `docs/decisions/CAPITAL_MATURITY_EXTENSION.md` 한 파일이고 `capital/`·`tests/`·vendor 바이트·골든·기존 결정 노트의 상태 토큰은 건드리지 않는다.
+이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 청약이나 대출 제안이 아니고 실자금이 움직이지 않으며 production은 계속 `NOT_AUTHORIZED`다. 이자·기간 관련 내용 중 법·회계에 닿는 부분은 **전문가 검토 전 작업 가정**이며 자문이 아니다. 어떤 upstream 계약의 채택도 주장하지 않는다. diff는 이 노트와 `tests/decision_bindings.json`의 `PENDING_CONSUMER` 일곱 행뿐이며, `capital/`·vendor 바이트·골든·기존 결정 노트의 상태 토큰은 건드리지 않는다.
 
 | 항목 | 값 |
 |---|---|
 | 결정 노드 | `maturity-extension-decision` (Decision: one-time maturity extension — eligibility window, rate, grace/default interplay, acceleration refusal, evidence shape) · deps `financial-terms-decision`, `default-recovery-decision`, `margin-cure-default` · kind `decision` · user_merge `False` |
 | 결정자 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
 | 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
-| 결정일 | 2026-10-22 |
-| 기준 | KIX-CAPITAL main `5c23989` · kix-protocol `56d5f59` (읽기 전용 `/workspace/capital-run/kixproto-ro`). 재핀 정책 결정([CAPITAL-UPSTREAM-REPIN-POLICY-DECISION], main `5c23989`)에 따라 이 두 값은 **출처 증명용 역사적 체크아웃**이며 실행·참조 구속이 아니다. 실행 핀 — vendor `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`(다섯 파일 SHA256)과 AI 위임 초안 `e2a029d8…` — 은 이 노트가 다시 건드리지 않는다 |
-| 읽기 범위 | supervisor pack 허용 경로만 읽었다. `CAPITAL_FINANCIAL_TERMS.md`(CAPITAL-TERMS-V1 정본)과 `docs/contracts/CREDIT_ADVANCE_F04.md` §5는 허용 경로 밖이라 **직접 열지 않았다.** TERMS의 연장 값(횟수 1회, 최대 30일, 180일 하드캡, 사람 승인, 수수료 없음)은 노드 수용 기준문이 "cited unchanged"로 지정한 값 그대로 인용하며 필드명은 구현 시 정본에서 확정한다. **이름·숫자가 충돌하면 TERMS와 F04 계약 문서가 이기고, 창·순서·엔트리 구조는 이 노트가 이긴다.** |
+| 결정일 | 2026-10-26 (개정 라운드 1; 초안 2026-10-22) |
+| 기준 | KIX-CAPITAL main `aab0a73` · kix-protocol `1bb000b` (읽기 전용 `/workspace/capital-run/kixproto-ro`). 재핀 정책 결정([CAPITAL-UPSTREAM-REPIN-POLICY-DECISION], #114)에 따라 이 두 값은 **출처 증명용 역사적 체크아웃**이며 실행·참조 구속이 아니다. 실행 핀 — vendor `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`(다섯 파일 SHA256)과 AI 위임 초안 `e2a029d8…` — 은 이 노트가 다시 건드리지 않는다 |
+| 읽기 범위 | supervisor pack 허용 경로와 개정 라운드가 허용한 `tests/decision_bindings.json`만 열었다. `CAPITAL_FINANCIAL_TERMS.md`(CAPITAL-TERMS-V1 정본)과 `docs/contracts/CREDIT_ADVANCE_F04.md` §5는 이 결정자가 **직접 열지 않았다.** 다만 개정 라운드 1 검토자가 정본에서 대조한 값이 이 노트와 일치한다: `extension {count_max 1, days_max 30, approval HUMAN_OPERATOR, hard_cap_total_days 180}`, `extension_fee_bps: 0`, `grace_days_after_maturity: 10`, `default_interest_add_bps_annual: 300`, `two_person_threshold_krw: 50000000`(검토자 발췌, 2차 정보). 이 노트의 점 표기 경로(`CAPITAL-TERMS-V1.term.grace_days_after_maturity` 등)는 그 대조 범위 밖이라 구현 시 정본에서 확정한다. **이름·숫자가 충돌하면 TERMS와 F04 계약 문서가 이기고, 창·순서·엔트리 구조는 이 노트가 이긴다.** |
 | 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. **UNDETERMINED** = 값을 정할 수 없어 이유만(`value: null`). 일곱 항목 모두 ADOPTED |
 
 용어: 금액은 KRW 정수, 날짜는 오버레이 논리 일 `sim_day`(정수), 비율은 bps. `d0` = 인출일, `M` = 현재 예정 만기(연장은 가속 마커 이전에만 가능하므로 사실상 원 만기), `E` = 연장 명령일, `k` = 연장 일수, `M'` = 새 만기. 유예·연체 가산·치유·2인 임계 등 상수는 `CAPITAL-TERMS-V1` 필드를 참조한다(현재 값: 유예 10일, 연체 가산 300 bps, 치유 5일, 2인 임계 50,000,000원).
@@ -35,7 +35,7 @@
 - `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`(MERGED 의존). 가속 = 만기 재기준 `M* = min(현재 만기, 앵커)`, 연체이자 `M*+1`부터, 부도 적격일 `M*+유예+1`, `extension_after_acceleration: REJECTED`, 소급 재계산·복리 없음, 권한(사람 전용·2인·AI 제안만), 저널·폴드·거절 코드 패턴을 그대로 적용한다.
 - `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`. 채택된 오버레이 엔트리 형태 `overlay_id`/`kind`/`payload`, 빈 = 키 부재·`overlay_schema` 1 유지, 폴드 키 추가 시 스키마 올림 fallback, 파생값 미저널 원칙, `VOLATILE_KEYS` 금지를 계승한다.
 - `docs/decisions/CAPITAL_DEMO_BOOK.md`. 한도·비율은 숫자로 복사하지 않고 `CAPITAL-TERMS-V1` 필드명 인용 규칙, 합성 라벨 문법.
-- `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md`(발췌). 번들이 `docs/decisions/*.md` 전부를 바이트 그대로 싣므로 이 노트는 병합되면 아티팩트·`GET /api/decisions`에 자동으로 드러난다.
+- `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md`(발췌). 번들이 `docs/decisions/*.md` 전부를 바이트 그대로 싣으므로 이 노트는 병합되면 아티팩트·`GET /api/decisions`에 자동으로 드러난다.
 - 사용하지 않은 pack 경로 발췌: `docs/SEAMS.md`(새 `typing.Protocol` 행을 만들지 않으므로 행 추가 의무 없음), `docs/VALIDATION.md`, `CAPITAL_ACCOUNTS_TAX_LEGAL.md`, `CAPITAL_CLOSEOUT_ARTIFACT.md`(재생성 절차만 §6에서 인용).
 - 「포부」의 번역: 연장까지 포함한 만기 생애 전체를 **저널 사실의 결정론적 폴드**로 닫아, 회계·감사·재생이 몇 번의 시계 점프와 무관하게 같은 결과를 내게 한다.
 
@@ -51,7 +51,7 @@
 ### 3.2 extension_during_grace_and_default_interest_kept — ADOPTED (기초: 작업 가정)
 - **값.** 유예 중(`M < E ≤ M + 유예`) 연장은 허용한다. `M+1..E`에 이미 발생한 연체이자(티어 all-in + 연체 가산)는 **유지된다**: 면제 없음, 계약 금리로의 소급 재금리 없음, 복리 없음(단리 원칙 불변). 엔트리에 서버 계산 스냅샷 `accrued_default_interest_kept_krw`를 증거로 기록한다(새로운 청구가 아니라 관측). 유예는 `M'`에서 **전체 길이로 재가동**한다(부도 적격일' = `M' + 유예 + 1`; 유예 단축 없음). `M' = M + k ≥ E`를 강제해 과거 만기를 만들지 않는다(`E − M > k`면 409 `EXTENSION_CAP_EXCEEDED`과 함께 최소 적격 `k`를 안내).
 - **근거.** DEFAULT_RECOVERY의 무소급 원칙을 연장에 그대로 적용하면 발생분 소멸·재금리가 모두 차단된다. 유예 재가동은 "유예 길이는 줄이지 않는다"와 같은 선이다.
-- **기초.** WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW — 자발적 연장 후에도 유예 중 연체이자를 그대로 과사할 수 있는지(이자 인식 포함).
+- **기초.** WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW — 자발적 연장 후에도 유예 중 연체이자를 그대로 부과할 수 있는지(이자 인식 포함).
 
 ### 3.3 extended_term_rate_and_tier — ADOPTED
 - **값.** 연장일 구간(만기 전 연장은 `M+1..M'`, 유예 중 연장은 `E+1..M'`)은 **인출 심사 시점의 티어 all-in 금리 그대로** 발생한다. 재티어링 없음, 연장 프리미엄·스프레드 없음, 수수료 없음(TERMS: no fee; 엔트리에 `fee_krw: 0`으로 기록). ACT/365 단리·인출일 포함/종료일 제외 관행, 미지급 메모 표기는 불변. 금리가 바뀌지 않으므로 총비용 상한(`all_in_cost_cap_bps_annual` 인용) 검사도 자동으로 유지된다. 연체 구간과 계약 금리 구간의 경계는 저널 사실 `M`·`E`·`M'`의 순수 함수라 시계를 몇 칸씩 전진시켜도 같다.
@@ -83,14 +83,14 @@
   "schema": "capital-decision-v1",
   "decision_id": "maturity-extension-decision",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-  "date": "2026-10-22",
+  "date": "2026-10-26",
   "provisional": true,
   "status": "PROVISIONAL_PRODUCT_DECISION",
   "scope": "KIX-CAPITAL simulation and product design only; not an offer; no real money; production NOT_AUTHORIZED; interest and term content touching law or accounting is a working assumption pending professional review; no upstream contract claimed adopted",
-  "bases": {"capital_main": "5c23989", "kix_protocol": "56d5f59 (historical provenance per the upstream re-pin policy decision on main 5c23989; not an executable pin)", "vendor_pin_commit": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe (unchanged, not re-pinned)", "terms_version": "CAPITAL-TERMS-V1"},
+  "bases": {"capital_main": "aab0a73", "kix_protocol": "1bb000b (historical provenance per the upstream re-pin policy decision #114; not an executable pin)", "vendor_pin_commit": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe (unchanged, not re-pinned)", "terms_version": "CAPITAL-TERMS-V1"},
   "consumer_node": "maturity-extension-command",
   "upstream_adoption_claimed": false,
-  "terms_citation_rule": "CAPITAL-TERMS-V1 maturity-extension values are cited unchanged (1 extension per advance, 30 days max, 180-day hard cap on total term, human approval, no fee); the terms note was outside the readable pack, so field names are confirmed against the note at implementation; on a name or number conflict the terms note wins, on window, ordering and entry structure this note wins",
+  "terms_citation_rule": "CAPITAL-TERMS-V1 maturity-extension values are cited unchanged (1 extension per advance, 30 days max, 180-day hard cap on total term, human approval, no fee); review round 1 matched them against the terms note as extension {count_max 1, days_max 30, approval HUMAN_OPERATOR, hard_cap_total_days 180} and extension_fee_bps 0 (second-hand; this decider did not open the note), dotted field paths are confirmed at implementation; on a name or number conflict the terms note wins, on window, ordering and entry structure this note wins",
   "f04_open_items": "CREDIT_ADVANCE_F04 section 5 open items are referenced second-hand via docs/CAPITAL_REQUIREMENTS_KO.md (implemented reference semantics vs undecided financial policy); this note is the Capital-overlay provisional answer for the maturity-extension open item only and touches no vendor FSM byte",
   "entries": {
     "extension_eligibility_window": {
@@ -103,7 +103,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Opening the window to the last grace day absorbs a brief post-maturity shortfall without touching the default path, while refusing during an open cure window keeps an extension from buying time against a margin call and keeps the default-recovery maturity monotonicity intact.",
       "provisional": true,
@@ -121,7 +121,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Applying the default-recovery no-retroaction principle to extension means accrued overdue interest survives the extension untouched, and restarting the full grace window at the new maturity is the same never-shorten-grace rule already adopted for acceleration.",
       "provisional": true,
@@ -140,7 +140,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01"],
       "rationale": "Keeping the underwriting-time tier and rate invents no new number, keeps the underwriting record consistent, and leaves the total-cost cap holding by construction.",
       "provisional": true,
@@ -157,7 +157,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Leaving the formula to the terms note and binding only the total to the hard cap combines the two rules without a new number, and refusing instead of clamping prevents implicit term changes.",
       "provisional": true,
@@ -176,7 +176,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "The dependency note already adopted rejection after acceleration, so this closes only the reject codes and decision points; the margin-call-open refusal keeps the maturity-monotone fold property.",
       "provisional": true,
@@ -193,7 +193,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "An extension reschedules time, not exposure, so the cap system is untouched, and absent-when-unused fields keep every existing golden byte-identical.",
       "provisional": true,
@@ -214,7 +214,7 @@
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-11", "CAP-19"],
       "rationale": "A typed append-only overlay entry in the adopted shape, with integer money, no wall-clock keys, derived values kept out of the journal and the already-decided human two-person and AI propose-only authority, makes the extended life replayable and auditable without touching vendor bytes or any existing golden.",
       "provisional": true,
@@ -226,14 +226,14 @@
 
 ## 5. 수용 기준 매핑
 
-- **노트 존재 + `capital-decision-v1` 블록 1개(`scripts/decision_ledger.py` 파싱, `GET /api/decisions` 노출):** §4 블록 하나, 일곱 항목 모두 ADOPTED·`provided_by`·ISO `date`·`value`. 이 결정자는 읽기 전용이라 스크립트를 **실행하지 않았다.** supervisor가 병합 시점에 `python3 scripts/decision_ledger.py`와 `GET /api/decisions`를 확인한다. 번들 결정이 `docs/decisions/*.md` 전부를 싣으므로 아티팩트·조회는 병합과 함께 자동 반영된다.
+- **노트 존재 + `capital-decision-v1` 블록 1개(`scripts/decision_ledger.py` 파싱, `GET /api/decisions` 노출):** §4 블록 하나, 일곱 항목 모두 ADOPTED·`provided_by`·ISO `date`·`value`. 이 워크트리에서 `python3 scripts/decision_ledger.py`가 이 노트를 `maturity-extension-decision PROVISIONAL_PRODUCT_DECISION`과 일곱 항목 `=ADOPTED`로 색인했고 `python3 -m unittest tests.test_decisions`는 9 passed다. `GET /api/decisions`는 실행 서버로 확인하지 않았다(supervisor 병합 시 확인). 번들 결정이 `docs/decisions/*.md` 전부를 싣으므로 아티팩트·조회는 병합과 함께 자동 반영된다.
 - **모든 항목 ADOPTED/UNDETERMINED + 소유자, CAPITAL-TERMS-V1 값(1회, 30일, 180일 하드캡, 사람 승인, 수수료 없음) 변경 없이 인용:** §4 전 항목 ADOPTED·소유자 명기. 값은 머리말·§3.1·§3.3·§3.4·§3.7에서 변경 없이 인용하고 `terms_citation_rule`에 인용 규칙을 두었다.
 - **`maturity-extension-command` 소비 노드 명명 + 오버레이 엔트리 종류·필드 명시:** 모든 entry의 `consumer`, §3.7(종류 `MATURITY_EXTENSION`, payload 필드 목록, envelope 위임 규칙).
-- **`python3 scripts/decision_bindings.py --check`가 새 항목을 pending consumer anchor로 목록:** 이 결정자는 실행하지 않았다. supervisor가 병합 시점에 실행해 이 노트의 consumer anchor가 pending으로 목록되는지 확인한다.
+- **`python3 scripts/decision_bindings.py --check`가 새 항목을 pending consumer anchor로 목록:** `tests/decision_bindings.json`에 일곱 항목 각각 `PENDING_CONSUMER` 행(`consumer_node: maturity-extension-command`, `reason`, 기존 모듈 앵커 `capital/overlay.py`·`capital/margin.py`·`capital/forecast.py`·`capital/terms.py`)을 추가했다. 개정 전 실행은 일곱 건 `ADOPTED entry lacks binding`으로 실패했고, 추가 후 `decision bindings ok: declared references only; pending anchors are not implementation` (rc 0). 앵커는 구현이 아니다.
 
 ## 6. Open risks
 
-- **TERMS 정본 미열람.** 연장 값은 노드 수용 기준문이 지정한 값 그대로 인용했으나 필드명을 정본에서 대조하지 못했다. 충돌 시 TERMS가 이름·숫자를 이긴다.
+- **TERMS 정본 직접 미열람.** 값은 검토자 대조로 일치가 확인됐으나(2차 정보) 점 표기 경로는 미대조다. 충돌 시 TERMS가 이름·숫자를 이긴다.
 - **F04 §5 2차 인용.** `docs/contracts/CREDIT_ADVANCE_F04.md` §5를 직접 열지 않았다(허용 경로 밖). open items 지목은 요구사항 문서의 인용에 근거한 2차 정보다.
 - **유예 중 연체이자 발생 가정.** 가속 없이 자연 만기가 지난 뒤 유예 구간에 연체 금리가 붙는다는 해석은 DEFAULT_RECOVERY의 재기준 규칙(`M*+1`부터)에서 유도했다. TERMS가 유예일을 계약 금리로 둔다면 "유지" 대상이 0원이 될 뿐 규칙 자체는 무해하게 퇴화한다.
 - **정산 연동 기간 산식 미열람.** 하드캡 결합 규칙은 구조적으로 닫았으나 산식 필드명·단위(관측일 기준 여부)는 구현 시 확인이 필요하다.
@@ -244,5 +244,5 @@
 ## 7. 후속 작업
 
 - **`maturity-extension-command`(구현 노드).** 명령·거절 코드·폴드·`/api/overlay` extension 블록, §3.6 롤업·예측 additive 필드, `tests/golden/overlay_maturity_extension.json`(만기 전 연장·유예 중 연체이자 유지 벡터), 시계 점프 결정론 벡터, agent 403 벡터를 구현한다. 착수 전 `CAPITAL_FINANCIAL_TERMS.md`·`CAPITAL_OVERLAY_STATE.md`·`margin-cure-default` 노트를 열어 필드명·엔트리 자리·치유창 표지를 대조한다.
-- **supervisor 병합 전 점검.** `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`(이 노트의 consumer anchor pending 목록), `GET /api/decisions`, 필요하면 `docs/CAP_COVERAGE.md` CAP-01·CAP-04·CAP-19 행 인용 추가 후 `python3 -m unittest tests.test_decisions tests.test_coverage`.
-- **`f04-real-funds-lift-criteria`.** §3.2의 검토 항목(연장 후 연체이자 과사 가능 여부)을 질문지에 전달한다.
+- **supervisor 병합 전 점검.** `python3 scripts/decision_bindings.py --check`는 이 워크트리에서 통과했다. 남은 것은 `GET /api/decisions` 확인과 필요하면 `docs/CAP_COVERAGE.md` CAP-01·CAP-04·CAP-19 행 인용 추가 후 `python3 -m unittest tests.test_decisions tests.test_coverage`.
+- **`f04-real-funds-lift-criteria`.** §3.2의 검토 항목(연장 후 연체이자 부과 가능 여부)을 질문지에 전달한다.
