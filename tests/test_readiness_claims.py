@@ -117,7 +117,7 @@ class ReadinessClaimsTests(unittest.TestCase):
         result = run_claims(table)
         self.assertTrue(result['ok'], result['failed'])
         self.assertEqual(result['label'], 'CLAIM_CONFORMANCE')
-        self.assertEqual(result['passed'], result['total'])
+        self.assertEqual(result['passed'], result['total'] - divergence)
         self.assertEqual(result['failed'], [])
         self.assertEqual(len(result['documented_divergences']), divergence)
         for row in result['rows']:
@@ -188,6 +188,7 @@ class ReadinessClaimsTests(unittest.TestCase):
                 lambda claim: claim.update(
                     {'divergence': dict(claim['divergence'], note_section='### other-section')}),
                 lambda claim: claim.update({'check_id': 'readiness.bind_loopback'}),
+                lambda claim: (claim.pop('divergence'), claim.pop('disposition')),
         ):
             broken = copy.deepcopy(table)
             mutation(next(
@@ -236,22 +237,23 @@ class ReadinessClaimsTests(unittest.TestCase):
 
     def test_flipping_expected_fails_exactly_that_claim(self):
         original = load_table()
-        for claim_id in (
-                'readiness-bind-loopback', 'readiness-host-rejected',
-                'readiness-replay-first-result', 'readiness-lock-loss-fails-closed',
-                'readiness-failed-save-lookup', 'readiness-durable-false',
-                'readiness-torn-tail'):
-            table = copy.deepcopy(original)
-            target = next(claim for claim in table['claims'] if claim['id'] == claim_id)
-            target['expected'] = _flip(target['expected'])
-            with tempfile.TemporaryDirectory() as tmp:
-                path = _write_table(tmp, table)
-                loaded = load_table(path)
-            result = run_claims(loaded)
-            failed = [row for row in result['rows'] if not row['ok']]
-            self.assertEqual([row['id'] for row in failed], [claim_id], claim_id)
-            self.assertFalse(failed[0]['unmapped'])
-            self.assertNotEqual(failed[0]['observed'], failed[0]['expected'])
+        for claim in original['claims']:
+            for predicate in claim['expected']:
+                with self.subTest(claim=claim['id'], predicate=predicate):
+                    table = copy.deepcopy(original)
+                    # Each probe still executes the real live-server check.
+                    # Unrelated rows are covered by the full-table test above.
+                    table['claims'] = [copy.deepcopy(claim)]
+                    target = table['claims'][0]
+                    target['expected'][predicate] = _flip(target['expected'][predicate])
+                    with tempfile.TemporaryDirectory() as tmp:
+                        path = _write_table(tmp, table)
+                        loaded = load_table(path)
+                    result = run_claims(loaded)
+                    failed = [row for row in result['rows'] if not row['ok']]
+                    self.assertEqual([row['id'] for row in failed], [claim['id']])
+                    self.assertFalse(failed[0]['unmapped'])
+                    self.assertNotEqual(failed[0]['observed'], failed[0]['expected'])
 
     def test_missing_protocol_dir_is_skipped_and_not_a_success_line(self):
         for args in ((), ('--protocol-dir', ''), ('--protocol-dir', '   ')):
@@ -327,7 +329,14 @@ class ReadinessClaimsTests(unittest.TestCase):
         total = len(load_table()['claims'])
         proc = _run(['--execute'])
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, f'CLAIM_CONFORMANCE passed={total} total={total} failed=0\n')
+        lines = proc.stdout.splitlines()
+        self.assertEqual(lines[0],
+                         f'CLAIM_CONFORMANCE passed={total - 2} total={total} failed=0 documented_divergences=2')
+        self.assertEqual(lines[1:3], [
+            'DOCUMENTED_DIVERGENCE readiness-failed-save-lookup',
+            'DOCUMENTED_DIVERGENCE readiness-torn-tail'])
+        self.assertEqual(lines[3], 'SKIPPED')
+        self.assertEqual(json.loads(lines[4])['status'], 'SKIPPED')
         self.assertEqual(proc.stderr, '')
         self.assertNotIn(PROFILE_TOKEN, proc.stdout)
 
@@ -360,7 +369,8 @@ class ReadinessClaimsTests(unittest.TestCase):
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'])
+        self.assertEqual(stage['passed'], stage['total'] - 2)
+        self.assertEqual(stage['documented_divergences'], 2)
         self.assertEqual(stage['test_count']['failed'], 0)
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
         for command in stage['commands']:

@@ -51,7 +51,9 @@ _JOURNEYS = re.compile(r'^sim journeys ok SIMULATED (.+)$')
 _JOURNEY_STEPS = re.compile(r'(T0[3-6]-sim) steps=(\d+)')
 _JOURNEY_SUMMARY = re.compile(r'^SIM_JOURNEYS (\{.+\})$')
 JOURNEY_IDS = ('T03-sim', 'T04-sim', 'T05-sim', 'T06-sim')
-_CLAIMS = re.compile(r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)$')
+_CLAIMS = re.compile(
+    r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)'
+    r'(?: documented_divergences=(\d+))?$')
 _COUNT_WORD = re.compile(r'(failures|errors|skipped)=(\d+)')
 
 
@@ -155,6 +157,7 @@ def parse_test_count(text):
     """Pull ran/passed/failed from unittest, Playwright, or smoke output."""
     ran = passed = failed = None
     smoke_checks = None
+    documented_divergences = 0
     for raw in text.splitlines():
         line = raw.strip()
         match = _RAN.fullmatch(line)
@@ -195,6 +198,7 @@ def parse_test_count(text):
             passed = int(match.group(1))
             ran = int(match.group(2))
             failed = int(match.group(3))
+            documented_divergences = int(match.group(4) or 0)
     if smoke_checks is not None:
         return {'ran': len(smoke_checks), 'passed': len(smoke_checks), 'failed': 0}
     if ran is None and passed is None and failed is None:
@@ -205,7 +209,10 @@ def parse_test_count(text):
         failed = 0
     if ran is None and passed is not None:
         ran = passed + (failed or 0)
-    return {'ran': ran, 'passed': passed, 'failed': failed}
+    result = {'ran': ran, 'passed': passed, 'failed': failed}
+    if documented_divergences:
+        result['documented_divergences'] = documented_divergences
+    return result
 
 
 def parse_journeys(text):
@@ -308,6 +315,7 @@ def _run_stage(stage, root):
 
 def _merge_counts(records):
     ran = passed = failed = 0
+    documented_divergences = 0
     seen = False
     for record in records:
         count = record.get('test_count')
@@ -317,9 +325,13 @@ def _merge_counts(records):
         ran += count.get('ran') or 0
         passed += count.get('passed') or 0
         failed += count.get('failed') or 0
+        documented_divergences += count.get('documented_divergences') or 0
     if not seen:
         return None
-    return {'ran': ran, 'passed': passed, 'failed': failed}
+    result = {'ran': ran, 'passed': passed, 'failed': failed}
+    if documented_divergences:
+        result['documented_divergences'] = documented_divergences
+    return result
 
 
 def _tool_version(argv):
@@ -428,7 +440,10 @@ def _annotate_upstream(stage, body):
         return
     body['passed'] = passed
     body['total'] = ran
-    if body['exit_code'] != 0 or failed or passed != ran:
+    documented_divergences = count.get('documented_divergences', 0)
+    if documented_divergences:
+        body['documented_divergences'] = documented_divergences
+    if body['exit_code'] != 0 or failed or passed + documented_divergences != ran:
         body['status'] = 'failed'
 
 

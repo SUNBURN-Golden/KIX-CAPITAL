@@ -86,6 +86,8 @@ def validate_table(data):
         disposition = claim.get('disposition', 'CONFORMANCE')
         if disposition not in DISPOSITIONS:
             raise ClaimTableError(f'claim {claim["id"]} has an unknown disposition')
+        if claim['check_id'] in DIVERGENCE_CHECKS and disposition != DIVERGENCE_DISPOSITION:
+            raise ClaimTableError(f'claim {claim["id"]} must record its documented divergence')
         divergence = claim.get('divergence')
         if disposition == DIVERGENCE_DISPOSITION:
             if claim['check_id'] not in DIVERGENCE_CHECKS:
@@ -141,7 +143,8 @@ def run_claims(table):
     failed = [row for row in rows if not row['ok']]
     return {
         'label': LABEL,
-        'passed': len(rows) - len(failed),
+        'passed': sum(row['ok'] and row['disposition'] != DIVERGENCE_DISPOSITION
+                      for row in rows),
         'total': len(rows),
         'failed': failed,
         'rows': rows,
@@ -195,7 +198,10 @@ class _LiveServer:
 
     def __init__(self, workspace=None, producer=None):
         self.server = make_server(0, workspace=workspace, producer=producer)
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        # Keep real HTTP dispatch, but avoid the default half-second idle wait
+        # at shutdown for every isolated claim and mutation probe.
+        self.thread = threading.Thread(
+            target=self.server.serve_forever, kwargs={'poll_interval': 0.01}, daemon=True)
         self.thread.start()
         self._token = None
 
@@ -275,14 +281,14 @@ class _LiveServer:
 
 
 class _FailingSave:
-    """SIMULATED record failure: the armed save raises WORKSPACE_WRITE_FAILED."""
+    """SIMULATED storage-port fault, not an OS lock-loss detector."""
 
     def __init__(self, storage):
         self._storage = storage
 
-    def arm(self):
+    def arm(self, code='WORKSPACE_WRITE_FAILED'):
         def fail(*_args, **_kwargs):
-            raise WorkspaceError('WORKSPACE_WRITE_FAILED')
+            raise WorkspaceError(code)
         self._storage.save = fail
 
 
@@ -292,11 +298,13 @@ class _LostTransport:
     def __init__(self, inner, armed_key):
         self._inner = inner
         self._armed = armed_key
+        self.calls = 0
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
 
     def apply(self, op, advance_id, *, idempotency_key, args, bound_settlement_id):
+        self.calls += 1
         if idempotency_key == self._armed:
             raise TransportLost(idempotency_key)
         return self._inner.apply(
@@ -410,7 +418,7 @@ def check_lock_loss_fails_closed(claim):
     with tempfile.TemporaryDirectory() as tmp:
         with _LiveServer(workspace=tmp) as live:
             bytes_before = _workspace_bytes(tmp)
-            _FailingSave(live.service.storage).arm()
+            _FailingSave(live.service.storage).arm('WORKSPACE_LOCKED')
             first_status, first = live.offer('op-fail-closed', 'sim-fail-closed')
             second_status, second = live.offer('op-after-fail', 'sim-after-fail')
             _status, health = live.get('/api/health')
@@ -465,6 +473,7 @@ def check_lost_response_unknown(claim):
         'fresh_lookup_outcome': fresh_lookup.get('outcome'),
         'journal_entries': journal_entries == journal_before == 0,
         'operation_count': state['operation_count'],
+        'producer_calls': live.service.producer.calls,
     }
 
 

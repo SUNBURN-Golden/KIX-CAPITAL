@@ -53,8 +53,10 @@ def main(argv=None) -> int:
         failed = result['failed']
         print(
             f"CLAIM_CONFORMANCE passed={result['passed']} total={result['total']} "
-            f"failed={len(failed)}"
+            f"failed={len(failed)} documented_divergences={len(result['documented_divergences'])}"
         )
+        for row_id in result['documented_divergences']:
+            print(f'DOCUMENTED_DIVERGENCE {row_id}')
         for row in failed:
             print(
                 f"FAIL {row['id']} observed={row['observed']!r} expected={row['expected']!r}",
@@ -69,6 +71,8 @@ def main(argv=None) -> int:
             for item in report['missing']:
                 print(f"DRIFT {item.get('id')} {item.get('problem')}", file=sys.stderr)
             code = 1
+    else:
+        _print_skipped()
     return code
 
 

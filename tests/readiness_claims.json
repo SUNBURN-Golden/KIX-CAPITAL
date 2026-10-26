@@ -108,15 +108,15 @@
       "source_doc": "docs/contracts/READINESS_RUNTIME.md",
       "section": "## 파일 저널",
       "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
-      "claim": "SIMULATED storage fault: when the record write fails, the process stops taking commands — both the failed command and the next one answer 503, health degrades and the file bytes stay unchanged (Capital analogue of the no-more-commands rule).",
+      "claim": "SIMULATED lock-unavailable storage-port fault: save raises WORKSPACE_LOCKED; the failed command and the next one answer 503, health degrades and the file bytes stay unchanged. This observes the facade fail-closed boundary, not OS lock-loss detection.",
       "check_id": "readiness.lock_loss_fails_closed",
       "needle": "메모리만 앞서고 기록이 실패하면 그 프로세스는 더 이상 명령을 받지 않는다",
       "surface": "POST /api/commands",
       "expected": {
         "first_status": 503,
-        "first_error": "WORKSPACE_WRITE_FAILED",
+        "first_error": "WORKSPACE_LOCKED",
         "second_status": 503,
-        "second_error": "WORKSPACE_WRITE_FAILED",
+        "second_error": "WORKSPACE_LOCKED",
         "health_status": "degraded",
         "file_bytes_unchanged": true
       }
@@ -164,7 +164,8 @@
         "absent_lookup_outcome": "UNKNOWN",
         "fresh_lookup_outcome": "UNKNOWN",
         "journal_entries": true,
-        "operation_count": 0
+        "operation_count": 0,
+        "producer_calls": 1
       }
     },
     {

@@ -364,7 +364,8 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'])
+        self.assertEqual(stage['passed'], stage['total'] - 2)
+        self.assertEqual(stage['documented_divergences'], 2)
         self.assertEqual(stage['test_count']['failed'], 0)
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
         for command in stage['commands']:
