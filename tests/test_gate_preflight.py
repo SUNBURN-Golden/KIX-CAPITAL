@@ -8,7 +8,7 @@ from unittest.mock import patch
 from capital.gate_producer import (
     GateHttpProducer, PreflightRejected, load_fake_gate, make_preflighted_fake_producer,
 )
-from capital.compat_preflight import canonical_bytes
+from capital.compat_preflight import canonical_bytes, git_blob, sha256
 from test_compat_preflight import BundleCopy
 from scripts.compat_preflight import CORPUS, MANIFEST
 from test_producer_port import run_producer_vectors
@@ -60,6 +60,21 @@ class GatePreflightTests(unittest.TestCase):
         finally:
             for producer in opened:
                 producer.close()
+
+    def test_duplicate_extension_keys_with_refreshed_hashes_prevent_construction(self):
+        ref = self.bundle.manifest['source_references']['extension_profile']
+        duplicate = b'{"a":1,"a":2}'
+        (self.bundle.root / ref['path']).write_bytes(duplicate)
+        ref.update(sha256=sha256(duplicate), gitBlob=git_blob(duplicate))
+        self.bundle.save()
+        # Matching file hashes, tuple, manifest digest and sidecar cannot hide duplicates.
+        self.assertEqual(self.bundle.check().errors, ({'code': 'duplicate-key', 'location': 'json'},))
+        with patch('capital.gate_producer.GateHttpProducer') as constructor:
+            with patch.object(load_fake_gate(), 'start') as start:
+                with self.assertRaises(PreflightRejected):
+                    make(self.bundle)
+                constructor.assert_not_called()
+                start.assert_not_called()
 
     def test_restore_retains_inputs_and_rechecks_before_start(self):
         original = make(self.bundle)

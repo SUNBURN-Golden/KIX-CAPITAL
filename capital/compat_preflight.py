@@ -231,7 +231,7 @@ def _validate_bundle(root, manifest_path, manifest, raw):
     read_bundle_file(root, m['source_references']['fixture_profile'])
     extension = m['source_references']['extension_profile']
     if extension is not False:
-        reference(extension, 'manifest.source_references.extension_profile', {'gitBlob'})
+        decode_input(reference(extension, 'manifest.source_references.extension_profile', {'gitBlob'}), canonical=False)
     _require(type(m['vectors']) is list and bool(m['vectors']), 'vectors-required', 'manifest.vectors')
     names, paths = set(), set()
     for index, vector in enumerate(m['vectors']):
