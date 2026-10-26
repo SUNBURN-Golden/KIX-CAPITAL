@@ -166,3 +166,29 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 `tests/golden/overlay_claim_slices.json`; `--write` regenerates it explicitly.
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
+
+
+### Cursor-paginated facts (SIMULATED)
+
+`GET /api/export/facts?instance_id=<current>&limit=100` requires `export:read`.
+Save each response's exact bytes as `page-0000.json`, `page-0001.json`, … in an
+otherwise empty directory; pass its `next_cursor` as `after` until it is null.
+`GET /api/export/facts/schema` serves `KIX_CAPITAL_FACTS_SCHEMA_V1`. Rows contain
+accepted F04 journal entries and the overlay journal in commit order, with KRW
+integer atoms, declared widths and a duplicate marker. The technical limit is
+1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; restart from
+the first page. Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage
+returns 503, including for continuing cursors; no empty substitute book is exported.
+
+`python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
+cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
+It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
+`tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
+bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+
+Labels remain `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+with `stage7_authenticated_export: false` and a non-claim of
+`k-stage7-authenticated-export`. Hashes detect corruption; consistent replacement
+with all hashes rebuilt cannot be detected. No source authority, signing, import,
+resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
+verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.

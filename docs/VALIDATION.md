@@ -2132,3 +2132,34 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 1.8 min. Existing host ports 8765/8766 were occupied; unchanged browser configuration ran inside an isolated loopback network namespace. |
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
+
+
+### Typed facts integrity candidate
+
+`python3 scripts/facts_vectors.py --check` byte-pins `tests/vectors/facts/`,
+including the served schema, clean overlay/empty-overlay books, byte corruption,
+and semantic attacks with enclosing hashes recomputed. `python3 -m unittest
+discover -s tests -p 'test_facts*.py' -v` exercises HTTP canonical encoding,
+cut fencing, storage-health refusal, raw duplicate order, schema types/widths,
+page stitching, CLI exit codes and slice/recovery witness link rejection.
+`python3 -m capital.verify --facts DIR` accepts only exact canonical ASCII JSON
+page bytes; a one-byte mutation fails parsing, canonicalization or integrity.
+It never imports or resumes a workspace. The verifier trusts built-in
+`FixtureViews()` only: custom-fixture books fail `FIXTURES_MISMATCH` by design.
+
+Rows are rebuilt from embedded entries after pinned F04 replay and overlay fold;
+`recovery.validate_links` and `slices.validate_links` bind overlay witnesses to
+those entries. This is corruption detection, not authentication: an entirely
+consistent replacement with all hashes rebuilt is undetectable. Labels stay
+`SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, not `k-stage7-authenticated-export`.
+The technical page bound adds no financial limit or source-cut authority.
+Legacy v1 exports and vendored bytes remain unchanged.
+
+The facts-cursor-export local run used an uncommitted implementation on base HEAD
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`. Its nine-stage acceptance evidence
+recorded 1,138 unit tests and 69 browser tests passing; two independent builds
+produced SHA256 `945082dc2224dddf8637c65343c7e097bf592b2cc61f278a97e6f626cadf87a3`.
+These are local SIMULATED checks, not a claim about a future commit or independent
+CI. Exact commands, earlier failures, fixes and the temporary loopback browser
+port adaptation are recorded in [FACTS_CURSOR_EXPORT_EVIDENCE.md](FACTS_CURSOR_EXPORT_EVIDENCE.md).

@@ -207,8 +207,14 @@ def main(argv=None):
     keys.add_argument('--keyset-file', default=None, help='Pinned DEV_ONLY local keyset. Integrity only.')
     parser.add_argument('--workspace', default=None,
                         help='Audit DIR/workspace.json read-only. No lock, no write, no repair. Not stage5 durability evidence.')
+    parser.add_argument('--facts', default=None, help='Verify canonical page-*.json files in DIR offline; integrity only.')
     args = parser.parse_args(argv)
-    if args.workspace is not None:
+    if args.facts is not None:
+        if args.file is not None or args.workspace is not None or args.key_file is not None or args.keyset_file is not None:
+            parser.error('--facts is mutually exclusive with file, --workspace and key options')
+        from capital.facts import verify_dir
+        report = verify_dir(args.facts)
+    elif args.workspace is not None:
         if args.file is not None:
             parser.error('file and --workspace are mutually exclusive')
         if args.key_file is not None or args.keyset_file is not None:
