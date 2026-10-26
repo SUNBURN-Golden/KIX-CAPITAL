@@ -19,6 +19,8 @@ from capital.terms import DecisionNoteTermsPolicy, read_decision_block
 from tests.test_overlay import draw_book, run, tick, TERMS_NOTE
 
 ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_POLICY_ENTRIES = ('interest_rate', 'term', 'default_loss_treatment',
+                           'reserve', 'additional_margin', 'underwriting_depth')
 
 
 def tree(root):
@@ -194,7 +196,7 @@ class ComparisonTests(unittest.TestCase):
     def test_missing_and_unusable_required_policy_even_on_empty_books(self):
         self.save(self.before)
         self.save(self.after)
-        for name in compare.REQUIRED_TERMS:
+        for name in REQUIRED_POLICY_ENTRIES:
             for missing in (True, False):
                 def restore(document):
                     service = offline_service(document)
@@ -241,6 +243,37 @@ class ComparisonTests(unittest.TestCase):
         note.write_text('```capital-decision-v1\n' + json.dumps(block) + '\n```\n')
         with patch.object(compare, 'offline_service', restore):
             self.compare()
+
+    def test_loaded_unusable_required_entries_on_empty_and_drawn_books(self):
+        # Exercise the actual note validators, not just an injected NOT_BOUND
+        # mark. Matching local digests must never substitute for readiness.
+        note = self.root / 'unusable-policy.md'
+        self.assertEqual(compare.REQUIRED_TERMS, REQUIRED_POLICY_ENTRIES)
+
+        def restore(document):
+            service = offline_service(document)
+            service.terms = DecisionNoteTermsPolicy(note)
+            return service
+
+        for drawn in (False, True):
+            if drawn:
+                draw_book(self.service, amount=10000)
+            self.save(self.before)
+            self.save(self.after)
+            for name in REQUIRED_POLICY_ENTRIES:
+                block = read_decision_block(TERMS_NOTE)
+                block['entries'][name]['value'] = {}
+                note.write_text('```capital-decision-v1\n' + json.dumps(block) + '\n```\n')
+                with self.subTest(drawn=drawn, name=name), patch.object(compare, 'offline_service', restore):
+                    report = self.compare('NON_COMPARABLE')
+                    self.assertEqual(report['inputs']['before']['policy_inputs_digest'],
+                                     report['inputs']['after']['policy_inputs_digest'])
+                    policies = [row for row in report['comparability']['checks'] if row['id'] == 'policy']
+                    self.assertEqual([row['entries'] for row in policies], [[{
+                        'name': name, 'reason': 'REQUIRED_POLICY_ENTRY_UNUSABLE'}]] * 2)
+                    self.assertTrue(all(row['status'] == 'NOT_CHECKED'
+                                        for row in report['comparability']['checks']
+                                        if row['id'] in ('margin_terms', 'views')))
 
     def test_missing_margin_policy_cannot_hide_behind_bound_nonempty_views(self):
         draw_book(self.service, amount=10000)
@@ -498,6 +531,28 @@ class ComparisonTests(unittest.TestCase):
         self.assertIsNone(result['changes'])
         self.reason(result, 'DRAW_RECEIPT_GATE_MISSING')
         self.assertEqual(failed.stdout, cli(*args).stdout)
+        self.assertEqual(tree(self.root), captured)
+
+    def test_cli_rejects_individually_audited_incompatible_histories(self):
+        draw_book(self.service, amount=10000)
+        self.save(self.before)
+        tick(self.service, 'day1', 0, 1)
+        self.save(self.after)
+        # Both endpoints verify. Reversing them is an explicit non-comparable
+        # result rather than an invalid-input error or an inferred movement.
+        captured = tree(self.root)
+        proc = subprocess.run([
+            sys.executable, '-m', 'capital.portfolio_compare',
+            '--before', str(self.after), '--after', str(self.before)],
+            cwd=ROOT, capture_output=True, timeout=60)
+        self.assertEqual((proc.returncode, proc.stderr), (1, b''))
+        report = json.loads(proc.stdout)
+        self.assertEqual(report['status'], 'NON_COMPARABLE')
+        self.assertIsNone(report['changes'])
+        self.assertTrue(all(info['audit']['ok'] for info in report['inputs'].values()))
+        self.reason(report, 'SIM_DAY_DECREASED')
+        self.reason(report, 'OVERLAY_JOURNAL_NOT_PREFIX')
+        self.assertEqual(proc.stdout, canonical_bytes(report) + b'\n')
         self.assertEqual(tree(self.root), captured)
 
 

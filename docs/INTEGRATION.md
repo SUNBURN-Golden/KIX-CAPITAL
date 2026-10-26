@@ -9,6 +9,9 @@ bytes with the existing audit stages; both audits are attempted. The comparator 
 `portfolio_snapshot.FrozenInputs`, then recomputes `risk.build` and `covenants.build`.
 It opens no FileWorkspace, lock or signing key and creates no directory. No HTTP/UI
 surface, collection, import/resume, forecast, what-if model or history database is added.
+Python callers can use `capital.portfolio_compare.compare_workspaces(before_dir,
+after_dir)` to obtain the same report dict. Each argument is an explicit snapshot
+directory; no live workspace service or signing material is required.
 
 The canonical sorted-key JSON format is `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1`, labeled
 `SIMULATED`. `inputs.before` and `inputs.after` each carry `workspace_sha256`,

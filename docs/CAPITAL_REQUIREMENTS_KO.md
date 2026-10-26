@@ -28,7 +28,9 @@ beneficiary_role별 노출, 만기/연체, 준비금 요구량, watch 상태·�
 
 필수 정책 6개(`interest_rate`, `term`, `default_loss_treatment`, `reserve`,
 `additional_margin`, `underwriting_depth`)가 모두 존재하고 사용 가능한 ADOPTED여야
-한다. 빈 장부나 BOUND 표시만으로 완전성을 대신하지 않는다. 적용 대상 tier의
+한다. 빈 장부나 BOUND 표시만으로 완전성을 대신하지 않는다.
+실제 임시 결정 노트를 읽는 회귀 테스트도 빈 장부·인출 장부 양쪽에서 필수 항목별
+검증 실패를 확인한다. 해시가 같아도 사용 불가 정책은 비교할 수 없다. 적용 대상 tier의
 margin cure/rate/payee 입력도 필요하다. fixture/policy 입력 해시 및 fixture
 profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix 호환,
 기존 advance 매핑·draw gate 안정성, 기록된 terms binding 호환을 요구한다.

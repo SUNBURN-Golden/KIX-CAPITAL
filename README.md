@@ -17,8 +17,12 @@ Deltas are after minus before. Exit codes: 0 comparable, 1 non-comparable/input 
 Comparison requires matching local fixture and policy-input digests, usable required
 terms and applicable margin terms, nondecreasing `sim_day`, compatible F04/overlay
 journal prefixes, stable mappings/draw gates and compatible terms bindings. Fixture
-profiles and beneficiary mappings must match too. Neither input tree is written or
-locked. Results are `SIMULATED` observed differences; they infer neither actual payments
+profiles and beneficiary mappings must match too. The required terms are
+`interest_rate`, `term`, `default_loss_treatment`, `reserve`, `additional_margin`
+and `underwriting_depth`; they must pass the decision-note validators even on an
+empty book. Matching digests alone do not establish policy completeness.
+Neither input tree is written or locked. Results are `SIMULATED` observed differences;
+they infer neither actual payments
 nor causation. Historical policy provenance, authentication, common ownership and actual
 payments remain `NOT_BOUND`. No reserve is booked; reserve funding/coverage remains
 `NOT_BOUND`. Collection, import, forecasting, what-if scenarios and a history database
