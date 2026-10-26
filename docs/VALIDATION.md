@@ -945,3 +945,54 @@ Commands actually run, in order:
 - `git status`: no `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` modifications.
 
 Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v` covers detached-input component parity, independent cut digests, read-only workspace bytes, deterministic snapshots across sessions, controlled reader/writer ordering for repayment and clock commands, unsupported producers/fixtures, degraded storage, unbound terms, identity, authorization and closed facade schemas. `python3 scripts/docs_surface.py --check` guards the route documentation and the auth matrix includes the route. All data is SIMULATED; no authenticated or cross-process source cut is claimed.
+
+## sql-projection-crosscheck
+
+Resumed builder verification on 2026-10-26, branch `agent/capital-sql-projection-crosscheck`, HEAD `cde0bc778573ef8d543f2e1bb70a521e06bf4e44`. This record supersedes the inherited interrupted-attempt verification section. The design fits the repository: V1 posting/read-model claims are the three `sim-*` claims, while statement settlement/refund checks cover every embedded fixture. The stdlib-only auditor verifies a pack before opening SQLite `:memory:`, derives arithmetic and exact transaction headers/lines in SQL, and never invokes the projection, reconciliation builder, service restore or a key loader. Generated semantic mutants first pass the shared pack verifier, then fail a named semantic check. No vectors or goldens were added or regenerated.
+
+Plan additions: explicitly check the declared fixture-row digest against the embedded rows (the shared pack verifier checks its section hash, not this relationship), the statement's SIMULATED / LOCAL_ONLY mode labels, and prohibited-effect flags on all manifest section bodies. A genuine two-repayment book also exercises the cumulative remaining-principal check. Scope remains `LOCAL_ONLY / SYNTHETIC_UNADOPTED`, `SIMULATED`, `funds_executed:false`; V3 overlay accounting is `NOT_CHECKED`, and stage7, authentication/completeness and independent external assurance remain `NOT_BOUND`.
+
+Commands actually run in this resumed attempt are below. Long-command stdout/stderr is under `/tmp/sql-audit-*.log`; the deterministic clean report is `/tmp/sql-audit-clean-report.json`.
+
+| Command | Actual result |
+|---|---|
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0. SIMULATED totals: drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
+| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Initial inherited implementation: 32 passed (4.432s). After eligibility/digest checks: 34 passed (4.702s). The added two-repayment test initially failed with `SYNTHETIC_ID_REQUIRED` because its test advance ID lacked `sim-`; corrected the test input, then **35 passed** (4.832s), exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0, repeated after documentation changes: **30 routes, 38 artifacts, 9 stages**. No new vector registration required. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0, repeated: **9 files match**. |
+| `python3 -m unittest discover -s tests -v` | Initial exit 1: **874 ran, 873 passed, 1 failure** (151.229s). Final-state rerun through the acceptance ladder: **875 ran, 874 passed, 1 failure** (155.612s), including all 35 passing SQL-auditor tests. The existing V1 byte guard compares against the advanced `origin/main` baseline; details below. No socket-denial errors in this environment. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0, **7 passed**. |
+| `python3 -m compileall -q capital` | Exit 0, repeated after final source changes. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --no-audit --no-fund` | Exit 0; **3 existing locked development packages** installed from cache, without a browser download or source dependency change. |
+| `npm run test:browser` | Exit 1 before tests: default ports 8765/8766 are occupied by unrelated pre-existing services in other workspaces. Those processes were left untouched. |
+| `npm run test:browser -- --config /tmp/sql-audit-playwright.cjs` | Exit 0: **69 passed** (1.9m), installed Chromium. Same test files, projects, assertions and worker count; temporary config loads the unchanged repository config and maps its four application ports 8765..8768 to 18765..18768 (also adds the first server's explicit port and absolute paths). No repository CI/config/test change or skipped test. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0: declared references only; pending anchors are not implementation. |
+| `python3 scripts/build_release.py --out /tmp/sql-audit-release1` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/sql-audit-release2` | Exit 0. |
+| `cmp /tmp/sql-audit-release1/capital-*.pyz /tmp/sql-audit-release2/capital-*.pyz` | Exit 0: deterministic same-interpreter package bytes; both SHA256 `8ccf2e2c9703562ccc3743bb832af77c03d37e652c85fa094e35de43a2ca8587`. |
+| `python3 scripts/smoke_release.py /tmp/sql-audit-release1/capital-*.pyz` | Exit 0: **8 checks** (version, state, static index, accepted synthetic journey, source integrity, restart instance/receipts/closed case). |
+| Inline Python malformed-root probe using `audit_bytes` | Exit 0: **7 malformed root shapes** fail without aggregate totals. |
+| Inline Python SHA256/`git show` protected-file checks | Exit 0: **57 protected files unchanged from HEAD**; `capital/export.py` also matches `origin/main`; all **5 vendor SHA256 pins matched**. Includes projection/reconciliation, vendor manifest, all existing vectors/goldens, and the three inherited baseline differences. |
+| Inline Python loopback-bind probe | Exit 0: ephemeral `127.0.0.1` bind works. Default browser port probes exposed the unrelated listeners on 8765/8766. |
+| `python3 /tmp/sql-audit-acceptance.py` | Exit 1; `build/acceptance-evidence.json` records `ok:false`. Executes the unchanged `scripts.acceptance.build_plan` / `execute_plan`, with only the browser command extended by `-- --config /tmp/sql-audit-playwright.cjs`; all 9 stages run. **8 passed**, unit failed only at the inherited baseline guard. |
+| Inline Python `/proc` process inspection | Exit 0 after the ladder: **no Capital, fake-gate or packaged server remains in this worktree**. The unrelated existing services were left untouched. |
+| `git diff --check` | Exit 0. |
+
+Final-state acceptance stage results (Python 3.13.5, Node v20.19.2, npm 11.21.1, Playwright 1.58.2; these are local equivalents, not the CI runners' Python 3.12 / Node 24):
+
+| Stage | Actual result |
+|---|---|
+| unit | Failed: 874/875 passed; one inherited V1 byte-guard failure. The follow-on decision-bindings command is not run after unit failure; it passed directly above. |
+| storage-conformance | Passed: 19 tests across storage conformance and crash replay. |
+| pinned-vendor | Passed: 7 tests, all pins verified. |
+| upstream-claims | Passed: 269/269 claim-conformance rows (87 + 94 + 39 + 49), no external assurance/integration claimed. |
+| node-check | Passed. |
+| browser | Passed: 69/69, temporary port-only config. |
+| packaged-smoke | Passed: build and 8 smoke checks. |
+| seeded-demo | Passed: 1 golden check; no golden rewritten. |
+| integrated-journeys | Passed: 4 **SIMULATED** journeys, no integrated acceptance or real-funds claim. |
+
+The full-suite failure is `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`. `origin/main` at `aab0a73` includes changes after this node's base to `capital/overlay.py`, `capital/ports.py` and `docs/decisions/CAPITAL_UPSTREAM_BINDING.md`; the test reports exactly those three paths. They are byte-identical to this node's HEAD and were not edited here. The builder did not change the guard, overwrite guarded files or alter git refs to disguise this baseline difference. Root `DECISION_REQUIRED.md` requests supervisor integration onto the current main baseline and an unchanged-suite rerun. This is not a passing full local CI result.
+
+No git commit, push, rebase, PR, issue or external comment was made. No `.aiops/`, vendored reference, CI, Protocol or Commerce files were changed. All verification jobs ran in the foreground under the tool session; no long job was shell-backgrounded.
