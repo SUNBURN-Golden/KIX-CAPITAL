@@ -126,6 +126,26 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(passed['exit_code'], 0)
         self.assertEqual(passed['test_count']['passed'], 2)
 
+    def test_unit_timeout_still_fails_and_stops_followup_commands(self):
+        stage = next(s for s in acceptance.build_plan(ROOT) if s['id'] == 'unit')
+        stage['timeout'] = 0.1
+        stage['commands'] = [
+            [sys.executable, '-c', 'import time; time.sleep(60)'],
+            [sys.executable, '-c', 'print("must not run after timeout")'],
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            evidence = Path(tmp) / 'acceptance-evidence.json'
+            code = acceptance.execute_plan(
+                [stage], root=ROOT, evidence_path=evidence, required=('unit',))
+            data = json.loads(evidence.read_text(encoding='utf-8'))
+        self.assertEqual(code, 1)
+        self.assertFalse(data['ok'])
+        unit = data['stages'][0]
+        self.assertEqual(unit['status'], 'failed')
+        self.assertEqual(unit['exit_code'], 124)
+        self.assertEqual(len(unit['commands']), 1)
+        self.assertIn('stage timed out', unit['commands'][0]['output_tail'])
+
     def test_missing_stage_is_unrun_and_fails(self):
         plan = [_ok_stage(stage_id) for stage_id in acceptance.REQUIRED_STAGES if stage_id != 'browser']
         with tempfile.TemporaryDirectory() as tmp:

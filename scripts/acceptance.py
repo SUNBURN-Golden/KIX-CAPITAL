@@ -69,7 +69,8 @@ def build_plan(root=None, protocol_dir=None):
     return [
         {
             'id': 'unit',
-            'timeout': 300,
+            # Hang guard: the full suite took 333s in CI, exceeding the old 300s budget.
+            'timeout': 900,
             'commands': [
                 [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
                 [py, 'scripts/decision_bindings.py', '--check'],
