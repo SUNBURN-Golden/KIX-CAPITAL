@@ -89,6 +89,8 @@ GET_PROBES = {
     ],
     '/api/export': ['/api/export'],
     '/api/export/manifest': ['/api/export/manifest'],
+    '/api/export/facts': [f'/api/export/facts?instance_id={INSTANCE}'],
+    '/api/export/facts/schema': ['/api/export/facts/schema'],
     '/api/reconciliation': ['/api/reconciliation'],
     '/api/statement': ['/api/statement'],
     '/api/metrics': ['/api/metrics'],

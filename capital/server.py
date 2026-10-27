@@ -46,6 +46,8 @@ GET_DISPATCH = (
     ('/api/read/', True, 'read'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
+    ('/api/export/facts', False, 'export_facts'),
+    ('/api/export/facts/schema', False, 'facts_schema'),
     ('/api/reconciliation', False, 'reconciliation'),
     ('/api/statement', False, 'statement'),
     ('/api/metrics', False, 'metrics'),
@@ -364,6 +366,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
 
+        def _get_export_facts(self, route, principal):
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(service.export_facts(route.query)))
+
+        def _get_facts_schema(self, route, principal):
+            from capital.facts import schema
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(schema()))
+
         def _get_export_manifest(self, route, principal):
             return self.reply(200, service.export_manifest())
 
@@ -441,6 +452,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             except Exception:
                 return
 
+        def request_route(self):
+            try:
+                return urlsplit(self.path)
+            except ValueError:
+                raise ApiError('INVALID_TARGET')
+
         def do_GET(self):
             started = time.perf_counter()
             status = 500
@@ -448,11 +465,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                route = self.request_route()
+                path = route.path
                 if path.startswith('/api/operations/'):
                     operation_id = path[len('/api/operations/'):]
                 self.boundary()
-                route = urlsplit(self.path)
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
                     self.reply(200, read_static(name), kind)
@@ -479,7 +496,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                path = self.request_route().path
                 self.boundary(mutate=True)
                 principal = self.principal()
                 permission = None
