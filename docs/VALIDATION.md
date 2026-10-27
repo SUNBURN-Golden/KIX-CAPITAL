@@ -786,6 +786,27 @@ Commands actually run:
 - `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `demo.json` unchanged.
 - `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **48 passed**; no server left running.
 
+## http-hostile-corpus
+
+`tests/vectors/http/` pins 76 hostile raw-HTTP request recipes (format `KIX_CAPITAL_HTTP_HOSTILE_V1`, label `SIMULATED`). Each recipe is one raw request with `__PORT__`/`__TOKEN__` sentinels plus a pinned outcome (`status`, `code`, `content_type_prefix`, `body_marker`) and the unchanged post-state triple. `tests/test_http_hostile.py` replays every recipe over a raw socket against an in-process `make_server(0)`, asserts the pin, scans each response for traceback/token/repository-path leaks, and re-probes `state_digest`, `operation_count` and `/api/health` after every case. `scripts/http_hostile.py --write`/`--check` own the directory like the manifest and workspace corpora; `EXPECTED` in the test is the hand-written oracle.
+
+The corpus found one genuine server defect: a request target whose authority is a malformed IPv6 literal (for example `GET http://[bad/x`) made `urllib.parse.urlsplit` raise `ValueError`, which escaped `do_GET`/`do_POST`, printed a traceback on stderr and dropped the connection without any response. The minimal fix adds `Handler.request_route()` mapping that `ValueError` to `400 INVALID_TARGET`; `target-invalid-ipv6` and `target-unclosed-ipv6` are its pinning vectors. `INVALID_TARGET` was added to `capital/contract/facade-v1.json` (`errors`, `errorGroups.boundary`, first entry of every route's `errors`) because the contract fences every `ApiError` literal, and `tests/vectors/finance_vectors.json` was regenerated with `python3 scripts/finance_vectors.py --write` since the `facade_read_model` digests cover the contract bytes. No route, permission, role or auth rule changed.
+
+Other observed behaviors are pinned as designed stdlib semantics, not defects: `//` targets normalize to a single `/` (gh-87389), absolute-form authorities are ignored while the `Host` header binds loopback, HTTP/0.9-style requests get a body-only reply with no status line, malformed headers are tolerated, GET ignores declared bodies, TRACE/OPTIONS/HEAD get stdlib 501 HTML pages, and the 8192 byte cap keeps deep nesting under the interpreter recursion limit. The UTF-8 BOM parses through `utf-8-sig` and reaches the strict shape gate (`INVALID_SESSION`).
+
+Commands actually run:
+
+- `python3 /tmp/probe_hostile.py`, `python3 /tmp/probe2.py`: observed every candidate case live; confirmed the `urlsplit` crash (empty reply plus stderr traceback) before fixing it.
+- `python3 scripts/http_hostile.py --write`: wrote 76 recipes; `--check`: exit 0, `76 files match`.
+- `python3 -m unittest tests.test_http_hostile -v`: 9 passed.
+- `python3 -m unittest discover -s tests -v`: 631 run, **1 failed** — `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`, which diffs the worktree against `origin/main`. The flagged paths (`docs/decisions/CAPITAL_EXTERNAL_GATES.md`, `docs/decisions/CAPITAL_RELEASE_ACCEPTANCE.md`, `tests/golden/demo.json`) are changed on main after this branch's base `2acd625` (its merge-base) and are untouched by this node; the failure is environmental, present before these edits.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: 7 passed.
+- `python3 -m compileall -q capital`, `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,finance_vectors,docs_surface,not_bound_checklist}.py --check` and `python3 scripts/decision_ledger.py`: exit 0. `agent_claims_check.py` reports `SKIPPED` (no protocol checkout) as designed.
+- `npm ci --offline --ignore-scripts`: exit 0.
+- `npm run test:browser`: the committed config binds 127.0.0.1:8765, held by a foreign process (`python3 -m http.server --directory dist` owned by `/workspace/fitness-hub/site`, not started here and not killed). The same suite was run with only the port numbers in `playwright.config.cjs` shifted 8765→8795 (the first `webServer` also lacked `--port`): **48 passed** in 1.6m; the config was reverted byte-identical afterwards. No server was left running.
+
+`git diff --name-only -- capital/vendor .aiops` is empty; the five vendored reference files are byte-identical.
 ## facade-load-harness
 
 `scripts/load_harness.py` is a stdlib-only loopback load harness. Each workload boots a fresh `capital.server.make_server(0)` on an ephemeral port (same pattern as `tests/test_observability.py`) and drives `POST /api/commands` through `http.client` + `ThreadPoolExecutor`, following the measurement semantics of upstream `docs/contracts/PERFORMANCE_MEASUREMENT.md` and `docs/DEVELOPMENT_PLAN.md` §7/§9 (kix-protocol, read-only reference): the scheduled arrival instant and the service interval are separate fields, and the outcome classes new-success, replay, reject, conflict, capacity are counted and percentiled per class, never pooled. Six seeded workloads (`low-load-uniform`, `uniform`, `hot-seat`, `same-command-retry`, `history-growth`, `saturation`) each run in memory and `LOCAL_FILE_WORKSPACE` modes. Commands use demo-book claims (`demo-*`) and `sim-*` ids only; amounts are synthetic fixture units. `saturation` fills `MAX_OPERATIONS` (500) with REJECTED receipts (no journal entries), observes 5 `SIMULATION_CAPACITY` plus 1 probe rejection, and confirms a replay and a conflict are still answered at capacity (the idempotency lookup precedes the capacity check). After every run the harness asserts: journal length equals the new-success count, receipt count equals new-plus-reject, replays return the stored receipt byte-equal with `transport_duplicate` true, conflicts and capacity write nothing, and the final `state_digest` equals an independent `PinnedFsmProducer().restored(journal)` replay. The report `KIX_CAPITAL_LOAD_REPORT_V1` is labelled `LOCAL_EXPLORATION`, carries an input fingerprint over the seeded specs (no `instance_id`, token, or port), python/OS/CPU info, per-class counts and nearest-rank percentiles, and a `GET /api/metrics` snapshot. No SLO or TPS claim appears; it is not production performance evidence. `smoke` runs inside `unittest` with no timing thresholds; `full` is manual with output under uncommitted `build/`.
@@ -2128,6 +2149,22 @@ No product decision or external action was needed. No merge abort, commit, push,
 rebase or reset was performed.
 
 
+## http-hostile-corpus — conflict-fix round 1 (2026-10-25)
+
+Merged incoming main `e56224a` while preserving both sides. README retains the hostile-HTTP corpus and every incoming main entry; the validation log retains both appended histories; `scripts/docs_surface.py` registers both `http/` and `pack/` alongside main's other artifacts. Regenerated `tests/vectors/finance_vectors.json` with the merged generator: compared with incoming main, only `groups.facade_read_model.contract_digest` changes for this node's `INVALID_TARGET` contract error. All eight candidate groups, including the embedded closeout digest, survive unchanged. The hostile generator, replay tests and all 76 recipes are byte-identical to the feature parent. The existing acceptance ladder's unit stage discovers the corpus replay and `--check` drift tests.
+
+Commands actually run after resolution (all results are local SIMULATED verification):
+
+- `python3 -m unittest discover -s tests -v`: exit 0, **1121 passed** (206.066s), including the legacy COA byte guards, hostile corpus, drift/missing/unexpected-file rejection, and main's tests. No test or CI rule was weakened.
+- `python3 -m unittest discover -s tests -p test_http_hostile.py -v`: exit 0, **9 passed**; all 76 requests replayed with pinned outcomes, unchanged state/operation count and healthy server probes.
+- `python3 scripts/http_hostile.py --write` followed by `--check`: exit 0; all 76 regenerated recipes byte-identical to the feature parent.
+- `python3 scripts/docs_surface.py --check`: exit 0, **31 routes, 116 artifacts, 9 stages**. `auth_matrix`, `manifest_vectors` (19 files), `workspace_vectors` (6 files), `pack_vectors` (9 files), `finance_vectors` (97980 bytes), `closeout_digest` (4518 bytes), `forecast_vectors` (6456 bytes), `decision_bindings` and `not_bound_checklist` with `--check`: exit 0.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**. The five reference files match every manifest SHA256; those files and `manifest.json` are byte-identical to both merge parents. `.aiops/` is untouched.
+- `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `npm run test:browser`: the checked-in configuration could not bind an occupied shared loopback port. `npm run test:browser -- --config build/http-hostile-merge.playwright.cjs`: exit 0, **69 passed** (2.0m), Chromium. The ignored temporary config retains all projects/tests and uses free loopback ports, the repository working directory and a separate disposable workspace; checked-in browser configuration and CI remain unchanged.
+
+All four conflicted paths are resolved, no conflict markers remain, and the merge is left uncommitted for the supervisor. No Protocol/Commerce reference, vendor file, product terms or deployment was changed.
+
 ## fold-fuzz-determinism — conflict-fix round 1 (2026-10-25)
 
 Resolved the append conflict against main `e56224a311dbcae93be363db8a5580311bc25b23` by retaining both conflicted validation additions byte-for-byte. The merge remains uncommitted for the supervisor.
@@ -2189,3 +2226,54 @@ byte-for-byte from main. Local full-suite and browser logs are in ignored
 `build/producer-tuple-preflight-round2/`. Only the two conflicted documents were
 edited during this round. No Protocol/Commerce changes, executable re-pinning,
 external posts, merge abort, commit, push, rebase or reset were performed.
+
+## http-hostile-corpus — conflict-fix round 2 (2026-10-26)
+
+Resolved the append conflict in this file by retaining both the hostile-HTTP round-1 history and main's fold-fuzz round-1 history verbatim. Main's fold-fuzz generator, tests, corpus and integration documentation are preserved. The hostile generator, replay tests, all 76 recipes, server fixes, facade contract and handbook remain byte-identical to this node's merge parent. README and the docs registry retain both corpora. No runtime, test or CI change was needed.
+
+All results below are local SIMULATED verification. Logs are in ignored `build/http-hostile-round2/`. No external action, product decision, Protocol/Commerce modification or `.aiops/` edit was made.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1133 passed in 327.037 s, including both corpora, hostile post-state/health probes, drift/missing/unexpected-file rejection and legacy COA byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 3.1 min, using the unchanged browser configuration in an isolated loopback network namespace. |
+| `python3 scripts/http_hostile.py --write` then `--check` | Both exit 0; all 76 regenerated recipes are byte-identical to their pre-write bytes and the feature merge parent. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds and 736 commands match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts and nine stages. |
+| Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
+| Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+
+## producer-tuple-preflight — conflict-fix round 3 (2026-10-27)
+
+Resolved the append conflict in this file by retaining both this node's round-2
+record and main's hostile-HTTP round-2 record verbatim (node section first, then
+main's). The pending merge combines node HEAD `cd7c2413ed8cbaea4853c3dc162696812e6da66e`
+with MERGE_HEAD/origin/main `b3b56fef384a7c7687d2e5c4243d67887f6f93ba`. Main's hostile
+HTTP corpus, server fixes, facade contract, handbook and docs-registry entries merged
+cleanly alongside the producer preflight; no implementation or test change was needed.
+
+All results below are local SIMULATED / READ_ONLY_FIXTURE evidence. Byte agreement
+does not qualify or adopt a producer: semantic consumption remains HOLD,
+ProducerPort and CAP-16 remain NOT_BOUND, and semantic_conformance remains false.
+
+| Command / check | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1153 passed in 259.617 s, including checker mismatch/rejection, fake-gate preflight and hostile-HTTP replay tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; HOLD / NOT_BOUND. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 133 artifacts, nine stages. |
+| `python3 scripts/http_hostile.py --check`; `python3 scripts/fold_fuzz.py --check` | Both exit 0; 76 hostile files match; SIMULATED 16 seeds, 736 commands. |
+| `python3 scripts/manifest_vectors.py --check`; `python3 scripts/workspace_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | All exit 0; 19, six and nine files match respectively. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/forecast_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | All exit 0; 97980 and 6456 bytes match; declared decision references valid. |
+| `python3 scripts/gate_faults.py --check`; `python3 scripts/ce1_claims_check.py --execute`; `python3 tests/crash_matrix.py --check` | All exit 0; seven fault cases, 49/49 local behavior claims, 23 crash cells. |
+| `python3 scripts/seed_demo.py` | Exit 0; golden matches, debit = credit = 385000 synthetic units. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.1 min. Host ports 8765/8766 were occupied, so the unchanged configuration ran inside an isolated loopback network namespace. |
+| Vendor integrity | All five SHA256 locks match; vendored files, manifest and `.aiops/` byte-identical to HEAD and MERGE_HEAD. |
+| Merge hygiene | Both sides retained (diff against each parent removes no lines); no conflict markers or unmerged entries. |
+
+Logs are in ignored `build/producer-tuple-preflight-round3/`. Only `docs/VALIDATION.md`
+was edited this round. No Protocol/Commerce changes, executable re-pinning, external
+posts, merge abort, commit, push, rebase or reset were performed.
