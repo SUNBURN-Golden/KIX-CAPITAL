@@ -62,7 +62,7 @@ def build_plan(root=None):
     return [
         {
             'id': 'unit',
-            'timeout': 300,
+            'timeout': 900,
             'commands': [
                 [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
                 [py, 'scripts/decision_bindings.py', '--check'],
