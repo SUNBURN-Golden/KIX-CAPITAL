@@ -2302,3 +2302,49 @@ are staged; the merge remains uncommitted for the supervisor. No abort, commit,
 push, rebase or reset was performed. No external post, Protocol/Commerce change,
 consequential product decision, golden/decision-note/vendor change or `.aiops/`
 edit was made.
+
+## finance-property-fuzz — PR fix round 1 (2026-10-28)
+
+The supplied exact-head failure was the fold-fuzz subprocess exceeding its
+unchanged 120-second limit. The unmodified tree passed all 1151 tests locally in
+1100.364 s, so this is an intermittent timing failure rather than a reproduced
+arithmetic or corpus mismatch. A profiled single replay issued 92 fsync calls;
+the complete checker performs 1472 real saves and 2944 fsync calls across its
+independent workspaces. Physical scratch storage makes that work sensitive to
+shared-disk synchronization delays.
+
+`scripts/fold_fuzz.py` now prefers temporary directories under Linux `/dev/shm`.
+If directory creation there raises OSError (including absent or inaccessible
+shared memory), it uses the normal tempfile location. Both paths retain real
+FileWorkspace files, locks, atomic saves, fsync calls, copied-journal folds,
+per-prefix byte comparisons, all 16 seeds / 736 commands in each replay, and
+fresh-session reload checks. No timeout, seed, assertion, corpus or CI rule was
+removed or relaxed. This remains SIMULATED determinism evidence, with no storage
+durability or performance guarantee. Local timings are observations under
+varying shared-machine load, not a before/after benchmark or a claim that every
+CI resource condition fits the timeout.
+
+A new regression exercises successful scratch selection and unavailable-memory
+fallback, compares actual persisted bytes and checkpoints, and verifies cleanup
+on both normal completion and a propagated verification failure. README documents
+the scratch selection. The finance-property implementation and its one-won
+mutations, runtime code, main's HTTP work, and all existing vectors are unchanged.
+
+All results below are local SIMULATED verification. Logs are under ignored
+`build/finance-property-fix/`. This run did not invoke remote CI or post anything.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` (after fix) | Exit 0; 1152 passed in 292.568 s, including both full checker subprocesses under PYTHONHASHSEED 1 and 987654321 with the original 120-second timeout, 200 cases per finance property and every one-won mutation. Log: `unit-after.log`. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds / 736 commands, 36.893 s wall time. Log: `fold-after.log`. Corpus bytes unchanged. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.6 min, using the unchanged browser configuration in an isolated loopback namespace. Log: `browser.log`. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 31 routes, 117 artifacts, nine stages; declared references match. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; existing 98040-byte finance pack and 4578-byte closeout artifact, including its embedded copy, match without regeneration. These remain prior historical evidence, not evidence of a new acceptance ladder. |
+| SHA256 verification against `capital/vendor/manifest.json` | All five locks match commit 7481b0e16ce9b903abbffa62249bb91cd9e63cfe. |
+| `git diff HEAD` and `git diff origin/main` for protected paths | No differences in vendor files/manifest, `.aiops/`, goldens, decision notes or `capital/export.py`. |
+
+No product decision, Protocol/Commerce modification, credential, provider call,
+real money, production action, commit, push or external post was involved.
