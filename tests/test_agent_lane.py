@@ -425,9 +425,10 @@ class AgentLaneTests(unittest.TestCase):
                 'args': args,
             }
             caught = self.raises(lambda body=body: self.service.execute(body, role='agent'))
-            self.assertEqual((caught.code, caught.status), ('ROLE_FORBIDDEN', 403))
-            self.assertEqual(caught.detail['permission'], f'command:{op}')
-            self.assertEqual(caught.detail['role'], 'agent')
+            self.assertEqual((caught.code, caught.status), ('RECOVERY_AGENT_FORBIDDEN' if op == 'default' else 'ROLE_FORBIDDEN', 403))
+            if op != 'default':
+                self.assertEqual(caught.detail['permission'], f'command:{op}')
+                self.assertEqual(caught.detail['role'], 'agent')
         self.assertEqual(self.service.receipts, {})
         self.assertEqual(self.service.machine.state_digest(), digest_before)
 
@@ -540,9 +541,10 @@ class AgentHttpTests(unittest.TestCase):
                 'advance_id': 'sim-http-denied', 'args': args,
             }, token)
             self.assertEqual(status, 403, (op, payload))
-            self.assertEqual(payload['error'], 'ROLE_FORBIDDEN')
-            self.assertEqual(payload['permission'], 'command:submit')
-            self.assertEqual(payload['role'], 'agent')
+            self.assertEqual(payload['error'], 'RECOVERY_AGENT_FORBIDDEN' if op == 'default' else 'ROLE_FORBIDDEN')
+            if op != 'default':
+                self.assertEqual(payload['permission'], 'command:submit')
+                self.assertEqual(payload['role'], 'agent')
         status, session = self.request('POST', '/api/session', {'role': 'observer'}, token)
         self.assertEqual((status, session['error'], session['permission']), (403, 'ROLE_FORBIDDEN', 'session:bind'))
         for path in READS:

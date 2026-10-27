@@ -340,23 +340,27 @@ class ReadinessClaimsTests(unittest.TestCase):
         self.assertEqual(proc.stderr, '')
         self.assertNotIn(PROFILE_TOKEN, proc.stdout)
 
-    def test_acceptance_stage_runs_the_checker_fifth_and_last(self):
+    def test_acceptance_stage_runs_the_checker_seventh_and_last(self):
+        from capital.adapter_identity_claims import load_table as load_identity
         from capital.agent_claims import load_table as load_agent
         from capital.ce1_claims import load_table as load_ce1
+        from capital.lifecycle_claims import load_table as load_lifecycle
         from capital.read_model_claims import load_table as load_read_model
         from capital.upstream_claims import load_table as load_upstream
         acceptance = _acceptance()
         plan = [stage for stage in acceptance.build_plan(ROOT) if stage['id'] == 'upstream-claims']
         self.assertEqual(len(plan), 1)
         commands = plan[0]['commands']
-        self.assertEqual(len(commands), 5)
+        self.assertEqual(len(commands), 7)
         self.assertEqual(
-            commands[4][1:], ['scripts/readiness_claims_check.py', '--execute'])
+            commands[6][1:], ['scripts/readiness_claims_check.py', '--execute'])
         expected_total = (
             len(load_upstream()['claims'])
             + len(load_agent()['claims'])
             + len(load_read_model()['claims'])
             + len(load_ce1()['claims'])
+            + len(load_identity()['claims'])
+            + len(load_lifecycle()['claims'])
             + len(load_table()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'

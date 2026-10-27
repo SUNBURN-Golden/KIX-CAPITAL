@@ -104,6 +104,15 @@ class MutatedDocTests(unittest.TestCase):
         # The --check command is still named by the verification block.
         self.assertNotIn('scripts/finance_vectors.py --check', err)
 
+    def test_lifecycle_claim_readme_needles_are_required(self):
+        for needle in docs_surface.CLAIM_NEEDLES['tests/lifecycle_claims.json']:
+            with self.subTest(needle=needle):
+                tmp, copy = _mutated_copy(README, lambda text: text.replace(needle, 'REMOVED'))
+                self.addCleanup(tmp.cleanup)
+                code, _out, err = _run(['--check', '--readme', str(copy)])
+                self.assertEqual(code, 1)
+                self.assertIn(needle, err)
+
     def test_unexpected_vector_file_fails_naming_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             vectors = Path(tmp) / 'vectors'
