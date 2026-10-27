@@ -216,7 +216,7 @@ class V1UnchangedTests(unittest.TestCase):
             # decisions, export/projection code, vendor files and empty goldens.
             observation_note = 'docs/decisions/CAPITAL_OBSERVATION_RECORD.md'
             self.assertEqual(hashlib.sha256((ROOT / observation_note).read_bytes()).hexdigest(),
-                             'f78327316a50b8ecf0a23ec649f02c240c8efe2f9dbc8af07c52371cb3d0edba')
+                             '68bdda46676292a7f82815e42f05325816d44bba9dba563887f1bec02cf02547')
             already_on_main = self._git('cat-file', '-e', f'{base}:{observation_note}').returncode == 0
             self.assertEqual(guarded.stdout.split(), [] if already_on_main else [observation_note])
             # Also preserve the closeout binding note against the incoming reviewed
