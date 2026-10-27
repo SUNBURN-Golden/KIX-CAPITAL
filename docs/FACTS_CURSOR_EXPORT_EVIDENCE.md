@@ -69,3 +69,37 @@ anchor, so offline verification needs only the trusted built-in fixtures. The
 row-reorder attack swaps adjacent JOURNAL/OVERLAY rows while preserving each
 source list, specifically reaching the final row-rebuild check. No product or
 financial decision was needed.
+
+## PR fix round 1 after the main merge
+
+Verified the uncommitted fix on branch `agent/capital-facts-cursor-export`, HEAD
+`84c5766`. The reported failure was the fold-fuzz subprocess exceeding its
+120-second test timeout. The unchanged checker passed locally in 25.2 seconds,
+so that timeout did not reproduce in this workspace. Profiling identified
+redundant journal deep copies and repeated digest calculations in `capture`.
+The fix replays detached journals from the parsed, checksum-verified envelope,
+compares them to the live journals before replay, and reuses computed digests.
+All seeds, commands, prefix checks, independent replays, file writes, reloads,
+hash-seed runs and the 120-second timeout remain in place. The corpus was not
+regenerated. A new regression checks that checksum-valid persisted F04 and
+overlay journals differing from the live book are both refused.
+
+| Check | Fix-round result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | 1,148 passed in 283.025 seconds, including the reported subprocess test. |
+| `python3 -m unittest discover -s tests -p test_fold_fuzz.py -v` | 13 passed, including the added divergence regression and both hash-seed subprocesses. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; 16 seeds, 736 commands; standalone elapsed 23.4 seconds. This is a local observation, not a performance guarantee. |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | 14 passed. |
+| `python3 scripts/facts_vectors.py --check` | 133 canonical/intentional-tamper files matched. |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; 7 pages, 27 rows. |
+| `python3 -m capital.verify --facts tests/vectors/facts/corrupt/entry-byte` | Expected exit 1, `PAGE_DIGEST_MISMATCH`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; docs surface reports 33 routes, 250 artifacts, 9 stages. |
+| `PYTHONDONTWRITEBYTECODE=1 python3 build/facts_local_ci.py browser` | Runs `npm run test:browser` using the previously documented temporary loopback port remap. Initial run alongside unit tests: 68 passed, first auditor panel visibility assertion timed out; its captured page snapshot contains the loaded panel. Isolated full rerun: all 69 passed in 2.3 minutes, without assertion or timeout changes. Config restored afterward. |
+
+The five vendor SHA256 pins and manifest bytes, legacy `capital/export.py`,
+goldens, facts vectors and fold-fuzz corpus remain unchanged. No CI configuration
+or existing test assertion was changed. No commit, push or external post was made.
+All facts results remain SIMULATED, with source authority and authentication
+NOT_BOUND. No product decision was needed.
