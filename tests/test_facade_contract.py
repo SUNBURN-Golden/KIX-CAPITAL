@@ -114,6 +114,10 @@ class FacadeContractTests(unittest.TestCase):
         used = set()
         for row in self.doc['routes']:
             self.assertTrue(row['errors'])
+            self.assertTrue(
+                set(self.doc['errorGroups']['boundary']) <= set(row['errors']),
+                (row['method'], row['path'], 'missing shared boundary errors'),
+            )
             unknown = set(row['errors']) - codes
             self.assertFalse(unknown, unknown)
             used.update(row['errors'])
