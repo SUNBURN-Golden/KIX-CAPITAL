@@ -704,3 +704,13 @@ python3 scripts/lifecycle_claims_check.py --execute
 수용 사다리의 `upstream-claims` 단계는 이제 명령을 일곱 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행), 넷째가 `scripts/ce1_claims_check.py --execute`(49행), 다섯째가 `scripts/adapter_identity_claims_check.py --execute`(30행), 여섯째가 `scripts/lifecycle_claims_check.py --execute`(12행), 일곱째가 `scripts/readiness_claims_check.py --execute`(13행)다. 단계의 `passed`와 `total`은 일곱 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39+49+30+12+13=324행이고 label은 그대로 `CLAIM_CONFORMANCE`다. 이 노드의 두 `DOCUMENTED_DIVERGENCE`(`documented_divergences=2`)는 passed에 더하지 않고 따로 센다. 앞선 절들의 옛 열거와 합계(다섯·여섯 명령, 282·311)는 표가 적었을 때의 기록이며 고치지 않는다. CAP-11(내구 거래·inbox/outbox)과 CAP-16(exact producer/SDK tuple)은 이 표에서도 계속 NOT_BOUND다. 이 표는 vendor 핀 `7481b0e`의 새 소비 범위로 리핀 정책 §3.1의 소비자 명시(대상 경로·소비 범위·검사·binding)를 표 헤더의 `pin_class`·`consumption_scope`에 담는다; `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`의 `bound_tables` 인벤토리 등록은 그 노트 소유자의 다음 갱신에서 이루어지며 이 노드는 노트를 갱신하지 않는다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:http-hostile-corpus -->
+
+### http-hostile-corpus
+
+`tests/vectors/http/`는 loopback 서버에 보내는 비정상 원시 요청 76건을 바이트로 고정한 코퍼스다. 각 파일은 요청 바이트(`request_b64`, 자리표시자 `__PORT__`·`__TOKEN__`만 치환)와 고정된 결과(`expect.status`, `expect.code`, 응답 접두·표지)를 담고, `tests/test_http_hostile.py`가 in-process `make_server(0)`에 replay한다. 매건 뒤에 `state_digest`·`operation_count` 불변과 `GET /api/health` 200을 다시 확인하고, 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다.
+
+코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
