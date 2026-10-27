@@ -534,3 +534,54 @@ Logs are retained locally as `build/bundled-fix-acceptance.log`,
 Only the parser, its regressions and release/evidence notes changed.
 
 STATUS: READY
+
+## Conflict-fix round 2 — 2026-10-27
+
+Resolved all three merge conflicts while retaining both parents' work:
+
+- `docs/OPERATOR_HANDBOOK_KO.md`: preserves the artifact bundling and hostile-HTTP sections verbatim, each with its own closing section marker.
+- `docs/VALIDATION.md`: preserves both appended validation histories verbatim and adds this round's evidence pointer.
+- `tests/vectors/finance_vectors.json`: regenerated with `python3 scripts/finance_vectors.py --write` from the combined facade contract. Only the facade read-model group differs; all seven other groups and top-level metadata match both merge parents.
+
+Main's hostile-HTTP generator, replay tests, 76 fixture files, docs registry and
+acceptance script match `MERGE_HEAD` byte-for-byte. The reviewed bundling resource
+loader, decision index, ledger parser, builder, packaged smoke and release tests
+match `HEAD` byte-for-byte. The incoming acceptance timeout is retained as part
+of main; this resolution changes no CI configuration, timeout, runtime code or
+test. The five vendor references, their manifest, `capital/export.py` and
+`tests/golden/demo.json` match both merge parents byte-for-byte. All five vendor
+SHA256 locks match. No policy values were changed.
+
+All measurements below are local working-tree evidence under Python 3.13.5 and
+Node 20.19.2, not remote CI results. Chromium runs use the unchanged configuration
+inside an isolated loopback network namespace. All journeys are SIMULATED and
+provisional; no real funds, provider calls, signing, publication or deployment.
+
+| Verification | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,145 tests passed in 255.289 seconds, including legacy goldens, export byte guards, bundled-resource tests, hostile HTTP and fold-fuzz coverage. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 1.9 minutes. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages. |
+| `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 97,980 bytes match the combined contract. |
+| `python3 scripts/http_hostile.py --check` | Exit 0; all 76 fixtures match. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; 16 seeds and 736 commands match, SIMULATED. |
+| Two `scripts/build_release.py --out` builds and `cmp` | Exit 0; byte-identical artifacts in `build/bundled-round2/dist/` and `build/bundled-round2/dist2/`. |
+| `python3 scripts/smoke_release.py build/bundled-round2/dist/capital-0.2.0.pyz` | Exit 0; all 11 checks pass, including bundled provenance, actual note-derived accrual, identical overlay state/provenance after temporary workspace restart, repayment and closure outside checkout. |
+| Independent archive audit | Exact 77-member archive, including exactly 18 authorized additional inputs; all manifest file hashes and raw note bytes match. Unsigned/unpublished labels retained. |
+| Preservation and merge hygiene | Five vendor pins, manifest, export and golden unchanged; both doc histories retained; no unmerged entries or conflict markers; whitespace checks pass against both parents. |
+
+Merged build SHA256:
+`51bc10dbf4d121e37ee7f67267617974cf0c1be3daf59d2256eb4f89c5367289`.
+The artifact remains `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`.
+Unit and browser logs are retained locally in `build/bundled-round2/unit.log`
+and `build/bundled-round2/browser.log`; artifacts and logs are ignored.
+
+The merge remains uncommitted for the supervisor. No abort, commit, push, rebase,
+reset, external post, `.aiops/` edit or Protocol/Commerce modification was made.
+No consequential product decision was needed.
+
+STATUS: READY

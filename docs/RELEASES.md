@@ -53,6 +53,14 @@ Two builds with the same interpreter and the same source tree produce the same S
 - Corpus equivalence and malformed-fence regressions accompany the change. All 11 packaged smoke checks pass, including simulated accrual and workspace restart provenance.
 - Exact archive scope, per-file manifest hashes and labels remain `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`. Local acceptance evidence is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; no remote CI success is claimed.
 
+### 0.2.0 — conflict-fix round 2 rehearsal (2026-10-27)
+
+- Artifacts: `build/bundled-round2/dist/capital-0.2.0.pyz` and `build/bundled-round2/dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `51bc10dbf4d121e37ee7f67267617974cf0c1be3daf59d2256eb4f89c5367289` (local unsigned build).
+- Preserves bundled policy provenance and main's hostile-HTTP handling. All 11 packaged smoke checks pass, including note-derived accrual and identical overlay state/provenance after a temporary workspace restart outside checkout.
+- Exact archive scope: 77 members, including 18 authorized policy inputs; every manifest hash matches. Labels remain SIMULATED/provisional, `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`.
+- Merge verification is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; historical build records are preserved.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).

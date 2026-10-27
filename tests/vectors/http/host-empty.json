@@ -1,0 +1,1 @@
+{"expect":{"body_marker":null,"code":"LOOPBACK_HOST_REQUIRED","content_type_prefix":"application/json","status":403},"format":"KIX_CAPITAL_HTTP_HOSTILE_V1","label":"SIMULATED","name":"host-empty","note":"an empty Host value","post_state":{"health_status":200,"operation_count":"UNCHANGED","state_digest":"UNCHANGED"},"request_b64":"R0VUIC9hcGkvaGVhbHRoIEhUVFAvMS4wDQpIb3N0Og0KDQo="}
