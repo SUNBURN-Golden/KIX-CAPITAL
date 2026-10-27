@@ -157,6 +157,46 @@ class ContractInvariantTests(unittest.TestCase):
         trace['snapshots'][-1]['cases'][0]['outstanding_exposure'] = 1
         self.assertFalse(inv.inv4_single_effect(trace)['ok'])
 
+    def test_inv4_detects_replay_increase_after_partial_repayment(self):
+        draw = inv.command('draw', 'partial-draw')
+        trace = inv._run([
+            {'commands': [inv.command('offer', 'partial-offer',
+                                      fixture_id='sim-committed', amount=5000)]},
+            {'commands': [inv.command('approve', 'partial-approve')]},
+            {'commands': [draw]},
+            {'commands': [inv.command('repay', 'partial-repay', amount=2000, sequence=1)]},
+            {'kind': 'restart', 'commands': []},
+            {'commands': [draw, copy.deepcopy(draw)], 'kind': 'concurrent', 'replay': True},
+        ])
+        balances = [s['cases'][0]['outstanding_exposure'] for s in trace['snapshots'][3:]]
+        self.assertEqual(balances, [5000, 3000, 3000, 3000])
+        self.assertTrue(inv.inv4_single_effect(trace)['ok'])
+        self.assertTrue(all(r['transport_duplicate'] for r in trace['steps'][-1]['results']))
+        trace['snapshots'][-1]['cases'][0]['outstanding_exposure'] = 5000
+        result = inv.inv4_single_effect(trace)
+        self.assertFalse(result['ok'])
+        self.assertIn('exposure increased after draw', [v[-1] for v in result['violations']])
+
+    def test_inv4_detects_missing_or_incomplete_initial_draw_increase(self):
+        first_draw = next(i for i, snap in enumerate(self.trace['snapshots'])
+                          if any(r['draw_id'] for r in snap['cases']))
+        for exposure in (0, self.trace['snapshots'][first_draw]['cases'][0]['amount'] - 1):
+            with self.subTest(exposure=exposure):
+                trace = copy.deepcopy(self.trace)
+                trace['snapshots'] = trace['snapshots'][:first_draw + 1]
+                trace['snapshots'][-1]['cases'][0]['outstanding_exposure'] = exposure
+                result = inv.inv4_single_effect(trace)
+                self.assertFalse(result['ok'])
+                self.assertIn('initial draw increase missing or incorrect',
+                              [v[-1] for v in result['violations']])
+
+    def test_inv4_detects_exposure_without_draw(self):
+        trace = copy.deepcopy(self.trace)
+        row = trace['snapshots'][1]['cases'][0]
+        self.assertIsNone(row['draw_id'])
+        row['outstanding_exposure'] = row['drawn_exposure'] = row['amount']
+        self.assertFalse(inv.inv4_single_effect(trace)['ok'])
+
     def test_inv4_detects_concurrent_double_amount_in_first_draw(self):
         trace = copy.deepcopy(self.trace)
         row = next(r for snap in trace['snapshots'] for r in snap['cases'] if r['draw_id'])

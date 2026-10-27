@@ -117,20 +117,28 @@ def inv3_first_result(trace):
 
 
 def inv4_single_effect(trace):
-    bad, previous, raises, draws = [], {}, {}, {}
+    bad, previous, draws = [], {}, {}
     for snap in trace['snapshots']:
         for row in snap['cases']:
             key = row['advance_id']
             now = row['outstanding_exposure']
-            if previous.get(key, 0) == 0 and now > 0:
-                raises[key] = raises.get(key, 0) + 1
-            if (raises.get(key, 0) > 1 or not 0 <= now <= row['drawn_exposure'] <= row['amount']
+            before = previous.get(key, 0)
+            if (not 0 <= now <= row['drawn_exposure'] <= row['amount']
                     or (row['draw_id'] and row['drawn_exposure'] != row['amount'])):
                 bad.append((snap['n'], key, 'multiple economic effects'))
-            if row['draw_id']:
-                if key in draws and draws[key] != row['draw_id']:
+            if key in draws:
+                if draws[key] != row['draw_id']:
                     bad.append((snap['n'], key, 'draw binding changed'))
+                if now > before:
+                    bad.append((snap['n'], key, 'exposure increased after draw'))
+            elif row['draw_id']:
+                # Each step observes the facade: the first draw must add its full
+                # amount, and repayment/replay/restart can never add it again.
+                if now - before != row['drawn_exposure']:
+                    bad.append((snap['n'], key, 'initial draw increase missing or incorrect'))
                 draws[key] = row['draw_id']
+            elif now != 0 or row['drawn_exposure'] != 0:
+                bad.append((snap['n'], key, 'exposure without draw'))
             previous[key] = now
     for cell in trace['steps']:
         if cell.get('duplicate_draw_probe') and any(

@@ -32,7 +32,7 @@
     },
     {
       "check_id": "inv4",
-      "claim": "Outstanding exposure rises from zero at most once per advance across replay and restart.",
+      "claim": "The first recorded draw increases outstanding exposure by its full amount; exposure never increases again for that advance across repayment, replay and restart.",
       "expected": true,
       "id": "inv.4",
       "needle": "One full provider/account/operation has only one economic capture effect",

@@ -2255,3 +2255,44 @@ The three resolutions are staged for the supervisor. No merge abort, commit,
 push, rebase or reset was performed. No `.aiops/`, vendor, Protocol, Commerce,
 CI or test guard changes were made in this conflict-fix round. Pin registration
 remains the existing documented follow-up; no new product decision is needed.
+
+## contract-invariants-claims — PR fix round 2 (2026-10-27)
+
+The blocking INV-4 finding was valid. Counting zero-to-positive transitions
+missed replay increases after partial repayment, and did not require the first
+recorded draw to increase exposure. The predicate now requires the initial draw
+to add its full drawn amount, rejects every later increase for that advance,
+and rejects exposure without a recorded draw. Draw identity and amount bounds
+remain checked. The INV-4 claim text now states this stronger observation rule;
+the twelve seeded command/reply digests are unchanged.
+
+The new facade regression draws 5,000 synthetic fixture units, repays 2,000,
+reopens the workspace and concurrently replays the same draw id. Observed
+balances are 5,000 / 3,000 / 3,000 / 3,000. Mutating the final balance back to
+5,000 fails INV-4. Separate mutations remove or understate the first draw's
+increase, or introduce exposure before a draw. Running the replay and initial
+draw regressions against the original HEAD predicate produces three expected
+assertion failures; the revised predicate passes both tests and rejects all
+three mutations. This is finite-trace `SIMULATED` / `CLAIM_CONFORMANCE` evidence,
+not upstream kernel execution or a real economic effect.
+
+The supplied CI tail contains successful artifact uploads and runner deprecation
+warnings, without the failing stage or assertion. Local verification results for
+this round are recorded below; they do not assert that remote CI was rerun.
+
+| Command / check | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_contract_invariants -v` | Exit 0; 31 tests in 12.145 s, zero failures/errors/skips, including the new INV-4 mutations. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,155 tests in 263.339 s, zero failures/errors/skips. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 0; all nine stages pass: unit 1,155, storage 19, vendor 7, upstream claims 311, node syntax, browser 69, package smoke 8, seeded demo 1, simulated journeys 4. Local `build/acceptance-evidence.json` records `ok=true`, `SIMULATED`, and no funds executed. No CI failure reproduced. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven tests pass. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests pass in 2.0 min. Existing host services on ports 8765/8766 remain running; Playwright uses unchanged configuration on isolated loopback. |
+| `python3 scripts/contract_invariants_check.py --execute` | Exit 0; six of six rows pass, loopback EXECUTED. Citation verification separately SKIPPED without a checkout argument. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six of six rows pass, all 12 pinned seed digests MATCH, loopback EXECUTED. |
+| `python3 scripts/contract_invariants_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; all six citation needles verify read-only. |
+| `python3 scripts/docs_surface.py --check` and `python3 scripts/decision_bindings.py --check` | Both exit 0; 31 routes, 41 artifacts, nine stages; zero binding findings. |
+| `python3 -m unittest tests.test_handbook tests.test_coverage tests.test_docs_surface -v` | Exit 0; all 27 tests pass after adding this round's validation notes. |
+| Deterministic release builds and `scripts/smoke_release.py` | Two independent temporary builds are byte-identical (SHA256 `e12f4b5a97a8f1a64c42a25ad74d45b095d7d0a91fab429ca6a2050fd4288e2c`); all eight smoke checks pass. |
+| Vendor integrity and protected paths | All five SHA256 locks match; all five references and `manifest.json` are byte-identical to HEAD. No edits to vendor, `.aiops/`, CI, legacy export construction, Protocol or Commerce. |
+| `git diff --check` | Exit 0. |
