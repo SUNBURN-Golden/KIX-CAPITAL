@@ -1,0 +1,1 @@
+{"expect":{"body_marker":null,"code":null,"content_type_prefix":"application/json","status":null},"format":"KIX_CAPITAL_HTTP_HOSTILE_V1","label":"SIMULATED","name":"blank-request","note":"a blank request line closes the connection silently","post_state":{"health_status":200,"operation_count":"UNCHANGED","state_digest":"UNCHANGED"},"request_b64":"DQoNCg=="}
