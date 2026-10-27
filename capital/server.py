@@ -46,6 +46,8 @@ GET_DISPATCH = (
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
+    ('/api/export/facts', False, 'export_facts'),
+    ('/api/export/facts/schema', False, 'facts_schema'),
     ('/api/reconciliation', False, 'reconciliation'),
     ('/api/statement', False, 'statement'),
     ('/api/metrics', False, 'metrics'),
@@ -366,6 +368,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
+
+        def _get_export_facts(self, route, principal):
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(service.export_facts(route.query)))
+
+        def _get_facts_schema(self, route, principal):
+            from capital.facts import schema
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(schema()))
 
         def _get_export_manifest(self, route, principal):
             return self.reply(200, service.export_manifest())

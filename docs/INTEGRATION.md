@@ -206,6 +206,8 @@ Each cell is the HTTP result for that caller and route. A bare `200` means the g
 | GET | `/api/operations/…` | `receipt:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export/manifest` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/export/facts` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/export/facts/schema` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/reconciliation` | `reconciliation:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/statement` | `statement:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/metrics` | `metrics:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
@@ -329,3 +331,36 @@ snapshots. Six slice kinds persist in `overlay.state.claim_slices`, absent when
 empty; schema stays 1. V3 export and offline verification cover the fold and its
 F04-prefix links. No title, money, COA posting or pinned-FSM application occurs.
 Time impairment and slice write-off remain NOT_BOUND / NOT_POSTABLE_V1.
+
+
+### Typed facts candidate
+
+- `GET /api/export/facts`: `export:read`; exactly one `instance_id` matching the
+  active session is required, with optional `after` and `limit` (default 100,
+  range 1..500). Unknown or repeated query keys and bad limits return 400
+  `INVALID_ARGUMENTS`; malformed/zero/out-of-range cursors return 400
+  `INVALID_CURSOR`. A well-formed cursor from another cut returns 409 `CUT_MOVED`.
+  A stale or missing instance returns 409 `SESSION_CHANGED`. The response is
+  canonical ASCII JSON bytes without a newline, under `KIX_CAPITAL_FACTS_PAGE_V1`.
+  Persist the bytes in ordered `page-*.json` files for `python3 -m capital.verify
+  --facts DIR`. The page embeds the schema, typed rows, separate F04/overlay cut
+  digests, row hashes, chain endpoints, page digest and `next_cursor`.
+- `GET /api/export/facts/schema`: `export:read`; canonical schema document
+  `KIX_CAPITAL_FACTS_SCHEMA_V1`, pinned as `tests/vectors/facts/schema.json`.
+
+Both routes are read-only. Observer and agent roles lack `export:read`. Facts
+refuse inactive/unreadable workspaces or mismatched on-disk state with 503
+`WORKSPACE_UNREADABLE`, `STORAGE_STATE_MISMATCH` or the workspace failure code.
+Unsupported producers return 503 `COHERENT_SNAPSHOT_UNSUPPORTED`.
+Rows preserve each source journal's raw order. Before each overlay entry, emit
+unemitted F04 entries below the running maximum overlay `after_journal_index`;
+emit the remaining F04 entries last. Identical repeated overlay IDs remain rows
+with `duplicate: 1`, even when their raw anchor is older. Extracting journal rows
+matches `/api/export` canonical journal bytes; overlay rows match the V3 manifest
+section journal. The legacy export has no overlay field and is unchanged.
+Empty overlays omit both overlay cut keys under the adopted
+[overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
+
+This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
+prevent replacement of a whole consistent book. No import or resume path exists.

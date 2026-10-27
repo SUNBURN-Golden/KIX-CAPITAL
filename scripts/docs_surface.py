@@ -91,6 +91,8 @@ ROUTE_NEEDLES = {
     ('GET', '/api/operations/'): ('`GET /api/operations/{operation_id}',),
     ('GET', '/api/export'): ('- `GET /api/export`:',),
     ('GET', '/api/export/manifest'): ('- `GET /api/export/manifest`:',),
+    ('GET', '/api/export/facts'): ('- `GET /api/export/facts`:',),
+    ('GET', '/api/export/facts/schema'): ('- `GET /api/export/facts/schema`:',),
     ('GET', '/api/reconciliation'): ('- `GET /api/reconciliation`:',),
     ('GET', '/api/statement'): ('- `GET /api/statement`:',),
     ('GET', '/api/metrics'): ('- `GET /api/metrics`:',),
@@ -112,6 +114,7 @@ ROUTE_NEEDLES = {
 # command that pins its bytes.
 VECTOR_NEEDLES = {
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
+    'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
     'http/': ('tests/vectors/http/', 'scripts/http_hostile.py --check'),

@@ -2241,6 +2241,37 @@ The merge remains uncommitted for the supervisor.
 | Vendor and protected paths | All five SHA256 locks match; files and manifest are byte-identical to both merge parents and main. No changes to `.aiops/`, `capital/export.py` or CI. |
 | Merge hygiene | Both parent validation histories preserved; no tracked conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
+### Typed facts integrity candidate
+
+`python3 scripts/facts_vectors.py --check` byte-pins `tests/vectors/facts/`,
+including the served schema, clean overlay/empty-overlay books, byte corruption,
+and semantic attacks with enclosing hashes recomputed. `python3 -m unittest
+discover -s tests -p 'test_facts*.py' -v` exercises HTTP canonical encoding,
+cut fencing, storage-health refusal, raw duplicate order, schema types/widths,
+page stitching, CLI exit codes and slice/recovery witness link rejection.
+`python3 -m capital.verify --facts DIR` accepts only exact canonical ASCII JSON
+page bytes; a one-byte mutation fails parsing, canonicalization or integrity.
+It never imports or resumes a workspace. The verifier trusts built-in
+`FixtureViews()` only: custom-fixture books fail `FIXTURES_MISMATCH` by design.
+
+Rows are rebuilt from embedded entries after pinned F04 replay and overlay fold;
+`recovery.validate_links` and `slices.validate_links` bind overlay witnesses to
+those entries. This is corruption detection, not authentication: an entirely
+consistent replacement with all hashes rebuilt is undetectable. Labels stay
+`SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, not `k-stage7-authenticated-export`.
+The technical page bound adds no financial limit or source-cut authority.
+Legacy v1 exports and vendored bytes remain unchanged.
+
+The facts-cursor-export local run used an uncommitted implementation on base HEAD
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`. Its nine-stage acceptance evidence
+recorded 1,138 unit tests and 69 browser tests passing; two independent builds
+produced SHA256 `945082dc2224dddf8637c65343c7e097bf592b2cc61f278a97e6f626cadf87a3`.
+These are local SIMULATED checks, not a claim about a future commit or independent
+CI. Exact commands, earlier failures, fixes and the temporary loopback browser
+port adaptation are recorded in [FACTS_CURSOR_EXPORT_EVIDENCE.md](FACTS_CURSOR_EXPORT_EVIDENCE.md).
+
+
 ## http-hostile-corpus — conflict-fix round 2 (2026-10-26)
 
 Resolved the append conflict in this file by retaining both the hostile-HTTP round-1 history and main's fold-fuzz round-1 history verbatim. Main's fold-fuzz generator, tests, corpus and integration documentation are preserved. The hostile generator, replay tests, all 76 recipes, server fixes, facade contract and handbook remain byte-identical to this node's merge parent. README and the docs registry retain both corpora. No runtime, test or CI change was needed.
@@ -2291,3 +2322,70 @@ configuration in an isolated loopback namespace (`acceptance-evidence.json`,
 `ok=true`). All existing main matrix rows, role grants and cells remain unchanged;
 only `/api/permissions` and its five caller cells are added. The five vendor SHA256
 locks and manifest remain byte-identical to HEAD. No commit, push or posting occurred.
+
+
+## facts-cursor-export — conflict-fix round 1 (2026-10-28)
+
+Merged incoming main `b3b56fe` (http-hostile-corpus #98 plus the acceptance-timeout bump #140) while preserving both sides. The three conflicts were append/pin conflicts: `docs/OPERATOR_HANDBOOK_KO.md` retains this node's facts-export section and main's `http-hostile-corpus` section; this file retains both appended histories verbatim; `tests/vectors/finance_vectors.json` is byte-identical to the merged generator's output — versus this node's parent only `groups.facade_read_model.contract_digest` moves, covering the combined contract (both `INVALID_TARGET` from main and the two facts routes from this node). The embedded `closeout_digest` group and the committed `tests/vectors/closeout_digest.json` stay this node's honest recorded pass and match each other byte-for-byte. Main's `request_route()` invalid-target fix and this node's facts route registration coexist in `capital/server.py`; `scripts/docs_surface.py` registers both `facts/` and `http/`; `README.md` keeps both corpus entries; `scripts/acceptance.py` takes main's 300s→900s unit-stage timeout.
+
+All results below are local SIMULATED verification run on the merged tree. No runtime, test, CI or documentation rule was weakened; no Protocol/Commerce reference, vendor file, `.aiops/` path or product term was changed.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1147 passed** in 418.271 s, including the facts export/vector suites, the hostile-HTTP corpus, legacy COA byte guards and all of main's tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 98712 bytes match (merged contract digest, both route sets). |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4518 bytes, embedded copy matches. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 33 routes, 250 artifacts, 9 stages. |
+| `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,pack_vectors,forecast_vectors,decision_bindings,not_bound_checklist,http_hostile,fold_fuzz,facts_vectors}.py --check` | All exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | First run: 64 passed, 5 failed under heavy host load (load average ~8.5; run took 46 min; failures were timeouts and REJECTED receipts from starved loopback servers, not assertion diffs). Immediate `npx playwright test --last-failed` in the same namespace: **all 5 passed in 13.1 s** — flaky under load, not a merge regression. All 69 tests pass; the checked-in browser config is unchanged. |
+| Vendor integrity | `git diff` of `capital/vendor` and `.aiops` against both merge parents is empty; the five reference files and `manifest.json` are byte-identical. |
+| Merge hygiene | All three conflicted paths resolved with both sides preserved; no conflict markers (`<<<<<<<`/`=======`/`>>>>>>>`) or unmerged index entries; `git diff --check` clean. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+
+## permission-catalog-surface — conflict-fix round 1 (2026-10-28)
+
+Resolved all 12 conflicts against incoming main `dce49d4` while preserving this
+node's permission catalog and main's typed facts export. Both parent validation
+histories remain verbatim and in order. The finance tests retain both route lists
+and now pin 33 API GET routes and 45 total facade routes. Finance vectors and all
+nine pack vectors were regenerated from the combined implementation; main's
+recorded closeout digest is preserved. Every existing matrix row, role grant and
+role cell from both parents remains unchanged. Relative to main, this node adds
+only `/api/permissions` and its five caller cells.
+
+The first full unit run found one integration defect: the permission-catalog
+contract row lacked main's shared `INVALID_TARGET` boundary error. Added that
+existing error to the row and regenerated the finance contract digest; the focused
+contract/finance suite then passed all 60 tests. No runtime or authorization policy
+change was required, and no test or CI rule was weakened.
+
+The first Chromium run passed 68 tests and timed out waiting for a command response
+in the existing lowered-cap portfolio test. Its targeted retry could not launch:
+the shared Playwright browser cache had disappeared after the initial run. The
+system Chromium 139 fallback emitted console errors from automatic `/favicon.ico`
+requests (confirmed in its traces). The final run therefore uses the locally
+available Chromium headless shell 153, revision 1243, via the ignored
+`build/pcs-conflict-round1/playwright-headless.config.cjs`. Tests, timeouts and
+server commands remain unchanged; only the browser executable and output paths
+are adapted. Browser runs use an isolated loopback network namespace. This is
+local SIMULATED verification; identity and authentication remain NOT_BOUND. No
+external posting, real provider call or product decision occurred.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Final exit 0; 1,153 tests passed in 268.271 s after the shared boundary-error contract fix. |
+| `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v` | Exit 0; 49 tests passed, including live role cells and served-catalog drift checks. |
+| `python3 -m unittest tests.test_facade_contract tests.test_finance_vectors -v` | Exit 0; 60 tests passed after the contract fix. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/docs_surface.py --check` | Both exit 0; served catalog, pinned matrix and generated docs agree; 34 routes, 250 artifacts, nine stages. |
+| `python3 scripts/{finance_vectors,pack_vectors,facts_vectors,closeout_digest,fold_fuzz,http_hostile,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist}.py --check` | All exit 0. Finance: 99070 bytes; pack: nine files; facts: 133 files; fold fuzz: 16 seeds, 736 commands. Finance and pack checks repeated after the contract fix. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --config build/pcs-conflict-round1/playwright-headless.config.cjs'` | 68 passed, one 30 s timeout in the existing keyboard/mobile-layout test (2.7 min total). Same command with `--last-failed`: exit 0, one passed in 4.9 s (test: 3.0 s). All 69 browser tests have passing results; this is not a claim of one uninterrupted green run or the pinned browser revision. |
+| Vendor and protected paths | All five SHA256 locks match; vendor files and manifest are byte-identical to both parents. No changes to `.aiops/`, legacy `capital/export.py` or CI. |
+| Merge hygiene | No conflict markers or unmerged entries. `git diff --check MERGE_HEAD` passes. Against HEAD, the sole whitespace warning is main's unchanged intentional `facts/corrupt/whitespace/page-0000.json` fixture; excluding that fixture passes. |
+
+Logs and temporary browser configurations are retained in ignored
+`build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
+responsibility for the merge commit; no abort, commit, push, rebase or reset was
+performed.

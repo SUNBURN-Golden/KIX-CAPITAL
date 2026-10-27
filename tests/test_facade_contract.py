@@ -124,6 +124,10 @@ class FacadeContractTests(unittest.TestCase):
         used = set()
         for row in self.doc['routes']:
             self.assertTrue(row['errors'])
+            self.assertTrue(
+                set(self.doc['errorGroups']['boundary']) <= set(row['errors']),
+                (row['method'], row['path'], 'missing shared boundary errors'),
+            )
             unknown = set(row['errors']) - codes
             self.assertFalse(unknown, unknown)
             used.update(row['errors'])
@@ -215,6 +219,8 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', f'/api/operations/j-offer?instance_id={instance}', '/api/operations/{{operation_id}}', None),
             ('GET', '/api/export', '/api/export', None),
             ('GET', '/api/export/manifest', '/api/export/manifest', None),
+            ('GET', f'/api/export/facts?instance_id={instance}', '/api/export/facts', None),
+            ('GET', '/api/export/facts/schema', '/api/export/facts/schema', None),
             ('GET', '/api/reconciliation', '/api/reconciliation', None),
             ('GET', '/api/statement', '/api/statement', None),
             ('GET', '/api/metrics', '/api/metrics', None),
