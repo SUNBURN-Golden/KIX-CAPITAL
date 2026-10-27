@@ -1522,7 +1522,7 @@ packaged-smoke 8; seeded-demo 1; integrated-journeys 4 (SIMULATED). The JSON
 records actual subprocess commands and their output tails; it has not been
 rewritten to conceal the failed unit stage.
 
-`DECISION_REQUIRED.md` records the supervisor-owned baseline/integration choice.
+`DECISION_REQUIRED.md` recorded the supervisor-owned baseline/integration choice (resolved and removed 2026-10-27; see the re-verification below).
 Node HEAD is `5c2398937e12f5a88a2cbd747f5a1edf2f97d95a`; the observed
 `origin/main` was `aab0a73`. No guard was weakened, no refs were moved, and
 no Git commit, push, PR, issue or comment was created.
@@ -1545,10 +1545,42 @@ Changed files: `capital/dossier.py`, `capital/auth.py`,
 `tests/auth_matrix.json`; the six `tests/vectors/dossiers/*.json`,
 `tests/vectors/finance_vectors.json`, the nine `tests/vectors/pack/*.json`;
 `README.md`, `docs/INTEGRATION.md`, `docs/OPERATOR_HANDBOOK_KO.md`,
-`docs/VALIDATION.md`, `DECISION_REQUIRED.md`.
+`docs/VALIDATION.md` (and a root `DECISION_REQUIRED.md`, since removed).
 
-Final status: DECISION_REQUIRED for baseline alignment; no claim of a passing
-full CI or acceptance ladder. All task-related failures have been corrected.
+Status of that round: DECISION_REQUIRED for baseline alignment; no claim of a passing
+full CI or acceptance ladder. All task-related failures had been corrected.
+
+### advance-case-dossier — re-verification after supervisor merge (2026-10-27)
+
+The supervisor merged `origin/main` `aab0a73` into the branch (`cf3eb3f`). The
+guarded files (`capital/projection.py`, `capital/ports.py`, `capital/overlay.py`,
+`capital/export.py`, `tests/golden`, `capital/vendor`, `.aiops`,
+`docs/decisions`) now equal `origin/main` (`b3b56fe` at this run), so the
+baseline decision is resolved. The root `DECISION_REQUIRED.md` was removed.
+No source, test or vector change was needed. `origin/main` has since gained
+`170e7e5` (http-hostile-corpus) and `b3b56fe` (acceptance timeout). They touch
+README, facade contract, server, handbook, VALIDATION and docs_surface, so the
+next integration must merge text in those files. They do not touch any guarded
+file.
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_dossier -v` | Exit 0; 15 passed (2.4s). |
+| `python3 scripts/dossier_vectors.py --check` | Exit 0; six SIMULATED files match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 32 routes, 47 artifacts, 9 stages. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0. |
+| `PYTHONPATH=tests python3 -m unittest test_coa_candidate -v` | Exit 0; 36 passed, including the moved-main guard. |
+| `python3 -m unittest discover -s tests` | Exit 0; **1139 tests OK** (550.4s). |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js`; `git diff --check` | Exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** (2.3m) with the unchanged Playwright configuration. Host ports 8765/8766 belong to unrelated crawler services and were left alone. Captures: `test-results/dossier-{organizer,auditor}-{1280,375}.png`. |
+| `python3 scripts/{pack_vectors,finance_vectors,workspace_vectors,decision_bindings}.py --check` | Exit 0 each. |
+| `python3 scripts/seed_demo.py` | SIMULATED golden unchanged: state `a8609033…ef45`, content `2f71dab1…1dca`, debit = credit = 385000. |
+| `git diff --exit-code -- capital/vendor .aiops capital/export.py tests/golden` | No changes. |
+| `pgrep -af capital.server` | No servers from this worktree remain. The listed processes belong to the `contract-invariants-claims` worktree in its own namespace and were left alone. |
+
+`python3 scripts/acceptance.py` was not rerun as a standalone ladder. The unit
+suite above ran its stage tests.
 
 ## lifecycle-claims-conformance — merge completion and verification (2026-10-24)
 
