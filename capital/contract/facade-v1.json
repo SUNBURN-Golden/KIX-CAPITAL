@@ -7,6 +7,7 @@
   "description": "Local Capital facade schema. Not the promoted KIX Protocol catalogue (domain kix:fixture:lifecycle:0.3, 40 commands). Not a generated SDK. Not SEMANTIC_CONFORMANCE. CAP-16 exact producer/SDK tuple stays NOT_BOUND. ProducerPort vectors in tests/test_producer_port.py are a local gateway check only.",
   "errorGroups": {
     "boundary": [
+      "INVALID_TARGET",
       "LOOPBACK_HOST_REQUIRED",
       "ORIGIN_REJECTED",
       "CROSS_SITE_REJECTED",
@@ -82,6 +83,10 @@
     ]
   },
   "errors": [
+    {
+      "code": "INVALID_TARGET",
+      "status": 400
+    },
     {
       "code": "LOOPBACK_HOST_REQUIRED",
       "status": 403
@@ -500,6 +505,7 @@
         "$ref": "#/definitions/state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -522,6 +528,7 @@
         "$ref": "#/definitions/scenario_list"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -544,6 +551,7 @@
         "$ref": "#/definitions/scenario_detail"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -567,6 +575,7 @@
         "$ref": "#/definitions/readiness"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -589,6 +598,7 @@
         "$ref": "#/definitions/decisions"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -612,6 +622,7 @@
         "$ref": "#/definitions/evidence"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -641,6 +652,7 @@
         ]
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -670,6 +682,7 @@
         "$ref": "#/definitions/terms_status"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -693,6 +706,7 @@
         "$ref": "#/definitions/terms_portfolio"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -753,6 +767,7 @@
         "$ref": "#/definitions/terms_case"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -785,6 +800,7 @@
         "$ref": "#/definitions/terms_allocation"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -818,6 +834,7 @@
         "$ref": "#/definitions/terms_setoff"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -850,6 +867,7 @@
         "$ref": "#/definitions/policy_status"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -873,6 +891,7 @@
         "$ref": "#/definitions/policy_simulation"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -896,6 +915,7 @@
         "$ref": "#/definitions/policy_shadow"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -919,6 +939,7 @@
         "$ref": "#/definitions/preview"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -946,6 +967,7 @@
         "$ref": "#/definitions/underwrite"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -987,6 +1009,7 @@
         ]
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1013,6 +1036,7 @@
         "$ref": "#/definitions/export_v1"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1035,6 +1059,7 @@
         "$ref": "#/definitions/manifest"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1058,6 +1083,7 @@
         "$ref": "#/definitions/reconciliation"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1085,6 +1111,7 @@
         "$ref": "#/definitions/statement"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1108,6 +1135,7 @@
         "$ref": "#/definitions/metrics"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1131,6 +1159,7 @@
         "$ref": "#/definitions/health"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1164,6 +1193,7 @@
         ]
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1359,6 +1389,7 @@
         "$ref": "#/definitions/session"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1392,6 +1423,7 @@
         "$ref": "#/definitions/overlay_state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1541,6 +1573,7 @@
         "$ref": "#/definitions/overlay_command_receipt"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1621,6 +1654,7 @@
         "$ref": "#/definitions/agent_query_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1659,6 +1693,7 @@
         "$ref": "#/definitions/agent_subject_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1698,6 +1733,7 @@
         "$ref": "#/definitions/agent_proposal_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1743,6 +1779,7 @@
         "$ref": "#/definitions/agent_withdraw_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1782,6 +1819,7 @@
         "$ref": "#/definitions/agent_grant_change_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1823,6 +1861,7 @@
         "$ref": "#/definitions/error_envelope"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1849,6 +1888,7 @@
       "kind": "static",
       "contentType": "text/html; charset=utf-8",
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1862,6 +1902,7 @@
       "kind": "static",
       "contentType": "text/javascript; charset=utf-8",
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1875,6 +1916,7 @@
       "kind": "static",
       "contentType": "text/css; charset=utf-8",
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
