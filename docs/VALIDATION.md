@@ -2171,6 +2171,37 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
 
+### Typed facts integrity candidate
+
+`python3 scripts/facts_vectors.py --check` byte-pins `tests/vectors/facts/`,
+including the served schema, clean overlay/empty-overlay books, byte corruption,
+and semantic attacks with enclosing hashes recomputed. `python3 -m unittest
+discover -s tests -p 'test_facts*.py' -v` exercises HTTP canonical encoding,
+cut fencing, storage-health refusal, raw duplicate order, schema types/widths,
+page stitching, CLI exit codes and slice/recovery witness link rejection.
+`python3 -m capital.verify --facts DIR` accepts only exact canonical ASCII JSON
+page bytes; a one-byte mutation fails parsing, canonicalization or integrity.
+It never imports or resumes a workspace. The verifier trusts built-in
+`FixtureViews()` only: custom-fixture books fail `FIXTURES_MISMATCH` by design.
+
+Rows are rebuilt from embedded entries after pinned F04 replay and overlay fold;
+`recovery.validate_links` and `slices.validate_links` bind overlay witnesses to
+those entries. This is corruption detection, not authentication: an entirely
+consistent replacement with all hashes rebuilt is undetectable. Labels stay
+`SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, not `k-stage7-authenticated-export`.
+The technical page bound adds no financial limit or source-cut authority.
+Legacy v1 exports and vendored bytes remain unchanged.
+
+The facts-cursor-export local run used an uncommitted implementation on base HEAD
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`. Its nine-stage acceptance evidence
+recorded 1,138 unit tests and 69 browser tests passing; two independent builds
+produced SHA256 `945082dc2224dddf8637c65343c7e097bf592b2cc61f278a97e6f626cadf87a3`.
+These are local SIMULATED checks, not a claim about a future commit or independent
+CI. Exact commands, earlier failures, fixes and the temporary loopback browser
+port adaptation are recorded in [FACTS_CURSOR_EXPORT_EVIDENCE.md](FACTS_CURSOR_EXPORT_EVIDENCE.md).
+
+
 ## http-hostile-corpus — conflict-fix round 2 (2026-10-26)
 
 Resolved the append conflict in this file by retaining both the hostile-HTTP round-1 history and main's fold-fuzz round-1 history verbatim. Main's fold-fuzz generator, tests, corpus and integration documentation are preserved. The hostile generator, replay tests, all 76 recipes, server fixes, facade contract and handbook remain byte-identical to this node's merge parent. README and the docs registry retain both corpora. No runtime, test or CI change was needed.
@@ -2188,3 +2219,23 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts and nine stages. |
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+
+
+## facts-cursor-export — conflict-fix round 1 (2026-10-28)
+
+Merged incoming main `b3b56fe` (http-hostile-corpus #98 plus the acceptance-timeout bump #140) while preserving both sides. The three conflicts were append/pin conflicts: `docs/OPERATOR_HANDBOOK_KO.md` retains this node's facts-export section and main's `http-hostile-corpus` section; this file retains both appended histories verbatim; `tests/vectors/finance_vectors.json` is byte-identical to the merged generator's output — versus this node's parent only `groups.facade_read_model.contract_digest` moves, covering the combined contract (both `INVALID_TARGET` from main and the two facts routes from this node). The embedded `closeout_digest` group and the committed `tests/vectors/closeout_digest.json` stay this node's honest recorded pass and match each other byte-for-byte. Main's `request_route()` invalid-target fix and this node's facts route registration coexist in `capital/server.py`; `scripts/docs_surface.py` registers both `facts/` and `http/`; `README.md` keeps both corpus entries; `scripts/acceptance.py` takes main's 300s→900s unit-stage timeout.
+
+All results below are local SIMULATED verification run on the merged tree. No runtime, test, CI or documentation rule was weakened; no Protocol/Commerce reference, vendor file, `.aiops/` path or product term was changed.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1147 passed** in 418.271 s, including the facts export/vector suites, the hostile-HTTP corpus, legacy COA byte guards and all of main's tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 98712 bytes match (merged contract digest, both route sets). |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4518 bytes, embedded copy matches. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 33 routes, 250 artifacts, 9 stages. |
+| `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,pack_vectors,forecast_vectors,decision_bindings,not_bound_checklist,http_hostile,fold_fuzz,facts_vectors}.py --check` | All exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | First run: 64 passed, 5 failed under heavy host load (load average ~8.5; run took 46 min; failures were timeouts and REJECTED receipts from starved loopback servers, not assertion diffs). Immediate `npx playwright test --last-failed` in the same namespace: **all 5 passed in 13.1 s** — flaky under load, not a merge regression. All 69 tests pass; the checked-in browser config is unchanged. |
+| Vendor integrity | `git diff` of `capital/vendor` and `.aiops` against both merge parents is empty; the five reference files and `manifest.json` are byte-identical. |
+| Merge hygiene | All three conflicted paths resolved with both sides preserved; no conflict markers (`<<<<<<<`/`=======`/`>>>>>>>`) or unmerged index entries; `git diff --check` clean. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |

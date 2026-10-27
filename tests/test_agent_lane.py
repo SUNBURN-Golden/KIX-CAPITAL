@@ -34,6 +34,8 @@ READS = (
     '/api/projection',
     '/api/export',
     '/api/export/manifest',
+    '/api/export/facts',
+    '/api/export/facts/schema',
     '/api/reconciliation',
     '/api/statement',
     '/api/metrics',
