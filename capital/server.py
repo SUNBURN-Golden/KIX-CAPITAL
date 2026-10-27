@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlsplit
 from capital import __version__
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
-    COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES,
+    COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES, Principal,
     SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
@@ -35,6 +35,7 @@ GET_DISPATCH = (
     ('/api/projection', False, 'projection'),
     ('/api/terms', True, 'terms'),
     ('/api/overlay', False, 'overlay'),
+    ('/api/overlay/slices', False, 'overlay_slices'),
     ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
     ('/api/risk/covenants', False, 'covenants'),
@@ -321,6 +322,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             return self.reply(200, service.case_terms(
                 advance_id, instance, draw_day, as_of_day, expected))
 
+        def _get_overlay_slices(self, route, principal):
+            params = parse_qs(route.query, keep_blank_values=True)
+            if set(params) - {'quote_claim_id', 'quote_payee_label', 'expected_days'} or any(len(v) != 1 for v in params.values()):
+                raise ApiError('INVALID_ARGUMENTS')
+            expected = query_day(route.query, 'expected_days', False)
+            return self.reply(200, service.overlay_slices(
+                params.get('quote_claim_id', [None])[0], params.get('quote_payee_label', [None])[0], expected))
+
         def _get_overlay(self, route, principal):
             values = parse_qs(route.query, keep_blank_values=True).get('operation_id')
             lookup = values[0] if values and len(values) == 1 else None
@@ -390,7 +399,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             except (ValueError, UnicodeDecodeError, TimeoutError, RecursionError):
                 raise ApiError('INVALID_JSON')
 
-        def open_session(self, body):
+        def open_session(self, body, claim=None):
             if type(body) is not dict or set(body) != {'role'} or type(body['role']) is not str:
                 raise ApiError('INVALID_SESSION')
             role = body['role']
@@ -398,12 +407,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 raise ApiError('ROLE_UNKNOWN', 403)
             if not hasattr(authorizer, 'bind_role'):
                 raise ApiError('NOT_BOUND', 400)
+            if claim is not None and role != claim:
+                raise ApiError('ROLE_MISMATCH', 403, {'role': claim, 'claimed': role})
             issued = authorizer.bind_role(role)
             self.reply(200, {
                 'role': role,
                 'local_token': issued,
                 'role_provenance': PROVENANCE,
-                'mode': 'LOCAL_SYNTHETIC_ROLES',
+                'mode': 'LOCAL_SYNTHETIC_ROLES' if claim is None else authorizer.describe(Principal(role))['mode'],
                 'identity': 'NOT_BOUND',
                 'authentication': 'NOT_BOUND',
                 'idp': 'NOT_BOUND',
@@ -421,6 +432,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             except Exception:
                 return
 
+        def request_route(self):
+            try:
+                return urlsplit(self.path)
+            except ValueError:
+                raise ApiError('INVALID_TARGET')
+
         def do_GET(self):
             started = time.perf_counter()
             status = 500
@@ -428,11 +445,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                route = self.request_route()
+                path = route.path
                 if path.startswith('/api/operations/'):
                     operation_id = path[len('/api/operations/'):]
                 self.boundary()
-                route = urlsplit(self.path)
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
                     self.reply(200, read_static(name), kind)
@@ -459,7 +476,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                path = self.request_route().path
                 self.boundary(mutate=True)
                 principal = self.principal()
                 permission = None
@@ -469,12 +486,24 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                         break
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
-                require(authorizer, principal, permission)
-                body = self.read_json()
+                claim = None
+                if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
+                    body = self.read_json()
+                    from capital.slices import COMMANDS as slice_commands
+                    if type(body) is dict and type(body.get('op')) is str and body['op'] in slice_commands:
+                        raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
+                    if type(body) is dict and (body.get('op') in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration') or 'writeoff' in body):
+                        raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
+                    require(authorizer, principal, permission)
+                else:
+                    require(authorizer, principal, permission)
+                    if path == '/api/session' and hasattr(authorizer, 'session_role'):
+                        claim = authorizer.session_role(self.headers)  # 401 before the body is read
+                    body = self.read_json()
                 if path == '/api/commands' and type(body) is dict and type(body.get('operation_id')) is str:
                     operation_id = body.get('operation_id')
                 if path == '/api/session':
-                    self.open_session(body)
+                    self.open_session(body, claim)
                 elif path == '/api/commands':
                     self.reply(200, service.execute(body, role=principal.role))
                 elif path == '/api/overlay/commands':
@@ -538,6 +567,10 @@ def main():
     parser.add_argument('--producer', choices=('pinned', 'gate-fake'), default='pinned',
                         help='Opt-in producer. pinned is the in-process FSM (default). '
                              'gate-fake starts LOCAL_FAKE_GATE on 127.0.0.1. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND.')
+    parser.add_argument('--authorizer', choices=('local', 'fake-idp'), default='local',
+                        help='Opt-in session binding. local is self-selected synthetic roles (default). '
+                             'fake-idp requires a bearer token from scripts/fake_idp.py on POST /api/session. '
+                             'LOCAL_FAKE_IDP, identity and authentication stay NOT_BOUND.')
     parser.add_argument('--event-log', default=None,
                         help='Opt-in size-bounded JSONL event log. An unwritable path does not fail commands. '
                              'Not an exporter, a trace, or a network sink.')
@@ -556,8 +589,12 @@ def main():
             producer = GateHttpProducer()
         except GateUnavailable as exc:
             parser.error(exc.code)
+    authorizer = None
+    if args.authorizer == 'fake-idp':
+        from capital.idp_fake import FakeIdpAuthorizer
+        authorizer = FakeIdpAuthorizer()
     try:
-        with make_server(args.port, workspace=args.workspace, signer=signer, terms=terms, policy=policy, producer=producer, event_log=args.event_log) as server:
+        with make_server(args.port, authorizer=authorizer, workspace=args.workspace, signer=signer, terms=terms, policy=policy, producer=producer, event_log=args.event_log) as server:
             print(f'KIX Capital simulation: http://127.0.0.1:{server.server_port}', flush=True)
             if isinstance(signer, DevHmacSigner):
                 print('export signature DEV_ONLY HMAC integrity only; not authentication', flush=True)
@@ -565,6 +602,8 @@ def main():
                 print(
                     f'producer LOCAL_FAKE_GATE {producer.base_url} NOT_BOUND semantic_conformance=false',
                     flush=True)
+            if authorizer is not None:
+                print('authorizer LOCAL_FAKE_IDP session binding only; identity and authentication NOT_BOUND', flush=True)
             if args.event_log:
                 print(
                     f'event log {args.event_log} LOCAL_OBSERVABILITY max_bytes={EVENT_LOG_MAX_BYTES} not an exporter',

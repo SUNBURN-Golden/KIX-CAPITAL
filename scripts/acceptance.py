@@ -62,7 +62,7 @@ def build_plan(root=None):
     return [
         {
             'id': 'unit',
-            'timeout': 300,
+            'timeout': 900,
             'commands': [
                 [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
                 [py, 'scripts/decision_bindings.py', '--check'],
@@ -96,6 +96,8 @@ def build_plan(root=None):
                 [py, 'scripts/agent_claims_check.py', '--execute'],
                 [py, 'scripts/read_model_claims_check.py', '--execute'],
                 [py, 'scripts/ce1_claims_check.py', '--execute'],
+                [py, 'scripts/adapter_identity_claims_check.py', '--execute'],
+                [py, 'scripts/lifecycle_claims_check.py', '--execute'],
             ],
         },
         {
