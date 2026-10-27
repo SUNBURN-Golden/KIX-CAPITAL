@@ -163,8 +163,18 @@ def _fingerprints_match(receipts, journal, mapping):
             return False
         if stored is None:
             return False
-        expected = digest({'operation_id': entry['idempotency_key'], 'op': entry['op'],
-                           'advance_id': entry['advance_id'], 'args': args})
+        identity = {'operation_id': entry['idempotency_key'], 'op': entry['op'],
+                    'advance_id': entry['advance_id'], 'args': args}
+        if entry['op'] == 'default' and stored['receipt'].get('approvals'):
+            from capital.recovery import approvals
+            try:
+                labels = approvals(stored['receipt']['approvals'])
+            except ValueError:
+                return False
+            if labels != stored['receipt']['approvals']:
+                return False
+            identity['approvals'] = labels
+        expected = digest(identity)
         if not hmac.compare_digest(expected, stored['fingerprint']):
             return False
     return True
