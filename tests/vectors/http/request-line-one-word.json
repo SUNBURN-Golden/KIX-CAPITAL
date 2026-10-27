@@ -1,0 +1,1 @@
+{"expect":{"body_marker":"Bad request syntax","code":null,"content_type_prefix":null,"status":null},"format":"KIX_CAPITAL_HTTP_HOSTILE_V1","label":"SIMULATED","name":"request-line-one-word","note":"a bare method word, no target or version","post_state":{"health_status":200,"operation_count":"UNCHANGED","state_digest":"UNCHANGED"},"request_b64":"R0VUDQoNCg=="}
