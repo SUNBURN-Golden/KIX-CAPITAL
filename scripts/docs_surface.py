@@ -113,6 +113,7 @@ VECTOR_NEEDLES = {
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
+    'http/': ('tests/vectors/http/', 'scripts/http_hostile.py --check'),
     'pack/': ('tests/vectors/pack/', 'scripts/pack_vectors.py --check'),
     'finance_vectors.json': (
         'tests/vectors/finance_vectors.json', 'scripts/finance_vectors.py --check'),
@@ -124,6 +125,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'workspace_crash.json': (
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
+    'fold_fuzz.json': (
+        'tests/vectors/fold_fuzz.json', 'scripts/fold_fuzz.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
     'dev-keyset-active.json': ('tests/vectors/dev-keyset-active.json', 'scripts/manifest_vectors.py --check'),
     'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),
