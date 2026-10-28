@@ -217,9 +217,11 @@ class V1UnchangedTests(unittest.TestCase):
                 # This reviewed decision is additive to main during this merge.
                 # Pin its exact reviewed bytes; once main contains it, the normal
                 # main byte guard applies. No existing decision note is exempted.
+                # The supervisor committed the revised note in 5cbb023 before
+                # starting this merge; the prior revision's hash is now stale.
                 self.assertNotEqual(self._git('cat-file', '-e', f'{base}:{maturity_note}').returncode, 0)
                 self.assertEqual(hashlib.sha256((ROOT / maturity_note).read_bytes()).hexdigest(),
-                                 '44dc812684fa0ad0794c933c71124a128fefa9415c8c89bd1693566416d4ad5e')
+                                 'c92aa870e89cd439d09ff3553ecf7ad3bdd4f080270df0b5b2232dd5dd6ea7ba')
                 changed.remove(maturity_note)
             self.assertEqual(changed, [])
             # Also preserve the closeout binding note against the incoming reviewed

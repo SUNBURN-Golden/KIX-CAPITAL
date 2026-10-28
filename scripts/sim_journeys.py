@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim over the loopback HTTP API.
+"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim, N1-sim and N2-sim.
 
-All four journeys are scripts of fixed operation ids against a real ``capital.server`` on
+All six journeys are scripts of fixed operation ids against a real ``capital.server`` on
 127.0.0.1. They are Capital-local simulations. They are not the T03-T06 rungs of the
 acceptance ladder, claim no qualification, move no funds, and call no provider.
 
@@ -36,8 +36,14 @@ stale instance gets SESSION_CHANGED, receipts are restored, and nothing is repla
 agent EXECUTE attempt is refused and a human executes the agent's proposal, citing
 proposal_id on the receipt.
 
+N1-sim: disposable margin call, inclusive uncured deadline, acceleration and human-facing
+DEFAULT_ELIGIBLE proposal, with no F04 default. N2-sim: agent proposal, human citation
+into a simulated repayment, and auditor offline evidence-chain verification. N names
+are Capital-local, not upstream T-rung semantics.
+
 Each journey's step list is pinned by digest in tests/golden/journey_t03_sim.json,
-journey_t04_sim.json, journey_t05_sim.json and journey_t06_sim.json. A mismatch or a
+journey_t04_sim.json, journey_t05_sim.json, journey_t06_sim.json, journey_n1_sim.json
+and journey_n2_sim.json. A mismatch or a
 missing golden exits 1 unless --update-golden is passed. The golden carries no
 instance id, token, port, path, or timestamp.
 
@@ -75,6 +81,7 @@ GOLDEN_DIR = ROOT / 'tests' / 'golden'
 GOLDEN_FILES = {
     'T03-sim': 'journey_t03_sim.json', 'T04-sim': 'journey_t04_sim.json',
     'T05-sim': 'journey_t05_sim.json', 'T06-sim': 'journey_t06_sim.json',
+    'N1-sim': 'journey_n1_sim.json', 'N2-sim': 'journey_n2_sim.json',
 }
 JOURNEY_IDS = tuple(GOLDEN_FILES)
 OUT_OF_BAND = 'SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT'
@@ -933,7 +940,130 @@ def run_t04():
     return journey.result()
 
 
-RUNNERS = {'T03-sim': run_t03, 'T04-sim': run_t04, 'T05-sim': run_t05, 'T06-sim': run_t06}
+def run_n1():
+    journey = Journey('N1-sim')
+    source = margin.ScenarioReplaySource()
+    producer = PinnedFsmProducer(fixtures=source)
+    advance = 'sim-n1-a'
+    with _InProcessServer(producer) as port:
+        session = Session(port)
+        for op, args in (('offer', {'fixture_id': 'sim-committed', 'amount': T05_A}),
+                         ('approve', {}), ('bind_settlement', {}), ('draw', {})):
+            _drive(journey, session, op, op, advance, f'sim-n1-{op.replace("_", "-")}', **args)
+        outcomes = source.replay('sim-committed', 'partial-before')
+        journey.step('partial refund on disposable book', 'SETTLEMENT_EVENT',
+                     [(item['op'], item['error'], item['matched']) for item in outcomes],
+                     [('observe_settlement_statement', None, True), ('bind_refund', None, True),
+                      ('apply_distribution', 'DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED', True)],
+                     label=OUT_OF_BAND, scope='DISPOSABLE_BOOK_ONLY')
+        _tick(journey, session, 'sim-n1-call', 0, 1)
+        called = session.advance_row(advance)
+        journey.step('call-fire', 'HTTP', called['margin']['state'], 'CALLED', **_margin_facts(called))
+        deadline = called['margin']['cure_deadline']
+        _tick(journey, session, 'sim-n1-deadline', 1, deadline)
+        journey.step('inclusive cure deadline without cure', 'HTTP',
+                     session.advance_row(advance)['margin']['state'], 'CALLED', cure_deadline=deadline)
+        _tick(journey, session, 'sim-n1-accelerate', deadline, deadline + 1)
+        accelerated = session.advance_row(advance)
+        journey.step('uncured expiry accelerates', 'HTTP', accelerated['margin']['state'],
+                     'ACCELERATED', **_margin_facts(accelerated))
+        eligible = accelerated['margin']['default_eligible_day']
+        _tick(journey, session, 'sim-n1-eligible', deadline + 1, eligible)
+        block = session.overlay()['margin']
+        journey.step('margin journal sequence', 'AUDIT', [event['record'] for event in block['events']],
+                     ['MARGIN_CALL', 'MARGIN_ACCELERATION', 'DEFAULT_ELIGIBLE_PROPOSAL'],
+                     events=block['events'])
+        proposal = block['proposals'][0]
+        journey.step('one human-facing DEFAULT_ELIGIBLE proposal', 'AUDIT',
+                     (len(block['proposals']), proposal['proposal_kind'], proposal['authority'],
+                      block['f04_default_called'], block['proposal_only']),
+                     (1, 'DEFAULT_ELIGIBLE', 'HUMAN_OPERATOR_DECISION', False, True))
+        journal = producer.export_journal()
+        journey.step('F04 default never journalled; case remains DRAWN', 'AUDIT',
+                     (session.advance_row(advance)['phase'], len(journal)), ('DRAWN', 4),
+                     f04_default_called=False)
+        _audit_no_replay(journey, session.client.posted_operation_ids())
+    return journey.result()
+
+
+def run_n2():
+    journey = Journey('N2-sim')
+    advance, proposal_id, operation_id = 'sim-n2-a', 'sim-n2-proposal', 'sim-n2-repay'
+    with tempfile.TemporaryDirectory(prefix='capital-sim-n2-') as tmp:
+        server = ServerProcess(Path(tmp))
+        try:
+            session = Session(server.start())
+            client = session.client
+            for op, args in (('offer', {'fixture_id': 'sim-committed', 'amount': 20_000}),
+                             ('approve', {}), ('bind_settlement', {}), ('draw', {})):
+                _drive(journey, session, op, op, advance, f'sim-n2-{op.replace("_", "-")}', **args)
+            tokens = {}
+            for role in ('agent', 'auditor'):
+                status, bound = client.request('POST', '/api/session', {'role': role}, session.token)
+                journey.step(f'{role} role bound', 'HTTP',
+                             (status, bound['role'], bound['authentication']), (200, role, 'NOT_BOUND'))
+                tokens[role] = bound['local_token']
+            before = session.refresh()
+            proposal = _agent_body(proposal_id=proposal_id, surface='capital:repay', amount=10_000, kind='PROPOSE')
+            status, proposed = client.request('POST', '/api/agent/propose_action', proposal, tokens['agent'])
+            journey.step('agent proposes; HUMAN_PENDING only', 'HTTP',
+                         (status, proposed['proposal']['phase'], proposed['proposal']['effects_executed']),
+                         (200, 'HUMAN_PENDING', False))
+            after = session.refresh()
+            journey.step('proposal does not mutate F04', 'AUDIT',
+                         (after['state_digest'], after['operation_count']),
+                         (before['state_digest'], before['operation_count']))
+            status, receipt = session.command('repay', advance, operation_id, proposal_id=proposal_id,
+                                              amount=10_000, sequence=1)
+            journey.step('organizer command cites the proposal', 'HTTP',
+                         (status, receipt['outcome'], receipt['role'], receipt['proposal_id'],
+                          receipt['effects_executed'], receipt['funds_executed']),
+                         (200, 'ACCEPTED', 'organizer', proposal_id, False, False))
+            journey.step('human command applies simulated repayment', 'HTTP',
+                         session.advance_row(advance)['principal_outstanding_krw'], 10_000)
+            status, memo = client.request('POST', '/api/agent/propose_action', proposal, tokens['agent'])
+            journey.step('memo stays HUMAN_PENDING after citation', 'HTTP',
+                         (status, memo['duplicate'], memo['proposal']['phase'], memo['proposal']['effects_executed']),
+                         (200, True, 'HUMAN_PENDING', False))
+            auditor_get = lambda path: client.request('GET', path, token=tokens['auditor'])
+            status, found = auditor_get(f'/api/operations/{operation_id}?instance_id={session.instance_id}')
+            journey.step('auditor retrieves original citation-bearing receipt', 'AUDIT',
+                         (status, found == receipt), (200, True))
+            status, recon = auditor_get('/api/reconciliation')
+            journey.step('auditor reconciliation MATCHED', 'AUDIT',
+                         (status, recon['status'], sorted({c['status'] for c in recon['checks']})),
+                         (200, 'MATCHED', ['MATCHED']))
+            status, manifest = auditor_get('/api/export/manifest')
+            sections = manifest['sections']
+            receipts = sections['receipts']['body']['receipts']
+            entries = sections['journal']['body']['entries']
+            journey.step('auditor correlates receipt to accepted journal entry', 'AUDIT',
+                         (status, len([entry for entry in entries if entry.get('idempotency_key') == operation_id]) == 1,
+                          receipts[operation_id]['receipt'] == receipt),
+                         (200, True, True))
+            manifest_path = Path(tmp) / 'manifest.json'
+            manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+            code, report = _verify_report([os.fspath(manifest_path)])
+            journey.step('offline manifest evidence-chain verification', 'VERIFY',
+                         (code, report['ok'], report['content_digest'], report['signature']),
+                         (0, True, 'MATCHED', 'NOT_BOUND'))
+            code, report = _verify_report(['--workspace', tmp])
+            journey.step('offline workspace evidence-chain verification', 'VERIFY',
+                         (code, report['ok'], report['recon_status'], report['writes'], report['funds_executed']),
+                         (0, True, 'MATCHED', False, False))
+            sections['receipts']['body']['receipts'][operation_id]['receipt']['proposal_id'] = 'tampered'
+            manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+            code, report = _verify_report([os.fspath(manifest_path)])
+            journey.step('tampered citation fails offline verification', 'VERIFY',
+                         (code != 0, report['ok']), (True, False))
+            _audit_no_replay(journey, client.posted_operation_ids())
+        finally:
+            server.kill()
+    return journey.result()
+
+
+RUNNERS = {'T03-sim': run_t03, 'T04-sim': run_t04, 'T05-sim': run_t05, 'T06-sim': run_t06,
+           'N1-sim': run_n1, 'N2-sim': run_n2}
 
 
 # ------------------------------------------------------------------------ golden
@@ -972,9 +1102,11 @@ def summary(results):
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--journey', choices=JOURNEY_IDS, default=None, help='Run one journey. Default both.')
+    parser.add_argument('--journey', choices=JOURNEY_IDS, default=None, help='Run one journey. Default all six.')
     parser.add_argument('--golden-dir', type=Path, default=GOLDEN_DIR, help='Default tests/golden')
-    parser.add_argument('--update-golden', action='store_true', help='Rewrite the pins from this run')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--check', action='store_true', help='Check pins without writing (the default)')
+    mode.add_argument('--update-golden', action='store_true', help='Rewrite the pins from this run')
     args = parser.parse_args(argv)
     results = []
     drifted = []
