@@ -76,6 +76,16 @@ class MutatedDocTests(unittest.TestCase):
         self.assertIn('GET /api/statement', err)
         self.assertIn('- `GET /api/statement`:', err)
 
+    def test_permissions_route_requires_hand_maintained_prose(self):
+        self.assertIn(('GET', '/api/permissions'), docs_surface.live_routes())
+        tmp, copy = _mutated_copy(
+            INTEGRATION, lambda text: _drop_line(text, '- `GET /api/permissions`:'))
+        self.addCleanup(tmp.cleanup)
+        self.assertIn('`/api/permissions`', copy.read_text(encoding='utf-8'))
+        code, _out, err = _run(['--check', '--integration', str(copy)])
+        self.assertEqual(code, 1)
+        self.assertIn('GET /api/permissions', err)
+
     def test_missing_portfolio_snapshot_bullet_fails(self):
         tmp, copy = _mutated_copy(INTEGRATION, lambda text: _drop_line(text, '- `GET /api/portfolio/snapshot`:'))
         self.addCleanup(tmp.cleanup)
