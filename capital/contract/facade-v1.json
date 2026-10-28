@@ -52,7 +52,8 @@
       "READ_ONLY_INVARIANT"
     ],
     "scenario": [
-      "UNKNOWN_SCENARIO"
+      "UNKNOWN_SCENARIO",
+      "SCENARIO_UNKNOWN"
     ],
     "preview": [
       "SESSION_CHANGED",
@@ -157,6 +158,10 @@
     {
       "code": "UNKNOWN_SCENARIO",
       "status": 404
+    },
+    {
+      "code": "SCENARIO_UNKNOWN",
+      "status": 400
     },
     {
       "code": "GATE_FAILED",
@@ -1616,6 +1621,57 @@
         "ROLE_FORBIDDEN",
         "READ_ONLY_INVARIANT",
         "NOT_BOUND"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/risk/scenarios",
+      "operationId": "local_risk_scenarios",
+      "dispatch": "/api/risk/scenarios",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/whatif_index"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "INVALID_TARGET",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/risk/scenarios/{id}",
+      "operationId": "local_risk_scenario",
+      "dispatch": "/api/risk/scenarios",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/whatif_scenario"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "INVALID_TARGET",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND",
+        "SCENARIO_UNKNOWN"
       ],
       "permission": "projection:read"
     },
@@ -10178,6 +10234,7 @@
             "ROLE_MISMATCH",
             "SESSION_REQUIRED",
             "UNKNOWN_SCENARIO",
+            "SCENARIO_UNKNOWN",
             "PROJECTION_INVARIANT",
             "SESSION_CHANGED",
             "UNKNOWN_ADVANCE",
@@ -10227,6 +10284,12 @@
         },
         "claimed": {
           "type": "string"
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -16070,6 +16133,401 @@
         },
         "quote": {
           "$ref": "#/definitions/shadow_result"
+        }
+      }
+    },
+    "whatif_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "applied",
+        "enforced",
+        "scenarios",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED what-if scenario — read-only hypothetical re-fold of the risk and covenant folds, not a credit decision, not an enforcement, nothing is applied"
+        },
+        "mode": {
+          "const": "SIMULATED_WHATIF"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/whatif_catalog_entry"
+          }
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_catalog_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "title",
+        "assumption",
+        "applied",
+        "enforced"
+      ],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "largest-advance-default",
+            "refund-shock",
+            "all-watch-breach",
+            "concentration-cap-hit"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "assumption": {
+          "type": "string"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        }
+      }
+    },
+    "whatif_scenario": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/whatif_evaluated"
+        },
+        {
+          "$ref": "#/definitions/whatif_not_bound"
+        }
+      ]
+    },
+    "whatif_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "applied",
+        "enforced",
+        "scenario",
+        "evaluated",
+        "unevaluated_reason",
+        "target",
+        "assumption_detail",
+        "risk",
+        "covenants",
+        "reconciliation",
+        "whatif_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED what-if scenario — read-only hypothetical re-fold of the risk and covenant folds, not a credit decision, not an enforcement, nothing is applied"
+        },
+        "mode": {
+          "const": "SIMULATED_WHATIF"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        },
+        "scenario": {
+          "$ref": "#/definitions/whatif_scenario_ref"
+        },
+        "evaluated": {
+          "type": "boolean"
+        },
+        "unevaluated_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "assumption_detail": {
+          "type": "object"
+        },
+        "risk": {
+          "type": "object"
+        },
+        "covenants": {
+          "type": "object"
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/whatif_reconciliation"
+        },
+        "whatif_digest": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_not_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "applied",
+        "enforced",
+        "scenario",
+        "evaluated",
+        "whatif_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED what-if scenario — read-only hypothetical re-fold of the risk and covenant folds, not a credit decision, not an enforcement, nothing is applied"
+        },
+        "mode": {
+          "const": "SIMULATED_WHATIF"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        },
+        "scenario": {
+          "$ref": "#/definitions/whatif_scenario_ref"
+        },
+        "evaluated": {
+          "const": false
+        },
+        "whatif_digest": {
+          "type": "null"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_scenario_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "title",
+        "assumption"
+      ],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "largest-advance-default",
+            "refund-shock",
+            "all-watch-breach",
+            "concentration-cap-hit"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "assumption": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_risk_digest",
+        "baseline_covenant_digest",
+        "baseline_outstanding_krw",
+        "assumption_delta_krw",
+        "scenario_outstanding_krw",
+        "matched"
+      ],
+      "properties": {
+        "baseline_risk_digest": {
+          "type": "string"
+        },
+        "baseline_covenant_digest": {
+          "type": "string"
+        },
+        "baseline_outstanding_krw": {
+          "type": "integer"
+        },
+        "assumption_delta_krw": {
+          "type": "integer"
+        },
+        "scenario_outstanding_krw": {
+          "type": "integer"
+        },
+        "matched": {
+          "type": "boolean"
         }
       }
     },

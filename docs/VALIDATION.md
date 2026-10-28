@@ -2290,6 +2290,25 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
+## risk-whatif-scenarios — conflict-fix round 1 (2026-10-27)
+
+Resolved `tests/vectors/finance_vectors.json` against incoming main `b3b56fe` by regenerating it with `python3 scripts/finance_vectors.py --write` from the combined facade. Relative to feature parent `d31b174`, only `groups.facade_read_model.contract_digest` changes. Every schema value and route from both merge parents is preserved. The scenario implementation, generator, tests and pinned scenario bytes match the feature parent; main's fold-fuzz implementation, tests and corpus, hostile-HTTP implementation and tests, and all 76 HTTP recipes match the incoming parent. Both sets of documentation and registry entries survive. No runtime or test adjustment was needed.
+
+All verification is local and SIMULATED. Logs are in ignored `build/risk-whatif-round1/`. The merge remains uncommitted for the supervisor. No external action or product decision was required.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1155 passed in 246.001 s, including scenario role gates, deterministic reconciliation, NOT_BOUND responses, read immutability, both incoming corpora and legacy COA guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; 69 Chromium tests passed in 2.0 min. Occupied host ports required an isolated loopback namespace; browser configuration is unchanged. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 98,803 bytes match the combined contract. |
+| `python3 scripts/risk_scenario_vectors.py --check` | Exit 0; 37,747 bytes match. A temporary copy with one appended space correctly returns exit 1. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/docs_surface.py --check` | Both exit 0; docs surface covers 32 routes, 118 artifacts and nine stages. |
+| `python3 scripts/http_hostile.py --check`; `python3 scripts/fold_fuzz.py --check` | Both exit 0; 76 HTTP recipes, 16 seeds and 736 commands match. |
+| Vendor integrity | All five SHA256 locks match; the five reference files and manifest are byte-identical to both merge parents. `capital/export.py` and `.aiops/` are unchanged. |
+| Merge hygiene | No conflict markers or unmerged index entries; whitespace checks pass. No abort, commit, push, rebase or reset performed. |
+
 ## permission-catalog-surface — CI fix round 3 (2026-10-27)
 
 Exact-head CI run 40269216865 (head `b07dd4c`) failed only the `acceptance` job, at `[acceptance] unit exit=124 status=failed`: the 300 s unit-stage timeout that also fails main's own runs since fold-fuzz-determinism (#120). Every other ladder stage (browser 69/69, packaged-smoke, seeded-demo, integrated-journeys and the rest) and the `contracts-and-api`, `browser` and `package` jobs passed. Main fixed this in #140 (`b3b56fe`, unit timeout 900 s). This round merges `origin/main` (`b3b56fe`, including http-hostile-corpus #98) without changing the timeout locally. That also clears the PR's `CONFLICTING` state.
@@ -2389,3 +2408,41 @@ Logs and temporary browser configurations are retained in ignored
 `build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
 responsibility for the merge commit; no abort, commit, push, rebase or reset was
 performed.
+
+## risk-whatif-scenarios — conflict-fix round 2 (2026-10-28)
+
+Resolved all 14 conflicts against incoming main `e445f38`, preserving the what-if
+feature from `5600fe5` alongside main's permission catalog and facts cursor export.
+The facade retains every definition and route from both parents; the combined
+finance assertions pin 35 API GET routes and 47 total routes. Both scenario routes
+now include main's shared `INVALID_TARGET` boundary error, required by the existing
+contract tests. Both validation histories and operator permission rows survive.
+Finance vectors and all nine evidence-pack vectors were regenerated from the
+combined implementation. Main's recorded closeout digest remains unchanged.
+
+The scenario implementation, risk/covenant folds, tests, generator and 37,747-byte
+scenario artifact are byte-identical to the feature parent. Main's facts
+implementation, tests, generator and 133-file corpus remain unchanged, as do its
+fold-fuzz implementation and tests. Every auth matrix row, role grant and caller
+cell from both parents survives; regenerating the matrix and documentation gives
+no further changes. No runtime or authorization policy adjustment was needed.
+
+All evidence below is local SIMULATED verification. Logs and the temporary browser
+configuration are retained in ignored `build/risk-whatif-round2/`. The browser uses
+the locally available Chromium headless shell revision 1243 in an isolated
+loopback network namespace. The ignored configuration adapts the executable,
+working directory and output paths; tests, timeouts and server commands remain
+unchanged. No external posting, provider call or product decision occurred.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,175 tests passed in 276.906 s, including scenario role gates, reconciliation, NOT_BOUND responses, read immutability, facts export and legacy COA guards. |
+| `python3 -m unittest tests.test_facade_contract tests.test_finance_vectors -v` | Exit 0; 60 tests passed after the shared boundary-error contract fix. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --config build/risk-whatif-round2/playwright-headless.config.cjs'` | Exit 0; all 69 Chromium tests passed in one run (2.5 min). This uses the available revision 1243, not the package's pinned browser revision. |
+| `python3 scripts/risk_scenario_vectors.py --check` | Exit 0; 37,747 bytes match. A temporary copy with one appended space correctly returns exit 1. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/docs_surface.py --check` | Both exit 0; 35 registered routes, 251 artifacts, nine stages. |
+| `scripts/{finance_vectors,pack_vectors,facts_vectors,closeout_digest,fold_fuzz,http_hostile,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist}.py --check` | All exit 0. Finance: 99,893 bytes; pack: nine files; facts: 133 files; fold fuzz: 16 seeds and 736 commands. Finance check repeated after the boundary-error fix. |
+| Preservation and protected paths | Every contract value from both parents survives, with additive list entries only. Five vendor SHA256 locks match; vendor files and manifest, `.aiops/`, legacy `capital/export.py` and CI are unchanged from both parents. |
+| Merge hygiene | No conflict markers or unmerged entries. Whitespace checks pass against incoming main; against HEAD they pass excluding main's unchanged intentional whitespace-tamper fixture. All resolutions are staged, and the merge remains uncommitted for the supervisor. No abort, commit, push, rebase or reset performed. |
