@@ -2471,6 +2471,44 @@ class CapitalService:
                     'replay_matched': matched,
                     'durable': durable, 'funds_executed': False, 'note': note}
 
+    def export_facts(self, query):
+        """Read a bounded canonical page at one healthy local cut; never persist."""
+        from capital import facts
+        from urllib.parse import parse_qs
+        with self.lock:
+            values = parse_qs(query, keep_blank_values=True)
+            if set(values) - {'after', 'limit', 'instance_id'} or any(len(v) != 1 for v in values.values()):
+                raise ApiError('INVALID_ARGUMENTS')
+            instance = values.get('instance_id', [None])[0]
+            if instance != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            limit_text = values.get('limit', [str(facts.LIMIT_DEFAULT)])[0]
+            if re.fullmatch(r'[1-9][0-9]{0,2}', limit_text) is None or int(limit_text) > facts.LIMIT_MAX:
+                raise ApiError('INVALID_ARGUMENTS')
+            if self.workspace_status != 'ACTIVE':
+                raise ApiError(self.workspace_status, 503)
+            if type(self.producer) is not PinnedFsmProducer:
+                raise ApiError('COHERENT_SNAPSHOT_UNSUPPORTED', 503)
+            try:
+                captured = self.producer.snapshot_inputs()
+            except ValueError as exc:
+                raise ApiError('COHERENT_SNAPSHOT_UNSUPPORTED', 503) from exc
+            frozen_inputs = portfolio_snapshot.FrozenInputs.capture(
+                captured, self.receipts, self.case_fixtures, self.overlay_entries, self.terms, self.overlay_bounds)
+            error = portfolio_snapshot.storage_health(self.storage, self.workspace_status, frozen_inputs.detached())
+            if error:
+                raise ApiError(error, 503)
+            frozen = self._frozen()
+            try:
+                return facts.paginate(json.loads(captured['canonical_state'])['journal'],
+                                      copy.deepcopy(self.overlay_entries), captured['state_digest'],
+                                      digest(captured['fixtures']['rows']), values.get('after', [None])[0], int(limit_text))
+            except facts.FactsError as exc:
+                raise ApiError(exc.code, exc.status) from exc
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def export_manifest(self):
         """Read-only v2 (empty overlay) or v3 (non-empty overlay) manifest of hashed sections. No import, resume, or key material."""
         with self.lock:

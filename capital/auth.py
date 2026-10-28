@@ -70,6 +70,7 @@ UNLABELED = 'UNLABELED'
 # Exact path or prefix. Unmapped paths are denied by the caller (HTTP 404).
 ROUTE_PERMISSIONS = (
     ('/api/state', 'state:read', False),
+    ('/api/permissions', 'reference:read', False),
     ('/api/scenarios', 'reference:read', True),
     ('/api/readiness', 'reference:read', False),
     ('/api/decisions', 'reference:read', False),
@@ -88,6 +89,8 @@ ROUTE_PERMISSIONS = (
     ('/api/operations/', 'receipt:read', True),
     ('/api/export', 'export:read', False),
     ('/api/export/manifest', 'export:read', False),
+    ('/api/export/facts', 'export:read', False),
+    ('/api/export/facts/schema', 'export:read', False),
     ('/api/reconciliation', 'reconciliation:read', False),
     ('/api/statement', 'statement:read', False),
     ('/api/metrics', 'metrics:read', False),
@@ -137,6 +140,31 @@ def route_permission(path):
         if path_matches(prefix, children, path):
             return permission
     return None
+
+
+def permission_catalog(post_routes, assets):
+    return {
+        'format': 'KIX_CAPITAL_PERMISSION_CATALOG_V1',
+        'label': 'SIMULATED',
+        'provenance': PROVENANCE,
+        'identity': 'NOT_BOUND',
+        'authentication': 'NOT_BOUND',
+        'no_token_principal': DEFAULT_ROLE,
+        'routes': [
+            {'method': 'GET', 'route': path, 'children': children, 'permission': permission}
+            for path, permission, children in ROUTE_PERMISSIONS
+        ] + [
+            {'method': 'POST', 'route': path, 'children': False, 'permission': permission}
+            for path, permission in post_routes
+        ] + [
+            {'method': 'GET', 'route': path, 'children': False, 'permission': None}
+            for path in assets
+        ],
+        'role_permissions': {
+            role: [permission for permission in ALL_PERMISSIONS if permission in MATRIX[role]]
+            for role in ROLES
+        },
+    }
 
 
 def _fail(code, status=403, detail=None):

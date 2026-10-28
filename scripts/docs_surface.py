@@ -66,6 +66,7 @@ _STAGE_ANCHOR = 'stage id'
 ROUTE_NEEDLES = {
     ('GET', '/api/cases/'): ('`GET /api/cases/{advance_id}/dossier',),
     ('GET', '/api/state'): ('- `GET /api/state`:',),
+    ('GET', '/api/permissions'): ('- `GET /api/permissions`:',),
     ('GET', '/api/scenarios'): ('`GET /api/scenarios` and `/api/scenarios/{id}`',),
     ('GET', '/api/readiness'): ('- `GET /api/readiness`:',),
     ('GET', '/api/decisions'): ('- `GET /api/decisions`:',),
@@ -91,6 +92,8 @@ ROUTE_NEEDLES = {
     ('GET', '/api/operations/'): ('`GET /api/operations/{operation_id}',),
     ('GET', '/api/export'): ('- `GET /api/export`:',),
     ('GET', '/api/export/manifest'): ('- `GET /api/export/manifest`:',),
+    ('GET', '/api/export/facts'): ('- `GET /api/export/facts`:',),
+    ('GET', '/api/export/facts/schema'): ('- `GET /api/export/facts/schema`:',),
     ('GET', '/api/reconciliation'): ('- `GET /api/reconciliation`:',),
     ('GET', '/api/statement'): ('- `GET /api/statement`:',),
     ('GET', '/api/metrics'): ('- `GET /api/metrics`:',),
@@ -113,6 +116,7 @@ ROUTE_NEEDLES = {
 VECTOR_NEEDLES = {
     'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
+    'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
     'workspace/': ('tests/vectors/workspace/', 'scripts/workspace_vectors.py --check'),
     'http/': ('tests/vectors/http/', 'scripts/http_hostile.py --check'),

@@ -2316,6 +2316,48 @@ NOT_BOUND, and no real funds or provider calls occur.
 No product decision or external action was needed. No merge abort, commit, push,
 rebase or reset was performed.
 
+## permission-catalog-surface
+
+Read-only permission catalog: `GET /api/permissions` serves `KIX_CAPITAL_PERMISSION_CATALOG_V1` — the ordered registered GET/POST/static routes (`method`, `route`, `children`, `permission`; static permissions `null` because assets answer before authentication) and the synthetic role-to-permission sets. The route is itself registered under `reference:read`: organizer, auditor, observer and a tokenless caller (default organizer) get 200 with identical bodies; `agent` gets `403 ROLE_FORBIDDEN` naming `reference:read`. No role, permission or other route changed. Labels stay `SIMULATED` / `SYNTHETIC_LOCAL_ROLE`; identity and authentication stay `NOT_BOUND`; no token or operational state is exposed.
+
+`capital/auth.py` gained the registry entry and a deterministic `permission_catalog(post_routes, assets)` serializer (fresh collections per call; no server import). `capital/server.py` adds the dispatch row and `_get_permissions`. `scripts/auth_matrix.py --check` now also fetches the served JSON from an ephemeral memory-only loopback server (`make_server(0)`, shut down and joined) and reconciles it against both the generated projection and the pinned `tests/auth_matrix.json` projection, on top of the existing byte and generated-block comparisons; `--write` stays offline and deterministic. Registry validation is stricter: duplicate route identities, `MATRIX` keys vs `ROLES`, and unknown granted/mapped permissions are refused. `scripts/docs_surface.py` pins the hand-maintained INTEGRATION bullet; `capital/contract/facade-v1.json` gained the route row and a closed `permission_catalog` definition, and `tests/vectors/finance_vectors.json` was regenerated through `scripts/finance_vectors.py --write` (facade_read_model group only: 28 GET routes).
+
+Commands actually run, in order:
+
+- `python3 scripts/auth_matrix.py --check`: exit 0 (served catalog reconciled with pinned matrix and both generated blocks).
+- `python3 scripts/docs_surface.py --check`: exit 0 (30 routes, 20 artifacts, 9 stages).
+- `python3 scripts/finance_vectors.py --check`: exit 0 (91324 bytes match).
+- `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v`: exit 0, **47 passed** (10.8s), including the every-cell live sweep with the five new `/api/permissions` cells, served-drift refusals and the prose-needle mutation.
+- `python3 -m unittest discover -s tests`: exit 0, **709 passed** (110.2s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital`: exit 0. `node --check capital/static/app.js`: exit 0.
+- `npm run test:browser`: exit 0, **62 passed** (1.8m; Chromium available). Playwright started and stopped its loopback servers.
+- `python3 scripts/manifest_vectors.py --check` (13 files), `workspace_vectors.py --check` (6 files), `not_bound_checklist.py`, `decision_ledger.py`, `seed_demo.py` (`state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`): exit 0.
+- Live spot check: `GET /api/permissions` returned 200 with 33 catalog routes for the tokenless caller and `403 ROLE_FORBIDDEN`/`reference:read` for the agent token; the check server was shut down.
+- Vendored SHA256 check against `capital/vendor/manifest.json` (`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`): all five files `OK`. `git diff --name-only -- capital/vendor .aiops .github`: no output.
+
+No `DECISION_REQUIRED.md` was written: the surface reads only existing registries; nothing required money, credentials, deployment, an upstream edit, or an undetermined product value.
+
+### Merge conflict-fix round 1 (2026-10-25)
+
+Resolved all six conflicts with `origin/main`, preserving both sides. `capital/server.py` retains main's `Principal` import alongside `permission_catalog`. The generated handbook keeps `/api/permissions` under `reference:read` and main's `/api/overlay/slices` and `/api/portfolio/snapshot` under `projection:read`. Both documentation mutation tests survive. The facade tests and regenerated finance vectors cover **31 GET API routes, 43 total contract routes**, retaining all main vector groups and route definitions. This document retains main's full validation history before the original permission-catalog evidence above. The pinned auth matrix retains every main route, cell and role permission, adding only `/api/permissions` and its five role cells: **35 registrations, 175 live role cells**.
+
+The first full test run exposed an additional integration dependency: main's evidence-pack corpus embeds the auth matrix. That run was interrupted after identifying the stale fixtures. `python3 scripts/pack_vectors.py --write` regenerated the nine existing `tests/vectors/pack/` files. The clean pack's non-auth sections remain identical to main; only the added permission route/cells and their resulting hashes change. All tamper expectations remain intact; no tests or CI checks were weakened.
+
+Post-fix commands actually run:
+
+- `python3 -m unittest discover -s tests -v`: exit 0, **1117 passed** (208.407s).
+- `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v`: exit 0, **49 passed** (10.520s), including all live role cells and both retained prose mutations.
+- `python3 -m unittest tests.test_evidence_pack -v`: exit 0, **17 passed** (6.503s), including canonical regeneration and the one-byte tamper cases.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `npm run test:browser`: default-port startup failed because unrelated processes already occupied ports 8765 and 8766. Reran the same suite with `npm run test:browser -- --config /tmp/permission-catalog-browser-2rh_j36_/playwright.config.cjs`: exit 0, **69 passed** (2.1m). The temporary config changes only the loopback ports to 18765-18768, workspace/output locations and reporter; the committed Playwright configuration and tests are unchanged. All four test servers stopped.
+- `python3 scripts/auth_matrix.py --check`: exit 0, served catalog, pinned matrix and both generated blocks agree.
+- `python3 scripts/docs_surface.py --check`: exit 0, **32 routes, 40 artifacts, 9 stages**.
+- `python3 scripts/finance_vectors.py --check`: exit 0, **98338 bytes match**. `python3 scripts/pack_vectors.py --check`: exit 0, **9 files match**.
+- All five vendored reference files match their manifest SHA256 values; those files and `capital/vendor/manifest.json` remain byte-identical to both merge parents. No `.aiops/` changes. `git diff --check origin/main` passes; no tracked conflict markers or unmerged index entries remain.
+
+The merge remains uncommitted for the supervisor. The catalog stays `SIMULATED` / `SYNTHETIC_LOCAL_ROLE`, with identity and authentication `NOT_BOUND`; no consequential product decision was required.
 
 ## http-hostile-corpus — conflict-fix round 1 (2026-10-25)
 
@@ -2359,6 +2401,65 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
+## permission-catalog-surface — conflict-fix round 2 (2026-10-26)
+
+Resolved the sole append conflict in `docs/VALIDATION.md` against main
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`, retaining both parent documents
+verbatim and in order. The permission-catalog implementation and validation
+history survive alongside main's fold-fuzz implementation, tests, corpus and
+documentation. The incoming fold-fuzz code, tests and corpus are byte-identical
+to main. No integration failure required an implementation or fixture change.
+
+The pinned auth matrix preserves every main route, role permission set and
+existing cell; this node adds only `/api/permissions` and its five live role
+cells. All evidence is local and SIMULATED; identity and authentication remain
+NOT_BOUND. No external action or consequential product decision was required.
+The merge remains uncommitted for the supervisor.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1129 passed, 302.316 s. |
+| `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v` | Exit 0; 49 passed, including live role cells and served-catalog drift refusals. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 2.9 min. Existing host ports 8765/8766 were occupied; unchanged browser configuration ran in an isolated loopback network namespace. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0; served catalog, pinned matrix and both generated documentation blocks agree. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 32 routes, 41 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | Both exit 0; 98338 bytes and nine files match. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds and 736 commands replay and reload consistently. |
+| Vendor and protected paths | All five SHA256 locks match; files and manifest are byte-identical to both merge parents and main. No changes to `.aiops/`, `capital/export.py` or CI. |
+| Merge hygiene | Both parent validation histories preserved; no tracked conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
+
+### Typed facts integrity candidate
+
+`python3 scripts/facts_vectors.py --check` byte-pins `tests/vectors/facts/`,
+including the served schema, clean overlay/empty-overlay books, byte corruption,
+and semantic attacks with enclosing hashes recomputed. `python3 -m unittest
+discover -s tests -p 'test_facts*.py' -v` exercises HTTP canonical encoding,
+cut fencing, storage-health refusal, raw duplicate order, schema types/widths,
+page stitching, CLI exit codes and slice/recovery witness link rejection.
+`python3 -m capital.verify --facts DIR` accepts only exact canonical ASCII JSON
+page bytes; a one-byte mutation fails parsing, canonicalization or integrity.
+It never imports or resumes a workspace. The verifier trusts built-in
+`FixtureViews()` only: custom-fixture books fail `FIXTURES_MISMATCH` by design.
+
+Rows are rebuilt from embedded entries after pinned F04 replay and overlay fold;
+`recovery.validate_links` and `slices.validate_links` bind overlay witnesses to
+those entries. This is corruption detection, not authentication: an entirely
+consistent replacement with all hashes rebuilt is undetectable. Labels stay
+`SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, not `k-stage7-authenticated-export`.
+The technical page bound adds no financial limit or source-cut authority.
+Legacy v1 exports and vendored bytes remain unchanged.
+
+The facts-cursor-export local run used an uncommitted implementation on base HEAD
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`. Its nine-stage acceptance evidence
+recorded 1,138 unit tests and 69 browser tests passing; two independent builds
+produced SHA256 `945082dc2224dddf8637c65343c7e097bf592b2cc61f278a97e6f626cadf87a3`.
+These are local SIMULATED checks, not a claim about a future commit or independent
+CI. Exact commands, earlier failures, fixes and the temporary loopback browser
+port adaptation are recorded in [FACTS_CURSOR_EXPORT_EVIDENCE.md](FACTS_CURSOR_EXPORT_EVIDENCE.md).
+
 
 ## http-hostile-corpus — conflict-fix round 2 (2026-10-26)
 
@@ -2377,3 +2478,154 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts and nine stages. |
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+
+## permission-catalog-surface — CI fix round 3 (2026-10-27)
+
+Exact-head CI run 40269216865 (head `b07dd4c`) failed only the `acceptance` job, at `[acceptance] unit exit=124 status=failed`: the 300 s unit-stage timeout that also fails main's own runs since fold-fuzz-determinism (#120). Every other ladder stage (browser 69/69, packaged-smoke, seeded-demo, integrated-journeys and the rest) and the `contracts-and-api`, `browser` and `package` jobs passed. Main fixed this in #140 (`b3b56fe`, unit timeout 900 s). This round merges `origin/main` (`b3b56fe`, including http-hostile-corpus #98) without changing the timeout locally. That also clears the PR's `CONFLICTING` state.
+
+Conflicts resolved: this file (both appended histories retained verbatim, this node's first) and `tests/vectors/finance_vectors.json` (regenerated by `scripts/finance_vectors.py --write`). Relative to main, the vectors add only this node's `/api/permissions` facade route: 31 routes, plus the matching definitions and contract digests. Relative to this branch, only `facade_read_model.contract_digest` changes, picking up main's `INVALID_TARGET` contract error. No runtime, test, CI, role, permission or route change was made.
+
+All results are local SIMULATED verification. Logs are in ignored `build/pcs-round3/`.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1138 passed in 255.5 s. |
+| `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface` | Exit 0; 49 passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; 69 passed (2.1 min), unchanged config in an isolated loopback namespace. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 0; every stage passed (unit 1138, browser 69); evidence `ok=true`. |
+| `scripts/{auth_matrix,docs_surface,finance_vectors,pack_vectors,http_hostile,fold_fuzz,manifest_vectors,workspace_vectors}.py --check` | All exit 0 (32 routes / 117 artifacts / 9 stages; 98338 bytes; 9, 76, 19 and 6 files; 16 seeds / 736 commands). |
+| Vendor and protected paths | All five SHA256 locks match; no diff against main or HEAD under `capital/vendor`, `.aiops`, `.github` or `capital/export.py`. |
+| Merge hygiene | No conflict markers or unmerged entries; `git diff --check origin/main` passes. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset was performed. |
+
+Round-3 revalidation on 2026-10-27 confirmed the existing merge carries main's
+900 s acceptance unit-stage timeout without further runtime changes. Fresh local
+SIMULATED evidence is retained in ignored `build/pcs-round3-revalidation/`:
+the standalone suite passed all 1138 tests in 261.745 s; the focused catalog/docs
+suite passed all 49 tests; the vendor suite passed all seven tests. Compilation,
+JavaScript syntax, catalog/docs reconciliation and all eight vector/check scripts
+listed above passed. Chromium passed all 69 tests using temporary loopback ports;
+the full acceptance ladder then passed all nine stages with the unchanged browser
+configuration in an isolated loopback namespace (`acceptance-evidence.json`,
+`ok=true`). All existing main matrix rows, role grants and cells remain unchanged;
+only `/api/permissions` and its five caller cells are added. The five vendor SHA256
+locks and manifest remain byte-identical to HEAD. No commit, push or posting occurred.
+
+
+## facts-cursor-export — conflict-fix round 1 (2026-10-28)
+
+Merged incoming main `b3b56fe` (http-hostile-corpus #98 plus the acceptance-timeout bump #140) while preserving both sides. The three conflicts were append/pin conflicts: `docs/OPERATOR_HANDBOOK_KO.md` retains this node's facts-export section and main's `http-hostile-corpus` section; this file retains both appended histories verbatim; `tests/vectors/finance_vectors.json` is byte-identical to the merged generator's output — versus this node's parent only `groups.facade_read_model.contract_digest` moves, covering the combined contract (both `INVALID_TARGET` from main and the two facts routes from this node). The embedded `closeout_digest` group and the committed `tests/vectors/closeout_digest.json` stay this node's honest recorded pass and match each other byte-for-byte. Main's `request_route()` invalid-target fix and this node's facts route registration coexist in `capital/server.py`; `scripts/docs_surface.py` registers both `facts/` and `http/`; `README.md` keeps both corpus entries; `scripts/acceptance.py` takes main's 300s→900s unit-stage timeout.
+
+All results below are local SIMULATED verification run on the merged tree. No runtime, test, CI or documentation rule was weakened; no Protocol/Commerce reference, vendor file, `.aiops/` path or product term was changed.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1147 passed** in 418.271 s, including the facts export/vector suites, the hostile-HTTP corpus, legacy COA byte guards and all of main's tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 98712 bytes match (merged contract digest, both route sets). |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4518 bytes, embedded copy matches. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 33 routes, 250 artifacts, 9 stages. |
+| `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,pack_vectors,forecast_vectors,decision_bindings,not_bound_checklist,http_hostile,fold_fuzz,facts_vectors}.py --check` | All exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | First run: 64 passed, 5 failed under heavy host load (load average ~8.5; run took 46 min; failures were timeouts and REJECTED receipts from starved loopback servers, not assertion diffs). Immediate `npx playwright test --last-failed` in the same namespace: **all 5 passed in 13.1 s** — flaky under load, not a merge regression. All 69 tests pass; the checked-in browser config is unchanged. |
+| Vendor integrity | `git diff` of `capital/vendor` and `.aiops` against both merge parents is empty; the five reference files and `manifest.json` are byte-identical. |
+| Merge hygiene | All three conflicted paths resolved with both sides preserved; no conflict markers (`<<<<<<<`/`=======`/`>>>>>>>`) or unmerged index entries; `git diff --check` clean. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+
+## permission-catalog-surface — conflict-fix round 1 (2026-10-28)
+
+Resolved all 12 conflicts against incoming main `dce49d4` while preserving this
+node's permission catalog and main's typed facts export. Both parent validation
+histories remain verbatim and in order. The finance tests retain both route lists
+and now pin 33 API GET routes and 45 total facade routes. Finance vectors and all
+nine pack vectors were regenerated from the combined implementation; main's
+recorded closeout digest is preserved. Every existing matrix row, role grant and
+role cell from both parents remains unchanged. Relative to main, this node adds
+only `/api/permissions` and its five caller cells.
+
+The first full unit run found one integration defect: the permission-catalog
+contract row lacked main's shared `INVALID_TARGET` boundary error. Added that
+existing error to the row and regenerated the finance contract digest; the focused
+contract/finance suite then passed all 60 tests. No runtime or authorization policy
+change was required, and no test or CI rule was weakened.
+
+The first Chromium run passed 68 tests and timed out waiting for a command response
+in the existing lowered-cap portfolio test. Its targeted retry could not launch:
+the shared Playwright browser cache had disappeared after the initial run. The
+system Chromium 139 fallback emitted console errors from automatic `/favicon.ico`
+requests (confirmed in its traces). The final run therefore uses the locally
+available Chromium headless shell 153, revision 1243, via the ignored
+`build/pcs-conflict-round1/playwright-headless.config.cjs`. Tests, timeouts and
+server commands remain unchanged; only the browser executable and output paths
+are adapted. Browser runs use an isolated loopback network namespace. This is
+local SIMULATED verification; identity and authentication remain NOT_BOUND. No
+external posting, real provider call or product decision occurred.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Final exit 0; 1,153 tests passed in 268.271 s after the shared boundary-error contract fix. |
+| `python3 -m unittest tests.test_auth_matrix tests.test_docs_surface -v` | Exit 0; 49 tests passed, including live role cells and served-catalog drift checks. |
+| `python3 -m unittest tests.test_facade_contract tests.test_finance_vectors -v` | Exit 0; 60 tests passed after the contract fix. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/docs_surface.py --check` | Both exit 0; served catalog, pinned matrix and generated docs agree; 34 routes, 250 artifacts, nine stages. |
+| `python3 scripts/{finance_vectors,pack_vectors,facts_vectors,closeout_digest,fold_fuzz,http_hostile,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist}.py --check` | All exit 0. Finance: 99070 bytes; pack: nine files; facts: 133 files; fold fuzz: 16 seeds, 736 commands. Finance and pack checks repeated after the contract fix. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --config build/pcs-conflict-round1/playwright-headless.config.cjs'` | 68 passed, one 30 s timeout in the existing keyboard/mobile-layout test (2.7 min total). Same command with `--last-failed`: exit 0, one passed in 4.9 s (test: 3.0 s). All 69 browser tests have passing results; this is not a claim of one uninterrupted green run or the pinned browser revision. |
+| Vendor and protected paths | All five SHA256 locks match; vendor files and manifest are byte-identical to both parents. No changes to `.aiops/`, legacy `capital/export.py` or CI. |
+| Merge hygiene | No conflict markers or unmerged entries. `git diff --check MERGE_HEAD` passes. Against HEAD, the sole whitespace warning is main's unchanged intentional `facts/corrupt/whitespace/page-0000.json` fixture; excluding that fixture passes. |
+
+Logs and temporary browser configurations are retained in ignored
+`build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
+responsibility for the merge commit; no abort, commit, push, rebase or reset was
+performed.
+
+
+## advance-case-dossier — conflict-fix round 2 (2026-10-28)
+
+Resolved the merge of main `e445f38` into node HEAD `0a181bf`, preserving the
+read-only case dossier and main's facts cursor export, permission catalog,
+hostile-HTTP handling, tests and documentation. The combined facade pins 34 API
+GET routes and 46 total routes. All parent routes, errors and response definitions
+survive; shared boundary errors apply to the dossier route as well.
+
+The 13 resolved paths are:
+
+- `capital/contract/facade-v1.json`
+- `docs/OPERATOR_HANDBOOK_KO.md`
+- `tests/test_finance_vectors.py`
+- `tests/vectors/finance_vectors.json`
+- `tests/vectors/pack/clean.json`
+- `tests/vectors/pack/content-digest.json`
+- `tests/vectors/pack/section-auth_matrix.json`
+- `tests/vectors/pack/section-decisions.json`
+- `tests/vectors/pack/section-export_manifest.json`
+- `tests/vectors/pack/section-reconciliation.json`
+- `tests/vectors/pack/section-workspace_audit.json`
+- `tests/vectors/pack/truncated.json`
+- `tests/vectors/pack/volatile.json`
+
+Handbook permission rows and both feature sections are combined. Finance route
+assertions retain both route sets and exact counts. Finance and all nine pack
+vectors were regenerated from the merged implementation; all six dossier vectors
+remain unchanged. No dossier section was added to the evidence pack.
+
+The first verification found that the dossier contract lacked main's shared
+`INVALID_TARGET` boundary error. Added the existing error and refreshed the
+finance vector; the focused suite and final full suite then passed. The earlier
+full run was interrupted after this fix so the final run tests the completed tree.
+The previous moved-main legacy-byte-guard blocker is resolved by this merge.
+
+All evidence below is local SIMULATED verification, not real financial execution,
+provider integration, authentication or external attestation.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1168 passed** in 259.152 s, including the legacy byte guard. |
+| `PYTHONPATH=tests python3 -m unittest test_facade_contract test_finance_vectors test_dossier test_facts_export test_auth_matrix -v` | Exit 0; **122 passed** in 19.870 s after the contract fix. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** in 2.2 min. The direct run encountered occupied host ports; the successful run used the unchanged configuration in an isolated loopback namespace. Includes organizer/auditor dossier downloads and screenshots at 1280px and 375px, literal-text rendering under CSP, and error/fallback behavior. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 256 artifacts, 9 stages. |
+| `scripts/{auth_matrix,dossier_vectors,finance_vectors,pack_vectors,facts_vectors,closeout_digest,manifest_vectors,workspace_vectors,forecast_vectors,http_hostile,fold_fuzz,decision_bindings,not_bound_checklist}.py --check` | All exit 0. Six dossier files, 100225 finance bytes, nine pack files, 133 facts files, 4518 closeout bytes, 19 manifest files, six workspace files, 6456 forecast bytes, 76 hostile-HTTP files and 16 fuzz seeds / 736 commands match. |
+| Vendor and protected paths | All five SHA256 locks at protocol commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` match. Vendor files and manifest, `.aiops/`, and `capital/export.py` are byte-identical to both merge parents. No Protocol/Commerce changes. |
+| Merge hygiene | All 13 conflicts are resolved and staged; no unmerged entries or conflict markers. `git diff --check MERGE_HEAD` and the resolved-path staged whitespace check pass. Main's intentional whitespace-corruption facts fixture remains unchanged. No abort, commit, push, rebase or reset performed; merge left to the supervisor. |
