@@ -58,7 +58,7 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(commands['browser'][0], ['npm', 'run', 'test:browser'])
         self.assertEqual(commands['packaged-smoke'][0][1:], ['scripts/build_release.py', '--out', 'build/acceptance-dist'])
         self.assertEqual(commands['seeded-demo'][0][1:], ['scripts/seed_demo.py'])
-        self.assertEqual(commands['integrated-journeys'][0][1:], ['scripts/sim_journeys.py'])
+        self.assertEqual(commands['integrated-journeys'][0][1:], ['scripts/sim_journeys.py', '--check'])
         self.assertEqual(plan[-1]['id'], 'integrated-journeys')
         self.assertEqual(plan[-1]['kind'], 'integrated-journeys')
         self.assertEqual(len(plan), 9)
@@ -151,8 +151,8 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(claims, {'ran': 87, 'passed': 87, 'failed': 0})
 
     def test_journey_line_counts_as_two_checks_and_the_summary_is_parsed(self):
-        line = 'sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33\n'
-        self.assertEqual(acceptance.parse_test_count(line), {'ran': 2, 'passed': 2, 'failed': 0})
+        line = 'sim journeys ok SIMULATED T03-sim steps=25 T04-sim steps=30 T05-sim steps=35 T06-sim steps=33 N1-sim steps=16 N2-sim steps=19\n'
+        self.assertEqual(acceptance.parse_test_count(line), {'ran': 6, 'passed': 6, 'failed': 0})
         summary = {'label': 'SIMULATED', 'journeys': [{'id': 'T05-sim', 'steps': 35}]}
         text = 'noise\nSIM_JOURNEYS ' + json.dumps(summary) + '\n' + line
         self.assertEqual(acceptance.parse_journeys(text), summary)
