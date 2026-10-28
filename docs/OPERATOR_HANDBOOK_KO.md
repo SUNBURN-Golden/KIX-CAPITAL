@@ -537,15 +537,15 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 
 운영 데스크는 `http://127.0.0.1:<port>/#desk`로 연다. 왼쪽 메뉴의 `10 운영 데스크`도 같은 주소다. 열면 다른 패널은 숨고, 다른 메뉴를 누르면 원래 화면으로 돌아간다. 서버 경로, 권한, 역할은 바뀌지 않았다. 화면은 계산하지 않고 서버가 준 숫자와 사유 문장을 그대로 보여 준다. 예외는 `to_sim_day = from_sim_day + 진행 일수`뿐이며, 이는 요청 형식이 요구하는 논리 시계 정수다. 단계 상한과 낡은 시계 판정은 서버가 한다.
 
-영역은 위에서 아래로 다섯이다.
+기존 영역 다음에 포트폴리오 현금 사다리와 코버넌트 watch-list가 이어진다.
 
-- **위험 요약 타일**: `GET /api/risk`의 미상환, 열린·기록된 노출, 준비금 요구액(기장 안 함), HHI, 마지막 충격 행의 부족액, sim_day. 조건이 `NOT_BOUND`이면 라벨과 사유만 나온다.
+- **위험 요약 타일**: `GET /api/portfolio/snapshot`의 `risk` 절에서 받은 미상환, 열린·기록된 노출, 준비금 요구액(기장 안 함), HHI, 마지막 충격 행의 부족액, sim_day. 조건이 `NOT_BOUND`이면 라벨과 사유만 나온다.
 - **sim_day 제어**: `진행 일수`를 넣고 `sim_day 진행`을 누르면 `POST /api/overlay/commands`(`advance_day`)를 한 번 보낸다. 같은 탭 간 쓰기 잠금(`kix-capital-writer`)과 대기 기록을 쓴다. 응답을 잃으면 `UNKNOWN`이며 자동 재시도하지 않는다. `원 요청 결과 조회`는 `GET /api/overlay?operation_id=`만 읽고, 서버에 반영돼 있을 때만 대기 기록을 지운다. `SIM_CLOCK_STALE`, `SIM_CLOCK_NOT_ADVANCING`, `SIM_CLOCK_STEP`, `SIMULATION_CAPACITY`는 서버 거절이다.
 - **다음 작업**: 선택한 사례에서 보낼 수 있는 F04 명령. 활성·비활성과 사유는 서버 값이다. 노출 기록은 `GET /api/preview`의 `WOULD_REJECT` 사유, 종결은 `close_ready`와 원금·이자 필드, 미이행 메모는 마진 `default_eligible` 제안과 `margin.state`, `margin.limit`, `default_eligible_day`, 권한은 역할 권한 사유다. 심사 기록(`GET /api/underwrite`)의 `DECLINE`은 승인 옆에 자문 문장으로만 나오고 승인을 막지 않는다. 비활성 항목은 `aria-disabled`이며 눌러도 명령을 보내지 않는다.
 - **조건 오버레이 원장**: `GET /api/overlay`의 `interest_due_krw`, `default_interest_due_krw`, `close_ready`.
 - **사례 타임라인**: 내보내기 매니페스트의 F04 저널과 오버레이 저널을 `after_journal_index` 기준으로 합친다. 같은 위치에서는 오버레이가 F04 행 앞에 온다. F04 행에는 sim_day를 만들어 붙이지 않는다. 시계와 조건 연결 행은 `오버레이 · 전역`으로 표시한다.
 
-역할별 모습은 다음과 같다. organizer는 전부 본다. auditor는 타일, 원장, 타임라인만 보고 명령 조작은 숨겨지며 사유가 한 줄 나온다. observer는 `projection:read` 사유가 담긴 금지 안내만 보고 데스크용 요청을 보내지 않는다.
+역할별 모습은 다음과 같다. organizer는 전부 본다. auditor는 타일, 원장, 타임라인, 현금 사다리와 코버넌트 사유를 읽고 명령 조작은 숨겨지며 사유가 한 줄 나온다. observer는 `projection:read` 사유가 담긴 금지 안내만 보고 데스크용 요청을 보내지 않는다.
 
 키보드만으로 쓰려면 Tab 순서가 `데스크 새로고침` → `사례` → `진행 일수` → `sim_day 진행` → 다음 작업 버튼 → 오버레이 원장 → 타임라인이다. 일수를 넣고 `sim_day 진행`에서 Enter 또는 Space를 누른다. 완료 후 초점은 `sim_day 진행`에 남는다. 375px 폭에서 가로 넘침이 없고, 표는 자체 영역 안에서만 가로로 스크롤된다.
 
@@ -702,6 +702,21 @@ python3 scripts/lifecycle_claims_check.py --execute
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:portfolio-cashflow-desk -->
+### portfolio-cashflow-desk
+
+`#desk`의 포트폴리오 현금 사다리는 `GET /api/portfolio/snapshot?instance_id=…` 한 응답으로 버킷, 미정 일정, 코버넌트 watch-list, 위험 타일, 연결된 advance 상세를 표시한다. 모든 데이터는 SIMULATED이며 `authenticated_source_cut=NOT_BOUND`다. 기존 `데스크 새로고침`과 `sim_day 진행`을 사용한다. 시계 진행은 기존 `POST /api/overlay/commands`의 `advance_day`뿐이다. 이 화면은 상환을 게시하지 않는다.
+
+버킷 `0-7`, `8-30`, `31-60`, `61-90`, `91+` 안에서 `SETTLEMENT_CASH_IN` (정산 현금), `PRINCIPAL` (원금 상환), `CONTRACT_INTEREST` (계약 이자)를 별도로 읽는다. 서버의 `exact` KRW 분수를 그대로 표시하며 브라우저가 합계·나눗셈·반올림·버킷 재배정을 하지 않는다. 가용 현금 잔액을 만들지 않는다. 예측 계약 이자는 원장에 기장된 미지급 `interest_due_krw`와 다르다. 정산일이 없으면 `EXPECTED_DAY_NOT_PROVIDED`로 미정 일정에 표시하며 날짜를 추정하지 않는다. `NOT_APPLICABLE` 사례와 서버 사유도 유지한다.
+
+버킷 또는 watch-list의 사례 링크를 누르면 기존 `?case=…#desk` 주소와 사례 선택이 바뀌고, 같은 snapshot에서 나온 상세 영역으로 초점이 이동한다. 상세에는 단계, 등급, 기록된 `draw_day`, `maturity_day`, 원금, 흐름, 코버넌트의 `code`, `severity`, `detail`, facts가 나온다. 조건 롤업의 기본 draw_day를 기록일로 바꾸어 쓰지 않는다. `MATURITY_WINDOW`는 만기 후 `PAST_MATURITY`로 바뀌며 지난 일정은 `0-7` 버킷에 남는다. 만기 통과 자체로 상환을 실행하지 않는다.
+
+`sim_day`, `snapshot_digest`, 가정, 행과 선택 상세는 함께 갱신한다. 이전 새로고침·역할 세션·데스크 이탈의 지연 응답은 버린다. 별도 오버레이는 sim_day와 overlay_state_digest가 일치할 때만 함께 표시한다. `INCOMPLETE`, null 절, `NOT_BOUND`, 잘못된 응답 또는 맞지 않는 절단면에서는 이전 예측 숫자·상세·타일을 지우고 진단을 표시한다. 별도 예측·코버넌트 API로 대체하지 않는다. 준비금 coverage와 funding_source의 `NOT_BOUND`, `RESERVE_POOL_NOT_BOUND`는 그대로 보인다. 코버넌트는 자문이며 applied=false, enforced=false다.
+
+snapshot 조회 자체가 실패하면 `INCOMPLETE · portfolio snapshot unavailable`로 표시하고 이전 digest와 가정도 지운다. 서버가 다른 instance_id를 돌려주거나 절단면이 없을 때도 이전 숫자를 재사용하지 않는다. 시계 진행만으로 F04 state_digest가 유지되더라도 상세 사전점검은 snapshot 식별자로 이전 응답을 구분하며, 이전 역할 세션의 지연 응답이 현재 토큰을 바꾸지 않는다.
+
+organizer와 auditor는 `projection:read`로 읽는다. auditor의 명령 조작은 숨겨지고 observer는 금지 안내만 보며 snapshot 요청을 보내지 않는다. 새 접근 가능 영역과 링크는 기존 타임라인 뒤에 있어 기존 키보드 순서를 유지한다. 표는 375px에서 영역 안으로 스크롤된다. 접근성·CSP·서버 금액 소유권은 `tests/test_portfolio_cashflow_desk.py`, 실제 브라우저 동작과 지연 응답은 `tests/browser/portfolio-cashflow-desk.spec.cjs`로 검사한다. stdlib 루프백 여정은 HTTP offer/approve/bind/draw 뒤 시계 명령과 읽기만으로 만기 창·만기·만기 다음 날을 확인하고 F04 저널·영수증·노출·operation_count·state_digest 불변을 확인한다.
+<!-- /handbook-section -->
 
 ### Facts 페이지 오프라인 확인 · SIMULATED
 

@@ -23,3 +23,5 @@ body.desk-open main>:not(#desk):not(#notice):not(#recovery):not(footer){display:
 #desk-forbidden{border:1px solid #d9b08c;background:#fbf3ea;border-radius:8px;padding:12px 14px;color:#874c29}
 #desk :focus-visible,#desk-refresh:focus-visible,nav a:focus-visible,#role:focus-visible{outline:3px solid #1f6fd1;outline-offset:2px}
 @media(max-width:480px){.desk-tiles{grid-template-columns:1fr}.desk-bar{align-items:stretch}.desk-bar input,.desk-bar select{max-width:100%;width:100%}}
+
+#desk-cashflow{min-width:0;max-width:100%;overflow-wrap:anywhere;margin-top:24px}#desk-cashflow .table-wrap{max-width:100%;overflow:auto}#desk-cashflow table{min-width:42rem}#desk-cashflow td{white-space:normal;overflow-wrap:anywhere;max-width:24rem}#desk-cashflow a{display:inline-block;padding:8px 2px}#desk-cashflow h5{font-size:12px}#desk-cashflow section{margin:16px 0}#desk-cash-detail:focus{outline:3px solid #7e9c45;outline-offset:3px}

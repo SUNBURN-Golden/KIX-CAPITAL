@@ -27,6 +27,16 @@
 <div class="table-wrap" id="desk-overlay-region" role="region" aria-label="오버레이 원장" tabindex="0"><table><caption class="sr-only">제안별 이자 원장과 종결 가능 여부</caption><thead><tr><th scope="col">제안</th><th scope="col">단계</th><th scope="col">남은 원금</th><th scope="col">interest_due_krw</th><th scope="col">default_interest_due_krw</th><th scope="col">발생 기준일</th><th scope="col">close_ready</th><th scope="col">마진</th></tr></thead><tbody id="desk-overlay-rows"></tbody></table></div>
 <h3>사례 타임라인 (F04 저널 + 오버레이)</h3><p id="desk-timeline-note" class="muted"></p>
 <div class="table-wrap" id="desk-timeline-region" role="region" aria-label="사례 타임라인" tabindex="0"><table><caption class="sr-only">F04 저널과 오버레이 이벤트를 합친 타임라인</caption><thead><tr><th scope="col">순서</th><th scope="col">출처</th><th scope="col">sim_day</th><th scope="col">이벤트</th><th scope="col">상세</th></tr></thead><tbody id="desk-timeline-rows"></tbody></table></div>
+<section id="desk-cashflow" aria-labelledby="desk-cashflow-title">
+<h3 id="desk-cashflow-title">포트폴리오 현금 사다리 · SIMULATED</h3>
+<p>SETTLEMENT_CASH_IN (정산 현금), PRINCIPAL (원금 상환), CONTRACT_INTEREST (계약 이자)는 별도 흐름입니다. 가용 현금 잔액이 아니며 합산하지 않습니다. 예측 이자는 기장된 미지급 이자와 다릅니다. 상환을 게시하지 않습니다.</p>
+<p id="desk-cash-status" role="status"></p><p id="desk-cash-cut"></p><p id="desk-cash-assumptions"></p>
+<div id="desk-cash-buckets" class="table-wrap" role="region" aria-label="현금 사다리 버킷" tabindex="0"></div>
+<h4>미정 일정 · Unscheduled legs</h4><div id="desk-cash-unscheduled" class="table-wrap" role="region" aria-label="날짜 미제공 현금 흐름" tabindex="0"></div>
+<ul id="desk-cash-inapplicable" aria-label="NOT_APPLICABLE 사례"></ul>
+<section aria-labelledby="desk-cash-watch-title"><h4 id="desk-cash-watch-title">코버넌트 watch-list · 서버 사유 (자문)</h4><p id="desk-cash-reserve"></p><ul id="desk-cash-watch"></ul></section>
+<section id="desk-cash-detail" aria-labelledby="desk-cash-detail-title" tabindex="-1"><h4 id="desk-cash-detail-title">연결된 advance 상세 · 같은 snapshot</h4><div id="desk-cash-detail-body" class="table-wrap"></div></section>
+</section>
 <section id="desk-audit" hidden aria-labelledby="desk-audit-title">
 <h3 id="desk-audit-title">Auditor evidence workbench · SIMULATED · read-only</h3>
 <p id="desk-audit-error" role="status"></p>

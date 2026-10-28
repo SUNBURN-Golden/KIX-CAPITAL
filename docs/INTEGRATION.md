@@ -344,6 +344,9 @@ empty; schema stays 1. V3 export and offline verification cover the fold and its
 F04-prefix links. No title, money, COA posting or pinned-FSM application occurs.
 Time impairment and slice write-off remain NOT_BOUND / NOT_POSTABLE_V1.
 
+### portfolio-cashflow-desk consumer
+
+The earlier portfolio-consistent-read node excluded UI work from its own scope. This node consumes its existing `GET /api/portfolio/snapshot?instance_id=…` in `#desk` without changing the response schema or authorization. Forecast buckets, unscheduled legs, covenant reasons, risk tiles and linked advance details share that SIMULATED local cut. Embedded components are validated as components, without standalone endpoint envelopes. The current clock command, refresh controls, case URL and UNKNOWN recovery are reused. Separate overlay reads require matching sim_day and overlay_state_digest. Incomplete or incompatible data clears numeric content; delayed refresh/session responses cannot publish. Reserve coverage and authenticated source cut remain NOT_BOUND. Settlement, principal and contract interest are separate exact server streams; no spendable balance or repayment posting is introduced. CAP-01/CAP-20 evidence: `tests/test_portfolio_cashflow_desk.py` and `tests/browser/portfolio-cashflow-desk.spec.cjs`.
 
 ### Typed facts candidate
 
