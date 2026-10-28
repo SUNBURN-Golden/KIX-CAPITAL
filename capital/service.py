@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, forecast, margin, overlay, recovery, risk, portfolio_snapshot
+from capital import coa, covenants, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -1187,6 +1187,7 @@ class CapitalService:
                        'role': principal.role, 'role_provenance': ROLE_PROVENANCE}
             if cited is not None:
                 receipt['proposal_id'] = cited
+                receipt['effects_executed'] = False
             default_entry = None
             before_journal = self.machine.export_journal()
             if op == 'draw' and case in self.case_fixtures:
@@ -2232,6 +2233,31 @@ class CapitalService:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def _watch_inputs(self):
+        """Caller holds the lock. One snapshot of the integer inputs the risk and
+        covenant folds share, so every read folds the same book at the same sim_day."""
+        overlay_state = overlay.fold(self.overlay_entries)
+        drawn = self._overlay_subjects(self.overlay_entries)
+        margin_subjects = self._margin_subjects(drawn)
+        mutable = margin.views_mutable(self.fixtures)
+        margin_rows = margin.row_blocks(overlay_state, margin_subjects, mutable=mutable)
+        margin_block = margin.status_block(
+            overlay_state, margin_rows, mutable=mutable, bound=True,
+            cure_terms=margin_subjects[0]['margin'] if margin_subjects else None)
+        outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
+        return {
+            'sim_day': overlay_state['sim_day'], 'drawn': drawn,
+            'margin_subjects': margin_subjects, 'margin_rows': margin_rows,
+            'margin_block': margin_block, 'projection_outstanding_krw': outstanding,
+        }
+
+    def _watch_bound(self):
+        """Caller holds the lock. The input snapshot when the terms note is usable, else None."""
+        status = self._overlay_terms()
+        if status is None or not risk.usable(self.terms):
+            return None
+        return self._watch_inputs()
+
     def portfolio_snapshot(self, instance_id):
         """One lock-held, detached local diagnostic cut. No persistence or remote reads."""
         with self.lock:
@@ -2288,14 +2314,14 @@ class CapitalService:
         with self.lock:
             frozen = self._frozen()
             try:
-                sim_day = overlay.fold(self.overlay_entries)['sim_day']
-                status = self._overlay_terms()
-                if status is None or not risk.usable(self.terms):
+                inputs = self._watch_bound()
+                if inputs is None:
+                    sim_day = overlay.fold(self.overlay_entries)['sim_day']
                     return self._terms_envelope(risk.not_bound(self.terms.status()['terms_version'], sim_day))
-                drawn = self._overlay_subjects(self.overlay_entries)
-                outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
-                body = risk.build(drawn, self._margin_subjects(drawn), terms=self.terms, sim_day=sim_day,
-                                  projection_outstanding_krw=outstanding)
+                body = risk.build(
+                    inputs['drawn'], inputs['margin_subjects'], terms=self.terms,
+                    sim_day=inputs['sim_day'],
+                    projection_outstanding_krw=inputs['projection_outstanding_krw'])
                 return self._terms_envelope(body)
             finally:
                 if not self._same_frozen(frozen):
@@ -2306,24 +2332,46 @@ class CapitalService:
         with self.lock:
             frozen = self._frozen()
             try:
-                sim_day = overlay.fold(self.overlay_entries)['sim_day']
-                status = self._overlay_terms()
-                if status is None or not risk.usable(self.terms):
+                inputs = self._watch_bound()
+                if inputs is None:
+                    sim_day = overlay.fold(self.overlay_entries)['sim_day']
                     return self._terms_envelope(covenants.not_bound(
                         self.terms.status()['terms_version'], sim_day))
-                drawn = self._overlay_subjects(self.overlay_entries)
-                margin_subjects = self._margin_subjects(drawn)
-                overlay_state = overlay.fold(self.overlay_entries)
-                mutable = margin.views_mutable(self.fixtures)
-                margin_rows = margin.row_blocks(overlay_state, margin_subjects, mutable=mutable)
-                margin_block = margin.status_block(
-                    overlay_state, margin_rows, mutable=mutable, bound=True,
-                    cure_terms=margin_subjects[0]['margin'] if margin_subjects else None)
-                outstanding = sum(row['outstanding'] for row in self.projection()['read_model']['advances'])
-                risk_body = risk.build(drawn, margin_subjects, terms=self.terms, sim_day=sim_day,
-                                       projection_outstanding_krw=outstanding)
+                risk_body = risk.build(
+                    inputs['drawn'], inputs['margin_subjects'], terms=self.terms,
+                    sim_day=inputs['sim_day'],
+                    projection_outstanding_krw=inputs['projection_outstanding_krw'])
                 return self._terms_envelope(covenants.build(
-                    drawn, margin_rows, margin_block, risk_body, terms=self.terms, sim_day=sim_day))
+                    inputs['drawn'], inputs['margin_rows'], inputs['margin_block'], risk_body,
+                    terms=self.terms, sim_day=inputs['sim_day']))
+            finally:
+                if not self._same_frozen(frozen):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def risk_scenarios(self, scenario_id=None):
+        """Read-only named what-if scenarios. Deep copies re-fold; nothing is written."""
+        with self.lock:
+            if scenario_id is not None and scenario_id not in risk_whatif.CATALOG:
+                raise ApiError('SCENARIO_UNKNOWN', 400, {'scenarios': list(risk_whatif.CATALOG)})
+            frozen = self._frozen()
+            try:
+                inputs = self._watch_bound()
+                if scenario_id is None:
+                    sim_day = overlay.fold(self.overlay_entries)['sim_day']
+                    return self._terms_envelope(risk_whatif.index(
+                        inputs is not None, sim_day, self.terms.status()['terms_version']))
+                if inputs is None:
+                    sim_day = overlay.fold(self.overlay_entries)['sim_day']
+                    return self._terms_envelope(risk_whatif.not_bound(
+                        scenario_id, self.terms.status()['terms_version'], sim_day))
+                inputs['baseline_risk'] = risk.build(
+                    inputs['drawn'], inputs['margin_subjects'], terms=self.terms,
+                    sim_day=inputs['sim_day'],
+                    projection_outstanding_krw=inputs['projection_outstanding_krw'])
+                inputs['baseline_cov'] = covenants.build(
+                    inputs['drawn'], inputs['margin_rows'], inputs['margin_block'],
+                    inputs['baseline_risk'], terms=self.terms, sim_day=inputs['sim_day'])
+                return self._terms_envelope(risk_whatif.build(scenario_id, inputs, terms=self.terms))
             finally:
                 if not self._same_frozen(frozen):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
