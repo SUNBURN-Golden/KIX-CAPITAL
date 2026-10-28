@@ -98,6 +98,16 @@ class FacadeContractTests(unittest.TestCase):
         self.assertNotEqual(self.doc['namespace'], 'kix:fixture:lifecycle:0.3')
         self.assertIn('Not SEMANTIC_CONFORMANCE', self.doc['description'])
 
+    def test_permission_catalog_response_matches_closed_schema(self):
+        status, body = self.request('GET', '/api/permissions')
+        self.assertEqual(status, 200)
+        schema = self.route('GET', '/api/permissions')['response']
+        self.check(body, schema)
+        for changed in ({**body, 'token': 'not-exposed'},
+                        {**body, 'role_permissions': {**body['role_permissions'], 'unlisted': []}}):
+            with self.assertRaises(SchemaError):
+                self.check(changed, schema)
+
     def test_routes_cover_the_server_dispatch(self):
         api = [row for row in self.doc['routes'] if row['kind'] == 'api']
         self.assertEqual(

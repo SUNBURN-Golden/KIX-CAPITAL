@@ -315,6 +315,34 @@ class DivergenceTests(unittest.TestCase):
     def setUpClass(cls):
         cls.committed = TABLE.read_text(encoding='utf-8')
 
+    def test_served_only_drift_is_refused(self):
+        original = auth_matrix.catalog_projection(load_table())
+        mutations = [
+            lambda c: c['routes'].append(dict(c['routes'][0], route='/api/unlisted')),
+            lambda c: c['routes'].pop(),
+            lambda c: c['routes'][0].update(permission='reference:read'),
+            lambda c: c['role_permissions'].update(unlisted=[]),
+            lambda c: c['role_permissions'].pop('agent'),
+            lambda c: c['role_permissions']['observer'].append('metrics:read'),
+        ]
+        for mutate in mutations:
+            catalog = json.loads(json.dumps(original))
+            mutate(catalog)
+            with self.subTest(catalog=catalog), mock.patch(
+                    'capital.server.permission_catalog', return_value=catalog):
+                self.assertEqual(quiet_main(['--check']), 1)
+
+    def test_unlisted_role_grant_and_duplicate_route_are_refused(self):
+        for matrix in ({**MATRIX, 'unlisted': frozenset()},
+                       {key: value for key, value in MATRIX.items() if key != 'agent'},
+                       {**MATRIX, 'agent': MATRIX['agent'] | {'unknown:read'}}):
+            with mock.patch.object(auth_matrix, 'MATRIX', matrix):
+                with self.assertRaises(auth_matrix.MatrixError):
+                    auth_matrix.build()
+        with mock.patch.object(auth_matrix, 'GET_DISPATCH', (*GET_DISPATCH, GET_DISPATCH[0])):
+            with self.assertRaises(auth_matrix.MatrixError):
+                auth_matrix.build()
+
     def test_a_route_dropped_from_route_permissions_is_refused(self):
         with mock.patch.object(auth_matrix, 'ROUTE_PERMISSIONS', ROUTE_PERMISSIONS[:-1]):
             with self.assertRaises(auth_matrix.MatrixError):
@@ -432,6 +460,31 @@ class LiveMatrixTests(LiveBase):
                     'instance_id': cls.instance, 'operation_id': f'sim-mtx-drawn-{op.replace("_", "")}',
                     'op': op, 'advance_id': auth_matrix.DRAWN_ADVANCE, 'args': args})
             assert status == 200 and json.loads(raw)['outcome'] == 'ACCEPTED', (op, raw)
+
+    def test_permission_catalog_is_read_only_and_identical_for_allowed_callers(self):
+        from capital.auth import permission_catalog
+        before = self.service.export_manifest()
+        expected = auth_matrix.catalog_projection(self.table)
+        first = permission_catalog(POST_DISPATCH, ASSETS)
+        self.assertEqual(first, expected)
+        first['routes'].clear()
+        first['role_permissions']['organizer'].clear()
+        self.assertEqual(permission_catalog(POST_DISPATCH, ASSETS), expected)
+        for caller in CALLERS:
+            status, _kind, raw = self.send('GET', '/api/permissions', self.token_headers(caller))
+            body = json.loads(raw)
+            if caller == 'agent':
+                self.assertEqual(status, 403)
+                self.assertEqual(body['error'], 'ROLE_FORBIDDEN')
+                self.assertEqual(body['permission'], 'reference:read')
+            else:
+                self.assertEqual(status, 200)
+                self.assertEqual(body, expected)
+                self.assertNotIn('local_token', raw.decode())
+        self.assertEqual(self.service.export_manifest(), before)
+        for path in ('/api/permissions/', '/api/permissions/child'):
+            self.assertEqual(self.send('GET', path)[0], 404)
+        self.assertEqual(self.send('POST', '/api/permissions', self.token_headers('organizer'), {})[0], 404)
 
     def fill(self, value):
         if isinstance(value, str):

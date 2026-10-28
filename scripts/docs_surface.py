@@ -65,6 +65,7 @@ _STAGE_ANCHOR = 'stage id'
 # names and is stripped before the search.
 ROUTE_NEEDLES = {
     ('GET', '/api/state'): ('- `GET /api/state`:',),
+    ('GET', '/api/permissions'): ('- `GET /api/permissions`:',),
     ('GET', '/api/scenarios'): ('`GET /api/scenarios` and `/api/scenarios/{id}`',),
     ('GET', '/api/readiness'): ('- `GET /api/readiness`:',),
     ('GET', '/api/decisions'): ('- `GET /api/decisions`:',),

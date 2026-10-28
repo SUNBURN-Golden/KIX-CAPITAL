@@ -202,6 +202,7 @@ FACADE_READS = [
     ('/api/state', ['state']),
     ('/api/scenarios', ['scenario_list']),
     ('/api/scenarios/{id}', ['scenario_detail']),
+    ('/api/permissions', ['permission_catalog']),
     ('/api/readiness', ['readiness']),
     ('/api/decisions', ['decisions']),
     ('/api/evidence', ['evidence']),
@@ -747,14 +748,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_thirty_five_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 35)
+    def test_exactly_the_thirty_six_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 36)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 47)
+        self.assertEqual(len(self.contract['routes']), 48)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
