@@ -2249,3 +2249,21 @@ All results below are local SIMULATED verification, with no external assurance o
 | Merge hygiene | Both histories preserved; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. Merge left uncommitted for the supervisor. |
 
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce change or consequential product decision was made.
+
+## sql-projection-crosscheck — PR fix round 3 (2026-10-28)
+
+Resolved the blocking review finding by retaining the interrupted attempt's working-tree deletion of the obsolete root `DECISION_REQUIRED.md`. The deletion is present in `git diff HEAD`; the earlier statements that the blocker was removed now agree with the working tree. The unchanged `test_v1_and_golden_files_are_untouched` passes on this checkout, confirming that the old baseline-integration blocker no longer applies. No product decision is needed.
+
+All results below are local SIMULATED verification. The SQL report remains `LOCAL_ONLY / SYNTHETIC_UNADOPTED`, with `funds_executed:false`; stage7 and independent external assurance remain `NOT_BOUND`. Logs and the clean-pack report are in `/tmp/sql-projection-round3.q2ocMd/`.
+
+| Verification | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,169 passed** in 246.643s (`unit.log`), including all 36 SQL-auditor tests and the unchanged legacy byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed** (`vendor.log`). |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **69 Chromium tests passed** in 1.9m (`browser.log`). The unchanged browser configuration used the installed Chromium headless shell in an isolated loopback network namespace because host ports were occupied. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0; all **17 checks matched** (`sql-clean.json`). SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/pack_vectors.py --check` | Both exit 0; 31 routes, 117 artifacts, nine stages; all nine pack files match. |
+| Protected-file integrity | All five vendor SHA256 locks match. The five vendored references, `manifest.json` and `capital/export.py` are byte-identical to both HEAD and `origin/main`; `.aiops/` is unchanged. |
+
+Final `python3 scripts/docs_surface.py --check` and `git diff --check` pass after this record was updated. This round changes only the obsolete blocker deletion and this validation record. No runtime, tests, CI, dependencies, financial terms, Protocol or Commerce files were changed. No commit, push or external post was made.
