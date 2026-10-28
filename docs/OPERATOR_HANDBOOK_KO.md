@@ -246,10 +246,10 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:default` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `default`) |
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
-| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
+| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/permissions`, `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
 | `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
-| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
+| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest`, `GET /api/export/facts`, `GET /api/export/facts/schema` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
 | `statement:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/statement` |
 | `metrics:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/metrics` |
@@ -718,4 +718,28 @@ MATCHED여야 하며 `balance_groups`의 asset·sim_day별 차변과 대변이 �
 
 검증: `tests/test_coa_payment_writeoff.py`의 seeded disposable-book,
 combined-book, loopback GET, 변조·읽기 불변 검사를 실행합니다.
+<!-- /handbook-section -->
+
+
+### Facts 페이지 오프라인 확인 · SIMULATED
+
+`GET /api/export/facts?instance_id=<현재 세션>&limit=100`은 `export:read`가
+필요하다. 각 응답의 원본 바이트를 `page-0000.json`, `page-0001.json` 순으로
+저장하고 `next_cursor`를 다음 요청의 `after`로 보낸다. null이면 완료다.
+`GET /api/export/facts/schema`는 고정 열·폭·KRW 정수 단위 스키마다.
+`python3 -m capital.verify --facts DIR`로 페이지 연결·행 해시·F04 재생·오버레이
+fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
+`CUT_MOVED`는 처음부터 다시 조회해야 하며, 저장소 오류 503이면 페이지가 없다.
+빈 오버레이는 cut의 오버레이 키 자체가 없다. 동일 overlay_id의 원본 중복은
+`duplicate: 1`로 남는다. `SIMULATED`, source_cut과 authentication은 `NOT_BOUND`이며
+`k-stage7-authenticated-export`가 아니다. 해시를 모두 다시 만든 일관된 대체 장부는
+탐지하지 못한다. 내장 fixture만 검증하며 import/resume은 제공하지 않는다.
+<!-- handbook-section:http-hostile-corpus -->
+
+### http-hostile-corpus
+
+`tests/vectors/http/`는 loopback 서버에 보내는 비정상 원시 요청 76건을 바이트로 고정한 코퍼스다. 각 파일은 요청 바이트(`request_b64`, 자리표시자 `__PORT__`·`__TOKEN__`만 치환)와 고정된 결과(`expect.status`, `expect.code`, 응답 접두·표지)를 담고, `tests/test_http_hostile.py`가 in-process `make_server(0)`에 replay한다. 매건 뒤에 `state_digest`·`operation_count` 불변과 `GET /api/health` 200을 다시 확인하고, 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다.
+
+코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
+
 <!-- /handbook-section -->
