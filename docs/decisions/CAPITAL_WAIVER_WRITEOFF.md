@@ -4,131 +4,156 @@
 >
 > 결정자 표기(위임 메타데이터): **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**
 >
-> 결정일: **2026-10-22** · KIX-CAPITAL main **`cde0bc7`** · kix-protocol **`93cec6a`**. Supervisor 제공 기준이며 Git 재검증이나 지정 모델 실행을 주장하지 않는다.
+> 위임 원문 (2026-10-08 18:25 KST, JunTae Park): "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해."
 >
-> **시뮬레이션·제품 설계 전용**이다. 실자금·청약·외부 지급·법적 채무 소멸을 승인하지 않는다. **`funds_executed:false`**, production **`NOT_AUTHORIZED`**를 유지한다. 회계·세무·법무는 **`WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`**다. 소비 구현은 별도 노드이며 upstream 채택·완료·SEMANTIC_CONFORMANCE를 주장하지 않는다.
+> 결정일: **2026-10-26** · KIX-CAPITAL main **`aab0a73`** · kix-protocol **`22d05a0`** (supervisor가 준 기준이며, 이 결정자가 Git으로 다시 검증했다고 주장하지 않음).
+>
+> 이 결정은 **시뮬레이션·제품 설계 전용**이다. 실자금 이동, 청약, 외부 지급, 법적 채무 소멸을 승인하지 않는다. **`funds_executed:false`**와 production **`NOT_AUTHORIZED`**는 그대로 유지한다. 회계·세무·법무 내용은 **`WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`**이다. 소비 구현은 별도 노드가 맡는다. upstream 채택·완료·SEMANTIC_CONFORMANCE는 주장하지 않는다.
 
 ## 1. 결정 요약
 
 | item | 결정 | CAP rows | consumer |
 |---|---|---|---|
-| `waiver_command_existence` | ADOPTED — 명시적 `waive_interest`; 상각 후에도 가능 | CAP-01, CAP-04 | waiver overlay |
-| `waiver_scope_interest_only_vs_principal` | ADOPTED — 미납 약정·연체이자만 면제. 상각 후 보조 귀속과 잔여 회수 한도 동시 차감 | CAP-01, CAP-04 | 이자·회수 투영 |
-| `waiver_authority_and_two_person_threshold` | ADOPTED — 운영자·별도 검토자, 임계 초과 시 별도 금융책임자 추가 | CAP-04, CAP-09 | 승인 검증 |
-| `waiver_caps_and_sim_day_recording` | ADOPTED — 적격 이자 100% 이내, 누적 예산, 현재 논리 일 | CAP-01, CAP-04 | cap·재생 |
-| `unapplied_cash_release_or_refund` | ADOPTED — 대사된 원천 lot의 시뮬레이션 반환 | CAP-02, CAP-05 | 보관액 해제 |
-| `close_gate_reconsideration` | ADOPTED — 유효 면제로 순이자 0 가능. 다른 차단 유지 | CAP-01, CAP-04, CAP-20 | advisory close |
-| `overlay_entry_schema_and_digest_effect` | ADOPTED — append-only·원자성·멱등성, 보조 귀속도 digest에 결속 | CAP-13, CAP-14, CAP-15 | 저장·export |
-| `tax_and_accounting_working_assumption` | ADOPTED — 면제·회수·상각 분리. 전문 판단은 미정 | CAP-04, CAP-20 | 회계 설명·투영 |
-| `agent_lane_proposal_kinds` | ADOPTED — 세 종류 제안만 허용. 승인·게시·지급 금지 | CAP-09, CAP-20 | agent proposal lane |
+| `waiver_command_existence` | ADOPTED. 명시적 `waive_interest` 명령을 둔다. 상각 후에도 사용할 수 있다 | CAP-01, CAP-04 | waiver overlay |
+| `waiver_scope_interest_only_vs_principal` | ADOPTED. 미납 약정이자·연체이자만 면제한다. 상각 후에는 보조 귀속과 잔여 회수 한도를 같은 원자 단위에서 함께 줄인다 | CAP-01, CAP-04 | 이자·회수 투영 |
+| `waiver_authority_and_two_person_threshold` | ADOPTED. 운영자 제안과 별도 검토자 승인을 요구한다. 임계 초과 시 별도 금융책임자를 추가한다 | CAP-04, CAP-09 | 승인 검증 |
+| `waiver_caps_and_sim_day_recording` | ADOPTED. 적격 이자의 100% 이내로 한정하고, 리셋 없는 누적 예산을 적용하며, 현재 논리 일로 기록한다 | CAP-01, CAP-04 | cap·재생 |
+| `unapplied_cash_release_or_refund` | ADOPTED. 대사된 원천 lot을 시뮬레이션으로만 반환한다 | CAP-02, CAP-05 | 보관액 해제 |
+| `close_gate_reconsideration` | ADOPTED. 유효한 면제로 순이자 0을 만들 수 있다. 다른 차단 조건은 모두 유지한다 | CAP-01, CAP-04, CAP-20 | advisory close |
+| `overlay_entry_schema_and_digest_effect` | ADOPTED. append-only·원자성·멱등성을 지키고, 보조 귀속 근거도 digest에 결속한다 | CAP-13, CAP-14, CAP-15 | 저장·export |
+| `tax_and_accounting_working_assumption` | ADOPTED. 면제·회수·상각을 분리한다. 전문 판단 세 칸은 UNDETERMINED로 둔다 | CAP-04, CAP-20 | 회계 설명·투영 |
+| `agent_lane_proposal_kinds` | ADOPTED. 세 종류의 제안만 허용한다. 승인·게시·지급은 금지한다 | CAP-09, CAP-20 | agent proposal lane |
 
-CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전체를 확인했다는 뜻은 아니다.
+CAP 매핑은 허용된 선행 노트의 사용례를 따랐다. CAP 정본 전체를 확인했다는 뜻은 아니다.
 
 ## 2. KIX 비전 연결
 
-- `docs/CAPITAL_REQUIREMENTS_KO.md`: 원 요청·관측·금전 의무·실행을 분리한다. 면제는 현금 회수가 아닌 독립된 오버레이 사건이다.
-- `docs/SEAMS.md`: 로컬 정책 채택은 upstream 계약 채택이 아니다. 포트의 `NOT_BOUND`를 해제하지 않는다.
-- `docs/VALIDATION.md`: 로컬 검증에서 은행 exactly-once·분산 내구성·법적 적합성을 추론하지 않는다.
-- `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`: 가속 재기준·부도 명령일 기준 상각을 유지한다. 리뷰에 제공된 §98 및 JSON §260–261의 **상각 후 단일 잔여채권 회수·무배분** 규칙을 유지하면서, 면제 적격성에만 사용하는 보조 귀속을 추가한다.
-- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`: 한도 숫자를 복사하지 않고 `CAPITAL-TERMS-V1` 필드를 참조한다. 면제로 원금 한도나 차입기초를 복원하지 않는다.
-- `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`: 합성 차트에서 회계·세무 입장을 추론하지 않는다.
+- `docs/CAPITAL_REQUIREMENTS_KO.md`: 핀의 범위와 현재 구현 상태를 구분한다. 결정 노트는 실행 구속이 아니며, 설계 후보를 구현 완료로 옮기지 않는다.
+- `docs/SEAMS.md`: 로컬 정책 채택은 upstream 계약 채택이 아니다. 이 결정은 어떤 포트의 `NOT_BOUND`도 해제하지 않는다.
+- `docs/VALIDATION.md`: 로컬 검증 결과에서 은행 exactly-once, 분산 내구성, 법적 적합성을 추론하지 않는다.
+- `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`: 가속 재기준과 부도 명령일 기준 상각을 그대로 유지한다. **상각 후 회수는 단일 잔여채권에 배분 없이 기록한다**는 규칙도 유지한다. 이 결정은 면제 적격성 판단에만 쓰는 보조 귀속을 덧붙인다.
+- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`: 한도 숫자를 복사하지 않고 `CAPITAL-TERMS-V1` 필드명으로 참조한다. 면제로 원금 한도나 차입기초를 복원하지 않는다.
+- `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`: 합성 차트(`SIMULATION_FIXED_V1`)에서 회계·세무 입장을 추론하지 않는다.
 
-근거는 supervisor pack과 리뷰 발췌뿐이다. `CAPITAL_REPAYMENT_POSTING.md`, `CAPITAL_FINANCIAL_TERMS.md`는 선행 정본이지만 허용된 본문이 없어 직접 읽지 않았다. 기존 숫자·정확한 바인딩은 해당 정본이 우선하고, 이번 면제 적격성·잔여 회수 한도 조정은 본 결정의 명시적 추가 정책이다. 바인딩 부족은 해당 소비 경로를 `NOT_BOUND`로 만들며 채택된 정책 자체를 `DECISION_REQUIRED`로 되돌리지 않는다.
+`CAPITAL_REPAYMENT_POSTING.md`와 `CAPITAL_FINANCIAL_TERMS.md`는 선행 정본이지만 허용 경로 밖이어서 직접 읽지 않았다. 이름·숫자가 서로 다르면 선행 정본이 이긴다. 이 노트가 정하는 것은 면제 적격성 규칙과 잔여 회수 한도 조정뿐이며, 둘 다 이 결정이 명시적으로 추가하는 정책이다. 바인딩이 부족하면 해당 소비 경로만 `NOT_BOUND`가 된다. 이미 채택된 정책이 `DECISION_REQUIRED`로 돌아가지는 않는다.
 
 ## 3. 항목별 결정
 
 ### 3.1 `waiver_command_existence`
 
-**`waive_interest`를 신설한다.** 정상·연체·부도·회계상 상각 이후의 열린 선지급에 적용한다. 약정이자·연체이자 금액을 각각 지정하고 합계는 양의 KRW 정수여야 한다. 각 금액은 0 이상이며 잔액 초과·소수·음수는 거절한다.
+**`waive_interest`를 신설한다.** 정상·연체·부도 상태의 열린 선지급과, 회계상 상각 이후의 열린 선지급에 쓸 수 있다.
 
-명시적 사유·기준 digest·승인 증거가 필수다. 자동 면제, 과거 영수증 수정, 종결 기록에 대한 게시, V1 면제 취소는 금지한다. 성공은 시뮬레이션 이자청구 감소만 의미한다.
+- 약정이자와 연체이자 면제액을 따로 지정한다. 각 금액은 0 이상의 KRW 정수이고 합계는 양수여야 한다.
+- 잔액 초과, 소수, 음수는 거절한다.
+- 사유, 기준 digest, 승인 증거가 필수다.
+
+다음은 금지한다. 자동 면제, 과거 영수증 수정, 종결된 기록에 대한 게시, V1의 면제 취소. 명령이 성공해도 시뮬레이션상의 이자청구가 줄어든다는 뜻뿐이다.
 
 ### 3.2 `waiver_scope_interest_only_vs_principal`
 
-대상은 현재 `sim_day`까지 발생·확정된 미납 약정이자와 연체이자다. 원금·수수료·미래이자·제3자 보호채무·반환 의무는 제외한다.
+면제 대상은 현재 `sim_day`까지 발생·확정된 미납 약정이자와 미납 연체이자다. 원금, 수수료, 미래 이자, 제3자 보호채무, 반환 의무는 제외한다.
 
-**상각 전:** 버킷별 적격 잔액은 확정 발생액에서 해당 버킷에 실제 확정 배분된 상환·회수액과 이전 유효 면제를 한 번씩 차감한다. 상각 자체는 면제가 아니다.
+**상각 전.** 버킷별 적격 잔액은 다음과 같다. 확정 발생액에서 그 버킷에 실제로 확정 배분된 상환·회수액을 빼고, 이전의 유효 면제액을 뺀다. 각 금액은 한 번씩만 차감한다. 상각 자체는 면제가 아니다.
 
-**상각 후:** 실제 회수는 선행 결정대로 **단일 잔여채권에 무배분**으로 기록한다. 그 기록과 별도로 `POST_WRITEOFF_WAIVER_ATTRIBUTION_V1` 보조 계산을 채택한다. 이것은 면제 적격성·잔여청구 대사용이며 실제 상환 배분, 회계 계정 배분 또는 원금 상환 증거가 아니다.
+**상각 후.** 실제 회수는 선행 결정대로 단일 잔여채권에 배분 없이 기록한다. 그와 별도로 보조 계산 `POST_WRITEOFF_WAIVER_ATTRIBUTION_V1`을 둔다. 이 계산은 면제 적격성과 잔여청구 대사에만 쓴다. 실제 상환 배분도, 회계 배분도, 원금 상환의 증거도 아니다.
 
-상각 사건 직후의 정본 잔여채권을 다음과 같이 초기화한다.
+상각 사건 직후의 정본 잔여채권으로 네 값을 초기화한다. 상각 전의 확정 배분과 유효 면제는 이미 차감된 상태다.
 
-- `C`: 잔여채권에 포함된 미납 약정이자. 상각 전 유효 면제·확정 배분을 이미 차감한다.
-- `D`: 같은 방식으로 산정한 미납 연체이자.
-- `O`: 원금 등 나머지 잔여채권으로 `R − C − D`.
-- `R`: 단일 잔여 회수 한도. 항상 `R = C + D + O`, 모든 값은 0 이상이다.
+- `C`: 미납 약정이자
+- `D`: 미납 연체이자
+- `R`: 권위 있는 잔여 회수 한도
+- `O`: 원금 등 나머지 잔여채권, `O = R − C − D`
 
-회계상 장부가액 0을 `R=0`으로 읽지 않는다. 원본 상각 시점의 구성과 정본 잔여채권이 대사되지 않으면 추측하거나 음수를 0으로 보정하지 않고 해당 경로를 `NOT_BOUND`로 거절한다.
+불변식은 `R = C + D + O`이고 네 값 모두 0 이상이다. 장부가액 0을 `R = 0`으로 읽지 않는다. 구성을 대사할 수 없으면 추측하거나 0으로 보정하지 않는다. 그 경로는 `NOT_BOUND`로 거절한다.
 
-확정된 상각 후 회수액 `x`마다 **연체이자 → 약정이자 → 기타 잔여채권** 순서로 보조 귀속한다.
+**회수 귀속.** 확정된 회수액 `x`마다 먼저 `0 < x ≤ R`를 검증한다. 그다음 연체이자 → 약정이자 → 기타 잔여채권 순서로 보조 귀속한다.
 
-`aD = min(x, D)`  
-`aC = min(x − aD, C)`  
-`aO = x − aD − aC`
+- `aD = min(x, D)`
+- `aC = min(x − aD, C)`
+- `aO = x − aD − aC`
 
-`0 < x ≤ R`를 먼저 검증한 뒤 `(D,C,O,R)`를 각각 `(D−aD,C−aC,O−aO,R−x)`로 갱신한다. 실제 회수 엔트리는 여전히 단일 금액이다. 보조 귀속을 다시 실제 배분액으로 차감하면 안 된다.
+결과로 `(D, C, O, R)`는 `(D − aD, C − aC, O − aO, R − x)`가 된다.
 
-면제액 `(wC,wD)`는 `0≤wC≤C`, `0≤wD≤D`, 합계 양수를 만족해야 한다. 성공 시 **같은 원자 단위에서** `C-=wC`, `D-=wD`, `R-=wC+wD`; `O`는 유지한다. 이후 모든 회수 제안·게시·예약은 감소한 `R`을 사용한다. 기존 승인·견적은 상태 변경으로 무효화한다. 그 결과 이미 회수에 귀속된 이자는 면제할 수 없고, 면제된 이자는 다시 회수할 수 없다.
+**면제.** 면제액 `(wC, wD)`는 `0 ≤ wC ≤ C`, `0 ≤ wD ≤ D`, `wC + wD > 0`을 만족해야 한다. 성공하면 같은 원자 단위에서 `C −= wC`, `D −= wD`, `R −= wC + wD`가 된다. `O`는 바뀌지 않는다.
 
-이 계산은 최초 상각 snapshot부터 확정 append 순서로 재생한다. 같은 날도 커밋 순서를 따르며 날짜·operation ID로 재정렬하지 않는다. 과거 무배분 회수도 원본 영수증을 수정하지 않고 같은 규칙으로 재생한다. 유효 면제는 해당 위치에서 정확히 한 번 반영한다. 순서·구성 누락, 초과 회수 또는 불변식 위반은 `NOT_BOUND`와 대사 차단 사유다.
+- 이후의 모든 회수 견적·예약·게시는 줄어든 `R`을 쓴다. 기존 승인과 견적은 무효가 된다.
+- 따라서 이미 회수에 귀속된 이자는 면제할 수 없고, 면제된 이자는 다시 회수할 수 없다.
 
-기존 정책이 상각 후 추가 발생을 허용하고 정본 잔여채권에 포함하는 경우에만 확정 증가분을 해당 버킷과 `R`에 함께 더한다. 본 결정은 새로운 발생 권한을 만들지 않는다.
+**재생.** 최초 상각 snapshot부터 확정 append 순서로 재생한다. 같은 날의 사건도 커밋 순서를 따른다. 과거 회수는 원본을 수정하지 않고 재생한다. 순서나 구성의 누락, 초과 회수, 불변식 위반은 `NOT_BOUND`이며 대사 차단 사유가 된다.
 
-예: `C=80,D=20,O=1000,R=1100`에서 회수 50은 보조적으로 `D=20,C=30`에 귀속되어 `C=50,D=0,R=1050`이다. 약정이자 60 면제는 거절한다. 40 면제는 `C=10,R=1010`을 만든다. 이후 회수 1015는 한도 초과로 거절한다. 이 숫자는 검증 예시이며 금융 조건이 아니다.
+상각 후 추가 발생은 기존 정책이 허용하고 잔여채권에 포함하는 경우에만 반영한다. 그때 해당 버킷과 `R`을 같은 원자 단위에서 함께 늘린다.
+
+**검증 예시** (금융 조건이 아니다). `C=80, D=20, O=1000, R=1100`에서 시작한다.
+
+1. 회수 50 → `D` 20, `C` 30에 귀속되어 `C=50, D=0, R=1050`이 된다.
+2. 약정이자 60 면제 → `C=50`을 넘으므로 거절한다.
+3. 약정이자 40 면제 → `C=10, R=1010`이 된다.
+4. 회수 1015 → `R=1010`을 넘으므로 거절한다.
 
 ### 3.3 `waiver_authority_and_two_person_threshold`
 
-모든 면제는 `SIM_OPERATOR` 제안과 별도 주체 `SIM_FINANCE_REVIEWER` 승인을 요구한다. 동일 주체의 역할 변경은 분리 승인으로 인정하지 않는다.
-
-동일 수익자의 당일 누적 면제액에 제안액을 더한 값이 `CAPITAL-TERMS-V1.underwriting_depth.two_person_threshold_krw`를 **초과**하면 두 주체와 다른 `SIM_FINANCE_OWNER`를 추가한다. 분할해도 누적 계산한다.
-
-승인은 대상·버킷별 금액·사유·현재 일·상태 및 정책 digest에 결속한다. 회수·발생·면제로 상태가 바뀌면 재승인한다. 합성 역할은 실제 인증이나 은행 권한이 아니다.
+- 모든 면제는 `SIM_OPERATOR`의 제안과, 그와 다른 주체인 `SIM_FINANCE_REVIEWER`의 승인을 요구한다. 같은 주체가 역할만 바꾼 것은 분리 승인으로 인정하지 않는다.
+- 동일 수익자의 당일 누적 면제액에 이번 제안액을 더한 값이 `CAPITAL-TERMS-V1.underwriting_depth.two_person_threshold_krw`를 **초과**하면, 앞의 두 주체와 다른 `SIM_FINANCE_OWNER`를 추가로 요구한다. 나눠서 제안해도 누적으로 계산한다.
+- 승인은 대상, 버킷별 금액, 사유, 현재 일, 상태 digest, 정책 digest에 결속한다. 상태가 바뀌면 다시 승인받아야 한다.
+- 합성 역할은 실제 인증이나 은행 권한이 아니다.
 
 ### 3.4 `waiver_caps_and_sim_day_recording`
 
-버킷별 적격 잔액의 100%까지 허용하되 별도 누적 면제 예산을 적용한다. 선지급·수익자·포트폴리오 예산은 각각 `underwriting_depth.single_advance_cap_krw`, `beneficiary_aggregate_cap_krw`, `portfolio_cap_krw`를 참조한다.
-
-기존 인출 cap의 의미는 바꾸지 않는다. 누적 면제액은 전체 보존 이력 기준이며 종결·일자 변경·상각·회수로 리셋하지 않는다. 수익자 귀속은 선지급 발생 당시 바인딩을 유지한다.
-
-`effective_sim_day`는 게시 시점의 현재 논리 일이다. 소급·미래일·이율·가속일 재작성은 거절한다. 참조값·발생액·상각 후 대사가 불명확하면 `NOT_BOUND`다.
+- 버킷별 적격 잔액의 100%까지 면제할 수 있다.
+- 이와 별도로 누적 면제 예산을 둔다. 선지급·수익자·포트폴리오 예산은 각각 `underwriting_depth.single_advance_cap_krw`, `beneficiary_aggregate_cap_krw`, `portfolio_cap_krw`를 참조한다. 기존 인출 cap의 의미는 바꾸지 않는다.
+- 누적액은 보존된 전체 이력 기준이다. 종결, 일자 변경, 상각, 회수로 리셋되지 않는다.
+- 수익자 귀속은 선지급 발생 당시의 바인딩을 따른다.
+- `effective_sim_day`는 게시 시점의 현재 논리 일이다. 소급일·미래일은 거절하고, 이율이나 가속일을 다시 쓰는 요청도 거절한다.
+- 참조값이 불명확하면 `NOT_BOUND`로 거절한다.
 
 ### 3.5 `unapplied_cash_release_or_refund`
 
-**`release_unapplied_cash`를 신설한다.** 확정 원천 영수증과 연결되어 대사된 보관 lot의 가용 잔액에 대해 부분 시뮬레이션 반환을 허용한다. 수취 귀속은 동일 합성 원송금자로 제한한다.
+**`release_unapplied_cash`를 신설한다.** 확정된 원천 영수증과 대사된 보관 lot에 대해, 가용 잔액 안에서 부분 시뮬레이션 반환을 허용한다. 수취인은 동일한 합성 원송금자로 한정한다.
 
-귀속 불명·분쟁·반환 제한·보호채무·UNKNOWN·진행 중 예약이 있으면 해제하지 않는다. 같은 범위에서 확정 상환 배분이 가능하면 기존 repayment-posting 대사를 먼저 수행한다. 면제로 반환액을 자동 생성하지 않는다.
+- 다음 중 하나라도 있으면 해제하지 않는다: 귀속 불명, 분쟁, 반환 제한, 보호채무, UNKNOWN, 진행 중 예약.
+- 같은 범위에서 확정 상환 배분이 가능하면 기존 repayment-posting 대사를 먼저 수행한다.
+- 면제가 반환액을 자동으로 만들지 않는다.
 
-운영자와 별도 검토자가 승인한다. 원송금자의 당일 누적 해제액이 기존 2인 임계값을 초과하면 별도 금융책임자를 추가한다. 보관액 감소와 `SIMULATED_RELEASE`를 원자적으로 기록하며 `funds_executed=false`다. 실제 환불 API·은행 연결·지급 완료 표시는 허용하지 않는다.
+승인 구조는 §3.3과 같다. 운영자와 별도 검토자가 승인하고, 원송금자의 당일 누적 해제액이 같은 2인 임계값을 초과하면 별도 금융책임자를 추가한다. 보관액 감소와 `SIMULATED_RELEASE` 기록은 원자적으로 함께 남기며 `funds_executed=false`다. 실제 환불 API, 은행 연결, 지급 완료 표시는 허용하지 않는다.
 
 ### 3.6 `close_gate_reconsideration`
 
-**`CAPITAL_REPAYMENT_POSTING`의 close-gate 규칙은 이 결정을 통해서만 재검토할 수 있다.** 이번 변경은 이자 조건에 한정한다. 상각 전에는 발생액에서 확정 배분·유효 면제를 차감하고, 상각 후에는 §3.2의 재생된 `C+D=0`을 사용한다. 보조 귀속을 실제 배분과 중복 차감하지 않는다.
+**`CAPITAL_REPAYMENT_POSTING`의 close-gate 규칙은 이 결정을 통해서만 재검토할 수 있다.** 이번 변경은 이자 조건에만 적용된다.
 
-원금 잔액·기타 채무·열린 환불 및 분쟁·보관액·UNKNOWN·미완료 승인과 예약 등 기존 차단을 모두 유지한다. 상각 후 대사 실패도 통과를 차단한다. `R=0`이나 보조 `O` 감소만으로 원금 상환·종결을 추론하지 않는다.
+- 상각 전: 발생액에서 확정 배분과 유효 면제를 뺀 값이 0이면 이자 조건을 충족한다.
+- 상각 후: §3.2로 재생한 `C + D`가 0이면 충족한다. 보조 귀속을 실제 배분과 중복으로 빼지 않는다.
 
-해제로 보관액이 0이면 그 조건만 충족한다. 결과는 `ADVISORY_ONLY`이며 pinned FSM 종결이나 실제 채무 소멸을 실행하지 않는다. 상태가 바뀌면 이전 평가를 무효화한다.
+기존 차단 조건은 모두 유지한다: 원금 잔액, 기타 채무, 열린 환불·분쟁, 보관액, UNKNOWN, 미완료 승인·예약, 상각 후 대사 실패. `R=0`이나 보조 `O`의 감소만으로 원금 상환을 추론하지 않는다.
+
+해제로 보관액이 0이 되면 보관액 조건 하나만 충족한다. 평가 결과는 `ADVISORY_ONLY`이며, pinned FSM 종결이나 실제 채무 소멸을 실행하지 않는다. 상태가 바뀌면 이전 평가는 무효가 된다.
 
 ### 3.7 `overlay_entry_schema_and_digest_effect`
 
-엔트리는 `overlay_id/kind/payload`이며 새 kind는 `INTEREST_WAIVER`, `UNAPPLIED_CASH_RELEASE`다. payload에는 operation·현재 일·대상·금액·사유·근거·승인·기준 상태 digest·정책 참조와 digest·`funds_executed:false`를 포함한다.
-
-상각 후 면제는 상각 snapshot 참조, 보조 규칙 버전, 사건 순서 기준, `C/D/O/R` 전후값을 결속한다. 회수 원본과 보조 귀속은 구별하며 보조 이력을 별도 현금 사건으로 합산하지 않는다.
-
-검증·승인·누적 cap·잔여 한도·예약 충돌 확인과 게시를 원자적으로 처리한다. 동시 회수·면제는 하나만 같은 기준 digest에서 성공한다. 동일 operation·내용은 최초 결과, 다른 내용은 충돌이다. 응답 유실은 조회로 복구한다.
-
-효과 엔트리·정책 digest·재생 가능한 보조 근거는 overlay digest와 export에 포함한다. 벽시계·프로세스 ID는 제외한다. pinned FSM digest·기존 golden은 변경하지 않는다.
+- 엔트리 형태는 `overlay_id`/`kind`/`payload`다. 새 kind는 `INTEREST_WAIVER`와 `UNAPPLIED_CASH_RELEASE` 두 가지다.
+- payload에는 operation, 현재 일, 대상, 금액, 사유, 근거, 승인, 기준 overlay digest, 정책 참조와 digest, `funds_executed:false`를 넣는다.
+- 상각 후 면제는 추가로 상각 snapshot 참조, 보조 규칙 버전, 사건 순서 근거, `C/D/O/R`의 전후 값을 결속한다.
+- 검증, 승인, cap, 잔여 한도, 예약 충돌 확인과 게시는 하나의 원자 단위로 처리한다. 같은 기준 digest를 놓고 회수와 면제가 동시에 들어오면 하나만 성공한다.
+- 같은 operation에 같은 내용이면 최초 결과를 돌려준다. 같은 operation에 다른 내용이면 충돌이다. 응답이 유실되면 조회로만 복구한다.
+- 효과 엔트리, 정책 digest, 보조 근거는 overlay digest와 export에 포함한다. 벽시계와 프로세스 ID는 제외한다.
+- pinned FSM digest와 기존 golden은 변경하지 않는다.
 
 ### 3.8 `tax_and_accounting_working_assumption`
 
-면제는 비현금 이자청구 감소이며 회수·회계상 상각과 분리한다. 총발생·실제 배분·면제·상각 후 보조 귀속·순잔액을 구별하고 상각 후 면제로 손실을 이중 인식하지 않는다. 보조 귀속 순서를 수익 인식 순서로 사용하지 않는다.
+- 면제는 비현금 이자청구 감소다. 회수나 회계상 상각과 구분한다.
+- 투영은 총발생, 실제 배분, 면제, 상각 후 보조 귀속, 순잔액을 서로 구별해서 보여준다.
+- 상각 후 면제로 손실을 이중 인식하지 않는다. 보조 귀속 순서는 수익 인식 순서가 아니다.
+- 보관액은 보관 의무이며, 해제는 수익도 회수도 아니다.
 
-보관액은 보관 의무이며 해제는 수익이나 회수가 아니다. 계정 코드·분개·세무 처리와 인정일·법적 면제 효력은 `UNDETERMINED`, `value:null`이며 회계·세무·법무 전문 검토를 각각 target으로 둔다. 합성 차트와 기존 합계는 유지한다.
+계정 코드·분개, 세무 처리·인정일, 법적 면제 효력은 `UNDETERMINED`, `value:null`로 둔다. target은 각각 회계·세무·법무 전문 검토다. 합성 차트와 기존 합계는 변경하지 않는다.
 
 ### 3.9 `agent_lane_proposal_kinds`
 
-`PROPOSE_INTEREST_WAIVER`, `PROPOSE_UNAPPLIED_CASH_RELEASE`, `REQUEST_ADVISORY_CLOSE_REVIEW`를 채택한다. 에이전트는 제한된 대상과 상태·정책 digest에 결속된 초안·계산 근거만 제출한다.
+`PROPOSE_INTEREST_WAIVER`, `PROPOSE_UNAPPLIED_CASH_RELEASE`, `REQUEST_ADVISORY_CLOSE_REVIEW` 세 종류만 채택한다.
 
-승인자 수에 포함되지 않으며 게시·지급·자동 종결 권한이 없다. stale 제안은 재계산한다. upstream AI 위임 계약의 채택을 주장하지 않는다.
+- 에이전트는 제한된 대상과 상태·정책 digest에 결속된 초안과 계산 근거만 제출한다.
+- 에이전트는 승인자 수에 포함되지 않는다. 게시, 지급, 자동 종결 권한도 없다.
+- stale 제안은 다시 계산한다.
+- upstream AI 위임 계약의 채택을 주장하지 않는다.
 
 ## 4. 기계 판독 결정 블록
 
@@ -137,7 +162,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
   "schema": "capital-decision-v1",
   "decision_id": "waiver-writeoff-decision",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-  "date": "2026-10-22",
+  "date": "2026-10-26",
   "provisional": true,
   "status": "PROVISIONAL_PRODUCT_DECISION",
   "scope": "SIMULATION_PRODUCT_POLICY_ONLY",
@@ -152,10 +177,11 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "closed_record_posting": false,
         "automatic_waiver": false,
         "historical_receipt_mutation": false,
+        "reversal_command_v1": false,
         "amounts": "NONNEGATIVE_INTEGER_KRW_BUCKETS_WITH_POSITIVE_SUM"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Explicit noncash relief with immutable evidence.",
       "provisional": true,
@@ -173,8 +199,8 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
           "actual_recovery": "SINGLE_RESIDUAL_CLAIM_WITHOUT_ALLOCATION",
           "purpose": "WAIVER_ELIGIBILITY_AND_RESIDUAL_RECONCILIATION_ONLY",
           "initialization": {
-            "C": "UNPAID_CONTRACT_INTEREST_INCLUDED_IN_WRITEOFF_RESIDUAL_NET_OF_PRIOR_ALLOCATIONS_AND_WAIVERS",
-            "D": "UNPAID_OVERDUE_INTEREST_INCLUDED_IN_WRITEOFF_RESIDUAL_NET_OF_PRIOR_ALLOCATIONS_AND_WAIVERS",
+            "C": "UNPAID_CONTRACT_INTEREST_IN_WRITEOFF_RESIDUAL_NET_OF_PRIOR_ALLOCATIONS_AND_WAIVERS",
+            "D": "UNPAID_OVERDUE_INTEREST_IN_WRITEOFF_RESIDUAL_NET_OF_PRIOR_ALLOCATIONS_AND_WAIVERS",
             "R": "AUTHORITATIVE_RESIDUAL_RECOVERY_CAP_NOT_BOOK_VALUE",
             "O": "R-C-D"
           },
@@ -200,7 +226,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "principal_capacity_release": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Deterministic memo attribution prevents waiving recovered interest; atomic residual reduction prevents collecting waived interest.",
       "provisional": true,
@@ -220,7 +246,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "agent_approval": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-04", "CAP-09"],
       "rationale": "Distinct actors and cumulative thresholds prevent self-approval and splitting.",
       "provisional": true,
@@ -239,7 +265,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "missing_reference": "NOT_BOUND_REJECT"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Bound cumulative relief without copying financial cap literals.",
       "provisional": true,
@@ -265,7 +291,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "external_refund": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-02", "CAP-05"],
       "rationale": "Release reconciled custody balances through an auditable simulation.",
       "provisional": true,
@@ -283,10 +309,12 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "zero_residual_or_memo_other_reduction_proves_principal_payment": false,
         "scope": "ADVISORY_ONLY",
         "automatic_close": false,
+        "funds_executed": false,
+        "production": "NOT_AUTHORIZED",
         "state_change": "INVALIDATE_PRIOR_EVALUATION"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-01", "CAP-04", "CAP-20"],
       "rationale": "Net interest can be resolved by valid waivers while preserving all other close requirements.",
       "provisional": true,
@@ -311,7 +339,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "reversal_command_v1": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-13", "CAP-14", "CAP-15"],
       "rationale": "Atomic replayable effects prevent duplicate relief and competing recovery against stale balances.",
       "provisional": true,
@@ -350,7 +378,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         }
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-04", "CAP-20"],
       "rationale": "Separate product events without adopting unresolved professional judgments.",
       "provisional": true,
@@ -369,7 +397,7 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
         "upstream_adoption_claimed": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-09", "CAP-20"],
       "rationale": "Bounded proposals do not grant financial execution authority.",
       "provisional": true,
@@ -381,20 +409,32 @@ CAP 매핑은 제공된 선행 노트의 사용례를 따른다. CAP 정본 전�
 
 ## 5. 수용 기준 매핑
 
-- 저장 대상은 `docs/decisions/CAPITAL_WAIVER_WRITEOFF.md`다. 단일 결정 블록에 아홉 항목과 ADOPTED 메타데이터를 포함했다. 전문 판단의 미정값은 null·target·이유를 명시했다.
-- blocking finding은 §3.2의 초기화·귀속 순서·회수 및 면제 공식·잔여 한도 조정과 JSON으로 해결한다. 실제 무배분 회수 정책은 유지한다.
-- close-gate 재검토 경로, `funds_executed:false`, production `NOT_AUTHORIZED`를 기록했다.
-- 이번 응답에서는 파일 저장·명령 실행을 하지 않았다. 저장 후 `python3 scripts/decision_ledger.py`의 해당 노드 상태와 종료 코드 0, `python3 -m unittest tests.test_decisions tests.test_decisions_surface`의 종료 코드 0을 확인해야 한다. 과거 실행 결과를 이번 문서의 통과 증거로 주장하지 않는다.
+- `docs/decisions/CAPITAL_WAIVER_WRITEOFF.md`는 단일 `capital-decision-v1` 블록에 아홉 항목을 모두 담는다. 각 ADOPTED 항목에는 `provided_by`, ISO 날짜(2026-10-26), 값이 있다. 전문 판단 세 칸은 `value:null`이고 이름 있는 target이 있다.
+- §3.6과 `close_gate_reconsideration`에 다음을 기록했다: repayment-posting close-gate는 이 결정을 통해서만 재검토할 수 있다는 점, `funds_executed:false`, production `NOT_AUTHORIZED`.
+- `python3 scripts/decision_ledger.py`와 `python3 -m unittest tests.test_decisions tests.test_decisions_surface`는 이번 라운드에서 **실행하지 않았다.** supervisor가 문서를 저장한 뒤 종료 코드 0을 확인해야 한다.
+- **리뷰 [blocking] `tests/test_coa_candidate.py:214` 대응.** 이 변경은 결정 문서의 내용이 아니다. 읽기 전용 `git log`/`git diff`로 확인하니 브랜치의 merge commit `3ef782c`에서 들어왔다. 이 결정자의 수정 허용 범위(이 노트, `tests/decision_bindings.json`, `tests/vectors/pack/`) 밖이어서 여기서 되돌리지 않았다. **supervisor는 `tests/test_coa_candidate.py`를 `origin/main` 바이트로 되돌린 뒤 이 노트를 저장해야 한다.** 새 노트 추가를 허용하는 호환 수정은 별도 PR로 보낸다. 다만 main의 guard는 추가된 `docs/decisions/*` 파일도 diff로 잡을 수 있다. 그래서 되돌린 뒤 `tests.test_coa_candidate`가 실패하면, 그것은 이 노트의 결함이 아니라 별도 PR로 해결할 main 쪽 guard 문제다.
 
 ## 6. Open risks
 
-- 상각 시점 구성·사건 순서가 없는 이력은 안전한 보조 재생이 불가능하다. 해당 경로는 대사 전 `NOT_BOUND`다.
-- 기존 회수 소비자가 조정된 `R`을 사용하지 않으면 면제 후 과다 회수가 가능하므로 두 경로를 함께 연결해야 한다.
-- 합성 역할·로컬 원자성은 실제 인증·분산 내구성·법적 효력을 증명하지 않는다. V1 취소 명령 부재에 따른 운영 복구 한계도 남는다.
+- 상각 시점의 구성이나 사건 순서가 없는 이력은 보조 재생을 안전하게 할 수 없다. 그런 경로는 대사 전까지 `NOT_BOUND`다.
+- 회수 소비자가 조정된 `R`을 쓰지 않으면 면제 후 과다 회수가 생길 수 있다. 면제 경로와 회수 경로를 함께 연결해야 한다.
+- 합성 역할과 로컬 원자성은 실제 인증, 분산 내구성, 법적 효력을 증명하지 않는다. V1에 취소 명령이 없어서 생기는 운영 복구 한계도 남는다.
+- COA guard 호환 수정이 별도 PR로 분리되기 전까지, 결정 노트를 추가하는 브랜치에서는 `tests.test_coa_candidate`가 실패할 수 있다.
 
 ## 7. 후속 작업
 
-1. Supervisor가 문서를 저장하고 결정 원장·표면 검증을 수행한다. 본 작업은 commit·push·외부 게시를 하지 않는다.
-2. 소비 노드는 정본 필드 바인딩, 상각 snapshot 대사, 보조 재생, 면제 및 모든 회수 경로의 조정 한도를 함께 구현한다.
-3. §3.2 예시와 회수→면제·면제→회수·상각 전 면제·같은 날 순서·동시 게시·재전송·누락 이력·대사 실패·종결 차단을 검증한다.
+1. supervisor: `tests/test_coa_candidate.py`를 main 바이트로 되돌린다. 이 노트를 저장하고 원장·표면 검증을 수행한다. COA guard 호환 수정은 별도 PR로 낸다. 이 결정자는 commit·push·게시를 하지 않는다.
+2. 소비 노드: 다음을 함께 구현한다.
+   - 정본 필드 바인딩
+   - 상각 snapshot 대사와 보조 재생
+   - 면제 경로와 모든 회수 경로의 조정된 한도
+   - `release_unapplied_cash`
+   - advisory close 평가
+3. 검증 벡터:
+   - §3.2 예시
+   - 회수→면제, 면제→회수 순서
+   - 같은 날 사건 순서
+   - 동시 게시와 재전송
+   - 누락 이력과 대사 실패
+   - 종결 차단
 4. 회계·세무·법무 전문 검토와 upstream 채택 영수증은 별도 경로로 확보한다.
