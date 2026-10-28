@@ -1,19 +1,19 @@
 # CAPITAL_MULTIPAYEE_SHADOW — 결정된 클래스 우선 배정을 위한 한정 다중 수취인 입력
 
 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).**
-이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 청약이 아니고 실자금이 움직이지 않으며 production은 계속 `NOT_AUTHORIZED`다. 모든 그림자 효과는 `SHADOW_NOT_APPLIED`로 남는다. 영구 정산 기록, UC1–UC4 구현, upstream 계약 변경은 승인하지 않는다. 법무·세무·회계에 닿는 언급은 전문가 검토 전 작업 가정이며 자문이 아니다.
+이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 청약이 아니고 실자금이 움직이지 않으며 production은 계속 `NOT_AUTHORIZED`다. 모든 그림자 효과는 미적용이며 그림자 모드는 `mode: SHADOW_NOT_APPLIED`로 남는다. 영구 정산 기록, UC1–UC4 구현, upstream 계약 변경은 승인하지 않는다. 법무·세무·회계에 닿는 언급은 전문가 검토 전 작업 가정이며 자문이 아니다.
 
 | 항목 | 값 |
 |---|---|
 | 결정 노드 | `multipayee-shadow-input-decision` (Decision: bounded multi-payee inputs for the decided class-priority allocation) · deps `settlement-policy-decision`, `shadow-policy-decision`, `shadow-refund-resale` · kind `decision` · user_merge `False` |
 | 결정자 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
 | 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
-| 결정일 | 2026-10-22 |
-| 기준 | KIX-CAPITAL main `5c23989` · kix-protocol `1a69364` (읽기 전용 `/workspace/capital-run/kixproto-ro`) · vendor FSM pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` |
-| 실행 출처 | 개정 라운드 5는 Fable 5.1(claude-fable-5-1)이 supervisor pack과 검토자 발췌만으로 수행했다. 라운드 6(벡터 고정만, 결정 내용 변경 없음)은 Devin swe-2-high가 수행했다 |
-| 읽기 범위 | supervisor pack이 허용한 경로만 읽었다. 선행 노트 `CAPITAL_SETTLEMENT_POLICY.md`(`CAPITAL-ALLOC-V1`)·`CAPITAL_SHADOW_POLICY.md`는 허용 경로 밖이라 **직접 열지 않았다.** 상속 규칙 두 가지는 검토 라운드의 검토자 발췌(2차 정보)로 확인했다: (a) `CAPITAL-ALLOC-V1`은 동률을 **`payee_label` 오름차순**으로 가르고 클래스 표(`PROTECTED_THIRD_PARTY`, `COUNTERPARTY_PROCEEDS`, `ECOSYSTEM_ROYALTY`, `PLATFORM_FEE`)를 구체적으로 정한다; (b) 클래스 내 비례 배분, 클래스당 수취인 복수, 보호 제3자 라인은 **upstream FSM 변경이 필요**하다. 이 노트는 그 값을 재정의하지 않고 로드해 쓴다. 충돌 시 선행 노트가 이기고, 입력 형태·용량·비교 규칙은 이 노트가 이긴다 |
+| 결정일 | 2026-10-26 |
+| 기준 | KIX-CAPITAL main `aab0a73` · kix-protocol `a8bc9e8` (읽기 전용 `/workspace/capital-run/kixproto-ro`) · vendor FSM pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` |
+| 실행 출처 | 개정 라운드 5는 Fable 5.1(claude-fable-5-1)이 supervisor pack과 검토자 발췌만으로 수행했다. 라운드 6(벡터 고정만, 결정 내용 변경 없음)은 Devin swe-2-high가 수행했다. 라운드 7은 Opus 5.5(claude-opus-5-5)가 supervisor pack과 검토 발췌만으로 수행했다 |
+| 읽기 범위 | supervisor pack이 허용한 경로만 읽었다. 선행 노트 `CAPITAL_SETTLEMENT_POLICY.md`(`CAPITAL-ALLOC-V1`)·`CAPITAL_SHADOW_POLICY.md`는 허용 경로 밖이라 **직접 열지 않았다.** 상속 규칙 세 가지는 검토 라운드의 검토자 발췌(2차 정보)로 확인했다: (a) `CAPITAL-ALLOC-V1`은 동률을 **`payee_label` 오름차순**으로 가르고 클래스 표(`PROTECTED_THIRD_PARTY`, `COUNTERPARTY_PROCEEDS`, `ECOSYSTEM_ROYALTY`, `PLATFORM_FEE`)를 구체적으로 정한다; (b) 클래스 내 비례 배분, 클래스당 수취인 복수, 보호 제3자 라인은 **upstream FSM 변경이 필요**하다; (c) `CAPITAL_SHADOW_POLICY.md`는 `SHADOW_NOT_APPLIED`를 **mode**로 정하고 닫힌 **status** 어휘(`SHADOW_COMPUTED`, `SHADOW_DEFERRED`, `SHADOW_NOT_BOUND`, `SHADOW_INPUT_UNKNOWN`, `SHADOW_INCONSISTENT`)를 둔다. 이 노트는 그 값을 재정의하지 않고 로드해 쓴다. 충돌 시 선행 노트가 이기고, 입력 형태·용량·비교 규칙은 이 노트가 이긴다 |
 | 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. **UNDETERMINED** = 값을 정할 수 없어 이유만(`value: null`). 여섯 항목 모두 ADOPTED |
-| 개정 | 라운드 5: (1) **동률 규칙 정정.** 이전 판은 "동률 정보가 없으면 `NOT_BOUND`이며 알파벳 순서를 대체로 쓰지 않는다"고 적어 상속 비교자(`payee_label` 오름차순)를 금지하는 모순을 냈다. §3.2·§3.4·§4 `equal_remainders`를 상속 비교자 그대로("ascending `payee_label`")로 고치고, `NOT_BOUND`는 정책을 로드할 수 없는 경우로만 한정했다. 작업 예시의 P1<P2<P3 순서를 그 비교자로 명시했다. (2) **FSM 표현 불가 표시 추가.** §3.4와 §4 `within_class_caps_and_rounding`에 `fsm_expressible: false`를 두고, 고정된 두 수취인 FSM 기준선과 "행 조작 금지" 규칙을 유지했다. (3) 기준을 supervisor 값 main `5c23989`·kix `1a69364`로 맞췄다. 라운드 4: `tests/decision_bindings.json`에 여섯 `PENDING_CONSUMER` 행 추가, 블록에 `status` 추가, 검사 실행. 라운드 6: **`tests/vectors/pack` 코퍼스 재고정(내용 결정 변경 없음).** 그림자 증거 팩의 `decisions` 섹션은 원장 인덱스 행을 바이트로 박제하는데, 커밋된 코퍼스는 이 노트의 원장 행이 생기기 전(main 머지 기점 `02bc3e5`, 15행)에 만들어져 `--check` 드리프트로 CI 단위 테스트 4개(`PackRegenerationTests`)가 실패했다. `scripts/pack_vectors.py --write`로 이 트리 기준 16행(기존 15 + 이 노트 1)을 재고정했다. 본문·블록은 바꾸지 않았고, 팩 행은 블록에서 파싱한 필드만 담으므로 산문 편집은 코퍼스를 오염시키지 않는다 |
+| 개정 | 라운드 7: (1) **mode/status 분리.** 이전 판은 모든 결과에 `status: SHADOW_NOT_APPLIED`를 주어 상속 그림자 정책의 mode 값을 status로 오용했다. §3.6·§4를 `mode: SHADOW_NOT_APPLIED` 고정 + 닫힌 상속 status 어휘로의 `adapter_outcome`→`shadow_status` 사상(검증 이유별)으로 고쳤다. 어휘는 확장하지 않는다. (2) 범위 밖이던 `tests/test_coa_candidate.py` 변경을 main 바이트로 되돌렸다(§5). (3) `docs/CAP_COVERAGE.md` 색인 참조가 이미 있으므로 §5·§7을 갱신했다. (4) 기준·날짜를 main `aab0a73`·kix `a8bc9e8`·2026-10-26으로 맞췄다; `pack_vectors.py --write` 재실행 결과 팩 코퍼스는 바뀌지 않았다. 이전 라운드: 라운드 4는 `tests/decision_bindings.json`에 여섯 `PENDING_CONSUMER` 행을 추가했고, 라운드 5는 동률 규칙을 상속 비교자(`payee_label` 오름차순)로 바로잡고 `NOT_BOUND`를 정책 로드 실패로 한정했으며 `fsm_expressible: false`를 추가했고, 라운드 6은 `scripts/pack_vectors.py --write`로 팩 코퍼스를 재고정했다 |
 
 ## 1. 결정 요약
 
@@ -24,7 +24,7 @@
 | `single_cut_allocation_inputs` | **ADOPTED.** 동결된 현금 한 값 + 잔여 의무 벡터 한 벌; 이력 조회·누적·영구 효과 없음 | CAP-02, CAP-05 | `policy-simulator`, `shadow-refund-resale` |
 | `within_class_caps_and_rounding` | **ADOPTED.** 상속 클래스 우선·최대 잉여·`payee_label` 오름차순 동률 유지; 잔여 의무가 상한; 정확 정수 산술; `fsm_expressible: false` | CAP-02, CAP-05 | 그림자 배정기 `capital/shadow.py` 앵커 |
 | `fixture_capacity_bounds` | **ADOPTED.** 최대 64행·32,768바이트·금액 1조 KRW; 위반은 `SIMULATION_CAPACITY` | CAP-08, CAP-20 | 입력 검증 `capital/strict_json.py` 앵커 |
-| `shadow_comparison_labels` | **ADOPTED.** `SHADOW_NOT_APPLIED` 봉투 유지; `adapter_outcome` 진단; 호환 스냅샷만 비교 | CAP-09, CAP-20 | 비교 표시 |
+| `shadow_comparison_labels` | **ADOPTED.** `mode: SHADOW_NOT_APPLIED` 고정; `adapter_outcome`→상속 `shadow_status` 닫힌 사상; 호환 스냅샷만 비교 | CAP-09, CAP-20 | 비교 표시 |
 
 ## 2. KIX 비전 연결
 
@@ -106,16 +106,17 @@
 
 ### 3.6 `shadow_comparison_labels`
 
-모든 결과는 `status: SHADOW_NOT_APPLIED`, 라벨 `SIMULATED`·`SYNTHETIC_FIXTURE_PROFILE`·`PROVISIONAL_PRODUCT_DECISION`, `funds_executed:false`, `effects_applied:false`, `production:NOT_AUTHORIZED`를 유지한다. 진단은 상속 그림자 상태 어휘를 확장하지 않고 `adapter_outcome`에 둔다:
+모든 결과는 그림자 **mode** `mode: SHADOW_NOT_APPLIED`, 라벨 `SIMULATED`·`SYNTHETIC_FIXTURE_PROFILE`·`PROVISIONAL_PRODUCT_DECISION`, `funds_executed:false`, `effects_applied:false`, `production:NOT_AUTHORIZED`를 유지한다. mode는 결과와 무관하게 언제나 같다. 결과 **status**는 `CAPITAL_SHADOW_POLICY.md`의 닫힌 어휘에서만 고르며 이 노트는 값을 추가하지 않는다. 어댑터 진단은 별도 키 `adapter_outcome`(+`reason`)에 두고 아래 표로 `shadow_status`에 사상한다:
 
-| `adapter_outcome` | 그림자 `status` | 금액 페이로드 |
-|---|---|---|
-| `COMPUTED` | `SHADOW_NOT_APPLIED` | 계산 금액 |
-| `INVALID_INPUT` | `SHADOW_NOT_APPLIED` | null; 검증 이유 |
-| `SIMULATION_CAPACITY` | `SHADOW_NOT_APPLIED` | null; 초과 차원 |
-| `NOT_BOUND` | `SHADOW_NOT_APPLIED` | null; 정책 로드 실패 |
+| `adapter_outcome` | `reason` | `shadow_status` | 금액 페이로드 |
+|---|---|---|---|
+| `COMPUTED` | — | `SHADOW_COMPUTED` | 계산 금액 |
+| `INVALID_INPUT` | `UNKNOWN_CLASS`, `INVALID_CLASS`, `MISSING_FIELD` | `SHADOW_INPUT_UNKNOWN` | null |
+| `INVALID_INPUT` | `DUPLICATE_LABEL`, `DUPLICATE_KEY`, `UNKNOWN_FIELD`, `INVALID_IDENTIFIER`, `INVALID_AMOUNT`, `SCHEMA_MISMATCH` | `SHADOW_INCONSISTENT` | null |
+| `SIMULATION_CAPACITY` | 초과 차원 | `SHADOW_DEFERRED` | null |
+| `NOT_BOUND` | 정책 로드 실패 | `SHADOW_NOT_BOUND` | null |
 
-실패한 계산은 결코 0 배정 성공으로 보이지 않는다.
+근거: 클래스가 상속 어휘로 해석되지 않거나 빠진 입력은 "알 수 없는 입력"이고, 중복·형식 위반은 입력 자체가 모순이다. 용량 초과는 계산을 이 한도 안에서 미룬 것이며(잘라내기·분할 없음) 같은 입력은 다시 `SHADOW_DEFERRED`다. 여러 이유가 겹치면 검증 순서(크기→파싱→스키마→한도→클래스) 첫 위반 하나만 보고한다. 소비자는 `mode`와 `shadow_status`를 상속 정책 그대로 읽고 `adapter_outcome`은 진단으로만 쓴다. 상태 의미가 원문과 다르면 원문이 이기고, 이 사상표는 원문 정의에 맞춰 구현 노드에서 재검증한다. 실패한 계산은 결코 0 배정 성공으로 보이지 않는다.
 
 비교 메타데이터는 `comparison_state: COMPARABLE | NOT_COMPARABLE`다. 수치 비교는 동일한 동결 현금·라벨 집합·클래스 멤버십·잔여 의무·KRW 단위를 가진 두 `COMPUTED` 결과를 요구하며 양쪽의 알고리즘/정책 신원과 출처 digest를 기록한다. 의도적으로 다른 정책의 비교는 허용되고 차이는 오류도 금융적 우월도 아니다. 후보 − 기준선을 `shadow_allocation_delta_krw`, `shadow_remaining_after_delta_krw`, `shadow_total_allocated_delta_krw`, `shadow_unallocated_cash_delta_krw`로 보고한다. 그 외는 `NOT_COMPARABLE`, 이유, null 델타다. 고정된 두 수취인 FSM 기준선을 늘리기 위한 행 조작은 금지한다. 동등성은 이 스냅샷에만 적용되며 집행된 정산이나 upstream 적합성을 증명하지 않는다.
 
@@ -127,7 +128,7 @@
   "decision_id": "multipayee-shadow-input-decision",
   "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-  "date": "2026-10-22",
+  "date": "2026-10-26",
   "provisional": true,
   "entries": {
     "synthetic_payee_identity": {
@@ -142,7 +143,7 @@
         "legal_identity": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-02", "CAP-05"],
       "rationale": "Bound synthetic identity and reject duplicate obligations without asserting legal identity.",
       "provisional": true,
@@ -161,7 +162,7 @@
         "source_binding": "FREEZE_LOADED_POLICY_DIGESTS"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-02", "CAP-05"],
       "rationale": "Apply inherited adopted classes and comparator without fallback or invented financial priorities.",
       "provisional": true,
@@ -181,7 +182,7 @@
         "persistent_effects": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-02", "CAP-05"],
       "rationale": "Define one frozen calculation without cumulative or persistent settlement effects.",
       "provisional": true,
@@ -203,7 +204,7 @@
         "fabricated_fsm_rows": "FORBIDDEN"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-02", "CAP-05"],
       "rationale": "Preserve class priority, rounding and the inherited label comparator while preventing overpayment; the pinned FSM cannot express multi-payee classes.",
       "provisional": true,
@@ -223,7 +224,7 @@
         "financial_limit": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-08", "CAP-20"],
       "rationale": "Bound parsing and exact computation without changing economic terms.",
       "provisional": true,
@@ -232,13 +233,17 @@
     "shadow_comparison_labels": {
       "status": "ADOPTED",
       "value": {
-        "shadow_result_status": "SHADOW_NOT_APPLIED",
+        "shadow_mode": "SHADOW_NOT_APPLIED",
+        "shadow_status_vocabulary_source": "CAPITAL_SHADOW_POLICY",
+        "shadow_status_vocabulary_extended": false,
         "adapter_outcome_to_shadow_status": {
-          "COMPUTED": "SHADOW_NOT_APPLIED",
-          "INVALID_INPUT": "SHADOW_NOT_APPLIED",
-          "SIMULATION_CAPACITY": "SHADOW_NOT_APPLIED",
-          "NOT_BOUND": "SHADOW_NOT_APPLIED"
+          "COMPUTED": "SHADOW_COMPUTED",
+          "INVALID_INPUT/UNKNOWN_CLASS|INVALID_CLASS|MISSING_FIELD": "SHADOW_INPUT_UNKNOWN",
+          "INVALID_INPUT/DUPLICATE_LABEL|DUPLICATE_KEY|UNKNOWN_FIELD|INVALID_IDENTIFIER|INVALID_AMOUNT|SCHEMA_MISMATCH": "SHADOW_INCONSISTENT",
+          "SIMULATION_CAPACITY": "SHADOW_DEFERRED",
+          "NOT_BOUND": "SHADOW_NOT_BOUND"
         },
+        "validation_order": ["PAYLOAD_SIZE", "PARSE", "SCHEMA", "BOUNDS", "CLASS"],
         "labels": ["SIMULATED", "SYNTHETIC_FIXTURE_PROFILE", "PROVISIONAL_PRODUCT_DECISION"],
         "comparison_requires": "TWO_COMPUTED_RESULTS_WITH_IDENTICAL_FROZEN_INPUTS_AND_EXPLICIT_POLICY_IDENTITIES",
         "comparison_states": ["COMPARABLE", "NOT_COMPARABLE"],
@@ -250,9 +255,9 @@
         "production": "NOT_AUTHORIZED"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-22",
+      "date": "2026-10-26",
       "cap_rows": ["CAP-09", "CAP-20"],
-      "rationale": "Preserve unapplied status and reject fabricated comparison compatibility.",
+      "rationale": "Keep the inherited SHADOW_NOT_APPLIED mode, map adapter outcomes into the closed inherited status vocabulary, and reject fabricated comparison compatibility.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
@@ -269,20 +274,23 @@
 | 상속 우선순위·최대 잉여·동률 비교자 유지, 다섯 예시 | §3.4 (동률 예시는 `payee_label` 오름차순으로 명시) |
 | 동결 스냅샷 하나, 기존 노드 경계 | §3.3 |
 | production NOT_AUTHORIZED, 그림자 효과 미적용 | 배너, §3.6 |
-| 문서 색인 참조 | `tests/decision_bindings.json`에 여섯 항목의 `PENDING_CONSUMER` 행(라운드 4, 이 라운드에서 변경 없음). `docs/CAP_COVERAGE.md` 한 줄은 개정 범위 밖이라 §7로 넘긴다 |
-| 결정 원장 검증 | 라운드 6에서 이 워크트리에서 실행: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/pack_vectors.py --check`, `python3 -m unittest tests/test_decision_bindings.py tests/test_evidence_pack.py`. 결과는 최종 메시지에 기록 |
+| 문서 색인 참조 | `docs/CAP_COVERAGE.md` 11행이 이 노트를 링크한다(완료). `tests/decision_bindings.json`에 여섯 항목의 `PENDING_CONSUMER` 행(변경 없음) |
+| 결정 원장 검증 | 라운드 7에서 이 워크트리에서 실행: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/pack_vectors.py --check`, `python3 -m unittest tests/test_decision_bindings.py tests/test_evidence_pack.py`. 라운드 7 결과: 원장 0(이 노트 여섯 ADOPTED), 바인딩 ok, 팩 9파일 일치(날짜 변경으로 코퍼스 변화 없음), 단위 테스트 42개 OK |
 
-**차단 소견 처리:** (1) 동률 규칙: 수용. 상속 비교자를 금지하던 문장을 제거하고 `payee_label` 오름차순을 상속 규칙으로 명시했다. (2) FSM 표현 불가: 수용. `fsm_expressible: false`, 고정 두 수취인 기준선, fabricated row 금지를 §3.4와 §4에 추가했다.
+**차단 소견 처리(라운드 7):** (1) mode/status: 수용. §3.6·§4 참조. (2) `tests/test_coa_candidate.py`: 수용. 이 브랜치의 변경을 `origin/main` 바이트로 되돌려 diff에서 제거했다. 그 결과 라운드 7 실행에서 `test_v1_and_golden_files_are_untouched`가 `['docs/decisions/CAPITAL_MULTIPAYEE_SHADOW.md'] != []`로 실패함을 확인했다(가드가 `docs/decisions` 전체를 `origin/main` 대비로 비교하므로); 이는 모든 결정 PR에 공통인 기존 가드 동작이며 완화는 별도 범위 승인 대상으로 남긴다(§7). (3) 색인 문구: 수용.
+
+**차단 소견 처리(라운드 5):** (1) 동률 규칙: 수용. 상속 비교자를 금지하던 문장을 제거하고 `payee_label` 오름차순을 상속 규칙으로 명시했다. (2) FSM 표현 불가: 수용. `fsm_expressible: false`, 고정 두 수취인 기준선, fabricated row 금지를 §3.4와 §4에 추가했다.
 
 ## 6. Open risks
 
-선행 노트의 비교자·클래스 표는 검토자 발췌(2차 정보)로 확인했고 이 결정자가 원문을 열지 않았다. 구현 소비자는 선행 노트에서 직접 로드해 검증해야 하며, 발췌와 원문이 다르면 원문이 이긴다. 잔여 의무는 합성 주장이며 법적 유효성·완전성 증거가 아니다. 법무·세무·회계 해석은 전문가 검토 전 작업 가정이다. 바인딩 행은 `PENDING_CONSUMER`이며 구현 주장이 아니다. 다중 수취인 결과의 FSM 반영은 upstream 변경 전까지 불가능하다.
+선행 노트의 비교자·클래스 표·그림자 status 어휘는 검토자 발췌(2차 정보)로 확인했고 이 결정자가 원문을 열지 않았다. 구현 소비자는 선행 노트에서 직접 로드해 검증해야 하며, 발췌와 원문이 다르면 원문이 이긴다. 잔여 의무는 합성 주장이며 법적 유효성·완전성 증거가 아니다. 법무·세무·회계 해석은 전문가 검토 전 작업 가정이다. 바인딩 행은 `PENDING_CONSUMER`이며 구현 주장이 아니다. 다중 수취인 결과의 FSM 반영은 upstream 변경 전까지 불가능하다.
 
 ## 7. 후속 작업
 
 | 작업 | 담당 | 상태 |
 |---|---|---|
-| `docs/CAP_COVERAGE.md` 9행의 잠정 결정 목록 끝에 `, [docs/decisions/CAPITAL_MULTIPAYEE_SHADOW.md](decisions/CAPITAL_MULTIPAYEE_SHADOW.md)(multipayee-shadow-input-decision)` 추가 | supervisor 통합(개정 범위 밖) | 미완 |
-| `multipayee-shadow-input` 구현: 정책 로드·digest 동결, 순열 독립성, `payee_label` 오름차순 동률, 중복·미지 클래스 거부, 수치·용량 경계, 보존 불변식, 그림자 봉투 유지, 비호환 비교 검증. 새 벡터는 `scripts/docs_surface.py` 등록과 README needle 필요 | 구현 노드 | 미구축 |
+| `docs/CAP_COVERAGE.md` 색인 참조 | supervisor 통합 | 완료(11행) |
+| `tests/test_coa_candidate.py`의 새 결정 노트 가드 처리 | supervisor(별도 범위 승인) | 이 PR 밖 |
+| `multipayee-shadow-input` 구현: 정책 로드·digest 동결, 순열 독립성, `payee_label` 오름차순 동률, 중복·미지 클래스 거부, 수치·용량 경계, 보존 불변식, `mode` 고정과 `adapter_outcome`→`shadow_status` 사상, 비호환 비교 검증. 새 벡터는 `scripts/docs_surface.py` 등록과 README needle 필요 | 구현 노드 | 미구축 |
 | 다중 수취인 결과의 FSM 행 번역 | upstream FSM 변경 후 별도 노드 | 이 노트 밖 |
 | 누적 늦은 현금, 참여, 클레임 슬라이스, UC1–UC4, upstream 변경 | 기존 노드 | 이 노트 밖 |

@@ -206,22 +206,10 @@ class V1UnchangedTests(unittest.TestCase):
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
-            # A reviewed decision branch may introduce notes not yet on main.
-            # Pin those additions to HEAD; every existing main note remains
-            # guarded against main, and unreviewed additions still fail below.
-            added_notes = self._git('diff', '--name-only', '--diff-filter=A',
-                                    base, 'HEAD', '--', 'docs/decisions')
-            self.assertEqual(added_notes.returncode, 0, added_notes.stderr)
-            branch_notes = added_notes.stdout.split()
-            for name in branch_notes:
-                reviewed_note = self._git('show', f'HEAD:{name}')
-                self.assertEqual(reviewed_note.returncode, 0, reviewed_note.stderr)
-                self.assertEqual((ROOT / name).read_bytes(), reviewed_note.stdout.encode('utf-8'))
             guarded = self._git('diff', '--name-only', base, '--',
                                 *[name for name in self.GUARDED if name not in
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
-                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json',
-                                *[f':(exclude){name}' for name in branch_notes])
+                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
             self.assertEqual(guarded.stdout.split(), [])
             # Also preserve the closeout binding note against the incoming reviewed
