@@ -13,7 +13,7 @@ from capital import __version__
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
     COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES, Principal,
-    SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
+    SESSION_BIND, LocalRoleAuthorizer, path_matches, permission_catalog, require, route_permission,
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
 from capital.resources import read_static
@@ -28,6 +28,7 @@ from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 # The auth test fails if these two registries diverge. Unlisted paths are 404.
 GET_DISPATCH = (
     ('/api/state', False, 'state'),
+    ('/api/permissions', False, 'permissions'),
     ('/api/scenarios', True, 'scenarios'),
     ('/api/readiness', False, 'readiness'),
     ('/api/decisions', False, 'decisions'),
@@ -45,6 +46,8 @@ GET_DISPATCH = (
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
+    ('/api/export/facts', False, 'export_facts'),
+    ('/api/export/facts/schema', False, 'facts_schema'),
     ('/api/reconciliation', False, 'reconciliation'),
     ('/api/statement', False, 'statement'),
     ('/api/metrics', False, 'metrics'),
@@ -193,7 +196,8 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             data = value if isinstance(value, bytes) else json.dumps(value, ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header('Content-Type', content_type)
-            self.send_header('Content-Length', str(len(data)))
+            if status != 204:
+                self.send_header('Content-Length', str(len(data)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
@@ -247,6 +251,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_state(self, route, principal):
             return self.reply(200, {**service.snapshot(role=principal.role), 'local_token': self.local_token(principal)})
+
+        def _get_permissions(self, route, principal):
+            return self.reply(200, permission_catalog(POST_DISPATCH, ASSETS))
 
         def _get_evidence(self, route, principal):
             return self.reply(200, service.evidence())
@@ -363,6 +370,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
 
+        def _get_export_facts(self, route, principal):
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(service.export_facts(route.query)))
+
+        def _get_facts_schema(self, route, principal):
+            from capital.facts import schema
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(schema()))
+
         def _get_export_manifest(self, route, principal):
             return self.reply(200, service.export_manifest())
 
@@ -450,6 +466,10 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 if path.startswith('/api/operations/'):
                     operation_id = path[len('/api/operations/'):]
                 self.boundary()
+                if route.path == '/favicon.ico':
+                    self.reply(204, b'', 'image/x-icon')
+                    status = 204
+                    return
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
                     self.reply(200, read_static(name), kind)
