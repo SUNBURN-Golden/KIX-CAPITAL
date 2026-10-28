@@ -426,6 +426,26 @@
     {
       "code": "UNKNOWN_SLICE",
       "status": 404
+    },
+    {
+      "code": "INVALID_CURSOR",
+      "status": 400
+    },
+    {
+      "code": "CUT_MOVED",
+      "status": 409
+    },
+    {
+      "code": "FACTS_ROW_INVALID",
+      "status": 500
+    },
+    {
+      "code": "STORAGE_STATE_MISMATCH",
+      "status": 503
+    },
+    {
+      "code": "COHERENT_SNAPSHOT_UNSUPPORTED",
+      "status": 503
     }
   ],
   "commands": {
@@ -477,6 +497,7 @@
         "$ref": "#/definitions/portfolio_snapshot"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -562,6 +583,29 @@
         "SESSION_REQUIRED",
         "ROLE_FORBIDDEN",
         "UNKNOWN_SCENARIO"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/permissions",
+      "operationId": "local_permissions",
+      "dispatch": "/api/permissions",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/permission_catalog"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
       ],
       "permission": "reference:read"
     },
@@ -738,6 +782,7 @@
         "$ref": "#/definitions/terms_forecast"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1070,6 +1115,68 @@
         "SESSION_REQUIRED",
         "ROLE_FORBIDDEN",
         "READ_ONLY_INVARIANT"
+      ],
+      "permission": "export:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/facts",
+      "operationId": "local_export_facts",
+      "dispatch": "/api/export/facts",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/facts_page"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "WORKSPACE_UNREADABLE",
+        "WORKSPACE_LOCKED",
+        "WORKSPACE_WRITE_FAILED",
+        "INVALID_CURSOR",
+        "CUT_MOVED",
+        "FACTS_ROW_INVALID",
+        "STORAGE_STATE_MISMATCH",
+        "COHERENT_SNAPSHOT_UNSUPPORTED"
+      ],
+      "permission": "export:read",
+      "query": [
+        "instance_id",
+        "after",
+        "limit"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/facts/schema",
+      "operationId": "local_facts_schema",
+      "dispatch": "/api/export/facts/schema",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/facts_schema"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
       ],
       "permission": "export:read"
     },
@@ -1448,6 +1555,7 @@
         "$ref": "#/definitions/slice_registry_listing"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1476,6 +1584,7 @@
         "$ref": "#/definitions/risk_state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1500,6 +1609,7 @@
         "$ref": "#/definitions/covenant_state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1528,6 +1638,7 @@
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
         "NOT_FOUND",
+        "INVALID_TARGET",
         "ROLE_UNKNOWN",
         "LOCAL_TOKEN_REQUIRED",
         "ROLE_MISMATCH",
@@ -1552,6 +1663,7 @@
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
         "NOT_FOUND",
+        "INVALID_TARGET",
         "ROLE_UNKNOWN",
         "LOCAL_TOKEN_REQUIRED",
         "ROLE_MISMATCH",
@@ -1925,6 +2037,41 @@
     }
   ],
   "definitions": {
+    "permission_catalog": {
+      "type": "object",
+      "required": ["format", "label", "provenance", "identity", "authentication", "no_token_principal", "routes", "role_permissions"],
+      "properties": {
+        "format": {"const": "KIX_CAPITAL_PERMISSION_CATALOG_V1"},
+        "label": {"const": "SIMULATED"},
+        "provenance": {"const": "SYNTHETIC_LOCAL_ROLE"},
+        "identity": {"const": "NOT_BOUND"},
+        "authentication": {"const": "NOT_BOUND"},
+        "no_token_principal": {"const": "organizer"},
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["method", "route", "children", "permission"],
+            "properties": {
+              "method": {"enum": ["GET", "POST"]},
+              "route": {"type": "string"},
+              "children": {"type": "boolean"},
+              "permission": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "role_permissions": {
+          "type": "object",
+          "required": ["organizer", "auditor", "observer", "agent"],
+          "properties": {
+            "organizer": {"type": "array", "items": {"type": "string"}},
+            "auditor": {"type": "array", "items": {"type": "string"}},
+            "observer": {"type": "array", "items": {"type": "string"}},
+            "agent": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
     "terms_snapshot": {
       "type": "object",
       "additionalProperties": false,
@@ -10118,7 +10265,12 @@
             "INVALID_PERIOD",
             "TOOL_NOT_ALLOWED",
             "IDP_TOKEN_REQUIRED",
-            "IDP_TOKEN_INVALID"
+            "IDP_TOKEN_INVALID",
+            "INVALID_CURSOR",
+            "CUT_MOVED",
+            "FACTS_ROW_INVALID",
+            "STORAGE_STATE_MISMATCH",
+            "COHERENT_SNAPSHOT_UNSUPPORTED"
           ]
         },
         "role": {
@@ -16376,6 +16528,363 @@
         },
         "matched": {
           "type": "boolean"
+        }
+      }
+    },
+    "facts_cut": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "journal_length",
+            "fixtures_digest",
+            "cut_id"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "journal_length": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 99999999
+            },
+            "fixtures_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "cut_id": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "journal_length",
+            "fixtures_digest",
+            "cut_id",
+            "overlay_state_digest",
+            "overlay_entry_count"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "journal_length": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 99999999
+            },
+            "fixtures_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "cut_id": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "overlay_state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "overlay_entry_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99999999
+            }
+          }
+        }
+      ]
+    },
+    "facts_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "fact_id",
+        "source",
+        "journal_position",
+        "kind",
+        "amount_krw",
+        "sim_day",
+        "duplicate",
+        "entry",
+        "row_sha256"
+      ],
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "fact_id": {
+          "type": "string",
+          "pattern": "[JO]:[0-9]{8}"
+        },
+        "source": {
+          "enum": [
+            "JOURNAL",
+            "OVERLAY"
+          ]
+        },
+        "journal_position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9_]{1,32}"
+        },
+        "amount_krw": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "sim_day": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "duplicate": {
+          "type": "integer",
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "entry": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "row_sha256": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        }
+      }
+    },
+    "facts_schema": {
+      "const": {
+        "schema_id": "KIX_CAPITAL_FACTS_SCHEMA_V1",
+        "label": "SIMULATED",
+        "source_cut": "NOT_BOUND",
+        "authentication": "NOT_BOUND",
+        "stage7_authenticated_export": false,
+        "asset": {
+          "namespace": "fiat",
+          "reference": "KRW",
+          "decimals": 0,
+          "max_atoms": 1000000000000
+        },
+        "columns": [
+          {
+            "name": "seq",
+            "type": "uint",
+            "width": 8
+          },
+          {
+            "name": "fact_id",
+            "type": "ascii_fixed",
+            "width": 10
+          },
+          {
+            "name": "source",
+            "type": "ascii_fixed",
+            "width": 7
+          },
+          {
+            "name": "journal_position",
+            "type": "uint",
+            "width": 8
+          },
+          {
+            "name": "kind",
+            "type": "ascii_id",
+            "max_width": 32
+          },
+          {
+            "name": "amount_krw",
+            "type": "int_atoms_krw",
+            "width": 13,
+            "nullable": true
+          },
+          {
+            "name": "sim_day",
+            "type": "uint",
+            "width": 8,
+            "nullable": true
+          },
+          {
+            "name": "duplicate",
+            "type": "flag01",
+            "width": 1
+          },
+          {
+            "name": "entry",
+            "type": "canonical_json_object",
+            "width": "variable"
+          },
+          {
+            "name": "row_sha256",
+            "type": "hex",
+            "width": 64
+          }
+        ],
+        "rules": [
+          "seq is contiguous from 0. uint width is maximum decimal digits; booleans are not integers.",
+          "fact_id is J:%08d or O:%08d using the source list index. source is JOURNAL or OVERLAY.",
+          "journal_position is the journal index or the raw overlay after_journal_index.",
+          "kind is the journal op or overlay kind: 1..32 ASCII letters, digits or underscore.",
+          "amount_krw is journal body.amount or overlay payload.amount_krw when present; it must be an integer in 0..asset.max_atoms, otherwise null only when absent.",
+          "sim_day is null for journal rows and the raw unsigned overlay sim_day otherwise.",
+          "duplicate is 1 only for an identical repeated overlay_id, ignored by fold; otherwise 0.",
+          "entry is the complete raw canonical JSON object; row_sha256 is lowercase hexadecimal.",
+          "Preserve both source list orders. Before each overlay entry emit remaining journal indices less than the running maximum of overlay after_journal_index; then emit remaining journal rows.",
+          "cut has state_digest, journal_length, fixtures_digest, cut_id. overlay_state_digest and overlay_entry_count are both present exactly when the overlay list is nonempty; never null.",
+          "Digests use capital.store.canonical_bytes and domain-tagged SHA256. Row material is {domain:ROW,row:row_without_hash}; chain genesis is {domain:CHAIN,cut_id,schema_sha256}; chain step is {domain:CHAIN,previous,row_sha256}; page material is {domain:PAGE,page:page_without_digest}; cut material is {domain:CUT,...cut_without_cut_id}. Domain constants are KIX_CAPITAL_FACTS_*_V1.",
+          "Cursor is kfc1.<next seq as eight decimal digits>.<cut_id>. Limits 1..500, default 100. Canonical ASCII JSON bytes have no trailing newline. Hashes detect corruption, not authentication."
+        ]
+      }
+    },
+    "facts_page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "schema_id",
+        "schema_sha256",
+        "schema",
+        "label",
+        "source_cut",
+        "authentication",
+        "stage7_authenticated_export",
+        "not_claims",
+        "funds_executed",
+        "import_endpoint",
+        "resume_endpoint",
+        "workspace_status",
+        "completeness",
+        "cut",
+        "after",
+        "start_seq",
+        "limit",
+        "row_count_total",
+        "rows",
+        "chain_before",
+        "chain_after",
+        "next_cursor",
+        "page_digest"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_FACTS_PAGE_V1"
+        },
+        "schema_id": {
+          "const": "KIX_CAPITAL_FACTS_SCHEMA_V1"
+        },
+        "schema_sha256": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "schema": {
+          "$ref": "#/definitions/facts_schema"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "stage7_authenticated_export": {
+          "const": false
+        },
+        "not_claims": {
+          "const": [
+            "k-stage7-authenticated-export"
+          ]
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "import_endpoint": {
+          "const": "NOT_PROVIDED"
+        },
+        "resume_endpoint": {
+          "const": "NOT_PROVIDED"
+        },
+        "workspace_status": {
+          "const": "ACTIVE"
+        },
+        "completeness": {
+          "const": "COMPLETE_AT_CUT"
+        },
+        "cut": {
+          "$ref": "#/definitions/facts_cut"
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "kfc1\\.[0-9]{8}\\.[0-9a-f]{64}"
+        },
+        "start_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "row_count_total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/definitions/facts_row"
+          }
+        },
+        "chain_before": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "chain_after": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "kfc1\\.[0-9]{8}\\.[0-9a-f]{64}"
+        },
+        "page_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
         }
       }
     }

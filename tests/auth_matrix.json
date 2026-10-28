@@ -78,6 +78,16 @@
     },
     {
       "method": "GET",
+      "route": "/api/permissions",
+      "children": false,
+      "handler": "_get_permissions",
+      "permission": "reference:read",
+      "probes": [
+        "/api/permissions"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/scenarios",
       "children": true,
       "handler": "_get_scenarios",
@@ -263,6 +273,26 @@
       "permission": "export:read",
       "probes": [
         "/api/export/manifest"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts",
+      "children": false,
+      "handler": "_get_export_facts",
+      "permission": "export:read",
+      "probes": [
+        "/api/export/facts?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts/schema",
+      "children": false,
+      "handler": "_get_facts_schema",
+      "permission": "export:read",
+      "probes": [
+        "/api/export/facts/schema"
       ]
     },
     {
@@ -476,6 +506,54 @@
     {
       "method": "GET",
       "route": "/api/state",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "observer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "reference:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/permissions",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {
@@ -1382,6 +1460,108 @@
     {
       "method": "GET",
       "route": "/api/export/manifest",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts/schema",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts/schema",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts/schema",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts/schema",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "export:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/export/facts/schema",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {
