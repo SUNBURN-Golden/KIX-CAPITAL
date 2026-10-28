@@ -90,6 +90,11 @@ ROUTE_NEEDLES = {
     ('GET', '/api/preview/'): ('`GET /api/preview/{advance_id}',),
     ('GET', '/api/underwrite/'): ('`GET /api/underwrite/{advance_id}',),
     ('GET', '/api/operations/'): ('`GET /api/operations/{operation_id}',),
+    ('GET', '/api/read/'): (
+        '`GET /api/read/credit_advance/{id}`',
+        '`GET /api/read/credit_claim/{id}`',
+        '`GET /api/read/settlement/{id}`',
+    ),
     ('GET', '/api/export'): ('- `GET /api/export`:',),
     ('GET', '/api/export/manifest'): ('- `GET /api/export/manifest`:',),
     ('GET', '/api/export/facts'): ('- `GET /api/export/facts`:',),

@@ -342,7 +342,7 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(len(plan), 1)
         self.assertEqual(plan[0]['commands'][0][1:], ['scripts/upstream_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][1][1:], ['scripts/agent_claims_check.py', '--execute'])
-        self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py', '--execute'])
+        self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py'])
         self.assertEqual(plan[0]['commands'][3][1:], ['scripts/ce1_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][4][1:], ['scripts/adapter_identity_claims_check.py', '--execute'])
         from capital.adapter_identity_claims import load_table as load_identity
@@ -358,6 +358,11 @@ class AgentClaimsTests(unittest.TestCase):
             + len(load_identity()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
+            from tests.test_read_model_claims import _tree
+            protocol = Path(tmp) / 'protocol'
+            _tree(protocol, load_read_model())
+            plan = [stage for stage in acceptance.build_plan(ROOT, protocol)
+                    if stage['id'] == 'upstream-claims']
             code = acceptance.execute_plan(
                 plan, root=ROOT, evidence_path=evidence, required=('upstream-claims',))
             data = json.loads(evidence.read_text(encoding='utf-8'))

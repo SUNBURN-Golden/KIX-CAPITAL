@@ -1,7 +1,8 @@
-"""Read-model CLAIM_CONFORMANCE table, mutation, drift, and the acceptance stage."""
+"""READ_MODEL_QUERIES CLAIM_CONFORMANCE table: rows, mutation, scoped drift, acceptance stage."""
 import copy
 import importlib.util
 import json
+import os
 import stat
 import subprocess
 import sys
@@ -11,42 +12,53 @@ from pathlib import Path
 
 from capital.read_model_claims import (
     CHECKS,
+    ERROR_CODES,
+    KEYSET_SECTIONS,
     PINNED_SHA,
     REQUIRED_FIELDS,
-    ROUTES,
-    SECTION_ADVANCE,
-    SECTION_CLAIM,
-    SECTION_NONMUTATION,
     SOURCE_DOC,
     ClaimTableError,
     check_protocol,
+    draft_flags,
+    draft_keys,
     load_table,
     run_claims,
+    section_text,
     validate_table,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'scripts' / 'read_model_claims_check.py'
-UPSTREAM_SCRIPT = ROOT / 'scripts' / 'upstream_claims_check.py'
 PROFILE_TOKEN = 'SEMANTIC' + '_CONFORMANCE'
+REAL_DRAFT = Path('/workspace/capital-run/kixproto-ro')
 
 ACCEPTANCE_IDS = {
-    'read-advance-phase',
-    'read-claim-open-face',
-    'read-advance-unknown',
-    'read-claim-unknown',
-    'read-readonly-state',
+    'rm-keyset-settlement',
+    'rm-keyset-credit-advance',
+    'rm-keyset-credit-claim',
+    'rm-error-codes',
+    'rm-envelope-version',
+    'rm-envelope-fixture-mode',
+    'rm-envelope-accepted-advance',
+    'rm-envelope-visibility',
+    'rm-non-mutation',
 }
 CHECK_PREFIXES = (
-    'read.advance.',
-    'read.claim.',
-    'read.readonly.',
+    'keyset.', 'field.credit_advance.', 'field.credit_claim.', 'field.settlement.',
+    'error.unknown.', 'error.invalid.', 'error.codes', 'envelope.', 'body.unmodified',
+    'claim.', 'advance.', 'settlement.', 'nonmutation.',
 )
-SECTIONS = (SECTION_ADVANCE, SECTION_CLAIM, SECTION_NONMUTATION)
+
+
+def _other_claim_total():
+    from capital.ce1_claims import load_table as ce1
+    from capital.adapter_identity_claims import load_table as identity
+    from capital.lifecycle_claims import load_table as lifecycle
+    return sum(len(load()['claims']) for load in (ce1, identity, lifecycle))
 
 
 def _acceptance():
-    spec = importlib.util.spec_from_file_location('acceptance_claims', ROOT / 'scripts' / 'acceptance.py')
+    spec = importlib.util.spec_from_file_location('acceptance_read_model', ROOT / 'scripts' / 'acceptance.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -54,11 +66,7 @@ def _acceptance():
 
 def _run(args, script=SCRIPT):
     return subprocess.run(
-        [sys.executable, str(script), *args],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-    )
+        [sys.executable, str(script), *args], cwd=ROOT, capture_output=True, text=True)
 
 
 def _flip(value):
@@ -73,7 +81,9 @@ def _flip(value):
     if value is None:
         return 0
     if type(value) is list:
-        return list(reversed(value))
+        return value + ['EXTRA']
+    if type(value) is dict:
+        return dict(value, code='BROKEN')
     raise AssertionError(repr(value))
 
 
@@ -83,51 +93,69 @@ def _write_table(directory, table):
     return path
 
 
-def _protocol_tree(root, table):
-    grouped = {}
-    for claim in table['claims']:
-        grouped.setdefault(claim['source_doc'], []).append(claim['section'])
-        grouped[claim['source_doc']].append(claim['needle'])
-    written = []
-    for rel, parts in grouped.items():
-        path = root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text('\n'.join(parts) + '\n', encoding='utf-8')
-        written.append(path)
-    return written
+def _draft_text(table):
+    """A small stand-in for the draft that has the shape the drift parser reads."""
+    expected = {row['check_id']: row['expected'] for row in table['claims']
+                if row['check_id'].startswith('keyset.')}
+    flags = [row['check_id'].rsplit('.', 1)[1] for row in table['claims']
+             if row['check_id'].startswith('field.credit_claim.')
+             and row['check_id'].rsplit('.', 1)[1] not in ('provenance',)]
+    advance_lead = ['provenance', 'lifecycle_authority', 'exposure_ledger']
+    advance_keys = [k for k in expected['keyset.credit_advance'] if k not in advance_lead and k not in flags]
+    claim_keys = [k for k in expected['keyset.credit_claim'] if k not in flags]
+
+    def names(items):
+        return ', '.join(f'`{item}`' for item in items)
+
+    bullets = {
+        KEYSET_SECTIONS['settlement']: (
+            '- **노출 상태.** `SettlementMachine.view`의 `_view`를 그대로 쓴다.\n'
+            f'  키: {names(expected["keyset.settlement"])}.'),
+        KEYSET_SECTIONS['credit_advance']: (
+            '- **노출 상태.** `CreditMachine.view`의 `_view`를 그대로 쓴다. '
+            '`provenance`는 `MOCK_CREDIT_F04_ONLY`. `lifecycle_authority`는 `IN_MEMORY_FSM`. '
+            '`exposure_ledger`는 `MOCK_EXPOSURE`.\n'
+            f'  키: {names(advance_keys)}, 그리고 `mock_credit._flags`의 항상 거짓 플래그 ({names(flags)}).'),
+        KEYSET_SECTIONS['credit_claim']: (
+            '- **노출 상태.** `CreditMachine.view_claim`이 반환하는 `MockCredit._view_claim`을 그대로 쓴다.\n'
+            f'  키: {names(claim_keys)}, 그리고 §2.12와 같은 `_flags`.'),
+    }
+    order = []
+    for row in table['claims']:
+        if row['section'] not in order:
+            order.append(row['section'])
+    out = ['# 조회·목록 쿼리 — 초안 0.1', '']
+    for section in order:
+        out.append(section)
+        out.append('')
+        if section in bullets:
+            out.append(bullets[section])
+            out.append('- **행위자 가시성.** 다음 항목.')
+        for row in table['claims']:
+            if row['section'] == section:
+                out.append(f'- {row["needle"]}')
+        out.append('')
+    return '\n'.join(out)
+
+
+def _tree(root, table, text=None):
+    path = Path(root) / SOURCE_DOC
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_draft_text(table) if text is None else text, encoding='utf-8')
+    return path
 
 
 def _snapshot(root):
-    found = {}
-    for path in sorted(root.rglob('*')):
-        if path.is_file():
-            found[str(path.relative_to(root))] = path.read_bytes()
-    return found
-
-
-def _unique_needle(table):
-    by_doc = {}
-    for claim in table['claims']:
-        by_doc.setdefault(claim['source_doc'], []).append(claim)
-    for claims in by_doc.values():
-        for claim in claims:
-            others = []
-            for other in claims:
-                if other['id'] == claim['id']:
-                    continue
-                others.append(other['section'])
-                others.append(other['needle'])
-            blob = '\n'.join(others)
-            if claim['needle'] not in blob and claim['needle'] not in claim['section']:
-                return claim
-    raise AssertionError('no unique needle')
+    return {str(p.relative_to(root)): p.read_bytes() for p in sorted(Path(root).rglob('*')) if p.is_file()}
 
 
 class ReadModelClaimsTests(unittest.TestCase):
     def test_table_has_required_fields_and_every_claim_passes(self):
         table = load_table()
-        self.assertGreaterEqual(len(table['claims']), 30)
+        self.assertGreaterEqual(len(table['claims']), 60)
         self.assertEqual(table['pinned_sha'], PINNED_SHA)
+        self.assertEqual(PINNED_SHA, '244595db1524cbb1a01148baa07d6d28cd1b8dc6')
+        self.assertEqual(table['format'], 'KIX_CAPITAL_READ_MODEL_CLAIMS_V1')
         self.assertEqual(table['label'], 'CLAIM_CONFORMANCE')
         seen = set()
         for claim in table['claims']:
@@ -135,69 +163,52 @@ class ReadModelClaimsTests(unittest.TestCase):
                 self.assertIsInstance(claim[field], str)
                 self.assertTrue(claim[field].strip())
             self.assertIn('expected', claim)
-            self.assertTrue(claim['needle'])
             self.assertEqual(claim['pinned_sha'], PINNED_SHA)
             self.assertEqual(claim['source_doc'], SOURCE_DOC)
-            self.assertIn(claim['route'], ROUTES)
             self.assertIn(claim['check_id'], CHECKS)
             self.assertNotIn(claim['id'], seen)
             seen.add(claim['id'])
             self.assertNotIn(PROFILE_TOKEN, claim['claim'])
         result = run_claims(table)
-        self.assertTrue(result['ok'])
+        self.assertTrue(result['ok'], result['failed'])
         self.assertEqual(result['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(result['passed'], result['total'])
-        self.assertGreaterEqual(result['total'], 30)
-        self.assertEqual(result['failed'], [])
         for row in result['rows']:
             self.assertFalse(row['unmapped'])
 
-    def test_acceptance_rows_cover_the_required_queries(self):
+    def test_acceptance_rows_pin_the_key_sets_flags_and_errors(self):
         table = load_table()
         ids = {claim['id'] for claim in table['claims']}
         self.assertTrue(ACCEPTANCE_IDS <= ids, ACCEPTANCE_IDS - ids)
-        check_ids = {claim['check_id'] for claim in table['claims']}
         for prefix in CHECK_PREFIXES:
-            self.assertTrue(
-                any(check_id.startswith(prefix) for check_id in check_ids), prefix)
-        sections = {claim['section'] for claim in table['claims']}
-        for section in SECTIONS:
-            self.assertIn(section, sections)
-        for route in ROUTES:
-            self.assertIn(route, {claim['route'] for claim in table['claims']})
+            self.assertTrue(any(c['check_id'].startswith(prefix) for c in table['claims']), prefix)
         rows = {row['id']: row for row in run_claims(table)['rows']}
-        self.assertEqual(rows['read-advance-phase']['observed'], 'DRAWN')
-        self.assertEqual(rows['read-claim-open-face']['observed'], 100000)
-        self.assertEqual(rows['read-advance-unknown']['observed'], 'UNKNOWN_ADVANCE')
-        self.assertEqual(rows['read-claim-unknown']['observed'], 'UNKNOWN_CLAIM')
         self.assertEqual(
-            rows['read-readonly-state']['observed'],
-            {'canonical_state': True, 'journal': True,
-             'overlay_state_digest': True, 'operation_count': True})
-        self.assertIs(rows['read-claim-no-lifecycle-key']['observed'], False)
+            [len(rows[i]['observed']) for i in (
+                'rm-keyset-settlement', 'rm-keyset-credit-advance', 'rm-keyset-credit-claim')],
+            [25, 51, 24])
+        self.assertEqual(rows['rm-error-codes']['observed'], ERROR_CODES)
+        self.assertEqual(rows['rm-envelope-visibility']['observed'], [False, 'UNDETERMINED'])
+        self.assertIs(rows['rm-non-mutation']['observed'], True)
+        flag_rows = [c for c in table['claims'] if c['id'].startswith(('rm-advance-flag-', 'rm-claim-flag-'))]
+        self.assertGreaterEqual(len(flag_rows), 33)
+        for claim in flag_rows:
+            self.assertIs(claim['expected'], False)
 
-    def test_missing_field_or_route_rejects_the_table(self):
+    def test_missing_field_rejects_the_table(self):
         table = copy.deepcopy(load_table())
         del table['claims'][0]['section']
         with self.assertRaises(ClaimTableError):
             validate_table(table)
         with tempfile.TemporaryDirectory() as tmp:
-            path = _write_table(tmp, table)
-            with self.assertRaises(ClaimTableError):
-                load_table(path)
-            proc = _run(['--execute', '--table', str(path)])
+            proc = _run(['--execute', '--table', str(_write_table(tmp, table))])
         self.assertEqual(proc.returncode, 2)
         self.assertNotIn('CLAIM_CONFORMANCE passed=', proc.stdout)
-        for bad in (None, '', 'GET /api/evidence', 'get_credit_advance'):
-            table = copy.deepcopy(load_table())
-            table['claims'][0]['route'] = bad
-            with self.assertRaises(ClaimTableError, msg=repr(bad)):
-                validate_table(table)
 
     def test_wrong_format_label_or_pin_rejects_the_table(self):
         original = load_table()
         for field, value in (
-            ('format', 'KIX_CAPITAL_UPSTREAM_CLAIMS_V1'),
+            ('format', 'KIX_CAPITAL_AGENT_CLAIMS_V1'),
             ('label', 'CLAIM_DRIFT'),
             ('pinned_sha', 'e2a029d8ac3af7575888dac22fc4bf173ebec232'),
         ):
@@ -209,25 +220,16 @@ class ReadModelClaimsTests(unittest.TestCase):
     def test_unmapped_check_fails_only_that_claim(self):
         table = copy.deepcopy(load_table())
         table['claims'].append({
-            'id': 'mut-unmapped',
-            'source_doc': SOURCE_DOC,
-            'section': SECTION_NONMUTATION,
-            'pinned_sha': PINNED_SHA,
-            'claim': 'This id is not a registered check.',
-            'check_id': 'not.a.real.check',
-            'needle': 'canonical_state()',
-            'route': 'CreditMachine.view',
-            'expected': None,
+            'id': 'mut-unmapped', 'source_doc': SOURCE_DOC, 'section': '## 8. 비변경',
+            'pinned_sha': PINNED_SHA, 'claim': 'Not a registered check.',
+            'route': 'CapitalService.read_query', 'check_id': 'not.a.real.check', 'needle': '`canonical_state()`', 'expected': None,
         })
         result = run_claims(table)
         failed = [row for row in result['rows'] if not row['ok']]
         self.assertEqual([row['id'] for row in failed], ['mut-unmapped'])
         self.assertTrue(failed[0]['unmapped'])
-        self.assertIsNone(failed[0]['observed'])
-        self.assertEqual(result['passed'], result['total'] - 1)
         with tempfile.TemporaryDirectory() as tmp:
-            path = _write_table(tmp, table)
-            proc = _run(['--execute', '--table', str(path)])
+            proc = _run(['--execute', '--table', str(_write_table(tmp, table))])
         self.assertEqual(proc.returncode, 1)
         self.assertIn('failed=1', proc.stdout)
         self.assertEqual(proc.stderr.strip(), 'FAIL mut-unmapped observed=None expected=None')
@@ -235,33 +237,52 @@ class ReadModelClaimsTests(unittest.TestCase):
     def test_flipping_one_expected_fails_exactly_that_claim(self):
         original = load_table()
         samples = (
-            'read-advance-phase',
-            'read-advance-open-face',
-            'read-claim-unknown',
-            'read-advance-funds-executed-false',
-            'read-claim-no-lifecycle-key',
+            'rm-keyset-credit-advance', 'rm-keyset-credit-claim', 'rm-keyset-settlement',
+            'rm-advance-flag-funds-executed', 'rm-claim-flag-interest-defined',
+            'rm-settlement-flag-durable', 'rm-error-codes', 'rm-envelope-version',
+            'rm-envelope-fixture-mode', 'rm-envelope-visibility', 'rm-non-mutation',
+            'rm-claim-unknown-before-draw', 'rm-claim-no-lifecycle-authority',
+            'rm-envelope-accepted-settlement',
         )
         for claim_id in samples:
             table = copy.deepcopy(original)
-            target = next(claim for claim in table['claims'] if claim['id'] == claim_id)
+            target = next(c for c in table['claims'] if c['id'] == claim_id)
             target['expected'] = _flip(target['expected'])
-            with tempfile.TemporaryDirectory() as tmp:
-                path = _write_table(tmp, table)
-                loaded = load_table(path)
-            result = run_claims(loaded)
+            result = run_claims(table)
             failed = [row for row in result['rows'] if not row['ok']]
             self.assertEqual([row['id'] for row in failed], [claim_id], claim_id)
             self.assertFalse(failed[0]['unmapped'])
-            self.assertNotEqual(failed[0]['observed'], failed[0]['expected'])
         table = copy.deepcopy(original)
-        target = next(claim for claim in table['claims'] if claim['id'] == 'read-readonly-state')
-        target['expected'] = dict(target['expected'], journal=False)
+        next(c for c in table['claims'] if c['id'] == 'rm-advance-flag-funds-executed')['expected'] = True
         with tempfile.TemporaryDirectory() as tmp:
-            path = _write_table(tmp, table)
-            proc = _run(['--execute', '--table', str(path)])
+            proc = _run(['--execute', '--table', str(_write_table(tmp, table))])
         self.assertEqual(proc.returncode, 1)
-        self.assertIn('failed=1', proc.stdout)
-        self.assertIn('FAIL read-readonly-state', proc.stderr)
+        self.assertEqual(
+            proc.stderr.strip(), 'FAIL rm-advance-flag-funds-executed observed=False expected=True')
+
+    def test_a_dropped_or_added_body_key_would_fail_the_key_set_row(self):
+        from capital import service as service_module
+        real = service_module.CapitalService._read_body
+
+        def extra(self, kind, ident):
+            body = real(self, kind, ident)
+            body['not_in_the_draft'] = False
+            return body
+
+        def short(self, kind, ident):
+            body = real(self, kind, ident)
+            del body['funds_executed']
+            return body
+
+        for patched in (extra, short):
+            service_module.CapitalService._read_body = patched
+            try:
+                result = run_claims(load_table())
+            finally:
+                service_module.CapitalService._read_body = real
+            failed = {row['id'] for row in result['failed']}
+            self.assertTrue({'rm-keyset-settlement', 'rm-keyset-credit-advance',
+                             'rm-keyset-credit-claim'} <= failed, patched.__name__)
 
     def test_missing_protocol_dir_is_skipped_and_not_a_success_line(self):
         for args in ((), ('--protocol-dir', ''), ('--protocol-dir', '   ')):
@@ -272,65 +293,10 @@ class ReadModelClaimsTests(unittest.TestCase):
             payload = json.loads(lines[1])
             self.assertEqual(payload['status'], 'SKIPPED')
             self.assertEqual(payload['label'], 'CLAIM_CONFORMANCE')
-            self.assertNotIn('passed', payload)
+            self.assertEqual(payload['rows'], 'not-run')
             self.assertNotIn('passed', proc.stdout)
+            self.assertNotIn('verified', proc.stdout)
             self.assertNotIn(PROFILE_TOKEN, proc.stdout)
-
-    def test_protocol_dir_verifies_citations_without_writing(self):
-        table = load_table()
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            _protocol_tree(root, table)
-            files = [path for path in root.rglob('*') if path.is_file()]
-            for path in files:
-                path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-            root.chmod(stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-            try:
-                proc = _run(['--protocol-dir', str(root)])
-                report = check_protocol(root, table)
-            finally:
-                root.chmod(stat.S_IRWXU)
-                for path in files:
-                    path.chmod(stat.S_IRUSR | stat.S_IWUSR)
-        self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout.strip(), f"CLAIM_DRIFT verified={report['total']} total={report['total']}")
-        self.assertNotIn('passed', proc.stdout)
-        self.assertNotIn('SKIPPED', proc.stdout)
-        self.assertEqual(report['status'], 'verified')
-        self.assertEqual(report['verified'], report['total'])
-        self.assertGreaterEqual(report['total'], 30)
-
-        claim = _unique_needle(table)
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            _protocol_tree(root, table)
-            target = root / claim['source_doc']
-            original = target.read_text(encoding='utf-8')
-            self.assertIn(claim['needle'], original)
-            target.write_text(original.replace(claim['needle'], 'NEEDLE_REMOVED', 1), encoding='utf-8')
-            before = _snapshot(root)
-            proc = _run(['--protocol-dir', str(root)])
-            after = _snapshot(root)
-        self.assertEqual(before, after)
-        self.assertEqual(proc.returncode, 1)
-        self.assertNotIn('SKIPPED', proc.stdout)
-        self.assertNotIn('passed', proc.stdout)
-        self.assertIn(f"DRIFT {claim['id']} missing needle", proc.stderr)
-        self.assertEqual(proc.stderr.count('missing needle'), 1)
-
-    def test_non_directory_protocol_path_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            file_path = Path(tmp) / 'notes.md'
-            file_path.write_text('heading', encoding='utf-8')
-            missing = Path(tmp) / 'missing-checkout'
-            file_proc = _run(['--protocol-dir', str(file_path)])
-            missing_proc = _run(['--protocol-dir', str(missing)])
-        for proc in (file_proc, missing_proc):
-            self.assertEqual(proc.returncode, 1)
-            self.assertNotIn('SKIPPED', proc.stdout)
-            self.assertNotIn('passed', proc.stdout)
-            self.assertIn('verified=0', proc.stdout)
-            self.assertIn('protocol dir is not a directory', proc.stderr)
 
     def test_execute_prints_the_count_line(self):
         total = len(load_table()['claims'])
@@ -338,55 +304,184 @@ class ReadModelClaimsTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout, f'CLAIM_CONFORMANCE passed={total} total={total} failed=0\n')
         self.assertEqual(proc.stderr, '')
-        self.assertNotIn(PROFILE_TOKEN, proc.stdout)
 
-    def test_acceptance_stage_runs_all_claim_tables(self):
-        from capital.agent_claims import load_table as load_agent
-        from capital.upstream_claims import load_table as load_upstream
+
+class DriftTests(unittest.TestCase):
+    def setUp(self):
+        self.table = load_table()
+
+    def test_stand_in_draft_is_parsed_into_the_pinned_key_lists(self):
+        text = _draft_text(self.table)
+        for kind in KEYSET_SECTIONS:
+            row = next(c for c in self.table['claims'] if c['check_id'] == f'keyset.{kind}')
+            self.assertEqual(draft_keys(text, kind), row['expected'], kind)
+        self.assertEqual(len(draft_flags(text)), 14)
+
+    def test_section_text_is_scoped_to_one_heading(self):
+        text = '# t\n\n### 2.1 `a`\n\none\n\n### 2.2 `b`\n\ntwo\n\n## 3. next\n\nthree\n'
+        self.assertEqual(section_text(text, '### 2.1 `a`').split(), ['one'])
+        self.assertEqual(section_text(text, '### 2.2 `b`').split(), ['two'])
+        self.assertIsNone(section_text(text, '### 2.9 `none`'))
+        self.assertIsNone(section_text(text + '\n### 2.1 `a`\n', '### 2.1 `a`'))
+
+    def test_protocol_dir_verifies_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = _tree(root, self.table)
+            path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+            try:
+                before = _snapshot(root)
+                proc = _run(['--protocol-dir', str(root)])
+                report = check_protocol(root, self.table)
+                after = _snapshot(root)
+            finally:
+                path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+        self.assertEqual(before, after)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        total = len(self.table['claims'])
+        self.assertEqual(
+            proc.stdout.splitlines(),
+            [f'CLAIM_CONFORMANCE passed={total} total={total} failed=0',
+             f'CLAIM_DRIFT verified={total} total={total}'])
+        self.assertEqual(report['status'], 'verified')
+        self.assertNotIn('SKIPPED', proc.stdout)
+
+    def test_a_key_dropped_or_added_in_the_draft_fails_that_key_set_row(self):
+        text = _draft_text(self.table)
+        claim_at = text.index(KEYSET_SECTIONS['credit_claim'])
+        mutations = {
+            'rm-keyset-settlement': text.replace('`durable`, ', '', 1),
+            'rm-keyset-credit-advance': text.replace('`next_repayment_sequence`, ', '', 1),
+            'rm-keyset-credit-claim': text[:claim_at] + text[claim_at:].replace(
+                '`snapshot_frozen`, ', '`snapshot_frozen`, `new_key`, ', 1),
+        }
+        for claim_id, mutated in mutations.items():
+            self.assertNotEqual(mutated, text, claim_id)
+            with tempfile.TemporaryDirectory() as tmp:
+                _tree(tmp, self.table, mutated)
+                report = check_protocol(tmp, self.table)
+                proc = _run(['--protocol-dir', tmp])
+            ids = {item['id'] for item in report['missing']}
+            self.assertIn(claim_id, ids, claim_id)
+            self.assertEqual(report['status'], 'failed')
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn(f'DRIFT {claim_id} key list differs from the draft', proc.stderr)
+
+    def test_a_flag_dropped_from_section_2_12_fails_both_flag_sharing_rows(self):
+        text = _draft_text(self.table)
+        mutated = text.replace('`interest_defined`', '', 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            _tree(tmp, self.table, mutated)
+            report = check_protocol(tmp, self.table)
+        ids = {item['id'] for item in report['missing']}
+        self.assertTrue({'rm-keyset-credit-advance', 'rm-keyset-credit-claim'} <= ids)
+
+    def test_a_needle_found_only_in_another_section_is_missing(self):
+        text = _draft_text(self.table)
+        claim = next(c for c in self.table['claims'] if c['id'] == 'rm-claim-no-lifecycle-authority')
+        needle = claim['needle']
+        self.assertEqual(text.count(needle), 1)
+        moved = text.replace(f'- {needle}\n', '', 1) + f'\n## 9. elsewhere\n\n- {needle}\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            _tree(tmp, self.table, moved)
+            report = check_protocol(tmp, self.table)
+            proc = _run(['--protocol-dir', tmp])
+        self.assertEqual([item['id'] for item in report['missing']], [claim['id']])
+        self.assertEqual(report['missing'][0]['problem'], 'missing needle')
+        self.assertIn(f"DRIFT {claim['id']} missing needle", proc.stderr)
+
+    def test_a_missing_or_duplicated_heading_is_reported(self):
+        text = _draft_text(self.table)
+        heading = KEYSET_SECTIONS['credit_claim']
+        ids = {c['id'] for c in self.table['claims'] if c['section'] == heading}
+        for mutated in (text.replace(heading, '### 2.13 `renamed`', 1), text + f'\n{heading}\n'):
+            with tempfile.TemporaryDirectory() as tmp:
+                _tree(tmp, self.table, mutated)
+                report = check_protocol(tmp, self.table)
+            self.assertEqual(report['status'], 'failed')
+            if heading in mutated and mutated.count(heading) > 1:
+                self.assertTrue(ids <= {item['id'] for item in report['missing']})
+
+    def test_non_directory_protocol_path_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file_path = Path(tmp) / 'notes.md'
+            file_path.write_text('heading', encoding='utf-8')
+            for target in (file_path, Path(tmp) / 'missing-checkout'):
+                proc = _run(['--protocol-dir', str(target)])
+                self.assertEqual(proc.returncode, 1)
+                self.assertNotIn('SKIPPED', proc.stdout)
+                self.assertIn('verified=0', proc.stdout)
+                self.assertIn('protocol dir is not a directory', proc.stderr)
+
+    @unittest.skipUnless((REAL_DRAFT / SOURCE_DOC).is_file(), 'no read-only kix-protocol checkout here')
+    def test_real_draft_matches_when_a_checkout_is_present(self):
+        report = check_protocol(REAL_DRAFT, self.table)
+        self.assertEqual(report['status'], 'verified', report['missing'])
+        self.assertEqual(report['verified'], len(self.table['claims']))
+
+
+class AcceptanceStageTests(unittest.TestCase):
+    def stage(self, protocol_dir=None):
         acceptance = _acceptance()
-        plan = [stage for stage in acceptance.build_plan(ROOT) if stage['id'] == 'upstream-claims']
+        plan = [s for s in acceptance.build_plan(ROOT, protocol_dir) if s['id'] == 'upstream-claims']
         self.assertEqual(len(plan), 1)
-        self.assertEqual(plan[0]['commands'][0][1:], ['scripts/upstream_claims_check.py', '--execute'])
-        self.assertEqual(plan[0]['commands'][1][1:], ['scripts/agent_claims_check.py', '--execute'])
-        self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py', '--execute'])
-        self.assertEqual(plan[0]['commands'][3][1:], ['scripts/ce1_claims_check.py', '--execute'])
-        self.assertEqual(plan[0]['commands'][4][1:], ['scripts/adapter_identity_claims_check.py', '--execute'])
-        from capital.adapter_identity_claims import load_table as load_identity
-        from capital.ce1_claims import load_table as load_ce1
-        from capital.lifecycle_claims import load_table as load_lifecycle
-        self.assertEqual(plan[0]['commands'][5][1:], ['scripts/lifecycle_claims_check.py', '--execute'])
-        expected_total = (
-            len(load_lifecycle()['claims']) +
-            len(load_upstream()['claims'])
-            + len(load_agent()['claims'])
-            + len(load_table()['claims'])
-            + len(load_ce1()['claims'])
-            + len(load_identity()['claims']))
+        return acceptance, plan
+
+    def run_stage(self, acceptance, plan):
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
             code = acceptance.execute_plan(
                 plan, root=ROOT, evidence_path=evidence, required=('upstream-claims',))
-            data = json.loads(evidence.read_text(encoding='utf-8'))
-        self.assertEqual(code, 0)
-        self.assertTrue(data['ok'])
-        stage = data['stages'][0]
-        self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
-        self.assertEqual(stage['status'], 'passed')
-        self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'])
-        self.assertEqual(stage['test_count']['failed'], 0)
-        self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
-        for command in stage['commands']:
-            self.assertNotIn(PROFILE_TOKEN, command['output_tail'])
+            return code, json.loads(evidence.read_text(encoding='utf-8'))
 
-    def test_read_model_script_and_upstream_script_report_separate_tables(self):
-        read_total = len(load_table()['claims'])
-        proc = _run(['--execute'])
-        self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, f'CLAIM_CONFORMANCE passed={read_total} total={read_total} failed=0\n')
-        upstream = _run(['--execute'], script=UPSTREAM_SCRIPT)
-        self.assertEqual(upstream.returncode, 0)
-        self.assertNotEqual(proc.stdout, upstream.stdout)
+    def test_stage_runs_the_rows_skipped_without_a_protocol_dir(self):
+        from capital.agent_claims import load_table as load_agent
+        from capital.upstream_claims import load_table as load_upstream
+        acceptance, plan = self.stage()
+        commands = plan[0]['commands']
+        self.assertEqual(commands[0][1:], ['scripts/upstream_claims_check.py', '--execute'])
+        self.assertEqual(commands[1][1:], ['scripts/agent_claims_check.py', '--execute'])
+        self.assertEqual(commands[2][1:], ['scripts/read_model_claims_check.py'])
+        code, data = self.run_stage(acceptance, plan)
+        self.assertEqual(code, 0)
+        stage = data['stages'][0]
+        self.assertEqual(stage['status'], 'passed')
+        self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
+        self.assertEqual(stage['skipped'], ['scripts/read_model_claims_check.py'])
+        self.assertEqual([c['skipped'] for c in stage['commands']], [False, False, True, False, False, False])
+        total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total()
+        self.assertEqual((stage['passed'], stage['total']), (total, total))
+        self.assertTrue(stage['commands'][2]['output_tail'].startswith('SKIPPED'))
+        self.assertIsNone(stage['commands'][2]['test_count'])
+        self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
+
+    def test_stage_counts_the_rows_when_a_protocol_dir_is_given(self):
+        from capital.agent_claims import load_table as load_agent
+        from capital.upstream_claims import load_table as load_upstream
+        table = load_table()
+        with tempfile.TemporaryDirectory() as tmp:
+            _tree(tmp, table)
+            acceptance, plan = self.stage(tmp)
+            self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py',
+                                                          '--protocol-dir', tmp])
+            code, data = self.run_stage(acceptance, plan)
+        self.assertEqual(code, 0)
+        stage = data['stages'][0]
+        self.assertEqual(stage['skipped'], [])
+        total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total() + len(table['claims'])
+        self.assertEqual((stage['passed'], stage['total']), (total, total))
+
+    def test_a_failing_row_fails_the_stage(self):
+        table = copy.deepcopy(load_table())
+        next(c for c in table['claims'] if c['id'] == 'rm-envelope-version')['expected'] = '9.9'
+        with tempfile.TemporaryDirectory() as tmp:
+            _tree(tmp, table)
+            path = Path(tmp) / 'claims.json'
+            path.write_text(json.dumps(table), encoding='utf-8')
+            proc = _run(['--protocol-dir', tmp, '--table', str(path)])
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn('failed=1', proc.stdout)
+        self.assertIn('FAIL rm-envelope-version', proc.stderr)
 
 
 if __name__ == '__main__':

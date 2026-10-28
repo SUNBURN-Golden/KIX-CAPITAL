@@ -257,6 +257,18 @@
     },
     {
       "method": "GET",
+      "route": "/api/read/",
+      "children": true,
+      "handler": "_get_read",
+      "permission": "projection:read",
+      "probes": [
+        "/api/read/credit_advance/sim-mtx",
+        "/api/read/credit_claim/sim-committed",
+        "/api/read/settlement/sim-committed"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/export",
       "children": false,
       "handler": "_get_export",
@@ -1358,6 +1370,57 @@
     {
       "method": "GET",
       "route": "/api/operations/",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/read/",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/read/",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/read/",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/read/",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/read/",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {

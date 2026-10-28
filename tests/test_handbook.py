@@ -330,7 +330,10 @@ class HandbookTests(unittest.TestCase):
             unit_commands.index(fence[0]))
         self.assertEqual(len(upstream_commands), 6)
         for argv in upstream_commands:
-            self.assertIn('--execute', argv)
+            if 'scripts/read_model_claims_check.py' in argv:
+                self.assertNotIn('--execute', argv)
+            else:
+                self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
         for doc in (README.read_text(encoding='utf-8'),
                     HANDBOOK.read_text(encoding='utf-8')):

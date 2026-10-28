@@ -452,6 +452,14 @@ class LiveMatrixTests(LiveBase):
                 'instance_id': cls.instance, 'operation_id': auth_matrix.OFFER_OPERATION, 'op': 'offer',
                 'advance_id': auth_matrix.ADVANCE, 'args': {'fixture_id': 'sim-committed', 'amount': 90000}})
         assert status == 200 and json.loads(raw)['outcome'] == 'ACCEPTED', raw
+        # A drawn advance, so the credit_claim read probe finds a noted mock claim.
+        for op, args in (('offer', {'fixture_id': auth_matrix.DRAWN_FIXTURE, 'amount': 1000}),
+                         ('approve', {}), ('bind_settlement', {}), ('draw', {})):
+            status, _kind, raw = http_send(cls.port, 'POST', '/api/commands', {
+                'X-Capital-Token': cls.tokens['organizer']}, {
+                    'instance_id': cls.instance, 'operation_id': f'sim-mtx-drawn-{op.replace("_", "")}',
+                    'op': op, 'advance_id': auth_matrix.DRAWN_ADVANCE, 'args': args})
+            assert status == 200 and json.loads(raw)['outcome'] == 'ACCEPTED', (op, raw)
 
     def test_permission_catalog_is_read_only_and_identical_for_allowed_callers(self):
         from capital.auth import permission_catalog

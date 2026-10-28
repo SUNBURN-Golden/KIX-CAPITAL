@@ -45,6 +45,7 @@ GET_DISPATCH = (
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
     ('/api/operations/', True, 'operation'),
+    ('/api/read/', True, 'read'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
     ('/api/export/facts', False, 'export_facts'),
@@ -401,6 +402,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_health(self, route, principal):
             return self.reply(200, service.health())
+
+        def _get_read(self, route, principal):
+            # Exactly <kind>/<id>. A bare kind, an unknown kind or an extra segment is
+            # 404: the draft's list_* queries and paging are UNDETERMINED upstream.
+            parts = route.path[len('/api/read/'):].split('/')
+            if len(parts) != 2:
+                raise ApiError('NOT_FOUND', 404)
+            return self.reply(200, service.read_query(parts[0], parts[1]))
 
         def _get_operation(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]

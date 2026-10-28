@@ -55,13 +55,21 @@ _CLAIMS = re.compile(r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)$
 _COUNT_WORD = re.compile(r'(failures|errors|skipped)=(\d+)')
 
 
-def build_plan(root=None):
-    """The required stages, in ladder order. Commands are relative to root."""
+def build_plan(root=None, protocol_dir=None):
+    """The required stages, in ladder order. Commands are relative to root.
+
+    `protocol_dir` is passed to the read-model claim command only. Without it that
+    command prints SKIPPED and runs no row; the evidence records it as skipped.
+    """
     py = sys.executable
     root = ROOT if root is None else Path(root)
+    read_model = [py, 'scripts/read_model_claims_check.py']
+    if protocol_dir:
+        read_model += ['--protocol-dir', str(protocol_dir)]
     return [
         {
             'id': 'unit',
+            # Hang guard: the full suite took 333s in CI, exceeding the old 300s budget.
             'timeout': 900,
             'commands': [
                 [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
@@ -94,7 +102,7 @@ def build_plan(root=None):
             'commands': [
                 [py, 'scripts/upstream_claims_check.py', '--execute'],
                 [py, 'scripts/agent_claims_check.py', '--execute'],
-                [py, 'scripts/read_model_claims_check.py', '--execute'],
+                read_model,
                 [py, 'scripts/ce1_claims_check.py', '--execute'],
                 [py, 'scripts/adapter_identity_claims_check.py', '--execute'],
                 [py, 'scripts/lifecycle_claims_check.py', '--execute'],
@@ -258,10 +266,13 @@ def _stop_group(pid, sig):
 
 def _command_record(argv, exit_code, out, err):
     combined = out + ('\n' if out and err else '') + err
+    first = out.strip().splitlines()[0].strip() if out.strip() else ''
     record = {
         'argv': list(argv),
         'exit_code': exit_code,
         'test_count': parse_test_count(combined),
+        # A SKIPPED command ran no check. It adds no count and is not a pass.
+        'skipped': exit_code == 0 and first == 'SKIPPED',
         'output_tail': _tail(combined),
     }
     journeys = parse_journeys(combined)
@@ -494,6 +505,7 @@ def execute_plan(plan, *, root, evidence_path, required=REQUIRED_STAGES):
             'injected': bool(stage.get('injected')),
             'exit_code': code,
             'test_count': _merge_counts(records),
+            'skipped': [record['argv'][1] for record in records if record.get('skipped')],
             'commands': records,
         }
         _annotate_upstream(stage, body)
@@ -559,8 +571,10 @@ def main(argv=None) -> int:
     parser.add_argument('--evidence', type=Path, default=EVIDENCE)
     parser.add_argument('--inject-fail', default=None, help='Replace one stage with a command that exits 1')
     parser.add_argument('--root', type=Path, default=ROOT)
+    parser.add_argument('--protocol-dir', default=None,
+                        help='Read-only kix-protocol checkout; runs the read-model claim rows and drift check')
     args = parser.parse_args(argv)
-    plan = build_plan(args.root)
+    plan = build_plan(args.root, args.protocol_dir)
     if args.inject_fail:
         try:
             plan = inject_failure(plan, args.inject_fail)

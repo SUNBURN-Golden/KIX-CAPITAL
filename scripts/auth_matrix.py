@@ -56,6 +56,10 @@ DEFAULT_HANDBOOK = ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md'
 # holds the permission, against the offer seeded as ADVANCE below.
 ADVANCE = 'sim-mtx'
 OFFER_OPERATION = 'sim-mtx-offer'
+# A second advance driven to DRAWN on the same fixture: the mock credit ledger notes a
+# claim only at the draw, so the credit_claim read probe needs it.
+DRAWN_ADVANCE = 'sim-mtx-drawn'
+DRAWN_FIXTURE = 'sim-committed'
 GET_PROBES = {
     '/api/state': ['/api/state'],
     '/api/permissions': ['/api/permissions'],
@@ -82,6 +86,11 @@ GET_PROBES = {
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/operations/': [f'/api/operations/{OFFER_OPERATION}?instance_id={INSTANCE}'],
+    '/api/read/': [
+        f'/api/read/credit_advance/{ADVANCE}',
+        f'/api/read/credit_claim/{DRAWN_FIXTURE}',
+        f'/api/read/settlement/{DRAWN_FIXTURE}',
+    ],
     '/api/export': ['/api/export'],
     '/api/export/manifest': ['/api/export/manifest'],
     '/api/export/facts': [f'/api/export/facts?instance_id={INSTANCE}'],
