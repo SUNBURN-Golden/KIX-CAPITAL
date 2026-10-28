@@ -1466,6 +1466,27 @@ Commands actually run, in order:
 
 Portfolio consistent read: `python3 -m unittest tests.test_portfolio_snapshot -v` covers detached-input component parity, independent cut digests, read-only workspace bytes, deterministic snapshots across sessions, controlled reader/writer ordering for repayment and clock commands, unsupported producers/fixtures, degraded storage, unbound terms, identity, authorization and closed facade schemas. `python3 scripts/docs_surface.py --check` guards the route documentation and the auth matrix includes the route. All data is SIMULATED; no authenticated or cross-process source cut is claimed.
 
+## producer-tuple-preflight
+
+An offline stdlib rehearsal of the exact `kix-compat-manifest/1` producer-tuple check. `capital/compat_preflight.py` validates a synthetic bundle (`tests/vectors/compat/bundle/`, `READ_ONLY_FIXTURE`: miniature OpenAPI contract files, inert generator/SDK bytes, profile, vector, toolchain metadata, manifest and `.sha256` sidecar) against a separately pinned expected tuple (`tests/vectors/compat/expected.json`, format `capital-compat-expected/1` — an external `manifest_sha256` plus the complete manifest tuple). The tuple comparison is exact on types, field sets, values and vector order; every leaf has a one-field mismatch case enumerated in `tests/vectors/compat/mismatches.json`. The checker then independently validates referenced bytes: SHA-256 of every reference, Git blob SHA-1 framing on contract and extension-profile references, the profile path derived from `profile_revision`, the BOOTSTRAP `catalogue-schema-binding only` grant, the catalogue OpenAPI binding and per-schema digest map, `toolchains.json` Node major against declared `node-24`, canonical vector bytes and the sidecar digest. Generator and SDK files are hashed, never executed. Duplicate keys (including `\u`-escaped aliases), forbidden self-digest/finality fields, missing files, non-regular files, absolute/traversal paths and escaping symlinks are rejected; every bundle-controlled path must resolve beneath the fixture root. `kix-canonical-json/1` is implemented here separately from `capital/store.py` legacy canonical bytes and `capital/ce1_claims.py`: Unicode code-point key order, JSON.stringify-compatible escaping that keeps non-ASCII literal, safe integer range, verifier depth limit 32, no trailing newline. The cited contract is `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md` at Protocol research commit `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915` (file SHA-256 `126a8b95e2216dc9d4cc4e8e8d7a3f221657c40c5e0e07e5819a58a7c1987533`, Git blob `442756c8e2d6f106fad6a47a7177c05ed799efaf`); it is a read-only research reference and the executable vendor pin stays `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`.
+
+The opt-in factory `make_preflighted_fake_producer(root, manifest_path, expected_path)` in `capital/gate_producer.py` runs the check first and only then constructs the owned `LOCAL_FAKE_GATE`; a `MISMATCH` raises `PreflightRejected` before the constructor or `start()` runs, so the first command POST is never attempted (a running fake's `post_count` stays zero). `restored()` carries the frozen inputs and rechecks before starting the replacement gate. A byte-consistent bundle keeps `semantic_consumption` `HOLD`, `adoption` `NOT_BOUND` and `semantic_conformance` `false`; a self-declared `SEMANTIC_CONFORMANCE` profile kind cannot authorize anything and is refused with `BOOTSTRAP_REHEARSAL_ONLY`. Reports are labelled `SIMULATED`. `scripts/compat_preflight.py --check` verifies the committed corpus (`corpus.json` pins the file inventory and every digest) and the canonicalization vectors; it writes nothing and exit 0 means byte checks passed only. No generated SDK is consumed, no real producer is contacted, no upstream repository or executable pin changes, and CAP-16 stays `NOT_BOUND`. Nothing under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/` was edited. This section claims no semantic qualification, no Commerce adoption, no human acceptance, no GitHub CI run, no commit, no push, and no deploy.
+
+Commands actually run:
+
+- `python3 scripts/compat_preflight.py --check`: exit 0, report `byte_agreement` `MATCHED`, `profile_kind` `BOOTSTRAP`, `manifest_sha256` `3b98a3f2…`, zero errors.
+- `python3 -m unittest discover -s tests -p 'test_*preflight.py' -v`: exit 0, **19 tests** (14 checker + 5 gate preflight).
+- `python3 scripts/gate_faults.py --check`: exit 0, 7 cases match the pinned corpus.
+- `python3 scripts/ce1_claims_check.py --execute`: exit 0, `CLAIM_CONFORMANCE passed=49 total=49 failed=0`.
+- `python3 scripts/manifest_vectors.py --check` (19 files), `python3 scripts/workspace_vectors.py --check` (6 files), `python3 scripts/pack_vectors.py --check` (9 files), `python3 scripts/finance_vectors.py --check` (92734 bytes), `python3 scripts/forecast_vectors.py --check` (6456 bytes), `python3 scripts/decision_bindings.py --check`: all exit 0.
+- `python3 scripts/docs_surface.py --check`: ok (30 routes, 54 artifacts, 9 stages) after registering `compat/` in `VECTOR_NEEDLES` and the README needles.
+- `python3 scripts/seed_demo.py`: exit 0, golden digests unchanged.
+- `python3 -m unittest discover -s tests -v`: exit 0, **859 passed** (174.7s).
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, **7 passed**.
+- `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `npm ci --no-audit --no-fund`: exit 0, 3 packages. `npm run test:browser`: exit 0, **69 passed** (2.5m); Playwright started and stopped its loopback servers.
+- Vendored `capital/vendor/` SHA256 values all match `manifest.json` (five files OK); `git status` shows no change under `capital/vendor/`, `.aiops/`, `.github/` or `docs/decisions/`.
+
 ## lifecycle-claims-conformance — merge completion and verification (2026-10-24)
 
 Historical evidence from the preceding merge round follows; the conflict-fix
@@ -2229,6 +2250,41 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
+## producer-tuple-preflight — conflict-fix round 2 (2026-10-26)
+
+Resolved `docs/SEAMS.md` and `docs/VALIDATION.md` while retaining the producer
+preflight additions verbatim and all main lines in order. The fake IdP seam and
+main's accumulated validation records survive alongside the preflight rehearsal.
+The pending merge combines node HEAD `09fb25ca3dbae762e591aa36b9234f48cfd85608`
+with MERGE_HEAD/origin/main `aab0a7364c79ef00d34e031e4a827a817f7ae544`.
+No implementation or test change was needed for this combination.
+
+All results below are local SIMULATED / READ_ONLY_FIXTURE evidence. Byte agreement
+does not qualify or adopt a producer: semantic consumption remains HOLD,
+ProducerPort and CAP-16 remain NOT_BOUND, and semantic_conformance remains false.
+
+| Command / check | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1144 passed in 259.810 s, including checker mismatch/rejection and fake-gate preflight tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; HOLD / NOT_BOUND. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 57 artifacts, nine stages. |
+| `python3 scripts/manifest_vectors.py --check`; `python3 scripts/workspace_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | All exit 0; 19, six and nine files match respectively. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/forecast_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | All exit 0; 97980 and 6456 bytes match; declared decision references valid. |
+| `python3 scripts/gate_faults.py --check`; `python3 scripts/ce1_claims_check.py --execute` | Both exit 0; seven fault cases and 49/49 local behavior claims. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three pinned packages, lockfile unchanged. |
+| `npm run test:browser` | Exit 1 before tests: an existing host loopback listener prevented server startup (address already in use); unrelated services left running. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.1 min, with the checked-in configuration unchanged inside an isolated loopback network namespace. |
+| Vendor integrity | All five SHA256 locks match; five vendored files and manifest byte-identical to HEAD, MERGE_HEAD and origin/main. No changes under `.aiops/`. |
+| Merge hygiene | Both sides retained; no conflict markers or unresolved index entries. `git diff --check` and `git diff --check origin/main` pass. |
+
+`git diff --cached --check` reports three existing Markdown hard-break lines in
+main's `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`; that decision file is retained
+byte-for-byte from main. Local full-suite and browser logs are in ignored
+`build/producer-tuple-preflight-round2/`. Only the two conflicted documents were
+edited during this round. No Protocol/Commerce changes, executable re-pinning,
+external posts, merge abort, commit, push, rebase or reset were performed.
 ## margin-agent-journeys — conflict-fix round 1 (2026-10-26)
 
 Resolved the supervisor-started merge of `origin/main` in `capital/service.py`,
@@ -2342,6 +2398,38 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
+## producer-tuple-preflight — conflict-fix round 3 (2026-10-27)
+
+Resolved the append conflict in this file by retaining both this node's round-2
+record and main's hostile-HTTP round-2 record verbatim (node section first, then
+main's). The pending merge combines node HEAD `cd7c2413ed8cbaea4853c3dc162696812e6da66e`
+with MERGE_HEAD/origin/main `b3b56fef384a7c7687d2e5c4243d67887f6f93ba`. Main's hostile
+HTTP corpus, server fixes, facade contract, handbook and docs-registry entries merged
+cleanly alongside the producer preflight; no implementation or test change was needed.
+
+All results below are local SIMULATED / READ_ONLY_FIXTURE evidence. Byte agreement
+does not qualify or adopt a producer: semantic consumption remains HOLD,
+ProducerPort and CAP-16 remain NOT_BOUND, and semantic_conformance remains false.
+
+| Command / check | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1153 passed in 259.617 s, including checker mismatch/rejection, fake-gate preflight and hostile-HTTP replay tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; HOLD / NOT_BOUND. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 133 artifacts, nine stages. |
+| `python3 scripts/http_hostile.py --check`; `python3 scripts/fold_fuzz.py --check` | Both exit 0; 76 hostile files match; SIMULATED 16 seeds, 736 commands. |
+| `python3 scripts/manifest_vectors.py --check`; `python3 scripts/workspace_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | All exit 0; 19, six and nine files match respectively. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/forecast_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | All exit 0; 97980 and 6456 bytes match; declared decision references valid. |
+| `python3 scripts/gate_faults.py --check`; `python3 scripts/ce1_claims_check.py --execute`; `python3 tests/crash_matrix.py --check` | All exit 0; seven fault cases, 49/49 local behavior claims, 23 crash cells. |
+| `python3 scripts/seed_demo.py` | Exit 0; golden matches, debit = credit = 385000 synthetic units. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.1 min. Host ports 8765/8766 were occupied, so the unchanged configuration ran inside an isolated loopback network namespace. |
+| Vendor integrity | All five SHA256 locks match; vendored files, manifest and `.aiops/` byte-identical to HEAD and MERGE_HEAD. |
+| Merge hygiene | Both sides retained (diff against each parent removes no lines); no conflict markers or unmerged entries. |
+
+Logs are in ignored `build/producer-tuple-preflight-round3/`. Only `docs/VALIDATION.md`
+was edited this round. No Protocol/Commerce changes, executable re-pinning, external
+posts, merge abort, commit, push, rebase or reset were performed.
 ## margin-agent-journeys — conflict-fix round 2 (2026-10-27)
 
 Resolved the supervisor-started merge of `origin/main` in `docs/VALIDATION.md` and
@@ -2489,6 +2577,38 @@ Logs and temporary browser configurations are retained in ignored
 responsibility for the merge commit; no abort, commit, push, rebase or reset was
 performed.
 
+## producer-tuple-preflight — conflict-fix round 1 (2026-10-28)
+
+Resolved both conflict blocks in `docs/VALIDATION.md`, preserving every line of
+both parent documents in order. This merge combines node HEAD
+`421f16ce91b81d9b25dc9defbf53ea87d14de40f` with incoming main
+`e445f38282e14bc271c94b48d3f4dcfbe195cba0`. Producer tuple preflight and main's
+permission catalogue and typed facts export coexist; no implementation or test
+change was needed. Only this validation document was edited during resolution.
+
+All evidence below is local SIMULATED / READ_ONLY_FIXTURE verification. Matching
+BOOTSTRAP bytes retain semantic consumption HOLD, semantic_conformance false,
+LOCAL_FAKE_GATE and CAP-16 NOT_BOUND; no producer adoption is authorized.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1173 tests passed in 261.293 s, including compatibility mismatch/rejection, encoding, gate preflight, permission catalogue and facts tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 1.9 min; unchanged configuration in an isolated loopback network namespace. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, no errors; HOLD / NOT_BOUND. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 34 routes, 266 artifacts, nine stages. |
+| `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,pack_vectors,finance_vectors,forecast_vectors,facts_vectors,http_hostile,fold_fuzz,decision_bindings,closeout_digest}.py --check` (each separately) | All exit 0. |
+| Vendor and protected paths | All five SHA256 locks match; the five reference files and manifest match HEAD, MERGE_HEAD and origin/main byte-for-byte. No changes under `.aiops/` or to `capital/export.py`. |
+| Merge hygiene | Both parent histories preserved in order; no conflict markers or unmerged entries. `git diff --check` and `git diff --check origin/main` pass. |
+
+`git diff --cached --check` flags only the intentional trailing space in main's
+`tests/vectors/facts/corrupt/whitespace/page-0000.json`. That negative fixture is
+preserved byte-for-byte from MERGE_HEAD; removing its corruption would change the
+test. Logs are in ignored `build/producer-tuple-preflight-merge-20261028/`.
+The merge is staged and left uncommitted for the supervisor. No external posts,
+Protocol/Commerce edits, executable re-pinning, merge abort, commit, push, rebase
+or reset were performed.
 ## margin-agent-journeys — conflict-fix round 3 (2026-10-28)
 
 Resolved the supervisor-started merge of incoming main `e445f382` into this
@@ -2602,3 +2722,35 @@ authentication NOT_BOUND. Logs are in ignored `build/margin-merge-round1/`.
 | Merge hygiene | Both conflicted files resolved and staged; no tracked conflict markers or unmerged entries; whitespace check against incoming main passes. Merge remains uncommitted for the supervisor. No abort, commit, push, rebase or reset performed. |
 
 No external posting, provider call or consequential product decision was required.
+
+
+## producer-tuple-preflight — supervised conflict-fix round 2 (2026-10-28)
+
+Resolved all three append conflicts in `docs/VALIDATION.md` for the supervisor-started
+merge of incoming main `863de6b0f76cbb8caba11834d25782a3cba8e490` into feature parent
+`04172f46d97b950e142cedc4b1c732f0c9d6a709`. Both complete parent validation histories
+are preserved verbatim and in order. Only this document was edited during resolution.
+The preflight implementation, tests and compatibility fixtures remain byte-identical
+to the feature parent; incoming risk scenarios and named journey implementation,
+tests and goldens remain byte-identical to main. No code, test or fixture fix was needed.
+
+All evidence below is local SIMULATED / READ_ONLY_FIXTURE verification. Matching
+BOOTSTRAP bytes retain semantic consumption HOLD, semantic_conformance false,
+LOCAL_FAKE_GATE and CAP-16 NOT_BOUND. No producer adoption or real integration is claimed.
+
+| Verification actually run | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,201 tests passed in 273.432 s, including compatibility mismatch/rejection, canonicalization, gate preflight, scenarios and named journeys. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.0 min. Occupied host ports required an isolated loopback network namespace; the repository browser configuration was unchanged. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, no errors, HOLD / NOT_BOUND. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 267 artifacts and nine stages. |
+| `python3 scripts/sim_journeys.py --check`; `python3 scripts/risk_scenario_vectors.py --check` | Both exit 0; all six journey goldens and scenario vectors match. |
+| `python3 scripts/{auth_matrix,finance_vectors,pack_vectors,facts_vectors,http_hostile,fold_fuzz,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,closeout_digest,not_bound_checklist}.py --check` (each separately) | All exit 0; combined finance vectors match 99,893 bytes. Historical closeout evidence is unchanged; no new full-ladder closeout run is claimed. |
+| Protected paths | All five vendor SHA256 locks match. Those files and manifest, legacy `capital/export.py`, `.aiops/` and CI are byte-identical to both merge parents. |
+| Merge hygiene | Both parent documents preserved in order; no conflict markers or unmerged entries. Staged and incoming-main whitespace checks pass. Resolution staged; merge left uncommitted for the supervisor. |
+
+Logs are in ignored `build/producer-tuple-preflight-supervised-round2/`. No external
+posts, Protocol/Commerce edits, executable re-pinning, merge abort, commit, push,
+rebase or reset were performed. No consequential product decision was required.
