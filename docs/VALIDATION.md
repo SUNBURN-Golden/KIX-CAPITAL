@@ -1,5 +1,47 @@
 # Validation scope
 
+## Portfolio history comparison — review of `ae506a5`
+
+2026-10-29, baseline HEAD `ae506a5f8f4a4f5816b7a147185c29e96a93f023`;
+local SIMULATED verification only.
+
+The blocking finding is valid: the previous records below described a worktree
+deletion, but the stale root `DECISION_REQUIRED.md` remained in the reviewed commit.
+This round retains the interrupted worktree deletion and explicitly stages it with
+`git add -u -- DECISION_REQUIRED.md`. The file is absent from both the worktree and
+index, and the staged diff records deletion of all 45 lines. HEAD is unchanged:
+removal from a future committed PR head still depends on the supervisor including
+this staged deletion. No commit, push or external post was performed.
+
+The only changes are that deletion and this validation correction. No product
+decision is required. Runtime code, tests, CI, policy inputs, vendor references and
+manifest, and `.aiops/` are unchanged from the baseline.
+
+| Current check | Result |
+| --- | --- |
+| `test ! -e DECISION_REQUIRED.md`; `git ls-files -- DECISION_REQUIRED.md`; `git diff --cached --numstat -- DECISION_REQUIRED.md` | Absent on disk; no index entry; staged deletion of 45 lines |
+| Initial `python3 -m unittest discover -s tests -v` | Exit 1; 1,160 tests in 609.856s, one packaged-server startup timeout in `test_smoke_journey_restart_and_version` |
+| `python3 -m unittest tests.test_release.SmokeTests.test_smoke_journey_restart_and_version -v` | Exit 0; passed in 0.858s without changes |
+| `python3 -m unittest discover -s tests -v` rerun after browser completion | Exit 0; all 1,160 passed in 295.756s, including comparison CLI, input-preservation and baseline byte-guard tests |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.5m |
+| `git diff --exit-code HEAD -- capital tests scripts .github .aiops playwright.config.cjs package.json package-lock.json` | Exit 0; protected paths and test/configuration files unchanged |
+| `git diff --check`; `git diff --cached --check` | Exit 0 |
+
+Browser verification used the unchanged repository configuration in an isolated
+loopback network namespace. No browser download, temporary config override or
+interruption of unrelated services was needed. The initial host-port collision is
+recorded separately from the passing isolated run. Logs are
+`/tmp/portfolio-fix-r1-unit.log`, `/tmp/portfolio-fix-r1-browser-default.log` and
+`/tmp/portfolio-fix-r1-browser-isolated.log`, `/tmp/portfolio-fix-r1-smoke-retry.log`
+and `/tmp/portfolio-fix-r1-unit-retry.log`. The first unit run exceeded the existing
+20-second packaged-server startup deadline; its isolated retry passed. No timeout,
+test or CI setting was changed.
+
 ## Portfolio history comparison PR fix round 3
 
 2026-10-28, node `portfolio-history-comparison`, baseline HEAD
