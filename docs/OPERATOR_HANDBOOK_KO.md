@@ -703,6 +703,32 @@ python3 scripts/lifecycle_claims_check.py --execute
 <!-- /handbook-section -->
 
 
+<!-- handbook-section:coa-payment-writeoff-postings -->
+### coa-payment-writeoff-postings
+
+`GET /api/projection?mode=coa-candidate`는 오버레이 순서대로
+`OVERLAY_REPAYMENT`, `OVERLAY_RECOVERY`, `OVERLAY_WRITEOFF`를 읽습니다.
+납입 이자는 1000/1110, 부도 후 메모 이자 회수는 1000/4110 및 9790/9700 해제,
+원금 회수는 1000/1100입니다. 상각은 원금 전액 5200/1100, 인식 이자 환입은
+4100·4110/1110, 메모 이자 해제는 9790/9700이며 늦은 회수는 1000/4300입니다.
+납입 원금은 기존 F04 분개에만 전기합니다. 미배분 현금은 후보 전용
+9810 `MEMO_UNAPPLIED_CASH_HELD` / 9890 `MEMO_UNAPPLIED_CASH_CONTRA`입니다.
+9790도 후보 전용이며 세 계정 모두 `adopted_in_note=false`입니다.
+
+`GET /api/reconciliation?mode=coa-candidate`의 `payment_ledger_vs_projection`,
+`recovery_ledger_vs_projection`, `writeoff_ledger_vs_projection`는 advance별로
+누락·추가 분개까지 검사합니다. `interest_ledger_vs_projection`도 납입·상각 뒤
+MATCHED여야 하며 `balance_groups`의 asset·sim_day별 차변과 대변이 같습니다.
+읽기는 저장하지 않습니다. V1·manifest·golden은 그대로입니다.
+모든 결과는 SIMULATED / `SYNTHETIC_UNADOPTED`, 세무·법률·운영 원장은 NOT_BOUND,
+`policy_adopted=false`이며 수익인식 채택이나 실제 현금 수령 증빙이 아닙니다.
+충당·준비금 계정 1190/5100/3100/3200은 전기하지 않습니다.
+
+검증: `tests/test_coa_payment_writeoff.py`의 seeded disposable-book,
+combined-book, loopback GET, 변조·읽기 불변 검사를 실행합니다.
+<!-- /handbook-section -->
+
+
 ### Facts 페이지 오프라인 확인 · SIMULATED
 
 `GET /api/export/facts?instance_id=<현재 세션>&limit=100`은 `export:read`가
