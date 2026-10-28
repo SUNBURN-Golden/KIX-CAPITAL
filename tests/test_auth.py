@@ -43,6 +43,8 @@ class MatrixTests(unittest.TestCase):
             '/api/underwrite/sim-a': 'projection:read',
             '/api/operations/op-1': 'receipt:read',
             '/api/export': 'export:read',
+            '/api/export/facts': 'export:read',
+            '/api/export/facts/schema': 'export:read',
             '/api/reconciliation': 'reconciliation:read',
             '/api/statement': 'statement:read',
             '/api/metrics': 'metrics:read',
@@ -505,7 +507,7 @@ class HttpAuthTests(unittest.TestCase):
         for path, children, _name in GET_DISPATCH:
             if children:
                 continue
-            target = f'{path}?instance_id={instance}' if path == '/api/portfolio/snapshot' else path
+            target = f'{path}?instance_id={instance}' if path in ('/api/portfolio/snapshot', '/api/export/facts') else path
             status, raw = self.request('GET', target)
             payload = json.loads(raw)
             self.assertNotEqual(payload.get('error'), 'NOT_FOUND', path)

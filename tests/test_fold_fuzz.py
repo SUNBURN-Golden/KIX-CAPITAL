@@ -233,6 +233,30 @@ class FoldFuzzTests(unittest.TestCase):
                     expected.append({'prefix': 'capital-fold-fuzz-'})
                 self.assertEqual(attempts, expected * 2)
 
+    def test_capture_rejects_checksum_valid_persisted_journal_divergence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fuzz.replay(self.corpus['cases'][0]['commands'][:2], tmp)
+            port = store.FileWorkspace.open(tmp)
+            try:
+                service = CapitalService(port)
+                document = port.load()
+                before = store.canonical_bytes(document)
+                for source, detail in (('journal', 'persisted F04 journal'),
+                                       ('overlay', 'persisted overlay journal')):
+                    divergent = copy.deepcopy(document)
+                    if source == 'journal':
+                        divergent['payload']['journal'] = []
+                        divergent['payload_sha256'] = fuzz.sha(divergent['payload'])
+                    else:
+                        divergent['overlay'] = overlay.build_section([])
+                    store.verify_document(divergent)
+                    with self.subTest(source=source), self.assertRaisesRegex(fuzz.FuzzError, detail):
+                        fuzz.capture(service, store.canonical_bytes(divergent))
+                self.assertEqual(store.canonical_bytes(port.load()), before)
+                fuzz.capture(service, before)
+            finally:
+                port.close()
+
     def assert_check_fails_unchanged(self, raw, detail):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / 'corpus.json'

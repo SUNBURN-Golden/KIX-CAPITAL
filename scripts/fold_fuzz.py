@@ -129,22 +129,27 @@ def sha(value):
 
 def capture(service, raw):
     """Independently refold copied journals and bound every persisted prefix."""
-    journal = copy.deepcopy(service.producer.export_journal())
-    restored = service.producer.restored(journal)
-    require(restored.canonical_state() == service.producer.canonical_state(), 'F04 fold state')
-    require(restored.state_digest() == service.machine.state_digest(), 'F04 fold digest')
-    entries = copy.deepcopy(service.overlay_entries)
-    state = overlay.fold(entries, len(journal))
+    # Parsing the envelope already detaches both journals. Replay those copies
+    # after comparing them to the live book, rather than copying the live
+    # journals again at every prefix of both independent runs.
     document = loads(raw)
     store.verify_document(document)
+    journal = document['payload']['journal']
+    entries = document['overlay']['journal']
+    require(journal == service.producer.export_journal(), 'persisted F04 journal')
+    require(entries == service.overlay_entries, 'persisted overlay journal')
+    restored = service.producer.restored(journal)
+    require(restored.canonical_state() == service.producer.canonical_state(), 'F04 fold state')
+    state_digest = restored.state_digest()
+    require(state_digest == service.machine.state_digest(), 'F04 fold digest')
+    state = overlay.fold(entries, len(journal))
+    overlay_digest = overlay.state_digest(state)
     require(store.canonical_bytes(state) == store.canonical_bytes(document['overlay']['overlay_state']['state']),
             'overlay fold state')
-    require(overlay.state_digest(state) == document['overlay']['overlay_state']['digest'],
+    require(overlay_digest == document['overlay']['overlay_state']['digest'],
             'persisted overlay_state_digest')
     require(document['payload']['receipts'] == service.receipts, 'persisted receipts')
-    require(document['payload']['journal'] == journal, 'persisted F04 journal')
-    require(document['overlay']['journal'] == entries, 'persisted overlay journal')
-    require(document['payload']['state_digest'] == restored.state_digest(), 'persisted state_digest')
+    require(document['payload']['state_digest'] == state_digest, 'persisted state_digest')
     bounds = overlay.load_bounds()
     require(bounds is not None and bounds == service.overlay_bounds, 'capacity NOT_BOUND')
     require(len(service.receipts) <= MAX_OPERATIONS, 'receipt capacity')
@@ -160,7 +165,7 @@ def capture(service, raw):
     require(len(raw) <= bounds['ENVELOPE_MAX_BYTES'], 'actual envelope capacity')
     cores = {e['overlay_id']: overlay.operation_receipt(entries, e['overlay_id'])
              for e in entries if e['kind'] == overlay.KIND_CLOCK}
-    return {'state_digest': restored.state_digest(), 'overlay_state_digest': overlay.state_digest(state),
+    return {'state_digest': state_digest, 'overlay_state_digest': overlay_digest,
             'envelope_sha256': hashlib.sha256(raw).hexdigest(), 'receipts_sha256': sha(service.receipts),
             'overlay_receipts_sha256': sha(cores)}
 

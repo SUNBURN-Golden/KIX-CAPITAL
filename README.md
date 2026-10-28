@@ -74,6 +74,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - export manifest(`GET /api/export/manifest`)는 오버레이가 비어 있으면 `KIX_CAPITAL_EXPORT_MANIFEST_V2`, 비어 있지 않으면 `overlay` 섹션을 더한 `KIX_CAPITAL_EXPORT_MANIFEST_V3`이며, 섹션별 SHA-256과 content digest를 담습니다. 기본 서명은 `NOT_BOUND`입니다. `--dev-hmac`은 작업공간 디렉터리에 mode 0600인 `DEV_ONLY` HMAC 키를 만들며, 그 키는 무결성만이고 인증이 아니며 응답이나 로그에 나오지 않습니다. `python3 -m capital.verify FILE --key-file K`가 오프라인에서 섹션 해시, digest, 서명을 다시 계산합니다. cursor·watermark·source cut·외부 키·보존 기간 값은 없고(retention_policy는 주인만 있는 다섯 빈 칸), stage7 인증 export가 아닙니다. v1 `GET /api/export`는 그대로입니다. 가져오기·재개 경로는 없습니다.
 - 원본 목 정산 조회·노출·현금·회수 의무는 서로 다른 의미입니다. 합계를 실제 은행 잔액으로 표시하지 않습니다.
 - 로컬 인가 경계: 합성 역할 organizer/auditor/observer는 `POST /api/session`으로 자기선택되고 역할별 루프백 토큰에 묶입니다. 이것은 인증이 아닙니다. 계정·비밀번호·실명 신원은 없습니다. observer는 export와 projection을 읽지 못하고 auditor는 읽을 수 있습니다. `agent`는 화면 밖 SIMULATED QUERY/PROPOSE 레인입니다. 고정된 초안 허용 목록의 도구 다섯(`query_grant`, `query_subject`, `propose_action`, `withdraw_proposal`, `propose_grant_change`)만 열리고 `execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED`입니다. 제안은 HUMAN_PENDING이고 effects_executed는 false입니다. 실제 IdP·KYC·자격증명·AgentGrant/ActionPermit은 NOT_BOUND입니다.
+- Read-only permission catalog: `GET /api/permissions` exposes registered GET/POST/static routes and synthetic role permission sets under `reference:read` (agent denied). `python3 scripts/auth_matrix.py --check` now compares the served loopback JSON with the pinned matrix and generated integration/handbook blocks. No existing authority changes; identity/authentication remain `NOT_BOUND`.
 - 경로별·역할별 인가 표(`tests/auth_matrix.json`). 등록된 모든 경로를 organizer·auditor·observer·agent·토큰 없는 호출자로 나눠 기대 상태 코드와 권한을 고정했고, 루프백 서버로 모든 칸을 확인합니다. `python3 scripts/auth_matrix.py --write`가 표와 `docs/INTEGRATION.md`·운영 핸드북의 생성 블록을 다시 쓰고 `--check`가 어긋남을 잡습니다. 경로·권한·역할은 바뀌지 않았고 표는 합성 자리표시자입니다. 신원과 인증은 `NOT_BOUND`입니다.
 - export manifest 변조 코퍼스(`tests/vectors/manifest/`). 고정된 manifest 12개입니다. 정상본은 서명 없는 `unsigned.json`과 `DEV_HMAC_SHA256`으로 서명한 `dev-hmac.json`이고, 나머지는 섹션 일곱 곳의 한 바이트 변조 `section-<id>.json`, `content-digest.json`, `signature.json`, 중간에서 잘린 `malformed.json`입니다. 각 파일은 `python3 -m capital.verify FILE --key-file K`의 기대 결과를 고정합니다. 변조본은 `SECTION_HASH_MISMATCH:<id>`, `CONTENT_DIGEST_MISMATCH`, `SIGNATURE_MISMATCH`, `MANIFEST_UNREADABLE`로 거절되고 `dev-hmac.json`의 서명 상태는 `VERIFIED_DEV_ONLY_INTEGRITY`입니다. `tests/vectors/export-dev.key`는 `dev-hmac.json`용 고정 합성 `DEV_ONLY` 키로, 자격증명이 아니라 테스트 벡터 자료입니다. git에는 0644로 저장되고 검증기는 0600인 키 파일만 읽으므로 복사해 `chmod 0600`한 뒤 `--key-file`에 넘깁니다. 공유 HMAC 키는 무결성만이고 인증이 아니며 stage7 인증 export가 아닙니다. 코퍼스는 `seed_demo` 이야기와 고정 instance id에서 만든 `SIMULATED` 데이터이고 `python3 scripts/manifest_vectors.py --write`가 같은 바이트로 다시 씁니다. `python3 scripts/manifest_vectors.py --check`는 바이트를 비교해 어긋남·누락·예상 밖 파일이 있으면 1로 끝납니다.
 - 오프라인 작업공간 감사(`python3 -m capital.verify --workspace DIR`). 서버 없이 `DIR/workspace.json` 바이트를 직접 읽어 봉투 모양·중복 키·`payload_sha256`·저널 재생 `state_digest`·receipt↔저널 지문과 대사 여섯 검사(`GET /api/reconciliation`과 같은 함수)를 다시 계산하고 검사마다 `MATCHED`/`MISMATCH`를 찍습니다. 첫 어긋남에서 1로 끝나고 이유는 `WORKSPACE_UNREADABLE` 또는 `RECON_MISMATCH`입니다. 잠금을 잡지 않고 아무것도 쓰지 않아 살아 있는 서버가 잡고 있는 파일도 읽기만 하며, 복구·가져오기·재개 경로는 없습니다. `tests/vectors/workspace/`의 고정 변조 코퍼스는 `python3 scripts/workspace_vectors.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝납니다. 라벨은 `SIMULATED`/`LOCAL_ONLY`이고 CAP-11은 `NOT_BOUND`입니다.
@@ -170,3 +171,29 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 `tests/golden/overlay_claim_slices.json`; `--write` regenerates it explicitly.
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
+
+
+### Cursor-paginated facts (SIMULATED)
+
+`GET /api/export/facts?instance_id=<current>&limit=100` requires `export:read`.
+Save each response's exact bytes as `page-0000.json`, `page-0001.json`, … in an
+otherwise empty directory; pass its `next_cursor` as `after` until it is null.
+`GET /api/export/facts/schema` serves `KIX_CAPITAL_FACTS_SCHEMA_V1`. Rows contain
+accepted F04 journal entries and the overlay journal in commit order, with KRW
+integer atoms, declared widths and a duplicate marker. The technical limit is
+1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; restart from
+the first page. Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage
+returns 503, including for continuing cursors; no empty substitute book is exported.
+
+`python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
+cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
+It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
+`tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
+bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+
+Labels remain `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+with `stage7_authenticated_export: false` and a non-claim of
+`k-stage7-authenticated-export`. Hashes detect corruption; consistent replacement
+with all hashes rebuilt cannot be detected. No source authority, signing, import,
+resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
+verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
