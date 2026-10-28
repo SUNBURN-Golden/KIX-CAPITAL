@@ -1,5 +1,42 @@
 # Validation scope
 
+## Portfolio history comparison PR fix round 2
+
+2026-10-28, node `portfolio-history-comparison`, baseline HEAD
+`cec40b5246876a4c6aecbfdf427fb2d3111bedb7`; SIMULATED local fixtures only.
+The blocking review finding is resolved by retaining the interrupted worktree's
+deletion of the stale root `DECISION_REQUIRED.md`. That document described an
+obsolete integration failure; no product decision remains open for this node.
+The earlier builder verification below is historical evidence from its stated HEAD.
+
+The review's build-output note was confirmed: `dist2/capital-0.1.0.pyz` was tracked.
+It is removed, and `dist2/` is ignored alongside `dist/`. No production code,
+tests, CI configuration, policy inputs, vendor files or `.aiops/` files changed.
+No commit, push or external post was performed.
+
+Round 2 verification logs are under `/tmp/portfolio-round2-*.log`. The unchanged
+default browser command fails at server startup because a configured port is
+already occupied. The browser rerun uses
+`npm run test:browser -- --config /tmp/portfolio-round2-playwright.config.cjs`.
+That temporary configuration retains the original tests, projects, assertions,
+timeouts and retries, remaps only loopback ports 8765–8768 to 18765–18768, and
+resolves test/output directories and server working directories to this repository.
+Installed headless Chromium is available; no browser installation was needed.
+
+| Round 2 check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | 1,160 passed in 257.561s; unchanged baseline byte guard passed |
+| `python3 -m unittest tests.test_portfolio_compare tests.test_workspace_audit tests.test_evidence_pack tests.test_risk tests.test_covenant_watch tests.test_portfolio_snapshot -v` | 107 passed in 23.473s, including CLI, determinism and input-preservation checks |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `npm run test:browser` | Exit 1 at server startup: configured port already in use |
+| `npm run test:browser -- --config /tmp/portfolio-round2-playwright.config.cjs` | Exit 0; all 69 passed in 1.9m |
+| Inline SHA256 and HEAD-byte comparison | All five vendor references match manifest pins and HEAD; manifest bytes match HEAD |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py tests .github playwright.config.cjs package.json package-lock.json` | Exit 0; protected sources, tests, CI and browser/dependency configuration unchanged |
+| `git diff --check` | Exit 0 |
+
 ## Portfolio history comparison builder verification
 
 2026-10-26, node `portfolio-history-comparison`; SIMULATED local fixtures only.
