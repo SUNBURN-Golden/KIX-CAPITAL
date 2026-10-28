@@ -153,6 +153,8 @@ CLAIM_NEEDLES = {
         'e2313ab473ea1b5a7b5b9246a564749188c1c2c8',
         'citation SKIPPED',
     ),
+    'tests/readiness_claims.json': ('tests/readiness_claims.json',),
+    'scripts/readiness_claims_check.py': ('scripts/readiness_claims_check.py',),
 }
 
 
