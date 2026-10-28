@@ -11,6 +11,23 @@ this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
+## Capital-local named journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs all six named synthetic journeys in
+acceptance's `integrated-journeys` stage. N1-sim and N2-sim are Capital-local names,
+not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
+`integrated: false`, and `qualification_claimed: false`.
+
+- N1-sim: disposable ScenarioReplaySource margin call, inclusive uncured deadline,
+  acceleration and a human-facing DEFAULT_ELIGIBLE proposal; no F04 default call.
+  Pin: `tests/golden/journey_n1_sim.json`.
+- N2-sim: agent HUMAN_PENDING proposal, organizer repayment citing proposal_id,
+  citation-bearing receipt (`effects_executed: false` for the agent), and auditor
+  receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
+  Pin: `tests/golden/journey_n2_sim.json`.
+
+No real funds, providers or authentication; proposals remain process-memory memos.
+
 ## DEV_ONLY keyset integrity
 
 Opt in with `python3 -m capital.server --workspace ./var/capital-workspace --dev-keyset`.
@@ -86,6 +103,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - 클로즈아웃 다이제스트(`tests/vectors/closeout_digest.json`, 형식 `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`, 라벨 `SIMULATED`/`INPUT_VECTOR_CANDIDATE`). 커밋하지 않는 `build/acceptance-evidence.json`에서 파생한 결정론적 부분집합으로, 수용 단계마다 `stage_id`·명령·`status`·기대 종료 코드·`test_count`·라벨 `SIMULATED`·`funds_executed` false를 싣고 seeded-demo `state_digest`·`content_digest`·`debit`·`credit`, vendor pin commit과 다섯 파일 `verified`, 패키지 `sha256`을 더합니다. git `head_sha`, 도구 버전, 시각, instance id, 경로는 `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`의 제거 키 목록대로 빼고 그 목록을 `stripped_keys`에 적습니다. `python3 scripts/closeout_digest.py --write`는 `ok:true`·`SIMULATED`·`funds_executed` false이고 아홉 단계가 모두 통과한 evidence에서만 다시 쓰고, 두 번 실행해도 같은 바이트입니다. `python3 scripts/closeout_digest.py --check`는 evidence 없이 구조·라벨·제거 키 부재·금융 벡터 팩의 내장 사본과의 바이트 일치를 보고 어긋남이면 1로 끝나며, `--check-evidence`는 새 evidence에서 다시 만들어 비교하고 첫 어긋난 경로를 이름 붙입니다. `SEMANTIC_CONFORMANCE`가 아니고 어떤 upstream 노드도 완료하지 않으며 이 저장소 도구가 스스로 낸 증거일 뿐입니다. 수용 사다리에는 단계를 더하지 않았습니다.
 - 게이트 결함 코퍼스(`tests/vectors/gate_faults.json`, 형식 `KIX_CAPITAL_GATE_FAULTS_V1`, 라벨 `LOCAL_FAKE_GATE`). 옵트인 `--producer gate-fake` 경로를 127.0.0.1의 `scripts/fake_gate.py`에 붙이고 정상 수락·5xx·잘못된 JSON·연결 절단·지연 후 유실·같은 operationId 다른 본문(409 `IDEMPOTENCY_CONFLICT`)을 고정합니다. 유실 응답은 `retry_authorized=false`인 `UNKNOWN`이고 자동 재전송은 없습니다. `python3 scripts/gate_faults.py --check`가 코퍼스를 다시 실행해 어긋남이면 1로 끝나며 아무것도 다시 쓰지 않습니다. SIMULATED이고 ProducerPort는 `NOT_BOUND`입니다. SEMANTIC_CONFORMANCE가 아닙니다.
 - 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_CASH_FORECAST`). 오버레이 원장의 `sim_day`·인출일과 `CAPITAL-TERMS-V1`을 접어 날짜가 박힌 세 레그(`SETTLEMENT_CASH_IN` 예상 정산 입금일, `CONTRACT_INTEREST` 만기, `PRINCIPAL` 만기)를 건별로 보여 주고 0-7/8-30/31-60/61-90/91+ sim 일 버킷으로 묶습니다. 버킷마다 정확한 유리수 합을 한 번만 1원에 내리고, 상환 레그는 미상환 원금+만기 계약 이자와 대사(`reconciliation.matched`)합니다. 가정(`SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`, `NO_DEFAULT_CONTRACTUAL_SCHEDULE`, `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`)은 SIMULATED 표시이고, 확률 가중·할인/NPV·FX·자금 이동은 범위 밖입니다. `instance_id`·`expected_settlement_cash_day` 외의 질의 인자는 `400 INVALID_ARGUMENTS`이고 노트가 쓸 수 없으면 `NOT_BOUND`에 숫자가 없습니다. 읽기는 아무것도 쓰지 않습니다. 시드 데모 장부의 예측은 `tests/vectors/forecast_vectors.json`에 바이트로 고정되고 `python3 scripts/forecast_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
+- 가상 시나리오(`GET /api/risk/scenarios`, `GET /api/risk/scenarios/{id}`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_WHATIF`). 고정 네 가지(`largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`)가 `GET /api/risk`와 `GET /api/risk/covenants`의 같은 정수 입력을 깊은 복사로 받아 하나의 가정만 적용해 다시 접습니다. `reconciliation`이 시나리오 합계를 라이브 `GET /api/risk`로 되맞추고(`matched`), `applied`·`enforced`는 항상 거짓입니다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 쓸 수 없으면 숫자 없는 `NOT_BOUND`이고, 저널·오버레이 항목·receipt·예약은 변하지 않습니다. 시드 데모 장부의 응답은 `tests/vectors/risk_scenarios.json`에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - AI 위임 클레임 표(`tests/agent_claims.json`)와 실행 스크립트(`scripts/agent_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/AI_DELEGATION_AUTHORITY.md`(kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232`)의 클레임 문자열·절·needle을 인용하고, `capital/agent_claims.py`의 검사가 SIMULATED agent lane을 loopback facade로 실행합니다. 표의 `HUMAN_PENDING`은 초안 `PROPOSED` 메모 단계의 Capital 라벨이고, 실행 거절 `EXECUTE_AUTHORITY_DISABLED`(403)는 초안의 항상 거절 `attempt_execution`을 반영합니다. organizer 명령은 pending `proposal_id`를 receipt에 인용으로 새기고 메모를 실행하지 않습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 두 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다. `ai_delegation_mock.py`는 vendor하지 않고 ActionPermit·EXECUTE·인가 변경은 범위 밖입니다.
 - 읽기 모델 클레임 표(`tests/read_model_claims.json`)와 실행 스크립트(`scripts/read_model_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/READ_MODEL_QUERIES.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 `get_credit_advance`(§2.12)·`get_credit_claim`(§2.13)·비변경 술어(§8)를 인용하고 `capital/read_model_claims.py`의 검사가 기존 읽기 표면을 loopback facade로 실행합니다. 매핑은 어댑터로 명시합니다: `get_credit_advance`는 `GET /api/state`의 case 뷰(그대로 `CreditMachine.view` dict)에, `get_credit_claim`은 in-process `CreditMachine.view_claim`에 대응하고, `GET /api/evidence`는 §2.11 정산 claim 객체라 대응하지 않습니다. upstream 쿼리 이름을 구현하지 않고 경로도 추가하지 않습니다. 모든 검사는 §8 비변경 가드(canonical_state·저널 길이·오버레이 digest·operation_count) 아래 읽기를 실행해 변경이 있으면 그 클레임이 실패합니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 세 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
 - CE1 클레임 표(`tests/ce1_claims.json`)와 실행 스크립트(`scripts/ce1_claims_check.py`). 각 행은 고정된 upstream 규격 `docs/CANONICAL_ENCODING_V1.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 바이트 규칙 절·needle·pinned_sha를 인용하고 `capital/ce1_claims.py`의 `ce1.*` 검사 하나를 부릅니다. 입력 게이트가 중복 키·비표준 상수(NaN·Infinity)·범위 밖 정수·비ASCII 키 등을 해시 전에 거절하고, ASCII 입력은 Capital canonical 바이트와 domain-tag digest 프레이밍을 재계산해 인용된 규칙과 대조합니다. 비ASCII 이스케이프 차이(`ensure_ascii`)는 실패가 아닌 `DOCUMENTED_DIVERGENCE` 행으로 기록하고 `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.4의 stage-7 정렬 근거를 다시 확인합니다. 인코더 동작 변경은 없습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 네 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
@@ -116,6 +134,7 @@ python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
 python3 scripts/forecast_vectors.py --check
+python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
 npm ci
 npx playwright install chromium
