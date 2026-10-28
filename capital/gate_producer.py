@@ -13,6 +13,7 @@ vectors is not SEMANTIC_CONFORMANCE. No real money moves.
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import dataclass
 import json
 import sys
 import urllib.error
@@ -23,6 +24,7 @@ from pathlib import Path
 from capital.ports import ProducerPort
 from capital.producer import CreditError, FixtureViews
 from capital.resources import ROOT
+from capital.compat_preflight import check_bundle
 
 LABEL = 'LOCAL_FAKE_GATE'
 _FAKE_GATE_MODULE = 'kix_capital_fake_gate'
@@ -45,6 +47,39 @@ class GateProtocolError(Exception):
 
 class GateConflict(CreditError):
     """A replayed ``operationId`` whose body conflicts with the first."""
+
+
+class PreflightRejected(GateProtocolError):
+    """No fake gate was constructed; byte agreement grants no adoption."""
+
+    def __init__(self, report, code='COMPAT_PREFLIGHT_MISMATCH'):
+        super().__init__(code)
+        self.report = report
+
+
+@dataclass(frozen=True)
+class _FakePreflightInputs:
+    root: Path
+    manifest_path: str
+    expected_path: Path
+
+    def construct(self, *, timeout=5.0, actor='SIMULATED'):
+        report = check_bundle(self.root, self.manifest_path, self.expected_path)
+        if not report.matched:
+            raise PreflightRejected(report)
+        # This rehearsal accepts BOOTSTRAP only, not SEMANTIC_CONFORMANCE.
+        if report.profile_kind != 'BOOTSTRAP':
+            raise PreflightRejected(report, 'BOOTSTRAP_REHEARSAL_ONLY')
+        producer = GateHttpProducer(timeout=timeout, actor=actor)
+        producer._preflight_inputs = self
+        producer.preflight_report = report
+        return producer
+
+
+def make_preflighted_fake_producer(*, root, manifest_path, expected_path):
+    """Check before constructing an owned LOCAL_FAKE_GATE; CAP-16 NOT_BOUND."""
+    inputs = _FakePreflightInputs(Path(root).absolute(), manifest_path, Path(expected_path).absolute())
+    return inputs.construct()
 
 
 class TransportLost(Exception):
@@ -145,6 +180,7 @@ class GateHttpProducer:
         self.timeout = timeout
         self._owned = False
         self._closed = False
+        self._preflight_inputs = None
         if gate is not None:
             self.gate = gate
             self.base_url = gate.url
@@ -218,7 +254,10 @@ class GateHttpProducer:
 
     def restored(self, journal):
         """New gate, same fixtures, book restored from ``journal``. Does not mutate self."""
-        fresh = GateHttpProducer(timeout=self.timeout, actor=self.actor)
+        if self._preflight_inputs is None:
+            fresh = GateHttpProducer(timeout=self.timeout, actor=self.actor)
+        else:
+            fresh = self._preflight_inputs.construct(timeout=self.timeout, actor=self.actor)
         try:
             fresh._restore(journal)
         except Exception:
