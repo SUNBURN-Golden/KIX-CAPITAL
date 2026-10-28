@@ -11,6 +11,23 @@ this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
+## Capital-local named journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs all six named synthetic journeys in
+acceptance's `integrated-journeys` stage. N1-sim and N2-sim are Capital-local names,
+not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
+`integrated: false`, and `qualification_claimed: false`.
+
+- N1-sim: disposable ScenarioReplaySource margin call, inclusive uncured deadline,
+  acceleration and a human-facing DEFAULT_ELIGIBLE proposal; no F04 default call.
+  Pin: `tests/golden/journey_n1_sim.json`.
+- N2-sim: agent HUMAN_PENDING proposal, organizer repayment citing proposal_id,
+  citation-bearing receipt (`effects_executed: false` for the agent), and auditor
+  receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
+  Pin: `tests/golden/journey_n2_sim.json`.
+
+No real funds, providers or authentication; proposals remain process-memory memos.
+
 ## DEV_ONLY keyset integrity
 
 Opt in with `python3 -m capital.server --workspace ./var/capital-workspace --dev-keyset`.
@@ -86,6 +103,7 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - 클로즈아웃 다이제스트(`tests/vectors/closeout_digest.json`, 형식 `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`, 라벨 `SIMULATED`/`INPUT_VECTOR_CANDIDATE`). 커밋하지 않는 `build/acceptance-evidence.json`에서 파생한 결정론적 부분집합으로, 수용 단계마다 `stage_id`·명령·`status`·기대 종료 코드·`test_count`·라벨 `SIMULATED`·`funds_executed` false를 싣고 seeded-demo `state_digest`·`content_digest`·`debit`·`credit`, vendor pin commit과 다섯 파일 `verified`, 패키지 `sha256`을 더합니다. git `head_sha`, 도구 버전, 시각, instance id, 경로는 `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`의 제거 키 목록대로 빼고 그 목록을 `stripped_keys`에 적습니다. `python3 scripts/closeout_digest.py --write`는 `ok:true`·`SIMULATED`·`funds_executed` false이고 아홉 단계가 모두 통과한 evidence에서만 다시 쓰고, 두 번 실행해도 같은 바이트입니다. `python3 scripts/closeout_digest.py --check`는 evidence 없이 구조·라벨·제거 키 부재·금융 벡터 팩의 내장 사본과의 바이트 일치를 보고 어긋남이면 1로 끝나며, `--check-evidence`는 새 evidence에서 다시 만들어 비교하고 첫 어긋난 경로를 이름 붙입니다. `SEMANTIC_CONFORMANCE`가 아니고 어떤 upstream 노드도 완료하지 않으며 이 저장소 도구가 스스로 낸 증거일 뿐입니다. 수용 사다리에는 단계를 더하지 않았습니다.
 - 게이트 결함 코퍼스(`tests/vectors/gate_faults.json`, 형식 `KIX_CAPITAL_GATE_FAULTS_V1`, 라벨 `LOCAL_FAKE_GATE`). 옵트인 `--producer gate-fake` 경로를 127.0.0.1의 `scripts/fake_gate.py`에 붙이고 정상 수락·5xx·잘못된 JSON·연결 절단·지연 후 유실·같은 operationId 다른 본문(409 `IDEMPOTENCY_CONFLICT`)을 고정합니다. 유실 응답은 `retry_authorized=false`인 `UNKNOWN`이고 자동 재전송은 없습니다. `python3 scripts/gate_faults.py --check`가 코퍼스를 다시 실행해 어긋남이면 1로 끝나며 아무것도 다시 쓰지 않습니다. SIMULATED이고 ProducerPort는 `NOT_BOUND`입니다. SEMANTIC_CONFORMANCE가 아닙니다.
 - 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_CASH_FORECAST`). 오버레이 원장의 `sim_day`·인출일과 `CAPITAL-TERMS-V1`을 접어 날짜가 박힌 세 레그(`SETTLEMENT_CASH_IN` 예상 정산 입금일, `CONTRACT_INTEREST` 만기, `PRINCIPAL` 만기)를 건별로 보여 주고 0-7/8-30/31-60/61-90/91+ sim 일 버킷으로 묶습니다. 버킷마다 정확한 유리수 합을 한 번만 1원에 내리고, 상환 레그는 미상환 원금+만기 계약 이자와 대사(`reconciliation.matched`)합니다. 가정(`SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`, `NO_DEFAULT_CONTRACTUAL_SCHEDULE`, `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`)은 SIMULATED 표시이고, 확률 가중·할인/NPV·FX·자금 이동은 범위 밖입니다. `instance_id`·`expected_settlement_cash_day` 외의 질의 인자는 `400 INVALID_ARGUMENTS`이고 노트가 쓸 수 없으면 `NOT_BOUND`에 숫자가 없습니다. 읽기는 아무것도 쓰지 않습니다. 시드 데모 장부의 예측은 `tests/vectors/forecast_vectors.json`에 바이트로 고정되고 `python3 scripts/forecast_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
+- 가상 시나리오(`GET /api/risk/scenarios`, `GET /api/risk/scenarios/{id}`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_WHATIF`). 고정 네 가지(`largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`)가 `GET /api/risk`와 `GET /api/risk/covenants`의 같은 정수 입력을 깊은 복사로 받아 하나의 가정만 적용해 다시 접습니다. `reconciliation`이 시나리오 합계를 라이브 `GET /api/risk`로 되맞추고(`matched`), `applied`·`enforced`는 항상 거짓입니다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 쓸 수 없으면 숫자 없는 `NOT_BOUND`이고, 저널·오버레이 항목·receipt·예약은 변하지 않습니다. 시드 데모 장부의 응답은 `tests/vectors/risk_scenarios.json`에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - AI 위임 클레임 표(`tests/agent_claims.json`)와 실행 스크립트(`scripts/agent_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/AI_DELEGATION_AUTHORITY.md`(kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232`)의 클레임 문자열·절·needle을 인용하고, `capital/agent_claims.py`의 검사가 SIMULATED agent lane을 loopback facade로 실행합니다. 표의 `HUMAN_PENDING`은 초안 `PROPOSED` 메모 단계의 Capital 라벨이고, 실행 거절 `EXECUTE_AUTHORITY_DISABLED`(403)는 초안의 항상 거절 `attempt_execution`을 반영합니다. organizer 명령은 pending `proposal_id`를 receipt에 인용으로 새기고 메모를 실행하지 않습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 두 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다. `ai_delegation_mock.py`는 vendor하지 않고 ActionPermit·EXECUTE·인가 변경은 범위 밖입니다.
 - 읽기 모델 질의 클레임 표(`tests/read_model_claims.json`, `KIX_CAPITAL_READ_MODEL_CLAIMS_V1`)와 실행 스크립트(`scripts/read_model_claims_check.py`). `GET /api/read/credit_advance/{id}`, `/api/read/credit_claim/{id}`, `/api/read/settlement/{id}`는 kix-protocol `244595db1524cbb1a01148baa07d6d28cd1b8dc6`의 초안 `docs/contracts/READ_MODEL_QUERIES.md`(0.1) §2.11–2.13 질의를 본뜬 읽기 전용 로컬 소비자 리허설입니다. 본문은 기존 view dict 그대로이고 §3 봉투(`read_schema_version` `0.1`, `query_digest`, `fixture_mode` `REFERENCE_IN_MEMORY`, `accepted_through`)만 감쌉니다. 권한은 `projection:read`이며 observer와 agent는 403이고, 가시성 클래스는 상류에서 UNDETERMINED이므로 응답이 `visibility_enforced: false`라고 적습니다. `list_*`·페이지·`ReadObservationV1` 필드는 만들지 않았습니다. 각 행은 키 집합(25·51·24개)과 항상 거짓 플래그를 초안에 고정하고, 드리프트 검사는 `--protocol-dir` 체크아웃의 작업 트리에서 절 단위로 키 목록을 다시 읽습니다. `--protocol-dir` 없이는 행을 실행하지 않고 `SKIPPED`이며 통과가 아닙니다. `upstream-claims` 수용 단계가 이 스크립트를 세 번째 명령으로 실행하고, 건너뛴 사실을 evidence의 `skipped`에 남깁니다. SIMULATED이며 읽기 모델이 아닙니다.
 
@@ -116,6 +134,7 @@ python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
 python3 scripts/forecast_vectors.py --check
+python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
 npm ci
 npx playwright install chromium

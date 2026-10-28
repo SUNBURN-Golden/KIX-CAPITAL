@@ -48,9 +48,9 @@ _UNIT_FAILED = re.compile(r'^FAILED \((.+)\)$')
 _SMOKE = re.compile(r'^smoke ok: (.+)$')
 _SEED = re.compile(r'^seed demo (ok|updated) ')
 _JOURNEYS = re.compile(r'^sim journeys ok SIMULATED (.+)$')
-_JOURNEY_STEPS = re.compile(r'(T0[3-6]-sim) steps=(\d+)')
+_JOURNEY_STEPS = re.compile(r'(T0[3-6]-sim|N[12]-sim) steps=(\d+)')
 _JOURNEY_SUMMARY = re.compile(r'^SIM_JOURNEYS (\{.+\})$')
-JOURNEY_IDS = ('T03-sim', 'T04-sim', 'T05-sim', 'T06-sim')
+JOURNEY_IDS = ('T03-sim', 'T04-sim', 'T05-sim', 'T06-sim', 'N1-sim', 'N2-sim')
 _CLAIMS = re.compile(r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)$')
 _COUNT_WORD = re.compile(r'(failures|errors|skipped)=(\d+)')
 
@@ -133,7 +133,7 @@ def build_plan(root=None, protocol_dir=None):
             'id': 'integrated-journeys',
             'kind': 'integrated-journeys',
             'timeout': 180,
-            'commands': [[py, 'scripts/sim_journeys.py']],
+            'commands': [[py, 'scripts/sim_journeys.py', '--check']],
         },
     ]
 
@@ -451,16 +451,17 @@ def _annotate_journeys(stage, body):
     summaries = [record.get('journeys') for record in body['commands'] if record.get('journeys') is not None]
     summary = summaries[-1] if summaries else None
     items = []
-    ok = summary is not None
+    ok = summary is not None and type(summary.get('journeys')) is list
     if ok:
-        for item in summary.get('journeys') or []:
+        for item in summary['journeys']:
             if type(item) is not dict:
                 ok = False
                 continue
             steps = item.get('steps')
             digest = item.get('digest')
-            if (item.get('label') != 'SIMULATED' or type(steps) is not int or isinstance(steps, bool)
-                    or steps <= 0 or type(digest) is not str or len(digest) != 64
+            if (type(item.get('id')) is not str or item.get('label') != 'SIMULATED'
+                    or type(steps) is not int or isinstance(steps, bool)
+                    or steps <= 0 or type(digest) is not str or not re.fullmatch(r'[0-9a-f]{64}', digest)
                     or item.get('integrated') is not False or item.get('funds_executed') is not False):
                 ok = False
             items.append({'id': item.get('id'), 'label': item.get('label'), 'steps': steps, 'digest': digest})
@@ -544,7 +545,7 @@ def execute_plan(plan, *, root, evidence_path, required=REQUIRED_STAGES):
             'claimed': False,
             'ladder': 'Q0 local acceptance ladder',
             'note': (
-                'T03-sim, T04-sim, T05-sim and T06-sim are named synthetic variants inside Q0. '
+                'T03-sim, T04-sim, T05-sim, T06-sim, N1-sim and N2-sim are Capital-local synthetic variants inside Q0. '
                 'They are not integrated acceptance and no T01-T06 qualification is claimed.'
             ),
         },
