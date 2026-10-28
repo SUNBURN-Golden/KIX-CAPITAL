@@ -1,5 +1,43 @@
 # Validation scope
 
+## Portfolio history comparison PR fix round 3
+
+2026-10-28, node `portfolio-history-comparison`, baseline HEAD
+`6a36c7fabe0d09061d46111400105586c07ae9a1`; SIMULATED local fixtures only.
+Retained the interrupted worktree's deletion of root `DECISION_REQUIRED.md` and
+verified that the file is absent. This resolves the blocking review finding:
+the stale integration blocker and failed-gate claims are removed from the current
+tree. No product decision remains open for this node.
+
+This round changes only that deletion and this validation record. No production
+code, tests, CI configuration, policy inputs, vendor files or `.aiops/` files changed.
+No commit, push or external post was performed. Historical sections below retain
+their original baselines; this round reran only the checks listed here, not the
+complete nine-stage acceptance ladder.
+
+| Round 3 check | Result |
+| --- | --- |
+| `test ! -e DECISION_REQUIRED.md` and `git diff --numstat -- DECISION_REQUIRED.md` | Absent; tracked deletion of all 45 lines |
+| `python3 -m unittest discover -s tests -v` | 1,160 passed in 265.708s, including comparison CLI, determinism, input preservation and the unchanged baseline byte guard |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` |
+| `npm run test:browser -- --config /tmp/portfolio-round3-playwright.config.cjs` | Exit 0; all 69 passed in 1.9m |
+| Inline SHA256 and HEAD-byte comparison | All five vendor references match manifest pins and HEAD; manifest bytes match HEAD |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py tests .github playwright.config.cjs package.json package-lock.json` | Exit 0; protected sources, tests, CI and browser/dependency configuration unchanged |
+| `git diff --check` | Exit 0 |
+
+Logs are `/tmp/portfolio-round3-unit.log`, `/tmp/portfolio-round3-vendor.log`,
+`/tmp/portfolio-round3-browser-default.log` and `/tmp/portfolio-round3-browser.log`.
+Installed Playwright headless Chromium was used without installation. The temporary
+browser config requires the tracked config and preserves every test, project,
+assertion, timeout and retry. It remaps only loopback ports 8765–8768 to 19765–19768
+and supplies absolute test/output paths and the repository server working directory.
+No unrelated service was stopped. The default-port command's failure remains
+explicitly recorded; the passing browser result uses this local port override.
+
 ## Portfolio history comparison PR fix round 2
 
 2026-10-28, node `portfolio-history-comparison`, baseline HEAD
