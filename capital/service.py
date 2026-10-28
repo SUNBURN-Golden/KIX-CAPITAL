@@ -1187,6 +1187,7 @@ class CapitalService:
                        'role': principal.role, 'role_provenance': ROLE_PROVENANCE}
             if cited is not None:
                 receipt['proposal_id'] = cited
+                receipt['effects_executed'] = False
             default_entry = None
             before_journal = self.machine.export_journal()
             if op == 'draw' and case in self.case_fixtures:

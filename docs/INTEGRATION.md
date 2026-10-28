@@ -35,6 +35,16 @@ configuration raise ValueError. Nothing in this profile chooses production ident
 
 `/api/*` is **Capital's local simulation facade**, not a promoted KIX Protocol catalogue, generated SDK, lending endpoint, or live provider adapter. No fallback to `offer_gift`, `settle_capture`, bank, PG or chain exists.
 
+## Cited command receipts
+
+A validated `proposal_id` citation adds `effects_executed: false` to the organizer
+command receipt. This means the agent proposal executed no effects; the organizer's
+simulated F04 command still applies normally. `funds_executed: false` remains true
+of every receipt. Uncited receipt shapes are unchanged. Citation does not approve,
+execute or persist the in-memory proposal: its phase stays HUMAN_PENDING. Receipts
+retain the citation through lookup, workspace restore and manifest export. Offline
+integrity verification is not identity authentication (NOT_BOUND).
+
 ## DEV_ONLY keyset
 
 `--dev-keyset` requires `--workspace` and excludes `--dev-hmac`. On first startup it

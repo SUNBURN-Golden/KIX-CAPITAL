@@ -1,0 +1,330 @@
+{
+  "digest": "2ebfc1d0d764b94fc51435c3868c06279427090db9daf314cd4d9daa3aaad4d1",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "N1-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 16,
+  "steps": [
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n1-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 1,
+      "name": "offer",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n1-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "approve",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n1-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "bind_settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n1-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "draw",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        [
+          "observe_settlement_statement",
+          null,
+          true
+        ],
+        [
+          "bind_refund",
+          null,
+          true
+        ],
+        [
+          "apply_distribution",
+          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 5,
+      "name": "partial refund on disposable book",
+      "status": [
+        [
+          "observe_settlement_statement",
+          null,
+          true
+        ],
+        [
+          "bind_refund",
+          null,
+          true
+        ],
+        [
+          "apply_distribution",
+          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 1
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "advance_day 0->1",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": "CALLED",
+      "facts": {
+        "advance_id": "sim-n1-a",
+        "base_krw": 46750,
+        "cure_deadline": 6,
+        "default_eligible_day": null,
+        "interest_rebased": false,
+        "margin_state": "CALLED",
+        "principal_outstanding_krw": 48000
+      },
+      "kind": "HTTP",
+      "n": 7,
+      "name": "call-fire",
+      "status": "CALLED"
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 6
+      },
+      "kind": "HTTP",
+      "n": 8,
+      "name": "advance_day 1->6",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": "CALLED",
+      "facts": {
+        "cure_deadline": 6
+      },
+      "kind": "HTTP",
+      "n": 9,
+      "name": "inclusive cure deadline without cure",
+      "status": "CALLED"
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 7
+      },
+      "kind": "HTTP",
+      "n": 10,
+      "name": "advance_day 6->7",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": "ACCELERATED",
+      "facts": {
+        "advance_id": "sim-n1-a",
+        "base_krw": 46750,
+        "cure_deadline": 6,
+        "default_eligible_day": 17,
+        "interest_rebased": true,
+        "margin_state": "ACCELERATED",
+        "principal_outstanding_krw": 48000
+      },
+      "kind": "HTTP",
+      "n": 11,
+      "name": "uncured expiry accelerates",
+      "status": "ACCELERATED"
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 17
+      },
+      "kind": "HTTP",
+      "n": 12,
+      "name": "advance_day 7->17",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "MARGIN_CALL",
+        "MARGIN_ACCELERATION",
+        "DEFAULT_ELIGIBLE_PROPOSAL"
+      ],
+      "facts": {
+        "events": [
+          {
+            "advance_id": "sim-n1-a",
+            "base_krw": 46750,
+            "cure_deadline": 6,
+            "outstanding_krw": 48000,
+            "overlay_id": "sim-n1-call:margin:sim-n1-a:margin_call",
+            "record": "MARGIN_CALL",
+            "sim_day": 1
+          },
+          {
+            "advance_id": "sim-n1-a",
+            "default_eligible_day": 17,
+            "maturity_after": 6,
+            "maturity_before": 60,
+            "outstanding_krw": 48000,
+            "overlay_id": "sim-n1-accelerate:margin:sim-n1-a:margin_acceleration",
+            "record": "MARGIN_ACCELERATION",
+            "sim_day": 7
+          },
+          {
+            "advance_id": "sim-n1-a",
+            "authority": "HUMAN_OPERATOR_DECISION",
+            "default_eligible_day": 17,
+            "outstanding_krw": 48000,
+            "overlay_id": "sim-n1-eligible:margin:sim-n1-a:default_eligible_proposal",
+            "proposal_kind": "DEFAULT_ELIGIBLE",
+            "record": "DEFAULT_ELIGIBLE_PROPOSAL",
+            "sim_day": 17
+          }
+        ]
+      },
+      "kind": "AUDIT",
+      "n": 13,
+      "name": "margin journal sequence",
+      "status": [
+        "MARGIN_CALL",
+        "MARGIN_ACCELERATION",
+        "DEFAULT_ELIGIBLE_PROPOSAL"
+      ]
+    },
+    {
+      "expect": [
+        1,
+        "DEFAULT_ELIGIBLE",
+        "HUMAN_OPERATOR_DECISION",
+        false,
+        true
+      ],
+      "kind": "AUDIT",
+      "n": 14,
+      "name": "one human-facing DEFAULT_ELIGIBLE proposal",
+      "status": [
+        1,
+        "DEFAULT_ELIGIBLE",
+        "HUMAN_OPERATOR_DECISION",
+        false,
+        true
+      ]
+    },
+    {
+      "expect": [
+        "DRAWN",
+        4
+      ],
+      "facts": {
+        "f04_default_called": false
+      },
+      "kind": "AUDIT",
+      "n": 15,
+      "name": "F04 default never journalled; case remains DRAWN",
+      "status": [
+        "DRAWN",
+        4
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 8
+      },
+      "kind": "AUDIT",
+      "n": 16,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}
