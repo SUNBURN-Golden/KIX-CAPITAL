@@ -65,6 +65,8 @@ before verification. Never use fixture keys outside tests.
 
 ## Local facade v1
 
+- `GET /api/permissions`: read-only `KIX_CAPITAL_PERMISSION_CATALOG_V1` catalog with ordered `routes` (`method`, `route`, `children`, `permission`) and `role_permissions` sets. Includes all GET, POST and static registrations; static permissions are null because assets precede authentication. Requires `reference:read`: organizer, auditor and observer allowed; agent receives `403 ROLE_FORBIDDEN`. No token defaults to organizer. Labels are `SIMULATED`, `SYNTHETIC_LOCAL_ROLE`, identity and authentication `NOT_BOUND`; no tokens or operational state are exposed or changed. `python3 scripts/auth_matrix.py --check` fetches this served catalog on an ephemeral memory-only loopback server and reconciles it with the pinned matrix and both generated documentation blocks; `--write` remains offline.
+
 - `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, `terms` (a `{status, reason, terms_version}` snapshot of the decision-note overlay, where `status` is `BOUND`, `PARTIAL` or `NOT_BOUND`, `reason` is null unless `NOT_BOUND`, and `terms_version` is the note's version or null), pinned source, `assets`, local CSRF token, capacity, workspace status and undecided capabilities. `assets` is an array of exactly one entry, the declared KRW AssetSpec `{namespace: "fiat", reference: "KRW", decimals: 0, max_atoms: 1000000000000}` (declared once in `capital/assets.py`; PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` section 3.6). `max_atoms` is the pinned FSM `MONEY_MAX` fixture bound, not a registry limit. There is no asset registry (DEFERRED), no FX (NOT_ADOPTED) and no second asset; amounts stay integers in that one asset. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery. The claim table `tests/read_model_claims.json` maps this route's case views to the pinned upstream draft `docs/contracts/READ_MODEL_QUERIES.md` `get_credit_advance` (checked by `scripts/read_model_claims_check.py`, label CLAIM_CONFORMANCE); the route itself is unchanged.
 - `POST /api/commands`: strict `{instance_id, operation_id, op, advance_id, args}` plus the optional `proposal_id` and the optional `asset`. `asset`, when present, must equal the declared KRW AssetSpec exactly (every field and its type; a bare `"KRW"`, a float or boolean in place of an integer, an extra or missing key all fail). Any other value is `400 ASSET_MISMATCH`, checked after the role check and `SESSION_CHANGED` and before the idempotency lookup, so a mismatch writes no journal entry and no receipt, leaves `state_digest` unchanged, and `GET /api/operations/{id}` still answers `UNKNOWN`. A body that carries the declared asset is applied exactly as one without it. `asset` is not echoed into the receipt. ID must start `sim-`; operation identity is immutable. `X-Capital-Token` from the same process and `Content-Type: application/json` required. The token is the role bound by `POST /api/session` (the process starts with the organizer token). Maximum request 8192 bytes; maximum retained operations 500 (demo resource bound, not financial policy).
 - `POST /api/session`: (opt-in `--authorizer fake-idp` also requires `Authorization: Bearer` from `scripts/fake_idp.py`; label `LOCAL_FAKE_IDP`, identity stays `NOT_BOUND`) strict `{role}` where `role` is `organizer`, `auditor`, `observer`, or `agent`. Requires a token already bound to some synthetic role, plus `Content-Type: application/json`. Returns the process-local loopback token for that role. The same role returns the same token. The `agent` role returns the agent token for the simulated QUERY/PROPOSE lane (`SIMULATED_AGENT_GRANT`); the response still reports `agent_grant: NOT_BOUND`, and that token is denied every GET and every command (`403 ROLE_FORBIDDEN`). It holds only the five `agent:*` lane permissions (`agent:query_grant`, `agent:query_subject`, `agent:propose_action`, `agent:withdraw_proposal`, `agent:propose_grant_change`), so it cannot call `POST /api/session` itself. This does not change `operation_count` or `state_digest`. It is self-selection on loopback, not authentication.
@@ -142,6 +144,8 @@ Envelope v2 (overlay): every save writes `envelope_version: 2` (`format` stays t
 
 `tests/storage_conformance.py` exports `run_storage_vectors(factory)`. The factory returns a fresh `StoragePort`. The same vectors are the gate a future storage adapter must pass. That pass is not SEMANTIC_CONFORMANCE. CAP-11 stays `NOT_BOUND`. `LOCAL_FILE_WORKSPACE` stays a development-file label, not stage5 durable transaction recovery.
 
+`scripts/fold_fuzz.py --check` verifies sequence-order determinism beside the crash matrix. The `SIMULATED` corpus `tests/vectors/fold_fuzz.json` pins LCG32 version `LCG32-LIFECYCLE-1`, seeds 74810048–74810063, at most 64 commands and six advances per seed. It randomly interleaves legal lifecycle heads covering all ten F04 operations, bound/unbound draws, partial/full repayment, close/default/reject/cancel and logical-day ticks. Every prefix is replayed through two fresh file workspaces with independent services/producers, compared as raw envelope bytes, and checked against state/overlay/receipt/envelope hash pins. Copied F04 journals and overlay entries are refolded independently. Each completed sequence is reopened with a new session: F04 receipt/fingerprint mappings retain the original writer identity; overlay receipt cores are reconstructed from entries and checked through read-only lookup. Reconcile persists a receipt without appending an F04 journal entry. Accepted defaults also pin main's automatic recovery anchors and recovery-authority receipt fields; decision-record capacity includes those anchors. Actual file sizes and service-defined sizes are checked against adopted bounds, as are receipt/entry/day/step/decision/proposal counts. Byte equality is conditional on fixed synthetic writer identities and a clock replacement scoped to `capital.store`, on the same interpreter and tree; saved files are never normalized afterward. Check mode writes temporary workspaces only and exits 1 on drift without rewriting its input. Explicit `--write` authors only this corpus (`--file PATH` selects an isolated target). This adds no route, command semantics, rejection code, financial policy or storage format and claims no durability or performance property; CAP-11 remains `NOT_BOUND`.
+
 `python3 -m capital.verify --workspace DIR` audits `DIR/workspace.json` with no server. It reads the bytes directly: it never opens `workspace.json.lock`, never takes the flock, and writes nothing, so it also runs while a live server holds the lock. The report is one JSON line (`mode` `OFFLINE_WORKSPACE_AUDIT`, `label` `SIMULATED`, `diagnostic` `LOCAL_ONLY`) with per-check `MATCHED`/`MISMATCH`/`NOT_CHECKED` marks: `workspace_file`, `strict_json` (truncation, BOM/NUL, `NaN`, and duplicate keys), `envelope_shape`, `payload_sha256`, `payload_shape`, `journal_replay` into a scratch machine, `state_digest`, `service_restore` through the same `verify_document`/`_validated_restore` path the server uses, `receipt_journal_fingerprints` (recomputed for every journal entry; REJECTED and reconcile receipts keep shape and uniqueness checks because their args are not persisted), and `recon` — the same `build_reconciliation` checks as `GET /api/reconciliation` (six, plus `overlay_fold_digest_equals_persisted` and `scope.overlay_state_digest` when the overlay is non-empty), embedded verbatim. The first failing check supplies the reason: `WORKSPACE_UNREADABLE`, or `RECON_MISMATCH` when the envelope is intact but the reconciliation checks disagree. The exit code is 0 on `ok`, 1 on the first mismatch, and 2 on CLI misuse. The auditor never repairs or replaces the file, and there is no import or resume route. A pinned tamper corpus lives in `tests/vectors/workspace/`; `python3 scripts/workspace_vectors.py --write` regenerates it and `--check` exits 1 on drift, a missing file, or an unexpected file. This is a local diagnostic, not stage5 durable transaction evidence; CAP-11 stays `NOT_BOUND`.
 
 ## Local contract `capital-local-facade/1`
@@ -184,6 +188,7 @@ Each cell is the HTTP result for that caller and route. A bare `200` means the g
 | Method | Route | Permission | organizer | auditor | observer | agent | no-token |
 |---|---|---|---|---|---|---|---|
 | GET | `/api/state` | `state:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/permissions` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/scenarios[/…]` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/readiness` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/decisions` | `reference:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
@@ -201,6 +206,8 @@ Each cell is the HTTP result for that caller and route. A bare `200` means the g
 | GET | `/api/operations/…` | `receipt:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export/manifest` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/export/facts` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/export/facts/schema` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/reconciliation` | `reconciliation:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/statement` | `statement:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/metrics` | `metrics:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
@@ -324,3 +331,36 @@ snapshots. Six slice kinds persist in `overlay.state.claim_slices`, absent when
 empty; schema stays 1. V3 export and offline verification cover the fold and its
 F04-prefix links. No title, money, COA posting or pinned-FSM application occurs.
 Time impairment and slice write-off remain NOT_BOUND / NOT_POSTABLE_V1.
+
+
+### Typed facts candidate
+
+- `GET /api/export/facts`: `export:read`; exactly one `instance_id` matching the
+  active session is required, with optional `after` and `limit` (default 100,
+  range 1..500). Unknown or repeated query keys and bad limits return 400
+  `INVALID_ARGUMENTS`; malformed/zero/out-of-range cursors return 400
+  `INVALID_CURSOR`. A well-formed cursor from another cut returns 409 `CUT_MOVED`.
+  A stale or missing instance returns 409 `SESSION_CHANGED`. The response is
+  canonical ASCII JSON bytes without a newline, under `KIX_CAPITAL_FACTS_PAGE_V1`.
+  Persist the bytes in ordered `page-*.json` files for `python3 -m capital.verify
+  --facts DIR`. The page embeds the schema, typed rows, separate F04/overlay cut
+  digests, row hashes, chain endpoints, page digest and `next_cursor`.
+- `GET /api/export/facts/schema`: `export:read`; canonical schema document
+  `KIX_CAPITAL_FACTS_SCHEMA_V1`, pinned as `tests/vectors/facts/schema.json`.
+
+Both routes are read-only. Observer and agent roles lack `export:read`. Facts
+refuse inactive/unreadable workspaces or mismatched on-disk state with 503
+`WORKSPACE_UNREADABLE`, `STORAGE_STATE_MISMATCH` or the workspace failure code.
+Unsupported producers return 503 `COHERENT_SNAPSHOT_UNSUPPORTED`.
+Rows preserve each source journal's raw order. Before each overlay entry, emit
+unemitted F04 entries below the running maximum overlay `after_journal_index`;
+emit the remaining F04 entries last. Identical repeated overlay IDs remain rows
+with `duplicate: 1`, even when their raw anchor is older. Extracting journal rows
+matches `/api/export` canonical journal bytes; overlay rows match the V3 manifest
+section journal. The legacy export has no overlay field and is unchanged.
+Empty overlays omit both overlay cut keys under the adopted
+[overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
+
+This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
+prevent replacement of a whole consistent book. No import or resume path exists.
