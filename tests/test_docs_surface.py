@@ -67,6 +67,29 @@ class CurrentTreeTests(unittest.TestCase):
         self.assertIn(('POST', '/api/agent/execute'), routes)
 
 
+class JourneyDocTests(unittest.TestCase):
+    def test_names_paths_and_check_command_are_required_in_both_docs(self):
+        needles = {docs_surface.JOURNEY_COMMAND}
+        for values in docs_surface.JOURNEY_NEEDLES.values():
+            needles.update(values)
+        for source, option in ((README, '--readme'), (ACCEPTANCE, '--acceptance')):
+            for needle in sorted(needles):
+                with self.subTest(source=source.name, needle=needle):
+                    tmp, copy = _mutated_copy(source, lambda text: text.replace(needle, 'REMOVED'))
+                    try:
+                        code, _, err = _run(['--check', option, str(copy)])
+                        self.assertEqual(code, 1)
+                        self.assertIn('journey needle', err)
+                    finally:
+                        tmp.cleanup()
+
+    def test_missing_new_golden_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            findings, _ = docs_surface.find_drift(golden_dir=Path(tmp))
+        for artifact in docs_surface.JOURNEY_NEEDLES:
+            self.assertTrue(any(artifact in finding for finding in findings))
+
+
 class MutatedDocTests(unittest.TestCase):
     def test_missing_route_bullet_fails_naming_the_needle(self):
         tmp, copy = _mutated_copy(INTEGRATION, lambda text: _drop_line(text, '- `GET /api/statement`:'))
@@ -75,6 +98,16 @@ class MutatedDocTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('GET /api/statement', err)
         self.assertIn('- `GET /api/statement`:', err)
+
+    def test_permissions_route_requires_hand_maintained_prose(self):
+        self.assertIn(('GET', '/api/permissions'), docs_surface.live_routes())
+        tmp, copy = _mutated_copy(
+            INTEGRATION, lambda text: _drop_line(text, '- `GET /api/permissions`:'))
+        self.addCleanup(tmp.cleanup)
+        self.assertIn('`/api/permissions`', copy.read_text(encoding='utf-8'))
+        code, _out, err = _run(['--check', '--integration', str(copy)])
+        self.assertEqual(code, 1)
+        self.assertIn('GET /api/permissions', err)
 
     def test_missing_portfolio_snapshot_bullet_fails(self):
         tmp, copy = _mutated_copy(INTEGRATION, lambda text: _drop_line(text, '- `GET /api/portfolio/snapshot`:'))

@@ -202,6 +202,7 @@ FACADE_READS = [
     ('/api/state', ['state']),
     ('/api/scenarios', ['scenario_list']),
     ('/api/scenarios/{id}', ['scenario_detail']),
+    ('/api/permissions', ['permission_catalog']),
     ('/api/readiness', ['readiness']),
     ('/api/decisions', ['decisions']),
     ('/api/evidence', ['evidence']),
@@ -220,6 +221,8 @@ FACADE_READS = [
     ('/api/operations/{operation_id}', ['accepted_receipt', 'rejected_receipt', 'unknown_operation']),
     ('/api/export', ['export_v1']),
     ('/api/export/manifest', ['manifest']),
+    ('/api/export/facts', ['facts_page']),
+    ('/api/export/facts/schema', ['facts_schema']),
     ('/api/reconciliation', ['reconciliation']),
     ('/api/statement', ['statement']),
     ('/api/metrics', ['metrics']),
@@ -228,6 +231,8 @@ FACADE_READS = [
     ('/api/overlay/slices', ['slice_registry_listing']),
     ('/api/risk', ['risk_state']),
     ('/api/risk/covenants', ['covenant_state']),
+    ('/api/risk/scenarios', ['whatif_index']),
+    ('/api/risk/scenarios/{id}', ['whatif_scenario']),
 ]
 FACADE = ROOT / 'capital' / 'contract' / 'facade-v1.json'
 UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -742,14 +747,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_thirty_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 30)
+    def test_exactly_the_thirty_five_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 35)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 42)
+        self.assertEqual(len(self.contract['routes']), 47)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))

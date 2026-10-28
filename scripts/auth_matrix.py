@@ -22,8 +22,10 @@ markers is replaced in the two documents.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import sys
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,7 +37,7 @@ from capital.auth import (
     ALL_PERMISSIONS, COMMAND_SUBMIT, DEFAULT_ROLE, MATRIX, OP_ORDER, OP_PERMISSIONS,
     PROVENANCE, ROLES, ROUTE_PERMISSIONS,
 )
-from capital.server import ASSETS, GET_DISPATCH, POST_DISPATCH
+from capital.server import ASSETS, GET_DISPATCH, POST_DISPATCH, make_server
 from capital.service import OPS
 
 FORMAT = 'KIX_CAPITAL_AUTH_MATRIX_V1'
@@ -56,6 +58,7 @@ ADVANCE = 'sim-mtx'
 OFFER_OPERATION = 'sim-mtx-offer'
 GET_PROBES = {
     '/api/state': ['/api/state'],
+    '/api/permissions': ['/api/permissions'],
     '/api/scenarios': ['/api/scenarios', '/api/scenarios/full-after'],
     '/api/readiness': ['/api/readiness'],
     '/api/decisions': ['/api/decisions'],
@@ -74,12 +77,15 @@ GET_PROBES = {
     '/api/portfolio/snapshot': [f'/api/portfolio/snapshot?instance_id={INSTANCE}'],
     '/api/risk': ['/api/risk'],
     '/api/risk/covenants': ['/api/risk/covenants'],
+    '/api/risk/scenarios': ['/api/risk/scenarios', '/api/risk/scenarios/largest-advance-default'],
     '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/operations/': [f'/api/operations/{OFFER_OPERATION}?instance_id={INSTANCE}'],
     '/api/export': ['/api/export'],
     '/api/export/manifest': ['/api/export/manifest'],
+    '/api/export/facts': [f'/api/export/facts?instance_id={INSTANCE}'],
+    '/api/export/facts/schema': ['/api/export/facts/schema'],
     '/api/reconciliation': ['/api/reconciliation'],
     '/api/statement': ['/api/statement'],
     '/api/metrics': ['/api/metrics'],
@@ -149,6 +155,16 @@ class MatrixError(Exception):
 
 
 def _check_registries():
+    if len(ROLES) != len(set(ROLES)) or set(MATRIX) != set(ROLES):
+        raise MatrixError('MATRIX must contain exactly ROLES')
+    for role, permissions in MATRIX.items():
+        if set(permissions) - set(ALL_PERMISSIONS):
+            raise MatrixError(f'{role} grants unknown permissions')
+    identities = ([('GET', path) for path, _children, _name in GET_DISPATCH]
+                  + [('POST', path) for path, _permission in POST_DISPATCH]
+                  + [('GET', path) for path in ASSETS])
+    if len(identities) != len(set(identities)):
+        raise MatrixError('duplicate route identities')
     dispatch = [(prefix, children) for prefix, children, _name in GET_DISPATCH]
     mapped = [(prefix, children) for prefix, _permission, children in ROUTE_PERMISSIONS]
     if dispatch != mapped:
@@ -497,6 +513,41 @@ def replace_generated(document: str, block: str) -> str:
     return f'{pre}{BEGIN}\n{block}{END}{post}'
 
 
+def catalog_projection(table):
+    return {
+        'format': 'KIX_CAPITAL_PERMISSION_CATALOG_V1',
+        **{key: table[key] for key in (
+            'label', 'provenance', 'identity', 'authentication', 'no_token_principal')},
+        'routes': [
+            {'method': row['method'], 'route': row['route'],
+             'children': row.get('children', False), 'permission': row['permission']}
+            for row in table['routes']
+        ],
+        'role_permissions': table['role_permissions'],
+    }
+
+
+def fetch_catalog():
+    server = make_server(0)
+    worker = threading.Thread(target=server.serve_forever)
+    client = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=5)
+    try:
+        worker.start()
+        client.request('GET', '/api/permissions')
+        response = client.getresponse()
+        payload = response.read()
+        if response.status != 200:
+            raise MatrixError(f'served permission catalog HTTP {response.status}')
+        return json.loads(payload)
+    finally:
+        client.close()
+        if worker.ident is not None:
+            server.shutdown()
+        server.server_close()
+        if worker.ident is not None:
+            worker.join()
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -519,8 +570,19 @@ def main(argv=None) -> int:
                 path.write_text(replace_generated(path.read_text(encoding='utf-8'), block), encoding='utf-8')
             return 0
         drift = []
+        served = fetch_catalog()
+        if not isinstance(served, dict):
+            raise MatrixError('served permission catalog must be an object')
+        expected = catalog_projection(table)
+        for key in expected.keys() | served.keys():
+            if served.get(key) != expected.get(key):
+                drift.append(f'served catalog {key} differs from generated matrix')
         if not args.table.is_file() or args.table.read_text(encoding='utf-8') != text:
             drift.append(str(args.table))
+        if args.table.is_file():
+            pinned = catalog_projection(json.loads(args.table.read_text(encoding='utf-8')))
+            if served != pinned:
+                drift.append('served catalog differs from pinned matrix')
         for path, block in documents:
             if extract_generated(path.read_text(encoding='utf-8')) != block:
                 drift.append(str(path))
@@ -528,7 +590,7 @@ def main(argv=None) -> int:
             print('auth matrix drift: ' + ', '.join(drift), file=sys.stderr)
             print('run python3 scripts/auth_matrix.py --write', file=sys.stderr)
             return 1
-    except (OSError, ValueError, MatrixError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException, MatrixError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     return 0

@@ -1,0 +1,297 @@
+{
+  "digest": "7a40810de1d2c78254b09afd044f93661dffcfb026bd20a420c7fe9c5db08820",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "N2-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 18,
+  "steps": [
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n2-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 1,
+      "name": "offer",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n2-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "approve",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n2-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "bind_settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n2-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "draw",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "agent",
+        "NOT_BOUND"
+      ],
+      "kind": "HTTP",
+      "n": 5,
+      "name": "agent role bound",
+      "status": [
+        200,
+        "agent",
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "auditor",
+        "NOT_BOUND"
+      ],
+      "kind": "HTTP",
+      "n": 6,
+      "name": "auditor role bound",
+      "status": [
+        200,
+        "auditor",
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "HUMAN_PENDING",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 7,
+      "name": "agent proposes; HUMAN_PENDING only",
+      "status": [
+        200,
+        "HUMAN_PENDING",
+        false
+      ]
+    },
+    {
+      "expect": [
+        "dd1b433bf3f025fcdb2111fe1524161ba3e247055c68c10520ddffe60f4dff0d",
+        4
+      ],
+      "kind": "AUDIT",
+      "n": 8,
+      "name": "proposal does not mutate F04",
+      "status": [
+        "dd1b433bf3f025fcdb2111fe1524161ba3e247055c68c10520ddffe60f4dff0d",
+        4
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        "organizer",
+        "sim-n2-proposal",
+        false,
+        false
+      ],
+      "kind": "HTTP",
+      "n": 9,
+      "name": "organizer command cites the proposal",
+      "status": [
+        200,
+        "ACCEPTED",
+        "organizer",
+        "sim-n2-proposal",
+        false,
+        false
+      ]
+    },
+    {
+      "expect": 10000,
+      "kind": "HTTP",
+      "n": 10,
+      "name": "human command applies simulated repayment",
+      "status": 10000
+    },
+    {
+      "expect": [
+        200,
+        true,
+        "HUMAN_PENDING",
+        false
+      ],
+      "kind": "HTTP",
+      "n": 11,
+      "name": "memo stays HUMAN_PENDING after citation",
+      "status": [
+        200,
+        true,
+        "HUMAN_PENDING",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true
+      ],
+      "kind": "AUDIT",
+      "n": 12,
+      "name": "auditor retrieves original citation-bearing receipt",
+      "status": [
+        200,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "MATCHED",
+        [
+          "MATCHED"
+        ]
+      ],
+      "kind": "AUDIT",
+      "n": 13,
+      "name": "auditor reconciliation MATCHED",
+      "status": [
+        200,
+        "MATCHED",
+        [
+          "MATCHED"
+        ]
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        true
+      ],
+      "kind": "AUDIT",
+      "n": 14,
+      "name": "auditor correlates receipt to accepted journal entry",
+      "status": [
+        200,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "MATCHED",
+        "NOT_BOUND"
+      ],
+      "kind": "VERIFY",
+      "n": 15,
+      "name": "offline manifest evidence-chain verification",
+      "status": [
+        0,
+        true,
+        "MATCHED",
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "MATCHED",
+        false,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 16,
+      "name": "offline workspace evidence-chain verification",
+      "status": [
+        0,
+        true,
+        "MATCHED",
+        false,
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 17,
+      "name": "tampered citation fails offline verification",
+      "status": [
+        true,
+        false
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 5
+      },
+      "kind": "AUDIT",
+      "n": 18,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}

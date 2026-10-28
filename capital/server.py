@@ -13,7 +13,7 @@ from capital import __version__
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
     COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES, Principal,
-    SESSION_BIND, LocalRoleAuthorizer, path_matches, require, route_permission,
+    SESSION_BIND, LocalRoleAuthorizer, path_matches, permission_catalog, require, route_permission,
 )
 from capital.observability import EVENT_LOG_MAX_BYTES, Observability
 from capital.resources import read_static
@@ -28,6 +28,7 @@ from capital.store import FileWorkspace, UnavailableWorkspace, WorkspaceError
 # The auth test fails if these two registries diverge. Unlisted paths are 404.
 GET_DISPATCH = (
     ('/api/state', False, 'state'),
+    ('/api/permissions', False, 'permissions'),
     ('/api/scenarios', True, 'scenarios'),
     ('/api/readiness', False, 'readiness'),
     ('/api/decisions', False, 'decisions'),
@@ -39,12 +40,15 @@ GET_DISPATCH = (
     ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
     ('/api/risk/covenants', False, 'covenants'),
+    ('/api/risk/scenarios', True, 'risk_scenarios'),
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
     ('/api/operations/', True, 'operation'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
+    ('/api/export/facts', False, 'export_facts'),
+    ('/api/export/facts/schema', False, 'facts_schema'),
     ('/api/reconciliation', False, 'reconciliation'),
     ('/api/statement', False, 'statement'),
     ('/api/metrics', False, 'metrics'),
@@ -248,6 +252,9 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_state(self, route, principal):
             return self.reply(200, {**service.snapshot(role=principal.role), 'local_token': self.local_token(principal)})
 
+        def _get_permissions(self, route, principal):
+            return self.reply(200, permission_catalog(POST_DISPATCH, ASSETS))
+
         def _get_evidence(self, route, principal):
             return self.reply(200, service.evidence())
 
@@ -348,6 +355,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_covenants(self, route, principal):
             return self.reply(200, service.covenants())
 
+        def _get_risk_scenarios(self, route, principal):
+            path = route.path
+            if path == '/api/risk/scenarios':
+                return self.reply(200, service.risk_scenarios())
+            return self.reply(200, service.risk_scenarios(path.rsplit('/', 1)[-1]))
+
         def _get_preview(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
             return self.reply(200, service.preview_draw(route.path.rsplit('/', 1)[-1], instance))
@@ -362,6 +375,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
+
+        def _get_export_facts(self, route, principal):
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(service.export_facts(route.query)))
+
+        def _get_facts_schema(self, route, principal):
+            from capital.facts import schema
+            from capital.store import canonical_bytes
+            return self.reply(200, canonical_bytes(schema()))
 
         def _get_export_manifest(self, route, principal):
             return self.reply(200, service.export_manifest())
@@ -432,6 +454,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             except Exception:
                 return
 
+        def request_route(self):
+            try:
+                return urlsplit(self.path)
+            except ValueError:
+                raise ApiError('INVALID_TARGET')
+
         def do_GET(self):
             started = time.perf_counter()
             status = 500
@@ -439,11 +467,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                route = self.request_route()
+                path = route.path
                 if path.startswith('/api/operations/'):
                     operation_id = path[len('/api/operations/'):]
                 self.boundary()
-                route = urlsplit(self.path)
                 if route.path in ASSETS:
                     name, kind = ASSETS[route.path]
                     self.reply(200, read_static(name), kind)
@@ -470,7 +498,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             operation_id = None
             path = ''
             try:
-                path = urlsplit(self.path).path
+                path = self.request_route().path
                 self.boundary(mutate=True)
                 principal = self.principal()
                 permission = None
