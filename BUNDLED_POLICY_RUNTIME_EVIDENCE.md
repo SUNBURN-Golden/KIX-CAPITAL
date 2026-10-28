@@ -585,3 +585,56 @@ reset, external post, `.aiops/` edit or Protocol/Commerce modification was made.
 No consequential product decision was needed.
 
 STATUS: READY
+
+
+## Conflict-fix round 3 — 2026-10-28
+
+Resolved the supervisor-started merge of incoming main
+`e445f38282e14bc271c94b48d3f4dcfbe195cba0` into feature parent
+`00e0cc45529790d98037e538b47b53b5f0a0d291`. Both the bundled policy runtime
+and main's permission catalog, facts cursor export, tests and documentation survive.
+No combination-specific runtime, test, CI or policy change was required.
+
+Files resolved (13):
+
+- `docs/INTEGRATION.md`: retains the permissions route and state terms provenance.
+- `docs/OPERATOR_HANDBOOK_KO.md`: retains both the artifact bundling and facts export sections verbatim; the merged authorization table includes main's routes.
+- `docs/VALIDATION.md`: retains both parent histories verbatim and in order.
+- `tests/vectors/finance_vectors.json`: regenerated from the combined contract. Relative to HEAD, only `facade_read_model` and main's recorded `closeout_digest` group change; relative to incoming main, only `facade_read_model` changes. All other groups and top-level metadata are preserved.
+- `tests/vectors/pack/clean.json`, `content-digest.json`, `section-auth_matrix.json`, `section-decisions.json`, `section-export_manifest.json`, `section-reconciliation.json`, `section-workspace_audit.json`, `truncated.json`, `volatile.json`: regenerated with the unchanged generator. The clean pack combines main's authorization matrix and this node's decision provenance; all other sections match both parents. Intentional corruption variants retain their generator-defined mutations.
+
+The reviewed resource loader, decision index, terms/policy loaders, builder,
+packaged smoke and release tests remain byte-identical to HEAD. Main's facts
+implementation, authorization implementation, verifier, associated generators,
+docs registry, facts tests and closeout fixture remain byte-identical to incoming
+main. The five vendor SHA256 locks, manifest, legacy `capital/export.py` and
+`tests/golden/demo.json` match both parents. `.aiops/` and CI are unchanged.
+
+All results are local working-tree evidence under Python 3.13.5 and Node 20.19.2.
+Rehearsals are SIMULATED/provisional and loopback-only. No real funds, provider
+calls, credentials, signing, publication, deployment or upstream adoption.
+
+| Verification | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,165 passed in 268.000 s, including bundled-resource behavior, explicit overrides, missing/malformed note handling, legacy golden/export byte guards and incoming facts/catalog coverage. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.0 min using the installed headless shell and unchanged configuration. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 34 routes, 250 artifacts, nine stages. |
+| `scripts/{auth_matrix,decision_bindings,finance_vectors,pack_vectors,closeout_digest,facts_vectors,http_hostile,fold_fuzz}.py --check`; `python3 scripts/decision_ledger.py` | All exit 0; finance 99,070 bytes, nine pack files, 133 facts files, 76 hostile requests, 16 fuzz seeds / 736 commands match. |
+| Two `scripts/build_release.py --out` builds plus `cmp` | Exit 0; byte-identical artifacts in `build/bundled-round3/dist/` and `dist2/`. |
+| `python3 scripts/smoke_release.py build/bundled-round3/dist/capital-0.2.0.pyz` | Exit 0; all 11 checks pass, including actual note-derived accrual and identical overlay state/provenance after temporary workspace restart outside checkout. |
+| Independent archive audit | Exactly 78 members, including exactly 18 authorized additional inputs. All manifest hashes and bundled raw input bytes match; unsigned/unpublished labels retained. |
+| Preservation and merge hygiene | Vendor/export/golden bytes preserved; no conflict markers or unmerged entries. Whitespace check against incoming main passes; against HEAD it passes excluding main's unchanged intentional whitespace-corruption fixture. |
+
+Merged artifact SHA256:
+`e743c548468cb436aba8bb0c177d243e2766c6f404a6f69dd9da1232b5738100`.
+It remains `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`.
+Logs and artifacts are retained locally in ignored `build/bundled-round3/`
+(`unit.log`, `browser.log`, `checks.log`, `smoke.log`, `decision-ledger.log`).
+
+All resolutions are staged. The merge remains uncommitted for the supervisor.
+No abort, commit, push, rebase, reset, external post, `.aiops/` edit or
+Protocol/Commerce modification was made. No consequential product decision was needed.
+
+STATUS: READY
