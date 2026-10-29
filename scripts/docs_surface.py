@@ -64,6 +64,7 @@ _STAGE_ANCHOR = 'stage id'
 # one prose sentence that names them — the generated matrix repeats those
 # names and is stripped before the search.
 ROUTE_NEEDLES = {
+    ('GET', '/api/cases/'): ('`GET /api/cases/{advance_id}/dossier',),
     ('GET', '/api/state'): ('- `GET /api/state`:',),
     ('GET', '/api/permissions'): ('- `GET /api/permissions`:',),
     ('GET', '/api/scenarios'): ('`GET /api/scenarios` and `/api/scenarios/{id}`',),
@@ -114,6 +115,7 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),

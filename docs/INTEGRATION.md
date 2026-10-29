@@ -217,6 +217,7 @@ Each cell is the HTTP result for that caller and route. A bare `200` means the g
 | GET | `/api/policy[/…]` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/preview/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/underwrite/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/cases/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/operations/…` | `receipt:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export/manifest` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
@@ -281,6 +282,45 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+### Advance case dossier
+
+- `GET /api/cases/{advance_id}/dossier?instance_id=`: `projection:read` for
+  organizer and auditor; observer and agent receive `403 ROLE_FORBIDDEN`.
+  Only one `instance_id` query parameter is accepted. Missing or stale instance
+  yields `409 SESSION_CHANGED`, unknown case yields `404 CASE_NOT_FOUND`,
+  other child paths yield `404 NOT_FOUND`, extra/duplicate query parameters
+  yield `400 INVALID_ARGUMENTS`. No caller-supplied amount or hypothetical day.
+
+The `KIX_CAPITAL_CASE_DOSSIER_V1` / `SIMULATED` / `READ_ONLY_CASE_DOSSIER`
+response holds one service lock across sibling reads. `sim_day` is copied from
+the recorded overlay fold. The case, indexed F04 journal with original receipts,
+indexed case/global clock and terms-binding overlay rows, underwriting record,
+terms line, ledger row, allocation quote, margin and covenant rows and matching
+READ_ONLY_FIXTURE settlement rows are copied from existing readers.
+`allocation_quote` copies the overlay's full-payoff proposal (`allocation`,
+`fsm_repay`, `close_ready`); it introduces no cash assumption or arithmetic.
+Underwriting is the complete enveloped rule evaluation at that day with
+`decided_by_role: DOSSIER_READ_ONLY`, not a decision by the reader;
+`proposal` and any `approve_authority` values remain rule outputs.
+Receipts without journal rows retain WORKSPACE_WIDE scope and
+`case_association: NOT_INFERRED`; no case association is guessed.
+
+`cut` includes state, overlay and fixture digests and the terms version.
+`dossier_digest` hashes canonical bytes after removing itself and recursively
+stripping the existing export volatile key set. The read-only envelope is
+covered except for volatile fields. Repeated reads of the same workspace are
+byte-identical; session identity may change after restart but content digest
+stays stable. This is local content integrity, not authentication or remote
+attestation. `funds_executed`, `workspace_mutated`, `write_authorized` are false.
+The canonical state, journal length, overlay and operation count are guarded.
+
+Missing terms produce number-free `NOT_BOUND` blocks for underwriting and the
+five terms-dependent blocks. Bound terms with no accepted F04 draw give the
+five blocks `NOT_APPLICABLE / NOT_DRAWN`. Sibling `NOT_BOUND` exceptions become
+labelled blocks; other errors propagate. The dossier download uses text nodes
+and the existing CSP, independent of auditor manifest compatibility. JSON only;
+no PDF, multi-case bundle, evidence-pack inclusion or real identity.
 
 Lifecycle claim mappings (`tests/lifecycle_claims.json`,
 `scripts/lifecycle_claims_check.py --execute`) exercise the unchanged

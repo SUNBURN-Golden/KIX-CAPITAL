@@ -57,6 +57,7 @@ DEFAULT_HANDBOOK = ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md'
 ADVANCE = 'sim-mtx'
 OFFER_OPERATION = 'sim-mtx-offer'
 GET_PROBES = {
+    '/api/cases/': [f'/api/cases/{ADVANCE}/dossier?instance_id={INSTANCE}'],
     '/api/state': ['/api/state'],
     '/api/permissions': ['/api/permissions'],
     '/api/scenarios': ['/api/scenarios', '/api/scenarios/full-after'],
