@@ -1,5 +1,70 @@
 # Validation scope
 
+## Portfolio history comparison — PR fix round 4, review of `a159ae5`
+
+2026-10-29, baseline HEAD `a159ae5cfccfee41b7b461c1998b61ccf161f45b`.
+All verification in this record uses local SIMULATED fixtures.
+
+The blocking finding is valid: `a159ae5` committed only the round-3
+validation update, so the obsolete `DECISION_REQUIRED.md` remained in the
+committed head. The fix repeats the deletion and, unlike last round, stages
+it in the index so the supervisor's next commit necessarily contains it.
+
+A second problem surfaced during verification: the local `origin/main` was
+fast-forwarded to `59900e9` (PR #113), which added
+`docs/decisions/CAPITAL_OBSERVATION_RECORD.md`. The byte guard
+`test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`
+requires `docs/decisions` byte-identical to `origin/main` and failed on
+exactly that missing file; main's own relaxed guard (`97fb680`,
+`--diff-filter=MDRTCUXB`) still fails a note that is missing or modified
+relative to main. The fix adopts the note byte-identically from
+`origin/main`, applies `59900e9`'s eight-entry addition to
+`tests/decision_bindings.json` (the branch file was identical to the
+patch base), and regenerates the nine pack vectors with
+`python3 scripts/pack_vectors.py --write` because the note changes the
+`/api/decisions` content embedded in the pack. The regenerated vectors
+are this branch's bytes, not main's; no note content was authored here.
+
+| Current check | Result |
+| --- | --- |
+| `DECISION_REQUIRED.md` removal | 45 lines deleted; absent from disk, index (`git ls-files --error-unmatch` fails) and the `git write-tree` output |
+| `git diff --exit-code origin/main -- docs/decisions/` | Exit 0; directory byte-identical to `origin/main` |
+| `python3 -m unittest discover -s tests -v` | Pre-fix run: 1 failure (the byte guard above). Post-fix run: exit 0; all 1,160 passed in 298.186s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match after regeneration |
+| `python3 scripts/{workspace_vectors,closeout_digest,finance_vectors,not_bound_checklist}.py --check` | Exit 0 each |
+| `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` (ports 8765/8766 held by unrelated local services) |
+| `npm run test:browser -- --config /tmp/portfolio-r4-playwright.config.cjs` | Exit 0; all 69 Chromium tests passed in 1.9m |
+| Vendor integrity | All five SHA256 pins match `capital/vendor/manifest.json`; manifest bytes match HEAD |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py tests/golden playwright.config.cjs package.json package-lock.json` | Exit 0; protected files unchanged |
+| `git diff --check`; `git diff --cached --check` | Exit 0 |
+
+Two earlier remapped full-browser runs each showed one different flaky spec
+(`portfolio.spec.cjs` keyboard-order, then `projection.spec.cjs` route-abort
+error panel); both passed in immediate isolation reruns and the final full
+run above is clean. The temporary config requires the tracked config,
+preserves every test, project, assertion, timeout and retry, remaps only
+loopback ports 8765–8768 to 19765–19768 and supplies absolute test/output
+paths and the repository server working directory. No unrelated service was
+stopped, no browser was installed and no committed configuration changed.
+
+Only the staged deletion, the adopted main note, its bindings entries, the
+regenerated pack vectors and this validation record change. Runtime code,
+test logic, CI, policy inputs, the five vendored references and manifest,
+and `.aiops/` remain unchanged. No commit, push or external post was
+performed; these results are local patch verification, not a new run of the
+full nine-stage acceptance ladder.
+
+### Historical verification records
+
+The sections below describe earlier sessions and baselines. Their deletion,
+staging, blocker and acceptance claims are historical, not evidence of the current
+commit. The round 4 record above supersedes those project-status claims.
+
 ## Portfolio history comparison — PR fix round 3, review of `9b1f3fe`
 
 2026-10-29, baseline HEAD `9b1f3fefd0c32c02d969ea1001f4d4813c5f0200`.
@@ -37,12 +102,6 @@ unchanged browser configuration in a separate loopback network namespace; no
 unrelated service was stopped. No browser download, test weakening, policy change
 or external action was needed. These results are local patch verification, not a
 new run of the full nine-stage acceptance ladder.
-
-### Historical verification records
-
-The sections below describe earlier sessions and baselines. Their deletion,
-staging, blocker and acceptance claims are historical, not evidence of the current
-commit. The round 3 record above supersedes those project-status claims.
 
 ## Portfolio history comparison PR fix round 3
 
