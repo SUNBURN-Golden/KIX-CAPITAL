@@ -11,6 +11,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from capital.service import CapitalService
@@ -61,7 +62,9 @@ class JourneyBase(unittest.TestCase):
         cls.t04 = _result('T04-sim')
         cls.t05 = _result('T05-sim')
         cls.t06 = _result('T06-sim')
-        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06)
+        cls.n1 = _result('N1-sim')
+        cls.n2 = _result('N2-sim')
+        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06, cls.n1, cls.n2)
 
 
 class CommonTests(JourneyBase):
@@ -74,7 +77,7 @@ class CommonTests(JourneyBase):
                 self.assertIs(result['qualification_claimed'], False)
                 self.assertEqual(result['seed'], 'CAPITAL-SIM-JOURNEYS-V1')
                 self.assertEqual(result['step_count'], len(result['steps']))
-                self.assertGreater(result['step_count'], 20)
+                self.assertGreater(result['step_count'], 20 if result['journey'].startswith('T') else 14)
                 self.assertEqual([step['n'] for step in result['steps']], list(range(1, result['step_count'] + 1)))
                 for step in result['steps']:
                     self.assertEqual(step['status'], step['expect'])
@@ -102,7 +105,10 @@ class CommonTests(JourneyBase):
         for result in self.all:
             step = _step(result, 'no operation id was posted twice')
             self.assertIs(step['status'], True)
-            self.assertGreater(step['facts']['posted'], 5)
+            if result['journey'] == 'N2-sim':
+                self.assertEqual(step['facts']['posted'], 5)
+            else:
+                self.assertGreater(step['facts']['posted'], 5)
 
 
 class T03Tests(JourneyBase):
@@ -329,6 +335,62 @@ class T06Tests(JourneyBase):
         client.fence.guard()
 
 
+class NamedJourneyTests(JourneyBase):
+    def test_n1_never_invokes_default_and_pins_margin_order(self):
+        original = journeys.PinnedFsmProducer.apply
+        operations = []
+
+        def tracked(producer, op, *args, **kwargs):
+            operations.append(op)
+            self.assertNotEqual(op, 'default')
+            return original(producer, op, *args, **kwargs)
+
+        with patch.object(journeys.PinnedFsmProducer, 'apply', tracked):
+            result = journeys.run_n1()
+        self.assertEqual(operations, ['offer', 'approve', 'bind_settlement', 'draw'])
+        self.assertEqual(result, self.n1)
+        events = _step(result, 'margin journal sequence')['facts']['events']
+        self.assertEqual([event['record'] for event in events],
+                         ['MARGIN_CALL', 'MARGIN_ACCELERATION', 'DEFAULT_ELIGIBLE_PROPOSAL'])
+        self.assertEqual(_step(result, 'inclusive cure deadline')['status'], 'CALLED')
+        self.assertEqual(_step(result, 'uncured expiry')['status'], 'ACCELERATED')
+        # Main adopted acceleration rebasing in CAPITAL_DEFAULT_RECOVERY.md §4.10.
+        self.assertIs(_step(result, 'uncured expiry')['facts']['interest_rebased'], True)
+        self.assertEqual(_step(result, 'case remains DRAWN')['status'], ['DRAWN', 4])
+        self.assertEqual(_step(result, 'human-facing')['status'],
+                         [1, 'DEFAULT_ELIGIBLE', 'HUMAN_OPERATOR_DECISION', False, True])
+
+    def test_n2_citation_and_offline_evidence_chain(self):
+        self.assertEqual(_step(self.n2, 'organizer command cites')['status'],
+                         [200, 'ACCEPTED', 'organizer', 'sim-n2-proposal', False, False])
+        self.assertEqual(_step(self.n2, 'memo stays')['status'], [200, True, 'HUMAN_PENDING', False])
+        self.assertEqual(_step(self.n2, 'simulated repayment')['status'], 10_000)
+        self.assertEqual(_step(self.n2, 'correlates receipt')['status'], [200, True, True])
+        self.assertEqual(_step(self.n2, 'offline manifest')['status'], [0, True, 'MATCHED', 'NOT_BOUND'])
+        self.assertEqual(_step(self.n2, 'offline workspace')['status'], [0, True, 'MATCHED', False, False])
+        self.assertEqual(_step(self.n2, 'tampered citation')['status'], [True, False])
+
+    def test_new_pins_missing_and_tampered_fail_without_writing(self):
+        for result in (self.n1, self.n2):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = journeys.golden_path(tmp, result['journey'])
+                with self.assertRaises(journeys.JourneyError):
+                    journeys.check_or_update(result, path, False)
+                self.assertFalse(path.exists())
+                journeys.check_or_update(result, path, True)
+                data = json.loads(path.read_text())
+                data['steps'][0]['status'] = 'TAMPERED'
+                path.write_text(json.dumps(data))
+                before = path.read_bytes()
+                self.assertTrue(journeys.check_or_update(result, path, False))
+                self.assertEqual(path.read_bytes(), before)
+
+    def test_check_and_update_are_mutually_exclusive(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
+            journeys.main(['--check', '--update-golden'])
+        self.assertEqual(raised.exception.code, 2)
+
+
 class GoldenTests(JourneyBase):
     def test_check_update_and_tamper_cycle(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -396,6 +458,9 @@ def _summary_script(mutate=None, exit_code=0):
              'funds_executed': False, 'integrated': False},
         ],
     }
+    summary['journeys'].extend(
+        {'id': name, 'label': 'SIMULATED', 'steps': 16, 'digest': 'e' * 64,
+         'funds_executed': False, 'integrated': False} for name in ('N1-sim', 'N2-sim'))
     if mutate:
         mutate(summary)
     return ('import sys\nprint("SIM_JOURNEYS " + ' + repr(json.dumps(summary)) + ')\n'
@@ -424,9 +489,9 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(code, 0, evidence['stages'][-1])
         body = next(item for item in evidence['stages'] if item['id'] == 'integrated-journeys')
         self.assertEqual(body['status'], 'passed')
-        self.assertEqual(body['test_count'], {'ran': 4, 'passed': 4, 'failed': 0})
+        self.assertEqual(body['test_count'], {'ran': 6, 'passed': 6, 'failed': 0})
         items = {item['id']: item for item in body['journeys']['items']}
-        self.assertEqual(sorted(items), ['T03-sim', 'T04-sim', 'T05-sim', 'T06-sim'])
+        self.assertEqual(sorted(items), sorted(journeys.JOURNEY_IDS))
         for journey_id, item in items.items():
             golden = json.loads((GOLDEN / journeys.GOLDEN_FILES[journey_id]).read_text(encoding='utf-8'))
             self.assertEqual(item['label'], 'SIMULATED')
@@ -464,6 +529,11 @@ class EvidenceTests(unittest.TestCase):
             'zero steps': lambda s: s['journeys'][0].update(steps=0),
             'bool steps': lambda s: s['journeys'][0].update(steps=True),
             'short digest': lambda s: s['journeys'][0].update(digest='abc'),
+            'nonhex digest': lambda s: s['journeys'][0].update(digest='z' * 64),
+            'duplicate journey': lambda s: s['journeys'].__setitem__(-1, dict(s['journeys'][0])),
+            'malformed journeys': lambda s: s.update(journeys=42),
+            'malformed item': lambda s: s['journeys'].__setitem__(0, None),
+            'missing id': lambda s: s['journeys'][0].pop('id'),
         }
         for name, mutate in cases.items():
             with self.subTest(name):
