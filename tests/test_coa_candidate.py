@@ -206,7 +206,9 @@ class V1UnchangedTests(unittest.TestCase):
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
-            guarded = self._git('diff', '--name-only', base, '--',
+            # New decision notes (status A) are allowed: an added note never rewrites a
+            # reviewed one. Modified, deleted or renamed guarded files still fail.
+            guarded = self._git('diff', '--name-only', '--diff-filter=MDRTCUXB', base, '--',
                                 *[name for name in self.GUARDED if name not in
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')

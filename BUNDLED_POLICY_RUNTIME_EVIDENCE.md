@@ -638,3 +638,84 @@ No abort, commit, push, rebase, reset, external post, `.aiops/` edit or
 Protocol/Commerce modification was made. No consequential product decision was needed.
 
 STATUS: READY
+
+
+## Supervisor conflict-fix round 1 — incoming main 97fb680 (2026-10-29)
+
+Resolved the supervisor-started merge of incoming main
+`97fb68039d0108a7413770ff1534c612788ac07f` into feature parent
+`436eb4c5ac3d974ef53cceb8c99d49b5a7b57ecb`. The bundled policy runtime and
+main's contract invariant claims, compatibility preflight, risk what-if,
+case dossiers and extended simulation journeys all survive. No additional
+runtime implementation, test assertion, CI or policy change was required.
+
+Files resolved (13):
+
+- `README.md`: retains main's contract-invariant documentation and the current bundled decision-index behavior.
+- `docs/OPERATOR_HANDBOOK_KO.md`: retains the complete artifact-docs-bundling, advance-case-dossier and contract-invariants-claims sections. Main's authorization additions also survive.
+- `docs/VALIDATION.md`: retains both parent histories verbatim and in order.
+- `tests/vectors/finance_vectors.json`: regenerated with the unchanged generator; only `facade_read_model` differs from either parent. All other groups and top-level metadata are preserved.
+- `tests/vectors/pack/clean.json`
+- `tests/vectors/pack/content-digest.json`
+- `tests/vectors/pack/section-auth_matrix.json`
+- `tests/vectors/pack/section-decisions.json`
+- `tests/vectors/pack/section-export_manifest.json`
+- `tests/vectors/pack/section-reconciliation.json`
+- `tests/vectors/pack/section-workspace_audit.json`
+- `tests/vectors/pack/truncated.json`
+- `tests/vectors/pack/volatile.json`
+
+The nine pack fixtures were regenerated with the unchanged generator. Relative
+to the feature parent, only the clean pack's auth_matrix section changes;
+relative to incoming main, only its decisions section changes. The intentional
+tamper variants retain their generator-defined mutations.
+
+Combination fix: regenerated all six `tests/vectors/dossiers/sim-*.json`
+fixtures. Their only semantic additions are the underwriting `notes_source`
+and `note_sha256` fields; each enclosing `dossier_digest` changes accordingly.
+The initial dossier check detected this drift; the regenerated fixtures pass.
+Risk scenario vectors remain byte-identical to incoming main.
+
+Removed incoming main's obsolete root `DECISION_REQUIRED.md`: it requested
+integration with moved main, which this supervisor-authorized merge completes.
+The existing guarded baseline test now passes without edits to the guard.
+No consequential product decision remains for this node.
+
+The reviewed builder, resources, decision index, terms/policy loaders,
+packaged smoke and release tests match the feature parent byte-for-byte.
+Main's new runtime modules, their tests, fixture generators and docs registry
+match incoming main byte-for-byte. The five vendor reference files and
+manifest, legacy `capital/export.py` and `tests/golden/demo.json` match both
+parents. All five vendor SHA256 locks match. `.aiops/`, CI and upstream
+Protocol/Commerce references were not edited.
+
+All measurements below are local working-tree evidence under Python 3.13.5
+and Node 20.19.2. Journeys are SIMULATED/provisional, with loopback-only
+servers and temporary workspaces. No real money, provider calls, credentials,
+signing, publication, deployment or upstream adoption is claimed.
+
+| Verification | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,259 tests passed in 277.775 s, including legacy goldens/export guards, main's added features and bundled missing/malformed/override regressions. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 Chromium tests passed in 1.8 min with the unchanged configuration in an isolated loopback network namespace. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `scripts/{auth_matrix,decision_bindings,finance_vectors,pack_vectors,closeout_digest,facts_vectors,http_hostile,fold_fuzz,dossier_vectors,risk_scenario_vectors,compat_preflight,contract_invariants_check}.py --check`; `python3 scripts/decision_ledger.py` | All final checks exit 0. Finance: 101,048 bytes; pack: nine files; dossiers: six files; facts: 133 files; hostile HTTP: 76 files; fuzz: 16 seeds / 736 commands. Invariant claims: 6/6, twelve seed digests match, loopback executed. Optional Protocol citation verification is explicitly SKIPPED without a supplied checkout; this is not an upstream citation pass. |
+| Two `scripts/build_release.py --out` builds plus `cmp` | Exit 0; byte-identical artifacts in `build/bundled-merge-20261029/dist/` and `dist2/`. |
+| `python3 scripts/smoke_release.py build/bundled-merge-20261029/dist/capital-0.2.0.pyz` | Exit 0; all eleven checks pass, including actual note-derived accrual and identical overlay state/provenance after temporary workspace restart outside checkout. |
+| Independent archive audit | Exactly 82 members, including exactly 18 authorized additional inputs; all manifest hashes and raw input bytes match. Unsigned/unpublished labels preserved. |
+| Preservation and merge hygiene | Both features preserved; vendor/export/golden bytes unchanged; no conflict markers or unmerged entries; whitespace checks against both parents pass. |
+
+Merged artifact SHA256:
+`e5c6b8e1c6dfd1c02310078b0732f5a84f4b87ab3514be604119ddef98f807e5`.
+The artifact remains `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`.
+Logs and artifacts are local ignored files under `build/bundled-merge-20261029/`
+(`unit.log`, `browser.log`, `checks.log`, `final-static.log`, `smoke.log`,
+`archive-audit.log`, `preservation.log`).
+
+All resolutions and combination fixes are staged. The merge remains
+uncommitted for the supervisor. No merge abort, commit, push, rebase, reset
+or external post was performed.
+
+STATUS: READY

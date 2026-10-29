@@ -57,6 +57,7 @@ DEFAULT_HANDBOOK = ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md'
 ADVANCE = 'sim-mtx'
 OFFER_OPERATION = 'sim-mtx-offer'
 GET_PROBES = {
+    '/api/cases/': [f'/api/cases/{ADVANCE}/dossier?instance_id={INSTANCE}'],
     '/api/state': ['/api/state'],
     '/api/permissions': ['/api/permissions'],
     '/api/scenarios': ['/api/scenarios', '/api/scenarios/full-after'],
@@ -77,6 +78,7 @@ GET_PROBES = {
     '/api/portfolio/snapshot': [f'/api/portfolio/snapshot?instance_id={INSTANCE}'],
     '/api/risk': ['/api/risk'],
     '/api/risk/covenants': ['/api/risk/covenants'],
+    '/api/risk/scenarios': ['/api/risk/scenarios', '/api/risk/scenarios/largest-advance-default'],
     '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],
     '/api/preview/': [f'/api/preview/{ADVANCE}?instance_id={INSTANCE}'],
     '/api/underwrite/': [f'/api/underwrite/{ADVANCE}?instance_id={INSTANCE}'],

@@ -64,6 +64,7 @@ _STAGE_ANCHOR = 'stage id'
 # one prose sentence that names them — the generated matrix repeats those
 # names and is stripped before the search.
 ROUTE_NEEDLES = {
+    ('GET', '/api/cases/'): ('`GET /api/cases/{advance_id}/dossier',),
     ('GET', '/api/state'): ('- `GET /api/state`:',),
     ('GET', '/api/permissions'): ('- `GET /api/permissions`:',),
     ('GET', '/api/scenarios'): ('`GET /api/scenarios` and `/api/scenarios/{id}`',),
@@ -83,6 +84,7 @@ ROUTE_NEEDLES = {
     ('GET', '/api/portfolio/snapshot'): ('- `GET /api/portfolio/snapshot`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
     ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
+    ('GET', '/api/risk/scenarios'): ('`GET /api/risk/scenarios/{id}`',),
     ('GET', '/api/policy'): (
         '`GET /api/policy` and `GET /api/policy/simulation`',
         '`GET /api/policy/shadow`',),
@@ -113,6 +115,7 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
@@ -125,8 +128,12 @@ VECTOR_NEEDLES = {
         'tests/vectors/closeout_digest.json', 'scripts/closeout_digest.py --check'),
     'gate_faults.json': (
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
+    'compat/': (
+        'tests/vectors/compat/', 'scripts/compat_preflight.py --check'),
     'forecast_vectors.json': (
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
+    'risk_scenarios.json': (
+        'tests/vectors/risk_scenarios.json', 'scripts/risk_scenario_vectors.py --check'),
     'workspace_crash.json': (
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'fold_fuzz.json': (
@@ -136,6 +143,12 @@ VECTOR_NEEDLES = {
     'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),
 }
 
+
+JOURNEY_NEEDLES = {
+    'journey_n1_sim.json': ('N1-sim', 'tests/golden/journey_n1_sim.json'),
+    'journey_n2_sim.json': ('N2-sim', 'tests/golden/journey_n2_sim.json'),
+}
+JOURNEY_COMMAND = 'python3 scripts/sim_journeys.py --check'
 
 # Claim artifacts live outside tests/vectors/.
 CLAIM_NEEDLES = {
@@ -211,7 +224,8 @@ def _read_stripped(path, label, findings):
 
 
 def find_drift(integration=DEFAULT_INTEGRATION, readme=DEFAULT_README,
-               handbook=None, acceptance=None, vectors_dir=DEFAULT_VECTORS):
+               handbook=None, acceptance=None, vectors_dir=DEFAULT_VECTORS,
+               golden_dir=ROOT / 'tests' / 'golden'):
     """Every drift finding, plus counts for the ok line. Registry errors raise."""
     handbook = STAGE_DOCS['docs/OPERATOR_HANDBOOK_KO.md'] if handbook is None else handbook
     acceptance = STAGE_DOCS['docs/ACCEPTANCE_KO.md'] if acceptance is None else acceptance
@@ -253,6 +267,14 @@ def find_drift(integration=DEFAULT_INTEGRATION, readme=DEFAULT_README,
         for needle in VECTOR_NEEDLES[key]:
             if needle not in docs['README.md']:
                 findings.append(f'README.md drops tests/vectors/{key}: needle {needle!r} is absent')
+
+    for artifact, needles in JOURNEY_NEEDLES.items():
+        if not (Path(golden_dir) / artifact).is_file():
+            findings.append(f'journey artifact missing: tests/golden/{artifact}')
+        for label in ('README.md', 'docs/ACCEPTANCE_KO.md'):
+            for needle in (*needles, JOURNEY_COMMAND):
+                if needle not in docs[label]:
+                    findings.append(f'{label} drops journey needle {needle!r}')
 
     for artifact, needles in CLAIM_NEEDLES.items():
         if not (ROOT / artifact).is_file():

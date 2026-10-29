@@ -204,6 +204,17 @@
     },
     {
       "method": "GET",
+      "route": "/api/risk/scenarios",
+      "children": true,
+      "handler": "_get_risk_scenarios",
+      "permission": "projection:read",
+      "probes": [
+        "/api/risk/scenarios",
+        "/api/risk/scenarios/largest-advance-default"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/policy",
       "children": true,
       "handler": "_get_policy",
@@ -232,6 +243,16 @@
       "permission": "projection:read",
       "probes": [
         "/api/underwrite/sim-mtx?instance_id=@instance"
+      ]
+    },
+    {
+      "method": "GET",
+      "route": "/api/cases/",
+      "children": true,
+      "handler": "_get_cases",
+      "permission": "projection:read",
+      "probes": [
+        "/api/cases/sim-mtx/dossier?instance_id=@instance"
       ]
     },
     {
@@ -1103,6 +1124,57 @@
     },
     {
       "method": "GET",
+      "route": "/api/risk/scenarios",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/scenarios",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/scenarios",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/scenarios",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/scenarios",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
       "route": "/api/policy",
       "caller": "organizer",
       "outcome": "ALLOW",
@@ -1248,6 +1320,57 @@
     {
       "method": "GET",
       "route": "/api/underwrite/",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/cases/",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/cases/",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/cases/",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/cases/",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/cases/",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {
