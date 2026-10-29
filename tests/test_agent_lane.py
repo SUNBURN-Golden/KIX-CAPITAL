@@ -34,6 +34,8 @@ READS = (
     '/api/projection',
     '/api/export',
     '/api/export/manifest',
+    '/api/export/facts',
+    '/api/export/facts/schema',
     '/api/reconciliation',
     '/api/statement',
     '/api/metrics',
@@ -238,6 +240,8 @@ class AgentLaneTests(unittest.TestCase):
         receipt = self.service.execute(body)
         self.assertEqual(receipt['outcome'], 'ACCEPTED')
         self.assertEqual(receipt['proposal_id'], proposal_id)
+        self.assertIs(receipt['effects_executed'], False)
+        self.assertIs(receipt['funds_executed'], False)
         self.assertEqual(receipt['role'], 'organizer')
         stored = self.service.receipts['sim-cite-op']
         identity = {
@@ -245,6 +249,10 @@ class AgentLaneTests(unittest.TestCase):
             'advance_id': body['advance_id'], 'args': body['args'],
         }
         self.assertEqual(stored['fingerprint'], digest(identity))
+        self.assertEqual(stored['receipt'], receipt)
+        uncited = dict(body, operation_id='sim-uncited-op', advance_id='sim-uncited')
+        del uncited['proposal_id']
+        self.assertNotIn('effects_executed', self.service.execute(uncited))
         self.assertNotEqual(stored['fingerprint'], digest({**identity, 'proposal_id': proposal_id}))
         self.assertNotIn('proposal_id', identity)
         row = self.lane.proposals[proposal_id]
