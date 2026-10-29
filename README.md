@@ -226,7 +226,6 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
 
-
 ### Cursor-paginated facts (SIMULATED)
 
 `GET /api/export/facts?instance_id=<current>&limit=100` requires `export:read`.
@@ -251,3 +250,19 @@ with `stage7_authenticated_export: false` and a non-claim of
 with all hashes rebuilt cannot be detected. No source authority, signing, import,
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
+
+## Offline SQLite projection cross-check
+
+```sh
+python3 -m capital.sql_audit tests/vectors/pack/clean.json
+python3 -m capital.sql_audit /path/to/evidence-pack.json
+python3 -m unittest discover -s tests -p test_sql_audit.py -v
+```
+
+`capital/sql_audit.py` verifies `KIX_CAPITAL_EVIDENCE_PACK_V1` and its declared fixture-row digest before loading embedded journal and fixture facts into stdlib SQLite `:memory:` with fixed schemas and parameterized inserts. It supports complete embedded V2/V3 manifests with `SIMULATION_FIXED_V1`, the pinned Protocol source and the exact declared KRW AssetSpec. V3 overlay hashes are verified; overlay accounting is `NOT_CHECKED`. No service restore, keys, server, input-file writes, database files or output-file options are involved.
+
+SQL separately recomputes drawn/repaid/outstanding principal, claim/payee face and refund conservation, exact transaction headers (including empty lifecycle entries), V1 posting lines, account balances and debit/credit totals. V1 postings cover `sim-committed`, `sim-pending`, `sim-refund`; statement exposure covers all advances and settlement/refund covers all embedded fixtures. Approved/reserved statement categories are outside the checked scope. The seeded book gives principal 65,000 / 20,000 / 45,000 and debit = credit = 385,000; an empty journal gives principal zero and debit = credit = 300,000, all **SIMULATED** fixture atoms.
+
+Input JSON rejects duplicate keys, invalid UTF-8, BOM/NUL, non-finite numbers and fraction/exponent tokens before float conversion. Checked monetary facts require exact integers (no booleans or numeric strings) in 0..10^12; offers, repayments, claim gross and payee faces must be positive. Aggregates use signed int64 with a conservative preflight budget (documented in [INTEGRATION.md](docs/INTEGRATION.md)); oversized arithmetic fails before SQLite opens. The deterministic JSON report includes input/pack/manifest/section digests and ordered `MATCHED` / `MISMATCH` / `NOT_CHECKED` checks. Failed audits omit aggregate results. Exit 0 means all required checks matched, 1 means input/audit failure, 2 means argument misuse.
+
+This is **LOCAL_ONLY / SYNTHETIC_UNADOPTED**, with `funds_executed:false`. Hash-consistent arithmetic can still describe fabricated facts. Source authentication, completeness, stage7 authenticated export and independent external assurance remain **NOT_BOUND**. This does not adopt an accounting policy, tax treatment, COA payment/write-off postings or a storage backend. Semantic mutants are generated in `tests/test_sql_audit.py`; no vectors or goldens are rewritten. `python3 scripts/docs_surface.py --check` continues to guard the documented surfaces.

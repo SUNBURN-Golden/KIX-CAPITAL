@@ -2771,6 +2771,85 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
+## sql-projection-crosscheck
+
+Builder verification on 2026-10-26, branch `agent/capital-sql-projection-crosscheck`, after the supervisor's main merge at `4de0aca`. This section supersedes the earlier interrupted-attempt record. The inherited baseline differences are resolved; the obsolete root `DECISION_REQUIRED.md` has been removed. No product decision is needed for this disposable in-memory SQLite check.
+
+The design matches the repository: V1 posting/read-model claims are the three `sim-*` claims, while statement settlement/refund checks cover all embedded fixtures. The stdlib auditor verifies a pack before opening SQLite `:memory:`, uses fixed schemas and parameterized inserts, independently derives principal, claims, headers, lines and accounts in SQL, and never calls projection/reconciliation builders or service restore. Reports remain `SIMULATED / LOCAL_ONLY / SYNTHETIC_UNADOPTED`, with `funds_executed:false`. Overlay accounting is `NOT_CHECKED`; source authentication, completeness, stage7 and external assurance remain `NOT_BOUND`.
+
+Review found and fixed one additional scope edge case: a legitimate journal transaction named `evidence:<non-posted-fixture>` could accidentally join that fixture's payee rows. The regression first failed at `posting_lines`; requiring an `EVIDENCE` source header fixes it. The design's fixture-row digest, strict statement-mode labels and section non-execution checks are retained. There are no new vectors, dependencies, financial terms, storage backends or upstream changes.
+
+Commands actually run in this builder turn are recorded below. Logs are in `/tmp/sql-crosscheck-*.log`; the final clean JSON report is `/tmp/sql-crosscheck-clean-final.json`. The acceptance ladder executes the unchanged workflow-equivalent unit, vendor, browser, packaging, claim and journey commands and writes untracked `build/acceptance-evidence.json`.
+
+| Command | Actual result |
+|---|---|
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0, repeated after the fix. SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
+| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Initial inherited implementation: 35 passed (5.671s). Final corrected source: 36 passed (5.370s), exit 0. Covers empty book, rehashed semantic mutants, exact bounds, identity/order, CLI exits, independence and non-mutation. |
+| `python3 -m unittest tests.test_sql_audit.SqlAuditTests.test_journal_identity_cannot_expand_evidence_posting_scope -v` | Before the SQL fix: exit 1, expected regression failure at `posting_lines` (also `account_totals`). Included in the passing final narrow suite. |
+| `python3 scripts/docs_surface.py --check` | Exit 0, repeated; 31 routes, 41 artifacts, 9 stages. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match. |
+| `python3 scripts/acceptance.py` | Initial run: exit 1. Unit stage passed all 1,159 tests (284.495s) and decision bindings passed; storage, vendor, all 311 claim-conformance rows, JS syntax, packaging, seeded demo and simulated journeys passed. Browser startup failed with `Address already in use` on the host's default ports. Evidence preserved in `/tmp/sql-crosscheck-acceptance-initial.json`. This run started before the new regression was added. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 1. The unit command reached the storage chaos sequence test without assertion failures, then the wrapper's 300s unit budget expired (exit 124). All other 8 stages passed, including 69 Chromium tests, 7 vendor tests and 311 claim-conformance rows. Evidence preserved in `/tmp/sql-crosscheck-acceptance-isolated.json`. The unit count parsed from partial subprocess output is not a complete-suite result. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 /tmp/sql-crosscheck-acceptance-local.py'` | Exit 0; all 9 stages passed, `build/acceptance-evidence.json` has `ok:true`. Unit stage uses a 600s local budget, with every original command/test retained; details below. |
+| `python3 -m unittest discover -s tests -v` (final ladder unit command) | Exit 0; **1,160 passed**, 479.225s, including all 36 SQL-auditor tests and the unchanged V1/golden byte guard. Decision bindings also passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` (ladder command) | Exit 0; **7 passed**. |
+| `npm run test:browser` (final isolated ladder command) | Exit 0; **69 passed**, 2.3m, using the unchanged Chromium configuration. |
+| `python3 -m compileall -q capital` | Exit 0, repeated after the SQL fix. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/sql-crosscheck-release1` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/sql-crosscheck-release2` | Exit 0. |
+| `cmp /tmp/sql-crosscheck-release1/capital-*.pyz /tmp/sql-crosscheck-release2/capital-*.pyz` | Exit 0; identical SHA256 `3a2fa41fc02347f3d434ddc57c8c909aedaf9bce367f4f1cb8a63f78a3f7bf76`. |
+| `python3 scripts/smoke_release.py /tmp/sql-crosscheck-release1/capital-*.pyz` | Exit 0; all 8 checks pass. |
+| Inline Python SHA256 and `git show` protected-file checks | Exit 0; 59 protected files unchanged from HEAD; `capital/export.py` matches `origin/main`; all 5 vendor SHA256 pins match. Includes vendor manifest, projection/reconciliation and existing vectors/goldens. |
+| Inline Python loopback-port probe | Exit 0; unrelated services occupy 8765/8766. They were left untouched. |
+| Inline Python process cleanup probe | Initial overly broad substring probe matched its own shell command and exited 1; corrected exact argv matching exited 0. No Capital, fake-gate or packaged server remains in this worktree. |
+| `git diff --check` | Exit 0, repeated after final documentation changes. |
+
+The final local driver `/tmp/sql-crosscheck-acceptance-local.py` imports `scripts.acceptance`, calls `build_plan(root)`, sets only the unit stage's `timeout` to 600 seconds, then calls `execute_plan(plan, root=root, evidence_path=root / 'build/acceptance-evidence.json')`. Every stage and command remains present, with unchanged tests and assertions. It runs inside an isolated user/network namespace so all application servers can use the existing loopback ports. This is a local execution-budget adjustment; the repository's 300-second acceptance budget and CI files remain unchanged. Local tools are Python 3.13.5 / Node v20.19.2 / npm 11.21.1 / Playwright 1.58.2, versus the workflow's Python 3.12 / Node 24.
+
+Final local stage results: unit **1,160/1,160**, storage-conformance **19/19**, pinned-vendor **7/7**, upstream-claims **311/311**, JS syntax passed, browser **69/69**, packaged smoke **8/8**, seeded golden **1/1**, and integrated-journeys **4/4 SIMULATED**. The default wrapper's timeout result is retained above; no claim is made that its unchanged 300-second budget passed locally. All requested test commands completed successfully under the documented local budget. This provides no performance, durability, production-accounting or external-assurance qualification.
+
+All jobs used foreground tool sessions. No git commit, push, PR, issue or comment was made; no `.aiops/`, CI, Protocol, Commerce or protected file was changed. No server started by this verification remains running. There is no unresolved product decision.
+
+## sql-projection-crosscheck — conflict-fix round 1 (2026-10-27)
+
+Verified the combined validation history against feature parent `6b24d06` and incoming main `b3b56fe`: every original line from both parents survives in order, with additions only. README also retains both parents with additions only. All 84 incoming main paths other than the combined README and validation log match main byte-for-byte, including its hostile-HTTP implementation, tests, 76 recipes and acceptance timeout. The SQL auditor and its tests match the feature parent byte-for-byte. No runtime, test, vector or CI fix was needed. The pre-existing deletion of the obsolete root `DECISION_REQUIRED.md` is retained: its old baseline-integration blocker is resolved, as confirmed by the passing unchanged legacy byte guard.
+
+All results below are local SIMULATED verification, with no external assurance or stage7 claim. SQL reports remain `LOCAL_ONLY / SYNTHETIC_UNADOPTED`, `funds_executed:false`. Logs and the CLI report are under ignored `build/sql-projection-crosscheck-round1/`.
+
+| Verification | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,169 passed** in 293.821s, including all 36 SQL-auditor tests, hostile-HTTP tests, semantic mutants, empty book, storage replay and legacy byte guards. Log: `unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **69 Chromium tests passed** in 2.2m. Unchanged browser configuration, isolated loopback network namespace. Log: `browser.log`. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0; all 17 checks matched. SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. Report: `sql-clean.json`. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, nine stages. |
+| `python3 scripts/http_hostile.py --check`; `python3 scripts/pack_vectors.py --check`; `python3 scripts/finance_vectors.py --check` | All exit 0; 76 HTTP files, nine pack files and 97,980 finance-vector bytes match. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only, pending anchors are not implementation. |
+| Protected-file integrity | All five vendored files match manifest SHA256 locks; those files, `manifest.json` and `capital/export.py` are byte-identical to both merge parents. `.aiops/` is unchanged. |
+| Merge hygiene | Both histories preserved; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. Merge left uncommitted for the supervisor. |
+
+No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce change or consequential product decision was made.
+
+## sql-projection-crosscheck — PR fix round 3 (2026-10-28)
+
+Resolved the blocking review finding by retaining the interrupted attempt's working-tree deletion of the obsolete root `DECISION_REQUIRED.md`. The deletion is present in `git diff HEAD`; the earlier statements that the blocker was removed now agree with the working tree. The unchanged `test_v1_and_golden_files_are_untouched` passes on this checkout, confirming that the old baseline-integration blocker no longer applies. No product decision is needed.
+
+All results below are local SIMULATED verification. The SQL report remains `LOCAL_ONLY / SYNTHETIC_UNADOPTED`, with `funds_executed:false`; stage7 and independent external assurance remain `NOT_BOUND`. Logs and the clean-pack report are in `/tmp/sql-projection-round3.q2ocMd/`.
+
+| Verification | Actual result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,169 passed** in 246.643s (`unit.log`), including all 36 SQL-auditor tests and the unchanged legacy byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed** (`vendor.log`). |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **69 Chromium tests passed** in 1.9m (`browser.log`). The unchanged browser configuration used the installed Chromium headless shell in an isolated loopback network namespace because host ports were occupied. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0; all **17 checks matched** (`sql-clean.json`). SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/pack_vectors.py --check` | Both exit 0; 31 routes, 117 artifacts, nine stages; all nine pack files match. |
+| Protected-file integrity | All five vendor SHA256 locks match. The five vendored references, `manifest.json` and `capital/export.py` are byte-identical to both HEAD and `origin/main`; `.aiops/` is unchanged. |
+
+Final `python3 scripts/docs_surface.py --check` and `git diff --check` pass after this record was updated. This round changes only the obsolete blocker deletion and this validation record. No runtime, tests, CI, dependencies, financial terms, Protocol or Commerce files were changed. No commit, push or external post was made.
+
 ## bundled-policy-runtime — conflict-fix round 2 (2026-10-27)
 
 The merge preserves the bundled policy runtime and main's hostile-HTTP corpus,
@@ -3482,6 +3561,61 @@ baseline blocker is resolved and the unmodified guard passes. No consequential
 product decision was needed. No abort, commit, push, rebase, reset, external post
 or provider call was performed.
 
+## sql-projection-crosscheck — supervised conflict-fix round 1 (2026-10-30)
+
+Resolved the supervisor-started merge of incoming main `59900e9` into node HEAD
+`a7e86dc`, preserving both sides. Four paths conflicted:
+
+- `DECISION_REQUIRED.md` (both added): this node's stale supervisor-baseline
+  blocker (`d5cb904`) and main's advance-case-dossier blocker (`ce56297`, PR
+  #141) request the same remedy — supervisor integration onto current main.
+  This merge supplies it; the unmodified
+  `test_coa_candidate.py::V1UnchangedTests::test_v1_and_golden_files_are_untouched`
+  byte guard passes on the merged tree. Resolved as deletion, matching the
+  documented convention for this blocker class (recorded on main as "resolved
+  and removed"; the dossier node's own worktree retains the same deletion).
+  No new consequential product decision exists, so no replacement file was
+  written.
+- `README.md`: main's `### Cursor-paginated facts (SIMULATED)` subsection
+  stays under `## 검증`; this node's top-level `## Offline SQLite projection
+  cross-check` follows it. Ordering preserves each side's heading semantics;
+  both bodies are verbatim.
+- `docs/INTEGRATION.md`: main's `### Typed facts candidate` subsection stays
+  under `## Local authorization boundary v1`; this node's `## Offline SQL
+  projection cross-check` follows. Both bodies verbatim.
+- `docs/VALIDATION.md`: this node's builder evidence, conflict-fix round-1 and
+  PR-fix-round-3 sections first, then incoming main's appended histories
+  verbatim and in order, then this section.
+
+No code, test, vector, CI or fixture repair was needed. Main's regenerated
+evidence-pack vectors are consumed by the auditor through computed digests, not
+pins; the audit of the merged `tests/vectors/pack/clean.json` reports all 17
+checks `MATCHED` with the unchanged SIMULATED seeded book (drawn 65,000; repaid
+20,000; outstanding 45,000; debit = credit = 385,000). The only removals
+relative to either parent are duplicate blank lines at the doc junctions and
+the resolved blocker file; every other line from both parents survives.
+
+All results below are local SIMULATED verification. The SQL report remains
+`LOCAL_ONLY / SYNTHETIC_UNADOPTED`, `funds_executed:false`; stage7 and
+independent external assurance remain `NOT_BOUND`. Logs are in ignored
+`build/sql-projection-crosscheck-supervised-round1/`.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,283 passed** in 367.358 s (`unit.log`), including all 36 SQL-auditor tests, the unchanged legacy byte guard and all of main's suites. |
+| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Exit 0; 36 passed on the merged tree. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0; all 17 checks `MATCHED` on main's regenerated pack. SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | First run: 73 passed, 3 failed (`browser.log`) — REJECTED receipts from load-starved loopback servers plus one closed-page error under heavy host load, not assertion diffs. Immediate `npx playwright test --last-failed` in the same namespace: **all 3 passed in 7.3 s**. All 76 browser tests have passing results; this is not a claim of one uninterrupted green run. Host ports 8765/8766 were occupied by foreign processes and left untouched; the checked-in browser configuration is unchanged. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages, before and after this record. |
+| `python3 scripts/{pack_vectors,auth_matrix,dossier_vectors,compat_preflight,finance_vectors,facts_vectors,risk_scenario_vectors,sim_journeys,closeout_digest,manifest_vectors,workspace_vectors,forecast_vectors,http_hostile,fold_fuzz,decision_bindings,not_bound_checklist}.py --check` | All exit 0 on the merged tree. |
+| Protected paths | All five vendor SHA256 locks match protocol commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`; the five references, `manifest.json`, `capital/export.py` and `.aiops/` are byte-identical to both merge parents. No Protocol/Commerce or CI change. |
+| Merge hygiene | Zero unmerged index entries; no line-start conflict markers; `git diff --check` clean. `git diff --cached --check` flags only main's intentional `tests/vectors/facts/corrupt/whitespace/page-0000.json` negative fixture, preserved byte-for-byte. Resolved docs drop no substantive line from either parent. Merge left uncommitted for the supervisor. |
+
+No abort, commit, push, rebase, reset, external post, Protocol/Commerce change
+or consequential product decision was made.
+
 
 ## bundled-policy-runtime — supervisor conflict-fix round 1 (2026-10-29)
 
@@ -3508,3 +3642,55 @@ SHA256 and local log paths are recorded in the 2026-10-29 section of
 rehearsals; artifacts remain unsigned and unpublished. Optional Protocol citation
 verification without a supplied checkout remains SKIPPED, not a pass.
 All resolutions are staged; the merge is left uncommitted for the supervisor.
+
+
+## sql-projection-crosscheck — supervised conflict-fix round 2 (2026-10-30)
+
+Resolved the supervisor-started merge of incoming main
+`95815c45cfcfe447ae2c15b62dbb4545d5a80cc4` into node HEAD
+`d25d3b403c606d17089b9af1eedd4cd4494c7bb9`. Both conflicts are resolved:
+
+- `docs/VALIDATION.md`: both append conflicts retain both sides in full, with
+  the SQL node records followed by main's bundled-policy records. Every line
+  from both complete parent histories survives in order, followed by this record.
+- `DECISION_REQUIRED.md`: retain main's deletion of the obsolete supervisor
+  baseline blocker. The requested integration has occurred and the existing
+  main V1/golden byte guard passes. No consequential product decision is needed.
+
+The SQL implementation and its 36 tests remain byte-identical to the node
+parent. All 51 incoming main paths outside the combined prose documents and
+resolved blocker are preserved exactly, including bundled policy runtime,
+provenance consumers, release packaging, tests and regenerated fixtures.
+The SQL README and integration sections match the node parent exactly; those
+documents also retain every substantive line from main in order. No code, test,
+fixture, dependency or CI repair was needed for this combination.
+
+All results below are local `SIMULATED` verification. The SQL report remains
+`LOCAL_ONLY / SYNTHETIC_UNADOPTED`, with `funds_executed:false`; stage7,
+source authentication and independent external assurance remain `NOT_BOUND`.
+Logs and generated local artifacts are under ignored
+`build/sql-projection-crosscheck-supervised-round2/`.
+
+| Verification completed | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,295 passed** in 315.372 s, including both feature sets, all 36 SQL tests and the existing V1/golden byte guard (`unit.log`). |
+| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Exit 0; **36 passed** in 4.980 s; seeded/empty books, rehashed semantic tampering, exact bounds, CLI behavior, independence and input non-mutation (`sql-tests.log`). |
+| `PYTHONPATH=tests python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 0; byte guard passes on the merged tree. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **seven passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 Chromium tests passed** in one 2.4-minute run (`browser.log`). The unchanged repository configuration uses installed Chromium headless shell in an isolated loopback network namespace. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0; **all 17 checks MATCHED** on main's regenerated pack (`sql-clean.json`). SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. Input SHA256 `04dad47c25d33beaa1b36174b02b2adc09af15279a61644110de3f306dcaef95`. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; **36 routes, 273 artifacts, nine stages**. |
+| `python3 scripts/{pack_vectors,finance_vectors,dossier_vectors,auth_matrix,compat_preflight,facts_vectors,risk_scenario_vectors,sim_journeys,closeout_digest,manifest_vectors,workspace_vectors,forecast_vectors,http_hostile,fold_fuzz,decision_bindings,not_bound_checklist}.py --check` (each separately); `python3 scripts/decision_ledger.py` | All exit 0; combined fixtures and documentation have no drift (`checks.log`). |
+| `python3 scripts/build_release.py --out build/sql-projection-crosscheck-supervised-round2/release1` and matching `release2` build; byte comparison | Both exit 0; identical archive SHA256 `a9ac9f9bb4acd2a160e0e79435a2548fdb250ee917cded74a4e356eb9c7b5474`. Local unsigned, unpublished simulation artifacts only. |
+| `python3 scripts/smoke_release.py build/sql-projection-crosscheck-supervised-round2/release1/capital-*.pyz` | Exit 0; **all 11 checks pass**, including bundled policy provenance, accrual, restart and the synthetic lifecycle (`smoke.log`). |
+| Preservation and merge hygiene | All five vendor SHA256 locks match; references, manifest and legacy `capital/export.py` match both merge parents. `.aiops/` is unchanged. Both complete validation histories survive; no tracked conflict markers or unmerged entries; staged and unstaged whitespace checks pass (`preservation.log`). |
+
+The isolated byte-guard probe initially used a package-qualified test name
+without `PYTHONPATH=tests` and failed to import `test_overlay` before running the
+test. The corrected invocation above and the required full discovery run pass.
+No tests or assertions were changed to address that invocation error.
+
+Resolutions are staged; the merge remains uncommitted for the supervisor.
+No abort, commit, push, rebase, reset, external post, provider call,
+Protocol/Commerce change or consequential product decision was made.
