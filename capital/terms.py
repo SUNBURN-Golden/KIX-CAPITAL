@@ -3,24 +3,23 @@
 Values come from the capital-decision-v1 block in the financial-terms note.
 This module does not import the vendor FSM, does not post a journal, and does
 not make an offer. A missing note, a bad block, or no usable ADOPTED entry is
-NOT_BOUND. The zipapp does not bundle docs/, so that run stays NOT_BOUND.
+NOT_BOUND. Checkout and bundled artifacts use the same decision inputs.
 """
 from __future__ import annotations
 
 import datetime
-import importlib.resources
 import json
 import re
 from fractions import Fraction
-from pathlib import Path
 from typing import Protocol, runtime_checkable
+
+from capital.resources import as_resource, note_path, read_note, provenance
 
 OVERLAY_LABEL = 'simulated overlay — not vendor FSM arithmetic, not an offer'
 TERMS_NOT_BOUND = 'terms not bound'
 TIER_NOT_APPLICABLE = 'tier not applicable'
 BPS_SCALE = 10000
 
-_FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
 _ISO_DATE = re.compile(r'\d{4}-\d{2}-\d{2}\Z')
 _DAY_COUNT = re.compile(r'\AACT_(\d+)_FIXED\Z')
 _METHOD = 'SIMPLE_INTEREST_ON_OUTSTANDING_PRINCIPAL'
@@ -61,33 +60,13 @@ _LINKED = 'settlement_linked'
 
 
 def default_note_path():
-    """Checkout path of the financial-terms note. Absent inside the zipapp."""
-    package = importlib.resources.files('capital')
-    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_FINANCIAL_TERMS.md'
+    """Financial decision input as a checkout or archive Traversable."""
+    return note_path('CAPITAL_FINANCIAL_TERMS.md')
 
 
 def read_decision_block(path):
-    """The single capital-decision-v1 block of a note, or None when absent or malformed."""
-    try:
-        path = Path(path)
-        if not path.is_file():
-            return None
-        text = path.read_text(encoding='utf-8')
-        blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
-    except (OSError, UnicodeError, ValueError, RecursionError):
-        return None
-    if len(blocks) != 1 or type(blocks[0]) is not dict or blocks[0].get('schema') != 'capital-decision-v1':
-        return None
-    return blocks[0]
-
-
-def _reject_duplicate_keys(pairs):
-    obj = {}
-    for key, value in pairs:
-        if key in obj:
-            raise ValueError('duplicate key')
-        obj[key] = value
-    return obj
+    """The shared ledger parser's single decision block, or None."""
+    return read_note(path)['block']
 
 
 def _iso_date(value):
@@ -356,7 +335,8 @@ class DecisionNoteTermsPolicy:
     """Load one capital-decision-v1 note. Unsupported tokens stay NOT_BOUND."""
 
     def __init__(self, path=None):
-        self.path = default_note_path() if path is None else Path(path)
+        self.path = default_note_path() if path is None else as_resource(path)
+        self.note = read_note(self.path, override=path is not None)
         self.version = None
         self.top = 'NOT_BOUND'
         self.reason = TERMS_NOT_BOUND
@@ -364,17 +344,9 @@ class DecisionNoteTermsPolicy:
         self._load()
 
     def _load(self):
-        path = self.path
-        try:
-            if not path.is_file():
-                return
-            text = path.read_text(encoding='utf-8')
-            blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
-        except (OSError, UnicodeError, ValueError, RecursionError):
+        block = self.note['block']
+        if block is None:
             return
-        if len(blocks) != 1 or type(blocks[0]) is not dict:
-            return
-        block = blocks[0]
         if block.get('schema') != 'capital-decision-v1' or block.get('currency') != 'KRW':
             return
         version = block.get('terms_version')
@@ -424,6 +396,7 @@ class DecisionNoteTermsPolicy:
 
     def status(self) -> dict:
         return {
+            **provenance(self.note),
             'label': OVERLAY_LABEL,
             'mode': 'SIMULATED_OVERLAY',
             'terms_version': self.version,

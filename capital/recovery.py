@@ -12,6 +12,7 @@ import re
 
 from capital import overlay
 from capital.store import canonical_bytes
+from capital.resources import note_path
 from capital.terms import read_decision_block
 
 NOTE = 'CAPITAL_DEFAULT_RECOVERY.md'
@@ -62,7 +63,7 @@ def authorize(role, labels, amount, policy, proposal_id=None):
 
 
 def load_policy(terms, note=None):
-    block = read_decision_block(overlay.default_note_path(NOTE) if note is None else note)
+    block = read_decision_block(note_path(NOTE) if note is None else note)
     values = {name: overlay._adopted(block, name) for name in ITEMS}
     if any(value is None for value in values.values()):
         return None

@@ -8,6 +8,59 @@ The version is only `__version__` in `capital/__init__.py`. `--version` and `GET
 
 Two builds with the same interpreter and the same source tree produce the same SHA256. That check is same-environment only. It is not a cross-platform reproducibility claim.
 
+## 0.2.0
+
+- Version source: `capital/__init__.py` `__version__` = `0.2.0`, synchronized with `package.json` and its lockfile.
+- Artifact: `build/bundled-a/capital-0.2.0.pyz` (local build only).
+- Protocol pin: `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`; vendor bytes and manifest unchanged.
+- Mode: `LOCAL_SIMULATION_ARTIFACT`; signed: false; published: false.
+- Contents: the existing stdlib simulation, static assets and five pinned vendor files, plus exactly nonrecursive `docs/decisions/*.md`, `docs/CAP_COVERAGE.md` and `scripts/decision_ledger.py`. Raw bytes are hashed per file in `RELEASE-MANIFEST.json`; no tests, keysets or workspace files are added (the pinned vendor test remains).
+- Runtime: checkout-free provisional bound terms, decided settlement policy, underwriting and decision index. `notes_source` distinguishes checkout, bundled bytes, explicit override or no readable input. `note_sha256` hashes each actual input: terms/underwriting and decision-body anchor use the financial-terms note, policy uses the settlement-policy note, and rows use their named notes. Missing expected rows remain `PENDING`; readable invalid rows retain `INVALID` and their source/hash. Explicit overrides never fall back, including failure.
+- A `.pyz` serves build-time note bytes and does not follow later checkout edits. Bundling grants no upstream adoption or operational authority. Legal/tax entries remain working assumptions pending professional review.
+- Verification: same-interpreter byte-identical builds and stdlib loopback smoke with note-derived interest, remainder, sim-day and workspace restart provenance checks; see `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
+- SHA256: `f3b2f3db744c88fb85b435e03950b4a24450c68397cf5a87438ef25644ca1af2` (same interpreter; local unsigned build).
+- Out of scope: publishing, external signing, credentials, deployment, policy changes and upstream adoption.
+
+### 0.2.0 — merged-main rehearsal (2026-10-25)
+
+- Artifact: `build/merge-bundled-a/capital-0.2.0.pyz`; identical second build in `build/merge-bundled-b/`.
+- SHA256: `29dc4a74bba45cfac215f1e77b0f2ea7577bdb7e686b0f155c8751d57c020448` (same interpreter; local unsigned build).
+- Retains main's repayment posting, default recovery, claim slices and shadow vectors. Their decision-note loaders read the bundled Traversables; absent or malformed inputs stay unbound.
+- Authorized archive scope and manifest format are unchanged. `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`; every rehearsal is SIMULATED/provisional.
+- The initial 0.2.0 build record above and 0.1.0 record below remain historical records. Current merge verification is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
+
+### 0.2.0 — CI fix round 2 rehearsal (2026-10-26)
+
+- Artifacts: `dist/capital-0.2.0.pyz` and `dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `30454a639a424758f22796b6d2f5dd3cbdf9ab2c34ff1f7600548a84a7991b7d` (local unsigned build).
+- The ledger loader reuses compiled parser code by exact source bytes and filename, while reading the selected source and creating a fresh module on every load. Edits, corruption and missing files retain the existing fail-closed behavior.
+- Removed the obsolete tracked `dist2/capital-0.1.0.pyz` and ignored `dist2/`, so the existing two-build CI glob compares exactly the current artifacts.
+- All 11 packaged smoke checks pass. Scope, manifest format and labels remain unchanged: `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`, SIMULATED/provisional.
+
+### 0.2.0 — CI fix round 3 rehearsal (2026-10-26)
+
+- Artifacts: `dist/capital-0.2.0.pyz` and `dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `86b763eece31758c04fcea10f8fcb26ff02f69921a24fcc4fd879da5783c3119` (local unsigned build).
+- Decision-index requests read and hash every note, then reuse ledger validation only for identical bytes. Changed, malformed, missing and restored notes remain visible; returned rows cannot mutate the cached summaries.
+- The exact authorized bundle scope, per-file manifest hashes and labels remain unchanged: `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`, SIMULATED/provisional.
+- Local check results and acceptance timing are recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`.
+
+### 0.2.0 — acceptance timeout follow-up (2026-10-26)
+
+- Artifacts: `dist/capital-0.2.0.pyz` and `dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `11a78ed934c9bbb6e6c59d6440cc5c135654cee7e2a6142cdb2fab78353bfca2` (local unsigned build).
+- The single ledger parser locates closing Markdown fences with a string search, avoiding per-character regex backtracking. Opening-fence rules, first-closing-fence behavior, JSON validation and policy values are unchanged; no parsed policy cache is introduced.
+- Corpus equivalence and malformed-fence regressions accompany the change. All 11 packaged smoke checks pass, including simulated accrual and workspace restart provenance.
+- Exact archive scope, per-file manifest hashes and labels remain `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`. Local acceptance evidence is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; no remote CI success is claimed.
+
+### 0.2.0 — conflict-fix round 2 rehearsal (2026-10-27)
+
+- Artifacts: `build/bundled-round2/dist/capital-0.2.0.pyz` and `build/bundled-round2/dist2/capital-0.2.0.pyz`; byte-identical under Python 3.13.5.
+- SHA256: `51bc10dbf4d121e37ee7f67267617974cf0c1be3daf59d2256eb4f89c5367289` (local unsigned build).
+- Preserves bundled policy provenance and main's hostile-HTTP handling. All 11 packaged smoke checks pass, including note-derived accrual and identical overlay state/provenance after a temporary workspace restart outside checkout.
+- Exact archive scope: 77 members, including 18 authorized policy inputs; every manifest hash matches. Labels remain SIMULATED/provisional, `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`.
+- Merge verification is recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; historical build records are preserved.
+
 ## 0.1.0
 
 - Version source: `capital/__init__.py` `__version__` = `0.1.0` (same string as `package.json`; the Python module is the source).
