@@ -98,6 +98,16 @@ class FacadeContractTests(unittest.TestCase):
         self.assertNotEqual(self.doc['namespace'], 'kix:fixture:lifecycle:0.3')
         self.assertIn('Not SEMANTIC_CONFORMANCE', self.doc['description'])
 
+    def test_permission_catalog_response_matches_closed_schema(self):
+        status, body = self.request('GET', '/api/permissions')
+        self.assertEqual(status, 200)
+        schema = self.route('GET', '/api/permissions')['response']
+        self.check(body, schema)
+        for changed in ({**body, 'token': 'not-exposed'},
+                        {**body, 'role_permissions': {**body['role_permissions'], 'unlisted': []}}):
+            with self.assertRaises(SchemaError):
+                self.check(changed, schema)
+
     def test_routes_cover_the_server_dispatch(self):
         api = [row for row in self.doc['routes'] if row['kind'] == 'api']
         self.assertEqual(
@@ -114,6 +124,10 @@ class FacadeContractTests(unittest.TestCase):
         used = set()
         for row in self.doc['routes']:
             self.assertTrue(row['errors'])
+            self.assertTrue(
+                set(self.doc['errorGroups']['boundary']) <= set(row['errors']),
+                (row['method'], row['path'], 'missing shared boundary errors'),
+            )
             unknown = set(row['errors']) - codes
             self.assertFalse(unknown, unknown)
             used.update(row['errors'])
@@ -185,6 +199,7 @@ class FacadeContractTests(unittest.TestCase):
         closed = command('close', 'sim-journey', {}, 'j-close-2')
         self.assertEqual(closed['result']['credit']['phase'], 'CLOSED')
         reads = [
+            ('GET', f'/api/cases/sim-journey/dossier?instance_id={instance}', '/api/cases/{advance_id}/dossier', None),
             ('GET', '/api/evidence', '/api/evidence', None),
             ('GET', '/api/projection', '/api/projection', None),
             ('GET', '/api/terms', '/api/terms', None),
@@ -205,6 +220,8 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', f'/api/operations/j-offer?instance_id={instance}', '/api/operations/{{operation_id}}', None),
             ('GET', '/api/export', '/api/export', None),
             ('GET', '/api/export/manifest', '/api/export/manifest', None),
+            ('GET', f'/api/export/facts?instance_id={instance}', '/api/export/facts', None),
+            ('GET', '/api/export/facts/schema', '/api/export/facts/schema', None),
             ('GET', '/api/reconciliation', '/api/reconciliation', None),
             ('GET', '/api/statement', '/api/statement', None),
             ('GET', '/api/metrics', '/api/metrics', None),

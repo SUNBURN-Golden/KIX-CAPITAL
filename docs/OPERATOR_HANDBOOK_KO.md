@@ -21,7 +21,7 @@
 | `SYNTHETIC_FIXTURE_PROFILE` | 결정된 합성 fixture 프로필(`CAPITAL-DEMO-BOOK-V1`)의 대형 액면·수익자 role. 실제 익스포저·매출·법적 당사자가 아니다. |
 | `DEV_ONLY` | 옵트인 HMAC. 무결성만이고 인증·외부 키가 아니다. |
 
-잠정 조건 오버레이는 이 트리의 읽기 전용 조회다. 결정 노트의 상태 줄은 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).** 이다. 값은 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md` (`CAPITAL-TERMS-V1`)에서만 읽는다. 청약·실자금·벤더 FSM 산술이 아니다. zipapp은 `docs/`를 담지 않으므로 그 실행의 조건은 `terms not bound`다.
+잠정 조건 오버레이는 이 트리의 읽기 전용 조회다. 결정 노트의 상태 줄은 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).** 이다. 값은 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md` (`CAPITAL-TERMS-V1`)에서만 읽는다. 청약·실자금·벤더 FSM 산술이 아니다. zipapp도 번들 노트에 바인딩하며 `notes_source=BUNDLED_IN_ARTIFACT`를 보고한다.
 
 요구 20개의 소유와 상태는 [CAP 커버리지](CAP_COVERAGE.md)에 있다. 행을 분모에서 빼지 않는다.
 
@@ -71,8 +71,8 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
-| auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
+| organizer | 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| auditor | 없음. 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
 | observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
 
@@ -154,7 +154,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 
 ### terms-overlay
 
-`GET /api/terms`와 `GET /api/terms/{advance_id}`는 읽기 전용 시뮬레이티드 오버레이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 상태 줄은 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).** 이고 `terms_version`은 `CAPITAL-TERMS-V1`이다. 가정 일(`draw_day`, `as_of_day`, 선택 `expected_settlement_cash_day`)은 질의 인자이며 저장하지 않는다. 노트가 없거나 항목이 모두 쓸 수 없으면 응답은 `terms not bound`다. 금리·수수료·기간 숫자는 코드에 복사하지 않는다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 이것은 청약이 아니고 실자금이 아니다. CAP-02와 CAP-03은 계속 `DECISION_REQUIRED`다. 병합은 JunTae가 한다.
+`GET /api/terms`와 `GET /api/terms/{advance_id}`는 읽기 전용 시뮬레이티드 오버레이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 상태 줄은 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).** 이고 `terms_version`은 `CAPITAL-TERMS-V1`이다. 가정 일(`draw_day`, `as_of_day`, 선택 `expected_settlement_cash_day`)은 질의 인자이며 저장하지 않는다. 노트가 없거나 항목이 모두 쓸 수 없으면 응답은 `terms not bound`다. 금리·수수료·기간 숫자는 코드에 복사하지 않는다. `.pyz`도 빌드 시점 번들 노트의 같은 판정 규칙을 쓴다. 이것은 청약이 아니고 실자금이 아니다. CAP-02와 CAP-03은 계속 `DECISION_REQUIRED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
 
@@ -162,7 +162,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 
 ### policy-simulator
 
-`GET /api/policy`와 `GET /api/policy/simulation`은 읽기 전용 시뮬레이티드 정책 적용이다. 라벨은 `simulated policy application — not executed distribution, not bank movement`다. 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 `allocation_order`가 ADOPTED이면 도출된 순서를 기존 fixture 두 순서와 나란히 보여 준다. UNDETERMINED이면 `POLICY_UNDECIDED`이고 fixture 비교만 남는다. 환불 부담, 리셀 취소, 수익 참여, 채권 매입, 잔여·늦은 현금은 `UNSUPPORTED_BY_PINNED_FSM`이며 금액을 계산하지 않는다. 그림자 산술은 별도 읽기 전용 경로 `GET /api/policy/shadow`에 있다. 환불 부담 RC1–RC4(RC5는 리셀 해제로 라우팅)와 리셀 해제 RU1–RU3를 `SHADOW_NOT_APPLIED` 모드로만 계산하고, 핀드 FSM에는 적용하지 않는다. 노트가 없으면 `SHADOW_NOT_BOUND`다. 권한은 `projection:read`(관찰자 403), `applied_to_fsm`·`funds_executed`·`policy_adopted`는 항상 거짓이며 `state_digest`는 변하지 않는다. 단일 청구 수익 참여 게시·채권 슬라이스 크기/가격·UC1–UC4 분할도 같은 그림자 경로로만 계산한다. 다중 청구 기준·90일 창·슬라이스 등록부·180일 타이머·D+1 배치는 `SHADOW_DEFERRED`다. `policy_adopted`는 false다. 노트가 없으면 `policy not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 이것은 실행된 배분이 아니고 은행 이동이 아니다. 병합은 JunTae가 한다. 이 노드는 배정 우선순위를 인코딩하므로 스스로 병합하지 않는다.
+`GET /api/policy`와 `GET /api/policy/simulation`은 읽기 전용 시뮬레이티드 정책 적용이다. 라벨은 `simulated policy application — not executed distribution, not bank movement`다. 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 `allocation_order`가 ADOPTED이면 도출된 순서를 기존 fixture 두 순서와 나란히 보여 준다. UNDETERMINED이면 `POLICY_UNDECIDED`이고 fixture 비교만 남는다. 환불 부담, 리셀 취소, 수익 참여, 채권 매입, 잔여·늦은 현금은 `UNSUPPORTED_BY_PINNED_FSM`이며 금액을 계산하지 않는다. 그림자 산술은 별도 읽기 전용 경로 `GET /api/policy/shadow`에 있다. 환불 부담 RC1–RC4(RC5는 리셀 해제로 라우팅)와 리셀 해제 RU1–RU3를 `SHADOW_NOT_APPLIED` 모드로만 계산하고, 핀드 FSM에는 적용하지 않는다. 노트가 없으면 `SHADOW_NOT_BOUND`다. 권한은 `projection:read`(관찰자 403), `applied_to_fsm`·`funds_executed`·`policy_adopted`는 항상 거짓이며 `state_digest`는 변하지 않는다. 단일 청구 수익 참여 게시·채권 슬라이스 크기/가격·UC1–UC4 분할도 같은 그림자 경로로만 계산한다. 다중 청구 기준·90일 창·슬라이스 등록부·180일 타이머·D+1 배치는 `SHADOW_DEFERRED`다. `policy_adopted`는 false다. 노트가 없으면 `policy not bound`다. `.pyz`도 빌드 시점 번들 노트의 같은 판정 규칙을 쓴다. 이것은 실행된 배분이 아니고 은행 이동이 아니다. 병합은 JunTae가 한다. 이 노드는 배정 우선순위를 인코딩하므로 스스로 병합하지 않는다.
 
 <!-- /handbook-section -->
 
@@ -215,7 +215,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 
 파싱은 `python3 scripts/decision_ledger.py`와 같은 코드를 쓴다. 그 스크립트의 출력은 바뀌지 않는다. 권한은 `reference:read`라 organizer, auditor, observer가 읽고 agent는 `403 ROLE_FORBIDDEN`이다. 호출은 receipt·저널·`state_digest`·`operation_count`를 바꾸지 않는다.
 
-`docs/`가 없으면(`.pyz` 실행 등) `status`는 `NOT_BOUND`, `reason`은 `decision notes not bound`, `rows`는 빈 목록이고 숫자 필드는 없다. 이것은 노트가 없다는 뜻이 아니라 이 실행이 노트를 읽을 수 없다는 뜻이다.
+인덱스 입력을 읽지 못하면 `status=NOT_BOUND`, `reason=decision notes not bound`, `rows=[]`다. 금융 조건 anchor가 없거나 무효이면 본문은 `NOT_BOUND`지만 읽을 수 있는 행은 남는다. expected 파일 누락은 `PENDING`과 `NONE`/null, 읽을 수 있는 무효 노트는 `INVALID`와 실제 출처·해시를 보존한다. 정상 `.pyz`는 번들 노트로 `BOUND`다.
 
 `GET /api/readiness`의 `financial-contracts` 차단 사유 중 금융 조건 노트를 인용하는 줄은 이제 이 노트 행에서 만든다. 형식은 `<status> per <note> (<version>)`이고, 예를 들면 `PROVISIONAL_PRODUCT_DECISION per docs/decisions/CAPITAL_FINANCIAL_TERMS.md (CAPITAL-TERMS-V1)`다. 노트를 읽을 수 없으면 `NOT_BOUND per docs/decisions/CAPITAL_FINANCIAL_TERMS.md`다. 그룹 상태 `DECISION_REQUIRED`와 `policy_adopted=false`는 그대로다. 이 줄이 바뀌면 [수용 점검표](ACCEPTANCE_KO.md)의 생성 블록도 `python3 scripts/not_bound_checklist.py --write`로 다시 쓴다. 이 응답은 채택이 아니고 청약이 아니며 실자금과 무관하다. 법무·세무 항목은 전문가 검토 전까지 작업 가정이다. 병합은 JunTae가 한다.
 
@@ -246,10 +246,10 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:default` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `default`) |
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
-| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/permissions`, `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…`, `GET /api/cases/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
-| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
+| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest`, `GET /api/export/facts`, `GET /api/export/facts/schema` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
 | `statement:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/statement` |
 | `metrics:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/metrics` |
@@ -377,7 +377,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 ### setoff-proposal-quote
 
-`GET /api/terms/{advance_id}/setoff`는 읽기 전용 상계·회수 제안 견적이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 ADOPTED `collateral_execution` 1차 단계(`SETOFF_AGAINST_BENEFICIARY_SETTLEMENT_DISTRIBUTION`)를 그 advance가 결합한 불변 정산 조회에 적용한다. 수익자 매핑 수취인 줄 가운데 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 CAPITAL-ALLOC-V1 클래스 표에서 상대방 수익(COUNTERPARTY_PROCEEDS) 클래스인 줄만 세고, `setoff_amount`는 `min(outstanding_exposure, 그 줄들의 배정 현금 − recovery_due)`다. 회수 의무 아래의 현금은 세지 않고 배정이 없으면 `ALLOCATION_NOT_OBSERVED`로 0을 보고하며 현금을 지어내지 않는다. `allocation` 절은 노트의 `repayment_allocation_order`(DEFAULT_INTEREST → INTEREST → PRINCIPAL)로 나누고 `fsm_repay`는 원금 몫만 들거나 null이다. `route`는 DRAWN이면 `FSM_REPAY`, DEFAULTED이면 `OVERLAY_RECOVERY_LEDGER`, 그 외는 `NOT_APPLICABLE`이고 `post_default`는 `OVERLAY_RECOVERY_LEDGER_NOT_IN_SCOPE`다. 집행 권한은 노트의 사람 2인(`HUMAN_OPERATOR_TWO_PERSON; AI proposes only`)에 머물고 채택된 1차 단계가 상계가 아니거나 권한이 사람이 아니면 견적은 숫자를 내지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. 노트가 없거나 필요한 항목이 ADOPTED가 아니면 숫자 없이 `terms not bound`다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. `proposal_only`는 true이고 `applied`는 false이며 receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이것은 제안일 뿐이며 집행이 아니고 청약이 아니고 고정 FSM을 부르지 않는다. 병합은 JunTae가 한다.
+`GET /api/terms/{advance_id}/setoff`는 읽기 전용 상계·회수 제안 견적이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 결정 노트 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`의 ADOPTED `collateral_execution` 1차 단계(`SETOFF_AGAINST_BENEFICIARY_SETTLEMENT_DISTRIBUTION`)를 그 advance가 결합한 불변 정산 조회에 적용한다. 수익자 매핑 수취인 줄 가운데 결정 노트 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`의 CAPITAL-ALLOC-V1 클래스 표에서 상대방 수익(COUNTERPARTY_PROCEEDS) 클래스인 줄만 세고, `setoff_amount`는 `min(outstanding_exposure, 그 줄들의 배정 현금 − recovery_due)`다. 회수 의무 아래의 현금은 세지 않고 배정이 없으면 `ALLOCATION_NOT_OBSERVED`로 0을 보고하며 현금을 지어내지 않는다. `allocation` 절은 노트의 `repayment_allocation_order`(DEFAULT_INTEREST → INTEREST → PRINCIPAL)로 나누고 `fsm_repay`는 원금 몫만 들거나 null이다. `route`는 DRAWN이면 `FSM_REPAY`, DEFAULTED이면 `OVERLAY_RECOVERY_LEDGER`, 그 외는 `NOT_APPLICABLE`이고 `post_default`는 `OVERLAY_RECOVERY_LEDGER_NOT_IN_SCOPE`다. 집행 권한은 노트의 사람 2인(`HUMAN_OPERATOR_TWO_PERSON; AI proposes only`)에 머물고 채택된 1차 단계가 상계가 아니거나 권한이 사람이 아니면 견적은 숫자를 내지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. 노트가 없거나 필요한 항목이 ADOPTED가 아니면 숫자 없이 `terms not bound`다. `.pyz`도 빌드 시점 번들 노트의 같은 판정 규칙을 쓴다. `proposal_only`는 true이고 `applied`는 false이며 receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이것은 제안일 뿐이며 집행이 아니고 청약이 아니고 고정 FSM을 부르지 않는다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
 
@@ -385,7 +385,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 ### terms-portfolio-rollup
 
-`GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`는 `docs/`를 포함하지 않으므로 그 실행은 `NOT_BOUND`다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이 롤업은 노출 버킷·집중도 한도·준비금·환불 충격 스트레스를 계산하지 않는다. 그것들은 `GET /api/risk`와 아래 `portfolio-risk-analytics` 절이 다룬다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
+`GET /api/terms/portfolio`는 읽기 전용 포트폴리오 조건 롤업이다. 라벨은 `simulated overlay — not vendor FSM arithmetic, not an offer`이고 `mode`는 `SIMULATED_OVERLAY`다. 리터럴 `/api/terms/portfolio`는 `{advance_id}` 패턴보다 먼저 매치되고, 알 수 없는 advance id는 여전히 `404 UNKNOWN_ADVANCE`다. 평가된 각 줄은 등급·가정 인출일 출처(`draw_day_source`, `QUERY_PARAMETER` 또는 `DEFAULT`)·기간·만기일·만기 경과일·계약/연체 이자(정확한 유리수, 줄마다 1원 내림)·연환산 총비용 bps(유리수 문자열)·`cap_check`(PASS/FAIL)를 담고, 상한은 실행 시 노트의 `interest_rate.all_in_cost_cap_bps_annual`에서 읽는다. 코드에 옮기지 않는다. `cap` 절은 그 값과 `fees.policy`·`fee_schedule_version`을 함께 인용한다. 저널에는 노출별 시계가 없어 모든 줄이 질의의 가정 `draw_day`를 공유한다. 합계 줄은 유리수를 먼저 더하고 한 번만 내리며 `cap_check`는 하나라도 FAIL이면 FAIL, 평가된 줄이 없으면 NOT_APPLICABLE이다. 티어·원금을 정할 수 없거나 필요한 항목이 ADOPTED가 아닌 줄은 숫자 없이 `NOT_APPLICABLE`/`NOT_BOUND`만 담는다. 노트가 없거나 쓸 수 없으면 `rows` 없이 `terms not bound`이고 숫자가 없다. `.pyz`도 빌드 시점 번들 노트의 같은 판정 규칙을 쓴다. 상한 FAIL은 상한을 낮춘 임시 합성 노트(`--terms-note`)로만 재현하며 커밋된 노트는 바꾸지 않는다. 권한은 `projection:read`(organizer·auditor)이고 observer는 `403 ROLE_FORBIDDEN`이다. receipt·예약·저널·`state_digest`·`operation_count`는 바뀌지 않는다. 이 롤업은 노출 버킷·집중도 한도·준비금·환불 충격 스트레스를 계산하지 않는다. 그것들은 `GET /api/risk`와 아래 `portfolio-risk-analytics` 절이 다룬다. 이것은 청약도 심사도 아니고 벤더 FSM 산술도 아니다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
 
@@ -445,7 +445,7 @@ Capital이 선언하는 자산은 하나다. `capital/assets.py`의 AssetSpec `{
 
 `GET /api/policy/shadow`는 환불 부담자(RC1–RC4. RC5는 재판매로 간다)와 재판매 되감기(RU1–RU3), 단일 청구 수익 참여 게시, 채권 슬라이스 크기·가격, 잔여 현금 UC1–UC4 분할을 `CAPITAL-SHADOW-V1` 노트로 산수만 해 보여 주는 읽기 경로다. 권한은 `projection:read`이고 observer는 `403 ROLE_FORBIDDEN`을 받는다. 모드는 `SHADOW_NOT_APPLIED`이고 라벨은 "shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement"다. 항목마다 고정 FSM의 `UNSUPPORTED_BY_PINNED_FSM` 판정과 그림자 판정이 나란히 나온다.
 
-그림자 판정은 `SHADOW_COMPUTED`, `SHADOW_DEFERRED`, `SHADOW_NOT_BOUND`, `SHADOW_INPUT_UNKNOWN`, `SHADOW_INCONSISTENT` 중 하나다. 수익 참여, 채권 슬라이스, 잔여·늦은 현금 항목은 노트가 정한 단일 청구 산술만 `vectors`로 계산한다. 비율·상한·선지급률·금리는 노트에서 읽는다. 다중 청구 기준, 90일 창, 슬라이스 등록부, 180일 타이머, D+1 배치는 `deferred` 행의 해제 seam과 함께 `SHADOW_DEFERRED`로 남고, 입력이 빠지면 `SHADOW_INPUT_UNKNOWN`이다. `applied_to_fsm`, `funds_executed`, `policy_adopted`를 포함한 상수 false 플래그가 붙는다. 고정 FSM은 호출하지 않고 `state_digest`도 바뀌지 않는다. 노트가 없거나 깨졌거나 `.pyz`로 실행하면 `SHADOW_NOT_BOUND`다. 이것은 `SIMULATED` 산수이지 집행된 분배가 아니다.
+그림자 판정은 `SHADOW_COMPUTED`, `SHADOW_DEFERRED`, `SHADOW_NOT_BOUND`, `SHADOW_INPUT_UNKNOWN`, `SHADOW_INCONSISTENT` 중 하나다. 수익 참여, 채권 슬라이스, 잔여·늦은 현금 항목은 노트가 정한 단일 청구 산술만 `vectors`로 계산한다. 비율·상한·선지급률·금리는 노트에서 읽는다. 다중 청구 기준, 90일 창, 슬라이스 등록부, 180일 타이머, D+1 배치는 `deferred` 행의 해제 seam과 함께 `SHADOW_DEFERRED`로 남고, 입력이 빠지면 `SHADOW_INPUT_UNKNOWN`이다. `applied_to_fsm`, `funds_executed`, `policy_adopted`를 포함한 상수 false 플래그가 붙는다. 고정 FSM은 호출하지 않고 `state_digest`도 바뀌지 않는다. 노트가 없거나 깨지면 `SHADOW_NOT_BOUND`다. `.pyz`도 같은 번들 정산 노트로 그림자 산술을 평가한다. 이것은 `SIMULATED` 산수이지 집행된 분배가 아니다.
 
 <!-- /handbook-section -->
 
@@ -684,6 +684,14 @@ python3 scripts/lifecycle_claims_check.py --execute
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:risk-whatif-scenarios -->
+
+### risk-whatif-scenarios
+
+`GET /api/risk/scenarios`와 `GET /api/risk/scenarios/{id}`는 읽기 전용 가상 시나리오 평가기다. `mode`는 `SIMULATED_WHATIF`이고 권한은 `projection:read`라 organizer·auditor가 읽고 observer·agent는 `403 ROLE_FORBIDDEN`이다. 인덱스는 고정 넷 `largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`을 이름 붙이고, 각 id는 `GET /api/risk`·`GET /api/risk/covenants`가 쓰는 정수 입력을 깊은 복사해 가정 하나를 적용한 뒤 `risk.build`·`covenants.build`를 다시 접는다. 가정은 최대 미상환 잔액의 미디폴트 오픈 전진을 `DEFAULTED`로 두기, 스펙 고정 최대 충격(`SHOCKS_BPS` 마지막 값)만큼 `refund_face`를 올리기(새로 위반하는 대상엔 `hypothetical` `CALLED` 행만 보고, 기록은 안 함), 마지막 기록 만기 하루 뒤로 `sim_day`를 투영하기, 가장 빡빡한 bound U4 캡을 넘는 가상 인출 `sim-whatif-cap` 하나 넣기다. `reconciliation`은 `baseline_outstanding_krw`·`assumption_delta_krw`·`scenario_outstanding_krw`·`matched`와 기준 digest를 싣고, `applied`·`enforced`·`policy_adopted`는 항상 false다. 대상이 없으면 `evaluated` false에 `unevaluated_reason`만 둔다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 없거나 쓸 수 없으면 숫자 절 없는 `NOT_BOUND`이며 인덱스는 이름만 계속 낸다. 저널·오버레이 항목·receipt·예약은 변하지 않는다. 시드 데모 응답은 `tests/vectors/risk_scenarios.json`(`KIX_CAPITAL_RISK_WHATIF_VECTORS_V1`)에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝난다. `tests/test_risk_whatif.py`가 고정 벡터·대사·역할 거절·읽기 불변을 확인한다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:facade-load-harness -->
 
 ### facade-load-harness
@@ -693,6 +701,83 @@ python3 scripts/lifecycle_claims_check.py --execute
 보고서 형식은 `KIX_CAPITAL_LOAD_REPORT_V1`이고 라벨은 `LOCAL_EXPLORATION`이다. 예정 도착시각(`scheduled_at_ms`)과 서비스 시간(`service_ms`)을 따로 기록하고 new-success·replay·reject·conflict·capacity를 클래스별로 세어 최근접 순위 백분위를 낸다 — 클래스를 절대 섞지 않는다. 입력 fingerprint, python, OS, CPU 정보만 담고 토큰은 쓰지 않는다. 매 실행 뒤 하네스는 저널 길이가 new-success 수와 같고, replay가 새 저널 없이 저장 receipt를 돌려주며, conflict와 capacity가 아무것도 쓰지 않고, 마지막 `state_digest`가 저널 재생과 같음을 확인한다. SLO나 TPS 주장은 없고 **이 보고서는 production 성능 증거가 아니다**. `smoke`는 unittest 안에서 임계값 없이 돌고, `full`은 수동 실행이며 출력은 커밋하지 않는 `build/` 아래에 둔다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:artifact-docs-bundling -->
+
+### artifact-docs-bundling
+
+0.2.0 zipapp은 최상위 `docs/decisions/*.md` 전부와 `docs/CAP_COVERAGE.md`, `scripts/decision_ledger.py`만 추가로 담는다. 원본 바이트를 `RELEASE-MANIFEST.json`의 파일별 SHA256으로 대조한다. 다른 문서·스크립트·테스트·keyset·workspace는 제외하며 핀된 vendor `test_mock_credit.py`는 유지한다. 파서는 한 출처이고 체크아웃·zipapp 모두 Traversable을 읽는다.
+
+`notes_source`는 `CHECKOUT`, `BUNDLED_IN_ARTIFACT`, `OVERRIDE_FILE`, `NONE`이다. `note_sha256`은 읽은 원본 바이트의 해시다. 조건 상태/상세/배정, state terms 스냅샷, 심사와 결정 인덱스 본문 anchor는 `CAPITAL_FINANCIAL_TERMS.md`를 쓴다. 정책 상태/시뮬레이션은 `CAPITAL_SETTLEMENT_POLICY.md`, 각 결정 행은 자기 노트를 쓴다. 본문 해시는 집계 digest가 아니다. 읽을 수 없는 입력은 `NONE`/null이며 읽을 수 있는 무효 입력은 실제 출처·해시를 유지한다. 무효 결정 행은 `INVALID`, 누락 expected 행은 예외적으로 `PENDING`이다. 금융 조건 anchor 누락·무효는 본문 `NOT_BOUND`이며 가능한 행은 보존한다.
+
+`--terms-note PATH`와 `--policy-note PATH`는 파일 override가 우선한다. 그 파일이 없거나 무효여도 번들로 돌아가지 않는다. 기존 `NOT_BOUND` 판정을 확인한다. `.pyz`는 빌드 시점 노트 바이트를 서빙하며 이후 체크아웃 편집을 추적하지 않는다. 노트 변경을 반영하려면 다시 빌드하고 manifest 해시를 대조한다.
+
+`python3 scripts/smoke_release.py dist/capital-<version>.pyz`는 체크아웃 밖 임시 cwd에서 합성 advance 인출 → `sim_day` 진행 → 노트 기반 이자·나머지 확인 → 임시 workspace 재시작 후 동일 overlay digest·receipt·출처 확인 → 상환·종료를 검증한다. SIMULATED/provisional이고 `LOCAL_SIMULATION_ARTIFACT`, `signed:false`, `published:false`다. 운영·실자금·상위 채택 권한을 만들지 않는다. 법무·세무 항목은 전문가 검토 전 작업 가정이다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:advance-case-dossier -->
+### advance-case-dossier
+
+운영 데스크에서 사례를 선택하고 **dossier 다운로드**를 누르면
+`GET /api/cases/{advance_id}/dossier?instance_id=`로 한 사례의 JSON 문서를
+읽는다. 형식은 `KIX_CAPITAL_CASE_DOSSIER_V1`, 라벨은 `SIMULATED`, 모드는
+`READ_ONLY_CASE_DOSSIER`다. `projection:read`를 가진 organizer·auditor만
+조회하며 observer·agent는 `403 ROLE_FORBIDDEN`이다. 실명·인증은 NOT_BOUND다.
+
+기존 조회의 사례·원본 receipt chain·심사 기록·조건·오버레이 full-payoff
+allocation quote·margin/covenant 상태·READ_ONLY_FIXTURE 정산 근거를 단일
+잠금 아래 복사한다. 날짜는 기록된 `sim_day`이며 가정 날짜나 금액을 받지 않는다.
+underwriting은 `DOSSIER_READ_ONLY` 역할의 rule evaluation copied for audit;
+not a decision by the reader다. `proposal`·`approve_authority`는 규칙 출력이며
+읽는 사람에게 심사 결정 권한을 주지 않는다. 장부와 operation_count는 바뀌지 않는다.
+
+조건 미결합은 숫자 없는 `NOT_BOUND`, 조건 결합 후 미인출은
+`NOT_APPLICABLE / NOT_DRAWN` 블록이다. 알 수 없는 사례는
+`404 CASE_NOT_FOUND`, instance가 다르면 `409 SESSION_CHANGED`, 불필요하거나
+중복된 질의는 `400 INVALID_ARGUMENTS`다. 저널 없는 receipt는 workspace 전체
+목록이며 `case_association: NOT_INFERRED`로 표시한다.
+
+`cut`은 상태·오버레이·fixture digest와 terms version을 담는다.
+`dossier_digest`는 자신을 제외하고 기존 volatile session/time 키를 재귀적으로
+제거한 canonical JSON의 SHA256이다. 같은 작업공간의 반복 조회는 동일 바이트다.
+콘텐츠 해시는 원격 증명이나 인증이 아니다. 데스크 매니페스트 호환 여부와 독립적으로
+다운로드하며 서버 문자열은 textContent로만 표시한다. JSON만 제공하고 PDF·복수
+사례 묶음·evidence-pack 포함·실제 신원은 범위 밖이다.
+
+고정 예제: `tests/vectors/dossiers/`, `python3 scripts/dossier_vectors.py --check`.
+검증: `tests/test_dossier.py`, `tests/browser/case-dossier.spec.cjs`.
+브라우저 사양은 organizer·auditor 각 1280px·375px 화면을 캡처한다.
+<!-- /handbook-section -->
+
+<!-- handbook-section:contract-invariants-claims -->
+
+### contract-invariants-claims
+
+`tests/contract_invariants.json` (`KIX_CAPITAL_CONTRACT_INVARIANTS_V1`) maps six `CLAIM_CONFORMANCE` rows to `CONTRACT_INVARIANTS.md` §3 INV-1..INV-5 at kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. `capital/contract_invariants.py` observes the real CapitalService + FileWorkspace facade: twelve pinned seeds, concurrent duplicate ids, shared-face competing draws on demo-beta-festival/demo-gamma-tour, capacity `SIMULATION_CAPACITY` refusals without eviction, repay/cancel, advance_day, reopen and the crash-matrix SIGKILL boundary. Rust is a read-only contract source, nothing is vendored or executed upstream. Labels are `SIMULATED` / `CLAIM_CONFORMANCE`; finite traces prove no general correctness or bank exactly-once guarantee.
+
+Run `python3 scripts/contract_invariants_check.py --execute`, then `python3 scripts/contract_invariants_check.py --check`. `--seed N` reproduces a sequence without modifying pins; `--write` explicitly regenerates the default seed digests after successful predicates. `--protocol-dir PATH` reads section needles only. No checkout gives citation `SKIPPED`; forbidden loopback bind gives `SKIPPED_LOOPBACK` for HTTP/SIGKILL, not a pass. Tests are `tests/test_contract_invariants.py`; sensitivity corrupts copies of observed traces. This is not an `upstream-claims` stage command.
+
+INV-3 compares canonical receipt projection bytes after every later step, including reopen and errors. Command receipts retain the original instance_id; post-restart reads require the current session and reject the old session with SESSION_CHANGED. `inv.3.overlay_projection` is a `DOCUMENTED_DIVERGENCE`: replay rebuilds the overlay instance and omits overlay_state_digest, so those envelope fields and transport_duplicate are excluded. Operation payload fields remain covered and the initial overlay digest must equal the folded state digest. INV-5 retains claim/trade/currency/amount, drawn_exposure/draw_id/journal index and journal/overlay entries; repayment may lower outstanding exposure. These are mock reservation and capture facts, not money.
+
+The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Follow-up `upstream-repin-inventory-contract-invariants` registers `tests/contract_invariants.json` in binding-note §3.2 bound_tables and §3.6 default impact list, plus a decision_bindings test_module record for `tests/test_contract_invariants.py`. Stage5 durability and external authority stay `NOT_BOUND`.
+
+<!-- /handbook-section -->
+
+
+### Facts 페이지 오프라인 확인 · SIMULATED
+
+`GET /api/export/facts?instance_id=<현재 세션>&limit=100`은 `export:read`가
+필요하다. 각 응답의 원본 바이트를 `page-0000.json`, `page-0001.json` 순으로
+저장하고 `next_cursor`를 다음 요청의 `after`로 보낸다. null이면 완료다.
+`GET /api/export/facts/schema`는 고정 열·폭·KRW 정수 단위 스키마다.
+`python3 -m capital.verify --facts DIR`로 페이지 연결·행 해시·F04 재생·오버레이
+fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
+`CUT_MOVED`는 처음부터 다시 조회해야 하며, 저장소 오류 503이면 페이지가 없다.
+빈 오버레이는 cut의 오버레이 키 자체가 없다. 동일 overlay_id의 원본 중복은
+`duplicate: 1`로 남는다. `SIMULATED`, source_cut과 authentication은 `NOT_BOUND`이며
+`k-stage7-authenticated-export`가 아니다. 해시를 모두 다시 만든 일관된 대체 장부는
+탐지하지 못한다. 내장 fixture만 검증하며 import/resume은 제공하지 않는다.
 
 <!-- handbook-section:http-hostile-corpus -->
 

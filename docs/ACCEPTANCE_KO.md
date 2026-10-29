@@ -4,6 +4,25 @@
 
 사람 수용은 아직 일어나지 않았다. `scripts/acceptance.py`가 0으로 끝나도 사람이 수용한 것이 아니다. 금액·역할·공연은 합성이다. 실자금, 실 PG, 은행, KYC, 제공자 호출이 없다.
 
+## Capital-local 추가 여정 (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check`는 `integrated-journeys` 단계에서 기존
+T03-sim–T06-sim과 N1-sim, N2-sim을 모두 검사한다. N 이름은 Capital-local이며
+upstream T-rung 의미나 자격을 주장하지 않는다. `funds_executed: false`,
+`integrated: false`, `qualification_claimed: false`를 유지한다.
+
+- N1-sim: disposable ScenarioReplaySource의 call-fire → inclusive cure deadline
+  (미치유) → acceleration → HUMAN_OPERATOR_DECISION의 DEFAULT_ELIGIBLE 제안.
+  F04 default는 호출하지 않으며 DRAWN 상태를 유지한다.
+  고정 증거: `tests/golden/journey_n1_sim.json`.
+- N2-sim: agent 제안은 HUMAN_PENDING이며 organizer가 proposal_id를 인용한
+  실제 모의 repay 명령을 제출한다. receipt의 `effects_executed: false`는 agent가
+  실행하지 않았다는 뜻이다. auditor는 receipt와 journal을 대조하고 manifest와
+  workspace를 offline 검증한다. 변조된 citation은 검증 실패해야 한다.
+  고정 증거: `tests/golden/journey_n2_sim.json`.
+
+실자금·외부 제공자·인증은 없고 제안 자체는 프로세스 메모리 메모다.
+
 ## 체크아웃에서 설치하고 실행
 
 Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실행한다.
@@ -12,6 +31,8 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 2. 재시작 뒤에도 receipt를 보려면 `python3 -m capital.server --workspace ./var/capital-workspace`를 쓴다. `durable`은 `LOCAL_FILE_WORKSPACE`이며 stage5 내구 거래가 아니다. 검증: tests/test_persistence.py::FileWorkspaceTests.test_round_trip_restores_canonical_state_and_original_receipts
 
 ## zipapp에서 실행
+
+0.2.0은 결정 노트를 번들하므로 체크아웃 밖에서도 조건·정책·심사·결정 인덱스가 같은 잠정 정책을 읽는다. `notes_source=BUNDLED_IN_ARTIFACT`와 실제 노트의 `note_sha256`을 manifest에서 대조한다. 금융 조건/심사/결정 본문은 금융 조건 노트, 정책은 정산 노트, 결정 행은 자기 노트 해시다. smoke는 `sim_day` 이자 누적과 workspace 재시작 후 동일 overlay 상태·출처도 확인한다. 실자금이나 사람 수용 결과가 아니다.
 
 `<version>`은 `capital/__init__.py`의 `__version__`이다. 이 문서에 해시나 빌드 횟수를 적지 않는다. 아티팩트는 서명되지 않았고 게시되지 않았다.
 

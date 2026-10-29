@@ -15,8 +15,7 @@ snapshot or from synthetic literals in the decision note; policy values (the
 reason-class table, bearer rules, resale triggers and the worked resale
 example) are read from the note at runtime, never copied into code.
 
-A missing or malformed note reports `SHADOW_NOT_BOUND` — the zipapp does not
-bundle `docs/`, so that run stays NOT_BOUND. Every result carries the nine
+A missing or malformed note reports `SHADOW_NOT_BOUND` in either runtime. Every result carries the nine
 constant false flags; no result is an executed distribution, a recovery, a
 payout or a bank movement.
 
@@ -32,11 +31,10 @@ and provider return stay `SHADOW_DEFERRED` with the unblock seam from the note.
 from __future__ import annotations
 
 import hashlib
-import importlib.resources
 import json
-import re
-from pathlib import Path
 from typing import Protocol, runtime_checkable
+
+from capital.resources import as_resource, note_path, read_note
 
 SHADOW_LABEL = 'shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement'
 SHADOW_MODE = 'SHADOW_NOT_APPLIED'
@@ -68,7 +66,6 @@ _BPS = 10_000  # CAPITAL-SHADOW-V1: bps = floor(amount * bps / 10000)
 _YEAR_DAYS = 365  # CAPITAL-SHADOW-V1 / ACT_365_FIXED day-count divisor
 _ACT_365 = 'ACT_365_FIXED'
 _UC_IDS = ('UC1', 'UC2', 'UC3', 'UC4')
-_FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
 # Bearer mechanics vocabulary of the settlement note's reason_classes_ordered.
 _PRO_RATA_ALL = 'PRO_RATA_ALL_LINES'
 _RESIDUAL_THEN_FEE = 'ORGANIZER_FIRST_THEN_PLATFORM'
@@ -96,30 +93,18 @@ class ShadowInconsistent(Exception):
 
 
 def default_note_path():
-    """Checkout path of the settlement-policy note. Absent inside the zipapp."""
-    package = importlib.resources.files('capital')
-    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_SETTLEMENT_POLICY.md'
+    """Financial decision input as a checkout or archive Traversable."""
+    return note_path('CAPITAL_SETTLEMENT_POLICY.md')
 
 
 def default_terms_path():
-    """Checkout path of the financial-terms note. Absent inside the zipapp."""
-    package = importlib.resources.files('capital')
-    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_FINANCIAL_TERMS.md'
+    """Financial-terms decision input as a checkout or archive Traversable."""
+    return note_path('CAPITAL_FINANCIAL_TERMS.md')
 
 
 def default_shadow_note_path():
-    """Checkout path of the shadow-policy note. Absent inside the zipapp."""
-    package = importlib.resources.files('capital')
-    return Path(str(package)).parent / 'docs' / 'decisions' / 'CAPITAL_SHADOW_POLICY.md'
-
-
-def _reject_duplicate_keys(pairs):
-    obj = {}
-    for key, value in pairs:
-        if key in obj:
-            raise ValueError('duplicate key')
-        obj[key] = value
-    return obj
+    """Shadow decision input as a checkout or archive Traversable."""
+    return note_path('CAPITAL_SHADOW_POLICY.md')
 
 
 def canonical(value):
@@ -395,18 +380,8 @@ def _parse_refund_entry(refund):
 
 
 def _read_block(path):
-    """The single capital-decision-v1 block of a note as a dict, else None."""
-    try:
-        path = Path(path)
-        if not path.is_file():
-            return None
-        text = path.read_text(encoding='utf-8')
-        blocks = [json.loads(raw, object_pairs_hook=_reject_duplicate_keys) for raw in _FENCE.findall(text)]
-    except (OSError, UnicodeError, ValueError, RecursionError):
-        return None
-    if len(blocks) != 1 or type(blocks[0]) is not dict:
-        return None
-    return blocks[0]
+    """The shared ledger parser's single decision block, or None."""
+    return read_note(path)['block']
 
 
 def _adopted_value(entries, key):
@@ -425,9 +400,10 @@ class DecisionNoteShadow:
     """
 
     def __init__(self, path=None, *, terms_path=None, shadow_path=None):
-        self.path = default_note_path() if path is None else Path(path)
-        self.terms_path = default_terms_path() if terms_path is None else Path(terms_path)
-        self.shadow_path = default_shadow_note_path() if shadow_path is None else Path(shadow_path)
+        self.path = default_note_path() if path is None else as_resource(path)
+        self.note = read_note(self.path, override=path is not None)
+        self.terms_path = default_terms_path() if terms_path is None else as_resource(terms_path)
+        self.shadow_path = default_shadow_note_path() if shadow_path is None else as_resource(shadow_path)
         self.terms_note_digest = None
         self.shadow_note_digest = None
         self._participation_rates = None
@@ -444,8 +420,10 @@ class DecisionNoteShadow:
         self._load()
 
     def _load(self):
-        block = _read_block(self.path)
-        if block is None or block.get('schema') != 'capital-decision-v1':
+        block = self.note['block']
+        if block is None:
+            return
+        if block.get('schema') != 'capital-decision-v1':
             return
         entries = block.get('entries')
         if type(entries) is not dict:
