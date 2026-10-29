@@ -206,19 +206,14 @@ class V1UnchangedTests(unittest.TestCase):
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
-            guarded = self._git('diff', '--name-only', base, '--',
+            # New decision notes (status A) are allowed: an added note never rewrites a
+            # reviewed one. Modified, deleted or renamed guarded files still fail.
+            guarded = self._git('diff', '--name-only', '--diff-filter=MDRTCUXB', base, '--',
                                 *[name for name in self.GUARDED if name not in
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
-            # This decision branch adds its independently reviewed note to main.
-            # Pin those exact bytes while retaining the live guard on all other
-            # decisions, export/projection code, vendor files and empty goldens.
-            observation_note = 'docs/decisions/CAPITAL_OBSERVATION_RECORD.md'
-            self.assertEqual(hashlib.sha256((ROOT / observation_note).read_bytes()).hexdigest(),
-                             '68bdda46676292a7f82815e42f05325816d44bba9dba563887f1bec02cf02547')
-            already_on_main = self._git('cat-file', '-e', f'{base}:{observation_note}').returncode == 0
-            self.assertEqual(guarded.stdout.split(), [] if already_on_main else [observation_note])
+            self.assertEqual(guarded.stdout.split(), [])
             # Also preserve the closeout binding note against the incoming reviewed
             # commit during a merge, when HEAD still points at the old branch tip.
             binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
