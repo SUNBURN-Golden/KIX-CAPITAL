@@ -142,6 +142,7 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
 {
   "schema": "capital-decision-v1",
   "decision_id": "maturity-extension-decision",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-10-30",
   "provisional": true,
