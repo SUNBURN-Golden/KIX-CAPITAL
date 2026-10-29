@@ -11,6 +11,23 @@ this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
+## Capital-local named journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs all six named synthetic journeys in
+acceptance's `integrated-journeys` stage. N1-sim and N2-sim are Capital-local names,
+not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
+`integrated: false`, and `qualification_claimed: false`.
+
+- N1-sim: disposable ScenarioReplaySource margin call, inclusive uncured deadline,
+  acceleration and a human-facing DEFAULT_ELIGIBLE proposal; no F04 default call.
+  Pin: `tests/golden/journey_n1_sim.json`.
+- N2-sim: agent HUMAN_PENDING proposal, organizer repayment citing proposal_id,
+  citation-bearing receipt (`effects_executed: false` for the agent), and auditor
+  receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
+  Pin: `tests/golden/journey_n2_sim.json`.
+
+No real funds, providers or authentication; proposals remain process-memory memos.
+
 ## DEV_ONLY keyset integrity
 
 Opt in with `python3 -m capital.server --workspace ./var/capital-workspace --dev-keyset`.
@@ -74,19 +91,24 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 - export manifest(`GET /api/export/manifest`)는 오버레이가 비어 있으면 `KIX_CAPITAL_EXPORT_MANIFEST_V2`, 비어 있지 않으면 `overlay` 섹션을 더한 `KIX_CAPITAL_EXPORT_MANIFEST_V3`이며, 섹션별 SHA-256과 content digest를 담습니다. 기본 서명은 `NOT_BOUND`입니다. `--dev-hmac`은 작업공간 디렉터리에 mode 0600인 `DEV_ONLY` HMAC 키를 만들며, 그 키는 무결성만이고 인증이 아니며 응답이나 로그에 나오지 않습니다. `python3 -m capital.verify FILE --key-file K`가 오프라인에서 섹션 해시, digest, 서명을 다시 계산합니다. cursor·watermark·source cut·외부 키·보존 기간 값은 없고(retention_policy는 주인만 있는 다섯 빈 칸), stage7 인증 export가 아닙니다. v1 `GET /api/export`는 그대로입니다. 가져오기·재개 경로는 없습니다.
 - 원본 목 정산 조회·노출·현금·회수 의무는 서로 다른 의미입니다. 합계를 실제 은행 잔액으로 표시하지 않습니다.
 - 로컬 인가 경계: 합성 역할 organizer/auditor/observer는 `POST /api/session`으로 자기선택되고 역할별 루프백 토큰에 묶입니다. 이것은 인증이 아닙니다. 계정·비밀번호·실명 신원은 없습니다. observer는 export와 projection을 읽지 못하고 auditor는 읽을 수 있습니다. `agent`는 화면 밖 SIMULATED QUERY/PROPOSE 레인입니다. 고정된 초안 허용 목록의 도구 다섯(`query_grant`, `query_subject`, `propose_action`, `withdraw_proposal`, `propose_grant_change`)만 열리고 `execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED`입니다. 제안은 HUMAN_PENDING이고 effects_executed는 false입니다. 실제 IdP·KYC·자격증명·AgentGrant/ActionPermit은 NOT_BOUND입니다.
+- Read-only permission catalog: `GET /api/permissions` exposes registered GET/POST/static routes and synthetic role permission sets under `reference:read` (agent denied). `python3 scripts/auth_matrix.py --check` now compares the served loopback JSON with the pinned matrix and generated integration/handbook blocks. No existing authority changes; identity/authentication remain `NOT_BOUND`.
 - 경로별·역할별 인가 표(`tests/auth_matrix.json`). 등록된 모든 경로를 organizer·auditor·observer·agent·토큰 없는 호출자로 나눠 기대 상태 코드와 권한을 고정했고, 루프백 서버로 모든 칸을 확인합니다. `python3 scripts/auth_matrix.py --write`가 표와 `docs/INTEGRATION.md`·운영 핸드북의 생성 블록을 다시 쓰고 `--check`가 어긋남을 잡습니다. 경로·권한·역할은 바뀌지 않았고 표는 합성 자리표시자입니다. 신원과 인증은 `NOT_BOUND`입니다.
 - export manifest 변조 코퍼스(`tests/vectors/manifest/`). 고정된 manifest 12개입니다. 정상본은 서명 없는 `unsigned.json`과 `DEV_HMAC_SHA256`으로 서명한 `dev-hmac.json`이고, 나머지는 섹션 일곱 곳의 한 바이트 변조 `section-<id>.json`, `content-digest.json`, `signature.json`, 중간에서 잘린 `malformed.json`입니다. 각 파일은 `python3 -m capital.verify FILE --key-file K`의 기대 결과를 고정합니다. 변조본은 `SECTION_HASH_MISMATCH:<id>`, `CONTENT_DIGEST_MISMATCH`, `SIGNATURE_MISMATCH`, `MANIFEST_UNREADABLE`로 거절되고 `dev-hmac.json`의 서명 상태는 `VERIFIED_DEV_ONLY_INTEGRITY`입니다. `tests/vectors/export-dev.key`는 `dev-hmac.json`용 고정 합성 `DEV_ONLY` 키로, 자격증명이 아니라 테스트 벡터 자료입니다. git에는 0644로 저장되고 검증기는 0600인 키 파일만 읽으므로 복사해 `chmod 0600`한 뒤 `--key-file`에 넘깁니다. 공유 HMAC 키는 무결성만이고 인증이 아니며 stage7 인증 export가 아닙니다. 코퍼스는 `seed_demo` 이야기와 고정 instance id에서 만든 `SIMULATED` 데이터이고 `python3 scripts/manifest_vectors.py --write`가 같은 바이트로 다시 씁니다. `python3 scripts/manifest_vectors.py --check`는 바이트를 비교해 어긋남·누락·예상 밖 파일이 있으면 1로 끝납니다.
 - 오프라인 작업공간 감사(`python3 -m capital.verify --workspace DIR`). 서버 없이 `DIR/workspace.json` 바이트를 직접 읽어 봉투 모양·중복 키·`payload_sha256`·저널 재생 `state_digest`·receipt↔저널 지문과 대사 여섯 검사(`GET /api/reconciliation`과 같은 함수)를 다시 계산하고 검사마다 `MATCHED`/`MISMATCH`를 찍습니다. 첫 어긋남에서 1로 끝나고 이유는 `WORKSPACE_UNREADABLE` 또는 `RECON_MISMATCH`입니다. 잠금을 잡지 않고 아무것도 쓰지 않아 살아 있는 서버가 잡고 있는 파일도 읽기만 하며, 복구·가져오기·재개 경로는 없습니다. `tests/vectors/workspace/`의 고정 변조 코퍼스는 `python3 scripts/workspace_vectors.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝납니다. 라벨은 `SIMULATED`/`LOCAL_ONLY`이고 CAP-11은 `NOT_BOUND`입니다.
+- 적대적 원시 HTTP 요청 코퍼스(`tests/vectors/http/`). loopback 서버에 보내는 비정상 요청 76건을 바이트로 고정한다: Host·Origin·Sec-Fetch-Site 위장, 8192 바이트를 넘는 본문·어긋난/중복 Content-Length·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·최대 깊이 중첩 본문, 잘못된 Content-Type, 경로 순회·인코딩 점·absolute-form, 헤더 CRLF·헤더 폭주, TRACE/OPTIONS/CONNECT, 요청행 초과·잘못된 버전. `tests/test_http_hostile.py`가 in-process `make_server(0)`에 각 요청을 그대로 replay하고 고정된 상태·오류 코드를 확인한 뒤 매번 `state_digest`/`operation_count` 불변과 `/api/health` 200을 다시 본다. 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다. 라벨은 `SIMULATED`이고 TLS·공개 endpoint·속도 제한·새 라우트는 범위 밖이다.
 - 크래시 경계 재생 행렬(`tests/crash_matrix.py`, 고정 표 `tests/vectors/workspace_crash.json`). 고정 명령열(F04 저널 추가·overlay entry·temp-file rename 경계)을 재생하면서 각 쓰기 경계의 앞·뒤에 crash를 주입하고, torn payload·stale temp·`--workspace` 서브프로세스 SIGKILL 칸을 돌립니다. 매 칸 재시작 뒤 `state_digest`와 `overlay_state_digest`가 핀과 바이트 동일하거나 `WORKSPACE_UNREADABLE`로 닫혀야 하고, 조용한 빈 장부는 실패입니다. `python3 tests/crash_matrix.py --check`가 표 드리프트에 1로 끝나고 `python3 -m unittest tests.test_crash_replay`가 칸을 실행합니다. 라벨은 `SIMULATED`, stage5 durable transaction·cross-host fencing 주장은 없고 CAP-11은 `NOT_BOUND`입니다.
 - 시드 고정 fold 결정성 코퍼스(`tests/vectors/fold_fuzz.json`). `python3 scripts/fold_fuzz.py --check`가 핀된 LCG32 시드 16개의 명령열을 서로 독립인 파일 작업공간 두 개에서 재생하며, 매 접두사의 F04/overlay digest·receipt 해시·봉투 전체 바이트를 비교합니다. 복사한 저널을 다시 fold하고 완료된 각 열을 새 세션으로 다시 열어 receipt와 파일 바이트 불변을 검사합니다. 봉투 바이트 동일성은 같은 인터프리터·트리에서 고정 합성 writer와 시계 입력을 쓸 때만 성립하고 평범한 wall-clock 저장은 이 주장 밖입니다. 코퍼스는 합성 ID와 논리 일수만 담고 채택된 용량 한계 안에 있습니다. 드리프트·누락·잘못된 입력·서식 변경은 아무것도 다시 쓰지 않고 1로 끝나고, `--write`는 이 코퍼스만 명시적으로 만들며 `--file PATH`로 격리 검사를 지원합니다. 크래시 행렬을 보완해 순서 결정성만 검증하므로 라벨은 `SIMULATED`, 내구성·성능 주장과 명령 의미 변경은 없고 CAP-11은 `NOT_BOUND`입니다.
 - 오프라인 감사 증거 팩(`scripts/evidence_pack.py`, 형식 `KIX_CAPITAL_EVIDENCE_PACK_V1`, 라벨 `SIMULATED`/`LOCAL_ONLY`). `python3 scripts/evidence_pack.py --workspace DIR --out DIR`이 `DIR/workspace.json` 바이트만 읽어(잠금·쓰기·복구 없음) export manifest, 오프라인 작업공간 감사, 대사 보고, 결정 노트 요약, 인가 표 다섯 표면을 `part_tag`/`document`로 감싼 섹션별 SHA-256 아래 `evidence-pack.json` 하나로 모읍니다. instance id·시각·저장 시각 같은 휘발 필드는 `content_digest` 계산에서 빠지고 `volatile` 블록으로 따로 해시되며, 이벤트 로그는 묶지 않아 같은 작업공간에 두 번 쓰면 바이트가 같습니다. `python3 scripts/evidence_pack.py --verify FILE`이 오프라인으로 섹션 해시·`volatile` 해시·`content_digest`·내장 manifest를 다시 계산해 한 바이트라도 어긋나면 1로 끝납니다. 감사가 어긋난 작업공간은 `INCOMPLETE` 팩으로 남고(실패의 증거) 종료 코드는 1입니다. `DEV_ONLY` 키·토큰은 읽거나 복사하지 않고 내장 manifest 서명은 `NOT_BOUND`입니다. 원격 attestation·stage7 인증 export·보존 집행은 범위 밖이고 가져오기·재개 경로는 없습니다. `tests/vectors/pack/`의 고정 변조 코퍼스(정상본·섹션 다섯 곳의 한 바이트 변조·`volatile`·`content-digest`·절단)는 `python3 scripts/pack_vectors.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝납니다.
 - 금융 벡터 팩(`tests/vectors/finance_vectors.json`, 형식 `KIX_CAPITAL_FINANCE_VECTORS_V1`, 라벨 `SIMULATED`). 여덟 그룹이 각각 `FINANCE_PENDING_NODES` 후보 하나(`fin-ledger-contract`, `fin-double-entry-projection`, `fin-observation-reconciliation`, `fin-multi-payee-refund-proof`, `fin-credit-exposure-reconciliation`, `fin-consistent-accounting-export`, `fin-catalogue-read-model`, `fin-finance-closeout`)의 입력으로 `INPUT_VECTOR_CANDIDATE` 역할을 합니다. 여덟 후보 모두 `vectors`가 null이 아니고 `reason`은 null입니다. `fin-finance-closeout`의 그룹 `closeout_digest`는 아래 클로즈아웃 다이제스트를 그대로 내장합니다. `semantic_conformance`는 false이고 `upstream_nodes_completed`는 비어 있습니다. `SEMANTIC_CONFORMANCE`가 아니며 어떤 upstream 노드도 완료하지 않고, 회계 정책을 채택하거나 정산 정책을 고르지도 않습니다. 후보는 자기 upstream 완료 증거가 있어야만 이 벡터를 채택할 수 있습니다. 내장하므로 다이제스트를 먼저 다시 쓴 뒤 `python3 scripts/finance_vectors.py --write`가 다시 쓰고 `python3 scripts/finance_vectors.py --check`가 바이트를 비교해 어긋남이나 누락이면 1로 끝나며, 고정된 로컬 코드가 여전히 같은 바이트를 낸다는 뜻일 뿐 의미 적합성의 증거가 아닙니다.
 - 클로즈아웃 다이제스트(`tests/vectors/closeout_digest.json`, 형식 `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`, 라벨 `SIMULATED`/`INPUT_VECTOR_CANDIDATE`). 커밋하지 않는 `build/acceptance-evidence.json`에서 파생한 결정론적 부분집합으로, 수용 단계마다 `stage_id`·명령·`status`·기대 종료 코드·`test_count`·라벨 `SIMULATED`·`funds_executed` false를 싣고 seeded-demo `state_digest`·`content_digest`·`debit`·`credit`, vendor pin commit과 다섯 파일 `verified`, 패키지 `sha256`을 더합니다. git `head_sha`, 도구 버전, 시각, instance id, 경로는 `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`의 제거 키 목록대로 빼고 그 목록을 `stripped_keys`에 적습니다. `python3 scripts/closeout_digest.py --write`는 `ok:true`·`SIMULATED`·`funds_executed` false이고 아홉 단계가 모두 통과한 evidence에서만 다시 쓰고, 두 번 실행해도 같은 바이트입니다. `python3 scripts/closeout_digest.py --check`는 evidence 없이 구조·라벨·제거 키 부재·금융 벡터 팩의 내장 사본과의 바이트 일치를 보고 어긋남이면 1로 끝나며, `--check-evidence`는 새 evidence에서 다시 만들어 비교하고 첫 어긋난 경로를 이름 붙입니다. `SEMANTIC_CONFORMANCE`가 아니고 어떤 upstream 노드도 완료하지 않으며 이 저장소 도구가 스스로 낸 증거일 뿐입니다. 수용 사다리에는 단계를 더하지 않았습니다.
 - 게이트 결함 코퍼스(`tests/vectors/gate_faults.json`, 형식 `KIX_CAPITAL_GATE_FAULTS_V1`, 라벨 `LOCAL_FAKE_GATE`). 옵트인 `--producer gate-fake` 경로를 127.0.0.1의 `scripts/fake_gate.py`에 붙이고 정상 수락·5xx·잘못된 JSON·연결 절단·지연 후 유실·같은 operationId 다른 본문(409 `IDEMPOTENCY_CONFLICT`)을 고정합니다. 유실 응답은 `retry_authorized=false`인 `UNKNOWN`이고 자동 재전송은 없습니다. `python3 scripts/gate_faults.py --check`가 코퍼스를 다시 실행해 어긋남이면 1로 끝나며 아무것도 다시 쓰지 않습니다. SIMULATED이고 ProducerPort는 `NOT_BOUND`입니다. SEMANTIC_CONFORMANCE가 아닙니다.
+- 호환 manifest 사전점검 리허설(`tests/vectors/compat/`, 형식 `capital-compat-expected/1`, 라벨 `READ_ONLY_FIXTURE`/`SIMULATED`). `capital/compat_preflight.py`가 합성 `kix-compat-manifest/1` 번들을 호출자가 따로 핀한 expected tuple(`tests/vectors/compat/expected.json`)과 오프라인으로 대조합니다. producer identity·profile·두 contract 파일·generator/toolchain·SDK 출력·vector 해시와 `manifest_sha256`을 모두 검사하고, 중복 키·자기 digest 필드·누락 파일·루트 밖 경로를 거절합니다. 인코딩은 인용된 `kix-canonical-json/1`(kix-protocol `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915`의 `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md`)이고 Capital의 레거시 ASCII 이스케이프 인코딩과 별도로 둡니다. `python3 scripts/compat_preflight.py --check`가 코퍼스 해시·인벤토리·canonical 벡터·expected tuple을 검사해 어긋남이면 1로 끝나고 아무것도 다시 쓰지 않습니다. 바이트 일치(`MATCHED`)는 `semantic_consumption` `HOLD`·`adoption` `NOT_BOUND`를 바꾸지 않고, 자기 선언 `SEMANTIC_CONFORMANCE` 문자열은 어댑터를 승인하지 않습니다. 계약은 [docs/COMPAT_PREFLIGHT.md](docs/COMPAT_PREFLIGHT.md)에 있습니다.
 - 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_CASH_FORECAST`). 오버레이 원장의 `sim_day`·인출일과 `CAPITAL-TERMS-V1`을 접어 날짜가 박힌 세 레그(`SETTLEMENT_CASH_IN` 예상 정산 입금일, `CONTRACT_INTEREST` 만기, `PRINCIPAL` 만기)를 건별로 보여 주고 0-7/8-30/31-60/61-90/91+ sim 일 버킷으로 묶습니다. 버킷마다 정확한 유리수 합을 한 번만 1원에 내리고, 상환 레그는 미상환 원금+만기 계약 이자와 대사(`reconciliation.matched`)합니다. 가정(`SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`, `NO_DEFAULT_CONTRACTUAL_SCHEDULE`, `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`)은 SIMULATED 표시이고, 확률 가중·할인/NPV·FX·자금 이동은 범위 밖입니다. `instance_id`·`expected_settlement_cash_day` 외의 질의 인자는 `400 INVALID_ARGUMENTS`이고 노트가 쓸 수 없으면 `NOT_BOUND`에 숫자가 없습니다. 읽기는 아무것도 쓰지 않습니다. 시드 데모 장부의 예측은 `tests/vectors/forecast_vectors.json`에 바이트로 고정되고 `python3 scripts/forecast_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
+- 가상 시나리오(`GET /api/risk/scenarios`, `GET /api/risk/scenarios/{id}`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_WHATIF`). 고정 네 가지(`largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`)가 `GET /api/risk`와 `GET /api/risk/covenants`의 같은 정수 입력을 깊은 복사로 받아 하나의 가정만 적용해 다시 접습니다. `reconciliation`이 시나리오 합계를 라이브 `GET /api/risk`로 되맞추고(`matched`), `applied`·`enforced`는 항상 거짓입니다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 쓸 수 없으면 숫자 없는 `NOT_BOUND`이고, 저널·오버레이 항목·receipt·예약은 변하지 않습니다. 시드 데모 장부의 응답은 `tests/vectors/risk_scenarios.json`에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - AI 위임 클레임 표(`tests/agent_claims.json`)와 실행 스크립트(`scripts/agent_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/AI_DELEGATION_AUTHORITY.md`(kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232`)의 클레임 문자열·절·needle을 인용하고, `capital/agent_claims.py`의 검사가 SIMULATED agent lane을 loopback facade로 실행합니다. 표의 `HUMAN_PENDING`은 초안 `PROPOSED` 메모 단계의 Capital 라벨이고, 실행 거절 `EXECUTE_AUTHORITY_DISABLED`(403)는 초안의 항상 거절 `attempt_execution`을 반영합니다. organizer 명령은 pending `proposal_id`를 receipt에 인용으로 새기고 메모를 실행하지 않습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 두 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다. `ai_delegation_mock.py`는 vendor하지 않고 ActionPermit·EXECUTE·인가 변경은 범위 밖입니다.
 - 읽기 모델 클레임 표(`tests/read_model_claims.json`)와 실행 스크립트(`scripts/read_model_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/READ_MODEL_QUERIES.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 `get_credit_advance`(§2.12)·`get_credit_claim`(§2.13)·비변경 술어(§8)를 인용하고 `capital/read_model_claims.py`의 검사가 기존 읽기 표면을 loopback facade로 실행합니다. 매핑은 어댑터로 명시합니다: `get_credit_advance`는 `GET /api/state`의 case 뷰(그대로 `CreditMachine.view` dict)에, `get_credit_claim`은 in-process `CreditMachine.view_claim`에 대응하고, `GET /api/evidence`는 §2.11 정산 claim 객체라 대응하지 않습니다. upstream 쿼리 이름을 구현하지 않고 경로도 추가하지 않습니다. 모든 검사는 §8 비변경 가드(canonical_state·저널 길이·오버레이 digest·operation_count) 아래 읽기를 실행해 변경이 있으면 그 클레임이 실패합니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 세 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
 - CE1 클레임 표(`tests/ce1_claims.json`)와 실행 스크립트(`scripts/ce1_claims_check.py`). 각 행은 고정된 upstream 규격 `docs/CANONICAL_ENCODING_V1.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 바이트 규칙 절·needle·pinned_sha를 인용하고 `capital/ce1_claims.py`의 `ce1.*` 검사 하나를 부릅니다. 입력 게이트가 중복 키·비표준 상수(NaN·Infinity)·범위 밖 정수·비ASCII 키 등을 해시 전에 거절하고, ASCII 입력은 Capital canonical 바이트와 domain-tag digest 프레이밍을 재계산해 인용된 규칙과 대조합니다. 비ASCII 이스케이프 차이(`ensure_ascii`)는 실패가 아닌 `DOCUMENTED_DIVERGENCE` 행으로 기록하고 `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.4의 stage-7 정렬 근거를 다시 확인합니다. 인코더 동작 변경은 없습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 네 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
+- Contract invariant claims (`tests/contract_invariants.json`, `capital/contract_invariants.py`, `scripts/contract_invariants_check.py --execute`). Six `CLAIM_CONFORMANCE` rows bind Capital analogues of INV-1..INV-5 to pinned kix-protocol `7481b0e` `docs/contracts/CONTRACT_INVARIANTS.md` §3. Twelve pinned stdlib-random seeds exercise the real facade, concurrent duplicate ids, shared-face draws on large synthetic fixtures, capacity refusals, overlay days and local reopen; a loopback sequence and the crash-matrix SIGKILL boundary run when loopback is available. `--check` detects seed/reply drift; `--protocol-dir PATH` reads citation needles only; missing checkout is `SKIPPED`, restricted sockets are `SKIPPED_LOOPBACK`, neither is a pass. Command receipt canonical bytes retain the original instance; `inv.3.overlay_projection` is a `DOCUMENTED_DIVERGENCE` excluding rebuilt instance/digest envelope fields while checking the initial folded digest. This is `SIMULATED`, no Rust kernel execution or semantic profile, and not an `upstream-claims` stage command. Pin consumer declaration is `PENDING_NOTE_REGISTRATION`: follow-up **upstream-repin-inventory-contract-invariants** adds this table to binding-note §3.2 `bound_tables`, §3.6 default impact list, and a `decision_bindings` test_module record for `tests/test_contract_invariants.py`.
 - 결정 노트 요약(`GET /api/decisions`). `docs/decisions/`의 `capital-decision-v1` 블록마다 `decision_id`, `status`, `provisional`, `version`, 항목별 상태 지도만 보여 줍니다. 값은 복사하지 않고 `scripts/decision_ledger.py`와 같은 파서를 씁니다. 권한은 `reference:read`이며 agent는 거절됩니다. `docs/`가 없는 `.pyz`에서는 `NOT_BOUND`와 reason만 돌려줍니다. 채택이 아니라 노트가 말하는 것의 요약입니다.
 - 프로세스 로컬 관측(`GET /api/metrics`, `GET /api/health`). 카운터, 고정 밀리초 지연 버킷, uptime, 작업공간 상태만 보여 준다. 라벨은 `SIMULATED` / `LOCAL_OBSERVABILITY`이고 exporter, tracing, alerting, network sink는 `NOT_BOUND`다. `--event-log FILE`은 크기 제한 JSONL이며 본문과 토큰을 쓰지 않는다. 카운터는 fingerprint와 `state_digest`에 들어가지 않고 프로세스가 끝나면 사라진다. 정확성, 내구성, 실자금의 증거가 아니다.
 - 로컬 부하 하네스(`python3 scripts/load_harness.py`). 워크로드마다 임시 포트의 loopback 서버를 새로 띄우고 stdlib `http.client`·`ThreadPoolExecutor`로 `POST /api/commands`를 보낸다. 여섯 시드 워크로드(`low-load-uniform`, `uniform`, `hot-seat`, `same-command-retry`, `history-growth`, `saturation`)를 메모리와 `--workspace` mode로 돌리고, 예정 도착시각과 서비스 시간을 따로 기록하며 new-success·replay·reject·conflict·capacity를 클래스별로 세어 절대 섞지 않는다. 보고서 `KIX_CAPITAL_LOAD_REPORT_V1`은 `LOCAL_EXPLORATION` 라벨과 입력 fingerprint·Python·OS·CPU 정보만 담는다. SLO·TPS 주장이 없고 **이 보고서는 production 성능 증거가 아니다.** `smoke` 프로필은 unittest 안에서 임계값 없이 돌고, `full`은 수동 실행이며 출력은 커밋하지 않는 `build/` 아래에 둔다.
@@ -104,14 +126,19 @@ python3 scripts/smoke_release.py dist/capital-0.1.0.pyz
 python3 -m unittest discover -s tests -v
 python3 scripts/decision_bindings.py --check
 python3 scripts/fsm_contract_claims_check.py --execute
+python3 scripts/contract_invariants_check.py --execute
+python3 scripts/contract_invariants_check.py --check
 python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v
 python3 scripts/manifest_vectors.py --check
 python3 scripts/workspace_vectors.py --check
+python3 scripts/http_hostile.py --check
 python3 scripts/pack_vectors.py --check
 python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
+python3 scripts/compat_preflight.py --check
 python3 scripts/forecast_vectors.py --check
+python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
 npm ci
 npx playwright install chromium
@@ -154,6 +181,34 @@ remain outside this table.
 
 `GET /api/portfolio/snapshot?instance_id=<current instance>` returns one SIMULATED local diagnostic cut of terms rollup, risk, covenant watch and forecast. It requires `projection:read`; current session identity is mandatory. `COMPLETE` is limited to the in-process pinned producer with immutable fixture views, bound loaded terms and healthy reconciled storage. Gate-fake, mutable sources and degraded/unbound inputs return explicit `INCOMPLETE` diagnostics, never fabricated totals. The cut carries business, overlay, fixture and policy-input digests plus a deterministic snapshot digest. Terms rollup keeps draw day 0 while risk/covenants/forecast use recorded draw days; settlement cash day remains `EXPECTED_DAY_NOT_PROVIDED`. No workspace writes or real funds occur. Authentication, cross-process cuts and historical storage remain NOT_BOUND/out of scope. See `tests/test_portfolio_snapshot.py` for controlled concurrency and read-only evidence and `docs/INTEGRATION.md` for the contract.
 
+### Advance case dossier · SIMULATED
+
+`GET /api/cases/{advance_id}/dossier?instance_id=` returns a deterministic
+`KIX_CAPITAL_CASE_DOSSIER_V1` document for one advance. Organizer and auditor
+can download it from the operations desk; observer and agent receive 403.
+The document copies the case, receipt chain, recorded overlay day and rows,
+underwriting rule evaluation, terms line, full-payoff allocation proposal,
+margin/covenant status and READ_ONLY_FIXTURE settlement evidence from existing
+readers under one lock. No new financial arithmetic or workspace writes occur.
+Underwriting `proposal`/`approve_authority` fields are copied rule outputs,
+not a decision or authority granted to the reader. Missing terms produce
+labelled `NOT_BOUND` blocks without numbers. Undrawn cases have
+`NOT_APPLICABLE / NOT_DRAWN` terms-dependent blocks when terms are bound.
+
+`dossier_digest` is SHA256 over the canonical document without that field,
+with established volatile session/time keys removed recursively. It is a local
+content digest; authentication, real identity and remote attestation remain
+NOT_BOUND. Receipts without F04 journal rows are workspace-wide and labelled
+`case_association: NOT_INFERRED`. PDF, multi-advance bundles and evidence-pack
+inclusion are out of scope. The response carries its own cut and does not depend
+on the desk manifest's availability.
+
+The six demo dossiers are pinned in `tests/vectors/dossiers/`.
+Run `python3 scripts/dossier_vectors.py --check` to detect drift, or use
+`--write` to regenerate and `--dir` to target another dossier directory.
+Coverage: `tests/test_dossier.py` and `tests/browser/case-dossier.spec.cjs`
+(organizer/auditor captures at 1280px and 375px).
+
 The provisional claim-slice registry is implemented under
 [CAPITAL_CLAIM_SLICE_REGISTRY.md](docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md).
 `GET /api/overlay/slices` lists SIMULATED / SHADOW_NOT_APPLIED slices and optional
@@ -166,3 +221,29 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 `tests/golden/overlay_claim_slices.json`; `--write` regenerates it explicitly.
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
+
+
+### Cursor-paginated facts (SIMULATED)
+
+`GET /api/export/facts?instance_id=<current>&limit=100` requires `export:read`.
+Save each response's exact bytes as `page-0000.json`, `page-0001.json`, … in an
+otherwise empty directory; pass its `next_cursor` as `after` until it is null.
+`GET /api/export/facts/schema` serves `KIX_CAPITAL_FACTS_SCHEMA_V1`. Rows contain
+accepted F04 journal entries and the overlay journal in commit order, with KRW
+integer atoms, declared widths and a duplicate marker. The technical limit is
+1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; restart from
+the first page. Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage
+returns 503, including for continuing cursors; no empty substitute book is exported.
+
+`python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
+cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
+It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
+`tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
+bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+
+Labels remain `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+with `stage7_authenticated_export: false` and a non-claim of
+`k-stage7-authenticated-export`. Hashes detect corruption; consistent replacement
+with all hashes rebuilt cannot be detected. No source authority, signing, import,
+resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
+verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.

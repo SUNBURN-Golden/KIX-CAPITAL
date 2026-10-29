@@ -71,8 +71,8 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
-| auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
+| organizer | 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| auditor | 없음. 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
 | observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
 
@@ -246,10 +246,10 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:default` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `default`) |
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
-| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/permissions`, `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…`, `GET /api/cases/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
-| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest` |
+| `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest`, `GET /api/export/facts`, `GET /api/export/facts/schema` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
 | `statement:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/statement` |
 | `metrics:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/metrics` |
@@ -684,6 +684,14 @@ python3 scripts/lifecycle_claims_check.py --execute
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:risk-whatif-scenarios -->
+
+### risk-whatif-scenarios
+
+`GET /api/risk/scenarios`와 `GET /api/risk/scenarios/{id}`는 읽기 전용 가상 시나리오 평가기다. `mode`는 `SIMULATED_WHATIF`이고 권한은 `projection:read`라 organizer·auditor가 읽고 observer·agent는 `403 ROLE_FORBIDDEN`이다. 인덱스는 고정 넷 `largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`을 이름 붙이고, 각 id는 `GET /api/risk`·`GET /api/risk/covenants`가 쓰는 정수 입력을 깊은 복사해 가정 하나를 적용한 뒤 `risk.build`·`covenants.build`를 다시 접는다. 가정은 최대 미상환 잔액의 미디폴트 오픈 전진을 `DEFAULTED`로 두기, 스펙 고정 최대 충격(`SHOCKS_BPS` 마지막 값)만큼 `refund_face`를 올리기(새로 위반하는 대상엔 `hypothetical` `CALLED` 행만 보고, 기록은 안 함), 마지막 기록 만기 하루 뒤로 `sim_day`를 투영하기, 가장 빡빡한 bound U4 캡을 넘는 가상 인출 `sim-whatif-cap` 하나 넣기다. `reconciliation`은 `baseline_outstanding_krw`·`assumption_delta_krw`·`scenario_outstanding_krw`·`matched`와 기준 digest를 싣고, `applied`·`enforced`·`policy_adopted`는 항상 false다. 대상이 없으면 `evaluated` false에 `unevaluated_reason`만 둔다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 없거나 쓸 수 없으면 숫자 절 없는 `NOT_BOUND`이며 인덱스는 이름만 계속 낸다. 저널·오버레이 항목·receipt·예약은 변하지 않는다. 시드 데모 응답은 `tests/vectors/risk_scenarios.json`(`KIX_CAPITAL_RISK_WHATIF_VECTORS_V1`)에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝난다. `tests/test_risk_whatif.py`가 고정 벡터·대사·역할 거절·읽기 불변을 확인한다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:facade-load-harness -->
 
 ### facade-load-harness
@@ -691,5 +699,77 @@ python3 scripts/lifecycle_claims_check.py --execute
 `python3 scripts/load_harness.py`는 stdlib만 쓰는 loopback 부하 하네스다. 워크로드마다 `capital.server.make_server(0)`를 임시 포트에 새로 띄우고 `http.client`와 `ThreadPoolExecutor`로 `POST /api/commands`를 보낸다. 여섯 시드 워크로드는 `low-load-uniform`, `uniform`, `hot-seat`, `same-command-retry`, `history-growth`, `saturation`이고 메모리와 `--workspace` 두 mode로 돈다. `saturation`은 `MAX_OPERATIONS`(500)을 채운 뒤 `SIMULATION_CAPACITY`를 관측하고, 만석에서도 기존 operation_id의 replay는 저장된 receipt를 돌려준다.
 
 보고서 형식은 `KIX_CAPITAL_LOAD_REPORT_V1`이고 라벨은 `LOCAL_EXPLORATION`이다. 예정 도착시각(`scheduled_at_ms`)과 서비스 시간(`service_ms`)을 따로 기록하고 new-success·replay·reject·conflict·capacity를 클래스별로 세어 최근접 순위 백분위를 낸다 — 클래스를 절대 섞지 않는다. 입력 fingerprint, python, OS, CPU 정보만 담고 토큰은 쓰지 않는다. 매 실행 뒤 하네스는 저널 길이가 new-success 수와 같고, replay가 새 저널 없이 저장 receipt를 돌려주며, conflict와 capacity가 아무것도 쓰지 않고, 마지막 `state_digest`가 저널 재생과 같음을 확인한다. SLO나 TPS 주장은 없고 **이 보고서는 production 성능 증거가 아니다**. `smoke`는 unittest 안에서 임계값 없이 돌고, `full`은 수동 실행이며 출력은 커밋하지 않는 `build/` 아래에 둔다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:advance-case-dossier -->
+### advance-case-dossier
+
+운영 데스크에서 사례를 선택하고 **dossier 다운로드**를 누르면
+`GET /api/cases/{advance_id}/dossier?instance_id=`로 한 사례의 JSON 문서를
+읽는다. 형식은 `KIX_CAPITAL_CASE_DOSSIER_V1`, 라벨은 `SIMULATED`, 모드는
+`READ_ONLY_CASE_DOSSIER`다. `projection:read`를 가진 organizer·auditor만
+조회하며 observer·agent는 `403 ROLE_FORBIDDEN`이다. 실명·인증은 NOT_BOUND다.
+
+기존 조회의 사례·원본 receipt chain·심사 기록·조건·오버레이 full-payoff
+allocation quote·margin/covenant 상태·READ_ONLY_FIXTURE 정산 근거를 단일
+잠금 아래 복사한다. 날짜는 기록된 `sim_day`이며 가정 날짜나 금액을 받지 않는다.
+underwriting은 `DOSSIER_READ_ONLY` 역할의 rule evaluation copied for audit;
+not a decision by the reader다. `proposal`·`approve_authority`는 규칙 출력이며
+읽는 사람에게 심사 결정 권한을 주지 않는다. 장부와 operation_count는 바뀌지 않는다.
+
+조건 미결합은 숫자 없는 `NOT_BOUND`, 조건 결합 후 미인출은
+`NOT_APPLICABLE / NOT_DRAWN` 블록이다. 알 수 없는 사례는
+`404 CASE_NOT_FOUND`, instance가 다르면 `409 SESSION_CHANGED`, 불필요하거나
+중복된 질의는 `400 INVALID_ARGUMENTS`다. 저널 없는 receipt는 workspace 전체
+목록이며 `case_association: NOT_INFERRED`로 표시한다.
+
+`cut`은 상태·오버레이·fixture digest와 terms version을 담는다.
+`dossier_digest`는 자신을 제외하고 기존 volatile session/time 키를 재귀적으로
+제거한 canonical JSON의 SHA256이다. 같은 작업공간의 반복 조회는 동일 바이트다.
+콘텐츠 해시는 원격 증명이나 인증이 아니다. 데스크 매니페스트 호환 여부와 독립적으로
+다운로드하며 서버 문자열은 textContent로만 표시한다. JSON만 제공하고 PDF·복수
+사례 묶음·evidence-pack 포함·실제 신원은 범위 밖이다.
+
+고정 예제: `tests/vectors/dossiers/`, `python3 scripts/dossier_vectors.py --check`.
+검증: `tests/test_dossier.py`, `tests/browser/case-dossier.spec.cjs`.
+브라우저 사양은 organizer·auditor 각 1280px·375px 화면을 캡처한다.
+<!-- /handbook-section -->
+
+<!-- handbook-section:contract-invariants-claims -->
+
+### contract-invariants-claims
+
+`tests/contract_invariants.json` (`KIX_CAPITAL_CONTRACT_INVARIANTS_V1`) maps six `CLAIM_CONFORMANCE` rows to `CONTRACT_INVARIANTS.md` §3 INV-1..INV-5 at kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. `capital/contract_invariants.py` observes the real CapitalService + FileWorkspace facade: twelve pinned seeds, concurrent duplicate ids, shared-face competing draws on demo-beta-festival/demo-gamma-tour, capacity `SIMULATION_CAPACITY` refusals without eviction, repay/cancel, advance_day, reopen and the crash-matrix SIGKILL boundary. Rust is a read-only contract source, nothing is vendored or executed upstream. Labels are `SIMULATED` / `CLAIM_CONFORMANCE`; finite traces prove no general correctness or bank exactly-once guarantee.
+
+Run `python3 scripts/contract_invariants_check.py --execute`, then `python3 scripts/contract_invariants_check.py --check`. `--seed N` reproduces a sequence without modifying pins; `--write` explicitly regenerates the default seed digests after successful predicates. `--protocol-dir PATH` reads section needles only. No checkout gives citation `SKIPPED`; forbidden loopback bind gives `SKIPPED_LOOPBACK` for HTTP/SIGKILL, not a pass. Tests are `tests/test_contract_invariants.py`; sensitivity corrupts copies of observed traces. This is not an `upstream-claims` stage command.
+
+INV-3 compares canonical receipt projection bytes after every later step, including reopen and errors. Command receipts retain the original instance_id; post-restart reads require the current session and reject the old session with SESSION_CHANGED. `inv.3.overlay_projection` is a `DOCUMENTED_DIVERGENCE`: replay rebuilds the overlay instance and omits overlay_state_digest, so those envelope fields and transport_duplicate are excluded. Operation payload fields remain covered and the initial overlay digest must equal the folded state digest. INV-5 retains claim/trade/currency/amount, drawn_exposure/draw_id/journal index and journal/overlay entries; repayment may lower outstanding exposure. These are mock reservation and capture facts, not money.
+
+The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Follow-up `upstream-repin-inventory-contract-invariants` registers `tests/contract_invariants.json` in binding-note §3.2 bound_tables and §3.6 default impact list, plus a decision_bindings test_module record for `tests/test_contract_invariants.py`. Stage5 durability and external authority stay `NOT_BOUND`.
+
+<!-- /handbook-section -->
+
+
+### Facts 페이지 오프라인 확인 · SIMULATED
+
+`GET /api/export/facts?instance_id=<현재 세션>&limit=100`은 `export:read`가
+필요하다. 각 응답의 원본 바이트를 `page-0000.json`, `page-0001.json` 순으로
+저장하고 `next_cursor`를 다음 요청의 `after`로 보낸다. null이면 완료다.
+`GET /api/export/facts/schema`는 고정 열·폭·KRW 정수 단위 스키마다.
+`python3 -m capital.verify --facts DIR`로 페이지 연결·행 해시·F04 재생·오버레이
+fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
+`CUT_MOVED`는 처음부터 다시 조회해야 하며, 저장소 오류 503이면 페이지가 없다.
+빈 오버레이는 cut의 오버레이 키 자체가 없다. 동일 overlay_id의 원본 중복은
+`duplicate: 1`로 남는다. `SIMULATED`, source_cut과 authentication은 `NOT_BOUND`이며
+`k-stage7-authenticated-export`가 아니다. 해시를 모두 다시 만든 일관된 대체 장부는
+탐지하지 못한다. 내장 fixture만 검증하며 import/resume은 제공하지 않는다.
+<!-- handbook-section:http-hostile-corpus -->
+
+### http-hostile-corpus
+
+`tests/vectors/http/`는 loopback 서버에 보내는 비정상 원시 요청 76건을 바이트로 고정한 코퍼스다. 각 파일은 요청 바이트(`request_b64`, 자리표시자 `__PORT__`·`__TOKEN__`만 치환)와 고정된 결과(`expect.status`, `expect.code`, 응답 접두·표지)를 담고, `tests/test_http_hostile.py`가 in-process `make_server(0)`에 replay한다. 매건 뒤에 `state_digest`·`operation_count` 불변과 `GET /api/health` 200을 다시 확인하고, 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다.
+
+코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->

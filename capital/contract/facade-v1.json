@@ -7,6 +7,7 @@
   "description": "Local Capital facade schema. Not the promoted KIX Protocol catalogue (domain kix:fixture:lifecycle:0.3, 40 commands). Not a generated SDK. Not SEMANTIC_CONFORMANCE. CAP-16 exact producer/SDK tuple stays NOT_BOUND. ProducerPort vectors in tests/test_producer_port.py are a local gateway check only.",
   "errorGroups": {
     "boundary": [
+      "INVALID_TARGET",
       "LOOPBACK_HOST_REQUIRED",
       "ORIGIN_REJECTED",
       "CROSS_SITE_REJECTED",
@@ -51,7 +52,8 @@
       "READ_ONLY_INVARIANT"
     ],
     "scenario": [
-      "UNKNOWN_SCENARIO"
+      "UNKNOWN_SCENARIO",
+      "SCENARIO_UNKNOWN"
     ],
     "preview": [
       "SESSION_CHANGED",
@@ -81,6 +83,10 @@
     ]
   },
   "errors": [
+    {
+      "code": "INVALID_TARGET",
+      "status": 400
+    },
     {
       "code": "LOOPBACK_HOST_REQUIRED",
       "status": 403
@@ -416,6 +422,34 @@
     {
       "code": "UNKNOWN_SLICE",
       "status": 404
+    },
+    {
+      "code": "CASE_NOT_FOUND",
+      "status": 404
+    },
+    {
+      "code": "INVALID_CURSOR",
+      "status": 400
+    },
+    {
+      "code": "CUT_MOVED",
+      "status": 409
+    },
+    {
+      "code": "FACTS_ROW_INVALID",
+      "status": 500
+    },
+    {
+      "code": "STORAGE_STATE_MISMATCH",
+      "status": 503
+    },
+    {
+      "code": "COHERENT_SNAPSHOT_UNSUPPORTED",
+      "status": 503
+    },
+    {
+      "code": "SCENARIO_UNKNOWN",
+      "status": 400
     }
   ],
   "commands": {
@@ -459,6 +493,36 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/cases/{advance_id}/dossier",
+      "operationId": "local_case_dossier",
+      "dispatch": "/api/cases/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/case_dossier"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT",
+        "CASE_NOT_FOUND"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/portfolio/snapshot",
       "operationId": "local_portfolio_snapshot",
       "dispatch": "/api/portfolio/snapshot",
@@ -467,6 +531,7 @@
         "$ref": "#/definitions/portfolio_snapshot"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -495,6 +560,7 @@
         "$ref": "#/definitions/state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -517,6 +583,7 @@
         "$ref": "#/definitions/scenario_list"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -539,6 +606,7 @@
         "$ref": "#/definitions/scenario_detail"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -554,6 +622,29 @@
     },
     {
       "method": "GET",
+      "path": "/api/permissions",
+      "operationId": "local_permissions",
+      "dispatch": "/api/permissions",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/permission_catalog"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "reference:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/readiness",
       "operationId": "local_readiness",
       "dispatch": "/api/readiness",
@@ -562,6 +653,7 @@
         "$ref": "#/definitions/readiness"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -584,6 +676,7 @@
         "$ref": "#/definitions/decisions"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -607,6 +700,7 @@
         "$ref": "#/definitions/evidence"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -636,6 +730,7 @@
         ]
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -665,6 +760,7 @@
         "$ref": "#/definitions/terms_status"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -688,6 +784,7 @@
         "$ref": "#/definitions/terms_portfolio"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -719,6 +816,7 @@
         "$ref": "#/definitions/terms_forecast"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -748,6 +846,7 @@
         "$ref": "#/definitions/terms_case"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -780,6 +879,7 @@
         "$ref": "#/definitions/terms_allocation"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -813,6 +913,7 @@
         "$ref": "#/definitions/terms_setoff"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -845,6 +946,7 @@
         "$ref": "#/definitions/policy_status"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -868,6 +970,7 @@
         "$ref": "#/definitions/policy_simulation"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -891,6 +994,7 @@
         "$ref": "#/definitions/policy_shadow"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -914,6 +1018,7 @@
         "$ref": "#/definitions/preview"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -941,6 +1046,7 @@
         "$ref": "#/definitions/underwrite"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -982,6 +1088,7 @@
         ]
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1008,6 +1115,7 @@
         "$ref": "#/definitions/export_v1"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1030,6 +1138,7 @@
         "$ref": "#/definitions/manifest"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1045,6 +1154,68 @@
     },
     {
       "method": "GET",
+      "path": "/api/export/facts",
+      "operationId": "local_export_facts",
+      "dispatch": "/api/export/facts",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/facts_page"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "WORKSPACE_UNREADABLE",
+        "WORKSPACE_LOCKED",
+        "WORKSPACE_WRITE_FAILED",
+        "INVALID_CURSOR",
+        "CUT_MOVED",
+        "FACTS_ROW_INVALID",
+        "STORAGE_STATE_MISMATCH",
+        "COHERENT_SNAPSHOT_UNSUPPORTED"
+      ],
+      "permission": "export:read",
+      "query": [
+        "instance_id",
+        "after",
+        "limit"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/facts/schema",
+      "operationId": "local_facts_schema",
+      "dispatch": "/api/export/facts/schema",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/facts_schema"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN"
+      ],
+      "permission": "export:read"
+    },
+    {
+      "method": "GET",
       "path": "/api/reconciliation",
       "operationId": "local_reconciliation",
       "dispatch": "/api/reconciliation",
@@ -1053,6 +1224,7 @@
         "$ref": "#/definitions/reconciliation"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1080,6 +1252,7 @@
         "$ref": "#/definitions/statement"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1103,6 +1276,7 @@
         "$ref": "#/definitions/metrics"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1126,6 +1300,7 @@
         "$ref": "#/definitions/health"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1159,6 +1334,7 @@
         ]
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1354,6 +1530,7 @@
         "$ref": "#/definitions/session"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1387,6 +1564,7 @@
         "$ref": "#/definitions/overlay_state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1411,6 +1589,7 @@
         "$ref": "#/definitions/slice_registry_listing"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1439,6 +1618,7 @@
         "$ref": "#/definitions/risk_state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1463,6 +1643,7 @@
         "$ref": "#/definitions/covenant_state"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1487,6 +1668,7 @@
         "$ref": "#/definitions/overlay_command_receipt"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1567,6 +1749,7 @@
         "$ref": "#/definitions/agent_query_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1605,6 +1788,7 @@
         "$ref": "#/definitions/agent_subject_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1644,6 +1828,7 @@
         "$ref": "#/definitions/agent_proposal_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1689,6 +1874,7 @@
         "$ref": "#/definitions/agent_withdraw_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1728,6 +1914,7 @@
         "$ref": "#/definitions/agent_grant_change_response"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1769,6 +1956,7 @@
         "$ref": "#/definitions/error_envelope"
       },
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1795,6 +1983,7 @@
       "kind": "static",
       "contentType": "text/html; charset=utf-8",
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1808,6 +1997,7 @@
       "kind": "static",
       "contentType": "text/javascript; charset=utf-8",
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
@@ -1821,11 +2011,63 @@
       "kind": "static",
       "contentType": "text/css; charset=utf-8",
       "errors": [
+        "INVALID_TARGET",
         "LOOPBACK_HOST_REQUIRED",
         "ORIGIN_REJECTED",
         "CROSS_SITE_REJECTED",
         "NOT_FOUND"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/risk/scenarios",
+      "operationId": "local_risk_scenarios",
+      "dispatch": "/api/risk/scenarios",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/whatif_index"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "INVALID_TARGET",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND"
+      ],
+      "permission": "projection:read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/risk/scenarios/{id}",
+      "operationId": "local_risk_scenario",
+      "dispatch": "/api/risk/scenarios",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/whatif_scenario"
+      },
+      "errors": [
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "INVALID_TARGET",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "READ_ONLY_INVARIANT",
+        "NOT_BOUND",
+        "SCENARIO_UNKNOWN"
+      ],
+      "permission": "projection:read"
     }
   ],
   "definitions": {
@@ -4827,6 +5069,9 @@
         "recovery_authority": {
           "type": "object",
           "additionalProperties": true
+        },
+        "effects_executed": {
+          "const": false
         }
       }
     },
@@ -4888,6 +5133,9 @@
         "recovery_authority": {
           "type": "object",
           "additionalProperties": true
+        },
+        "effects_executed": {
+          "const": false
         }
       }
     },
@@ -10021,7 +10269,13 @@
             "INVALID_PERIOD",
             "TOOL_NOT_ALLOWED",
             "IDP_TOKEN_REQUIRED",
-            "IDP_TOKEN_INVALID"
+            "IDP_TOKEN_INVALID",
+            "INVALID_CURSOR",
+            "CUT_MOVED",
+            "FACTS_ROW_INVALID",
+            "STORAGE_STATE_MISMATCH",
+            "COHERENT_SNAPSHOT_UNSUPPORTED",
+            "SCENARIO_UNKNOWN"
           ]
         },
         "role": {
@@ -10035,6 +10289,12 @@
         },
         "claimed": {
           "type": "string"
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -15878,6 +16138,1339 @@
         },
         "quote": {
           "$ref": "#/definitions/shadow_result"
+        }
+      }
+    },
+    "case_dossier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "label",
+        "mode",
+        "advance_id",
+        "sim_day",
+        "clock_source",
+        "cut",
+        "terms_status",
+        "terms_reason",
+        "drawn",
+        "case",
+        "receipt_chain",
+        "workspace_receipts_without_journal_rows",
+        "overlay_rows",
+        "ledger_row",
+        "allocation_quote",
+        "margin_status",
+        "covenant_status",
+        "terms_line",
+        "underwriting",
+        "underwriting_note",
+        "settlement_evidence",
+        "not_bound",
+        "dossier_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_CASE_DOSSIER_V1"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "READ_ONLY_CASE_DOSSIER"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "cut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "overlay_state_digest",
+            "fixtures_digest",
+            "terms_version"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string"
+            },
+            "overlay_state_digest": {
+              "type": "string"
+            },
+            "fixtures_digest": {
+              "type": "string"
+            },
+            "terms_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "terms_status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL",
+            "NOT_BOUND"
+          ]
+        },
+        "terms_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "drawn": {
+          "type": "boolean"
+        },
+        "case": {
+          "$ref": "#/definitions/credit_view"
+        },
+        "receipt_chain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "journal"
+          ],
+          "properties": {
+            "journal": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "journal_index",
+                  "entry",
+                  "receipt"
+                ],
+                "properties": {
+                  "journal_index": {
+                    "type": "integer"
+                  },
+                  "entry": {
+                    "$ref": "#/definitions/journal_entry"
+                  },
+                  "receipt": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/accepted_receipt"
+                          },
+                          {
+                            "$ref": "#/definitions/rejected_receipt"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "workspace_receipts_without_journal_rows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "case_association",
+            "rows"
+          ],
+          "properties": {
+            "scope": {
+              "const": "WORKSPACE_WIDE"
+            },
+            "case_association": {
+              "const": "NOT_INFERRED"
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "idempotency_key",
+                  "receipt"
+                ],
+                "properties": {
+                  "idempotency_key": {
+                    "type": "string"
+                  },
+                  "receipt": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/accepted_receipt"
+                      },
+                      {
+                        "$ref": "#/definitions/rejected_receipt"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "overlay_rows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entries"
+          ],
+          "properties": {
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "overlay_index",
+                  "entry"
+                ],
+                "properties": {
+                  "overlay_index": {
+                    "type": "integer"
+                  },
+                  "entry": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ledger_row": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/overlay_row"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "allocation_quote": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "allocation",
+                "fsm_repay",
+                "close_ready"
+              ],
+              "properties": {
+                "allocation": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/definitions/allocation_split_section"
+                    }
+                  ]
+                },
+                "fsm_repay": {
+                  "$ref": "#/definitions/overlay_fsm_repay"
+                },
+                "close_ready": {
+                  "type": "boolean"
+                }
+              }
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "margin_status": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/overlay_row_margin"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "covenant_status": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/snapshot_covenant_row"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "terms_line": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/dossier_terms_line"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        },
+        "underwriting": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/underwrite"
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            }
+          ]
+        },
+        "underwriting_note": {
+          "const": "rule evaluation copied for audit; not a decision by the reader"
+        },
+        "settlement_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "rows"
+          ],
+          "properties": {
+            "label": {
+              "const": "READ_ONLY_FIXTURE"
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/evidence_row"
+              }
+            }
+          }
+        },
+        "not_bound": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/gap"
+          }
+        },
+        "dossier_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "dossier_terms_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "terms_version",
+        "provisional",
+        "status",
+        "reason",
+        "tier",
+        "principal",
+        "schedule",
+        "accrual",
+        "collateral",
+        "borrowing_base",
+        "reserve_provision",
+        "not_applied"
+      ],
+      "properties": {
+        "label": {
+          "const": "simulated overlay — not vendor FSM arithmetic, not an offer"
+        },
+        "mode": {
+          "const": "SIMULATED_OVERLAY"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tier": {
+          "enum": [
+            "T1",
+            "T2",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "principal": {
+          "type": "integer"
+        },
+        "schedule": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "accrual": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "collateral": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "borrowing_base": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "reserve_provision": {
+          "$ref": "#/definitions/terms_section"
+        },
+        "not_applied": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/terms_not_applied"
+            },
+            {
+              "$ref": "#/definitions/terms_unbound_section"
+            }
+          ]
+        }
+      }
+    },
+    "dossier_unbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "dossier_skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "NOT_APPLICABLE"
+        },
+        "reason": {
+          "const": "NOT_DRAWN"
+        }
+      }
+    },
+    "permission_catalog": {
+      "type": "object",
+      "required": [
+        "format",
+        "label",
+        "provenance",
+        "identity",
+        "authentication",
+        "no_token_principal",
+        "routes",
+        "role_permissions"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_PERMISSION_CATALOG_V1"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "identity": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "no_token_principal": {
+          "const": "organizer"
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "method",
+              "route",
+              "children",
+              "permission"
+            ],
+            "properties": {
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "route": {
+                "type": "string"
+              },
+              "children": {
+                "type": "boolean"
+              },
+              "permission": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "role_permissions": {
+          "type": "object",
+          "required": [
+            "organizer",
+            "auditor",
+            "observer",
+            "agent"
+          ],
+          "properties": {
+            "organizer": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "auditor": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "observer": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "agent": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "facts_cut": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "journal_length",
+            "fixtures_digest",
+            "cut_id"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "journal_length": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 99999999
+            },
+            "fixtures_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "cut_id": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "journal_length",
+            "fixtures_digest",
+            "cut_id",
+            "overlay_state_digest",
+            "overlay_entry_count"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "journal_length": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 99999999
+            },
+            "fixtures_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "cut_id": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "overlay_state_digest": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            },
+            "overlay_entry_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99999999
+            }
+          }
+        }
+      ]
+    },
+    "facts_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "fact_id",
+        "source",
+        "journal_position",
+        "kind",
+        "amount_krw",
+        "sim_day",
+        "duplicate",
+        "entry",
+        "row_sha256"
+      ],
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "fact_id": {
+          "type": "string",
+          "pattern": "[JO]:[0-9]{8}"
+        },
+        "source": {
+          "enum": [
+            "JOURNAL",
+            "OVERLAY"
+          ]
+        },
+        "journal_position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9_]{1,32}"
+        },
+        "amount_krw": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "sim_day": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "duplicate": {
+          "type": "integer",
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "entry": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "row_sha256": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        }
+      }
+    },
+    "facts_schema": {
+      "const": {
+        "schema_id": "KIX_CAPITAL_FACTS_SCHEMA_V1",
+        "label": "SIMULATED",
+        "source_cut": "NOT_BOUND",
+        "authentication": "NOT_BOUND",
+        "stage7_authenticated_export": false,
+        "asset": {
+          "namespace": "fiat",
+          "reference": "KRW",
+          "decimals": 0,
+          "max_atoms": 1000000000000
+        },
+        "columns": [
+          {
+            "name": "seq",
+            "type": "uint",
+            "width": 8
+          },
+          {
+            "name": "fact_id",
+            "type": "ascii_fixed",
+            "width": 10
+          },
+          {
+            "name": "source",
+            "type": "ascii_fixed",
+            "width": 7
+          },
+          {
+            "name": "journal_position",
+            "type": "uint",
+            "width": 8
+          },
+          {
+            "name": "kind",
+            "type": "ascii_id",
+            "max_width": 32
+          },
+          {
+            "name": "amount_krw",
+            "type": "int_atoms_krw",
+            "width": 13,
+            "nullable": true
+          },
+          {
+            "name": "sim_day",
+            "type": "uint",
+            "width": 8,
+            "nullable": true
+          },
+          {
+            "name": "duplicate",
+            "type": "flag01",
+            "width": 1
+          },
+          {
+            "name": "entry",
+            "type": "canonical_json_object",
+            "width": "variable"
+          },
+          {
+            "name": "row_sha256",
+            "type": "hex",
+            "width": 64
+          }
+        ],
+        "rules": [
+          "seq is contiguous from 0. uint width is maximum decimal digits; booleans are not integers.",
+          "fact_id is J:%08d or O:%08d using the source list index. source is JOURNAL or OVERLAY.",
+          "journal_position is the journal index or the raw overlay after_journal_index.",
+          "kind is the journal op or overlay kind: 1..32 ASCII letters, digits or underscore.",
+          "amount_krw is journal body.amount or overlay payload.amount_krw when present; it must be an integer in 0..asset.max_atoms, otherwise null only when absent.",
+          "sim_day is null for journal rows and the raw unsigned overlay sim_day otherwise.",
+          "duplicate is 1 only for an identical repeated overlay_id, ignored by fold; otherwise 0.",
+          "entry is the complete raw canonical JSON object; row_sha256 is lowercase hexadecimal.",
+          "Preserve both source list orders. Before each overlay entry emit remaining journal indices less than the running maximum of overlay after_journal_index; then emit remaining journal rows.",
+          "cut has state_digest, journal_length, fixtures_digest, cut_id. overlay_state_digest and overlay_entry_count are both present exactly when the overlay list is nonempty; never null.",
+          "Digests use capital.store.canonical_bytes and domain-tagged SHA256. Row material is {domain:ROW,row:row_without_hash}; chain genesis is {domain:CHAIN,cut_id,schema_sha256}; chain step is {domain:CHAIN,previous,row_sha256}; page material is {domain:PAGE,page:page_without_digest}; cut material is {domain:CUT,...cut_without_cut_id}. Domain constants are KIX_CAPITAL_FACTS_*_V1.",
+          "Cursor is kfc1.<next seq as eight decimal digits>.<cut_id>. Limits 1..500, default 100. Canonical ASCII JSON bytes have no trailing newline. Hashes detect corruption, not authentication."
+        ]
+      }
+    },
+    "facts_page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "schema_id",
+        "schema_sha256",
+        "schema",
+        "label",
+        "source_cut",
+        "authentication",
+        "stage7_authenticated_export",
+        "not_claims",
+        "funds_executed",
+        "import_endpoint",
+        "resume_endpoint",
+        "workspace_status",
+        "completeness",
+        "cut",
+        "after",
+        "start_seq",
+        "limit",
+        "row_count_total",
+        "rows",
+        "chain_before",
+        "chain_after",
+        "next_cursor",
+        "page_digest"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_FACTS_PAGE_V1"
+        },
+        "schema_id": {
+          "const": "KIX_CAPITAL_FACTS_SCHEMA_V1"
+        },
+        "schema_sha256": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "schema": {
+          "$ref": "#/definitions/facts_schema"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "source_cut": {
+          "const": "NOT_BOUND"
+        },
+        "authentication": {
+          "const": "NOT_BOUND"
+        },
+        "stage7_authenticated_export": {
+          "const": false
+        },
+        "not_claims": {
+          "const": [
+            "k-stage7-authenticated-export"
+          ]
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "import_endpoint": {
+          "const": "NOT_PROVIDED"
+        },
+        "resume_endpoint": {
+          "const": "NOT_PROVIDED"
+        },
+        "workspace_status": {
+          "const": "ACTIVE"
+        },
+        "completeness": {
+          "const": "COMPLETE_AT_CUT"
+        },
+        "cut": {
+          "$ref": "#/definitions/facts_cut"
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "kfc1\\.[0-9]{8}\\.[0-9a-f]{64}"
+        },
+        "start_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "row_count_total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/definitions/facts_row"
+          }
+        },
+        "chain_before": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "chain_after": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "kfc1\\.[0-9]{8}\\.[0-9a-f]{64}"
+        },
+        "page_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        }
+      }
+    },
+    "whatif_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "applied",
+        "enforced",
+        "scenarios",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED what-if scenario — read-only hypothetical re-fold of the risk and covenant folds, not a credit decision, not an enforcement, nothing is applied"
+        },
+        "mode": {
+          "const": "SIMULATED_WHATIF"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/whatif_catalog_entry"
+          }
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_catalog_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "title",
+        "assumption",
+        "applied",
+        "enforced"
+      ],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "largest-advance-default",
+            "refund-shock",
+            "all-watch-breach",
+            "concentration-cap-hit"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "assumption": {
+          "type": "string"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        }
+      }
+    },
+    "whatif_scenario": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/whatif_evaluated"
+        },
+        {
+          "$ref": "#/definitions/whatif_not_bound"
+        }
+      ]
+    },
+    "whatif_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "applied",
+        "enforced",
+        "scenario",
+        "evaluated",
+        "unevaluated_reason",
+        "target",
+        "assumption_detail",
+        "risk",
+        "covenants",
+        "reconciliation",
+        "whatif_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED what-if scenario — read-only hypothetical re-fold of the risk and covenant folds, not a credit decision, not an enforcement, nothing is applied"
+        },
+        "mode": {
+          "const": "SIMULATED_WHATIF"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "PARTIAL"
+          ]
+        },
+        "reason": {
+          "type": "null"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        },
+        "scenario": {
+          "$ref": "#/definitions/whatif_scenario_ref"
+        },
+        "evaluated": {
+          "type": "boolean"
+        },
+        "unevaluated_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "assumption_detail": {
+          "type": "object"
+        },
+        "risk": {
+          "type": "object"
+        },
+        "covenants": {
+          "type": "object"
+        },
+        "reconciliation": {
+          "$ref": "#/definitions/whatif_reconciliation"
+        },
+        "whatif_digest": {
+          "type": "string"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_not_bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "mode",
+        "provisional",
+        "status",
+        "reason",
+        "sim_day",
+        "terms_version",
+        "policy_adopted",
+        "accounting_policy",
+        "applied",
+        "enforced",
+        "scenario",
+        "evaluated",
+        "whatif_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED what-if scenario — read-only hypothetical re-fold of the risk and covenant folds, not a credit decision, not an enforcement, nothing is applied"
+        },
+        "mode": {
+          "const": "SIMULATED_WHATIF"
+        },
+        "provisional": {
+          "const": true
+        },
+        "status": {
+          "const": "NOT_BOUND"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "applied": {
+          "const": false
+        },
+        "enforced": {
+          "const": false
+        },
+        "scenario": {
+          "$ref": "#/definitions/whatif_scenario_ref"
+        },
+        "evaluated": {
+          "const": false
+        },
+        "whatif_digest": {
+          "type": "null"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_scenario_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "title",
+        "assumption"
+      ],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "largest-advance-default",
+            "refund-shock",
+            "all-watch-breach",
+            "concentration-cap-hit"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "assumption": {
+          "type": "string"
+        }
+      }
+    },
+    "whatif_reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_risk_digest",
+        "baseline_covenant_digest",
+        "baseline_outstanding_krw",
+        "assumption_delta_krw",
+        "scenario_outstanding_krw",
+        "matched"
+      ],
+      "properties": {
+        "baseline_risk_digest": {
+          "type": "string"
+        },
+        "baseline_covenant_digest": {
+          "type": "string"
+        },
+        "baseline_outstanding_krw": {
+          "type": "integer"
+        },
+        "assumption_delta_krw": {
+          "type": "integer"
+        },
+        "scenario_outstanding_krw": {
+          "type": "integer"
+        },
+        "matched": {
+          "type": "boolean"
         }
       }
     }
