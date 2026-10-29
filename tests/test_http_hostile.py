@@ -21,6 +21,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from capital.server import make_server
 
@@ -137,6 +138,33 @@ def load_recipes():
             for path in sorted(HTTP.iterdir())}
 
 
+def render_request(request, port, token):
+    # Validate the template, not substituted data: token_urlsafe may emit __.
+    # Keep rejecting unknown/malformed sentinels, and substitute only once so
+    # even a token containing a sentinel's exact spelling remains opaque.
+    replacements = {b'__PORT__': str(port).encode(), b'__TOKEN__': token.encode()}
+    template = request
+    for sentinel in replacements:
+        template = template.replace(sentinel, b'')
+    if b'__' in template:
+        raise ValueError('unresolved request sentinel')
+    return _SENTINEL.sub(lambda match: replacements[match.group()], request)
+
+
+class RenderingTests(unittest.TestCase):
+    def test_token_bytes_are_not_template_sentinels(self):
+        for token in ('SIMULATED__token', 'SIMULATED__TOKEN____PORT__'):
+            with self.subTest(token=token):
+                self.assertEqual(
+                    render_request(b'Host: __PORT__\r\nToken: __TOKEN__', 1234, token),
+                    b'Host: 1234\r\nToken: ' + token.encode())
+
+    def test_unknown_and_malformed_sentinels_are_rejected(self):
+        for sentinel in (b'__UNKNOWN__', b'__TOKEN_', b'__token__', b'__'):
+            with self.subTest(sentinel=sentinel), self.assertRaises(ValueError):
+                render_request(b'__PORT__ __TOKEN__ ' + sentinel, 1234, 'SIMULATED')
+
+
 def _split(raw):
     """(status, Content-Type value, body); skips a 100-continue preamble."""
     while True:
@@ -240,9 +268,7 @@ class ReplayTests(unittest.TestCase):
                 self.assertEqual(
                     (expect['status'], expect['code']), EXPECTED[name])
                 request = base64.b64decode(recipe['request_b64'])
-                request = request.replace(b'__PORT__', str(self.port).encode())
-                request = request.replace(b'__TOKEN__', self.token.encode())
-                self.assertNotIn(b'__', request)
+                request = render_request(request, self.port, self.token)
                 raw = conformance._exchange(self.port, request)
                 self._assert_clean(raw)
                 status, content_type, body = _split(raw)
@@ -275,6 +301,15 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(after['operation_count'], self.baseline['operation_count'])
         self._probe_health()
         self.assertTrue(self.thread.is_alive())
+
+
+class ReplayUnderscoreTokenTests(ReplayTests):
+    @classmethod
+    def setUpClass(cls):
+        # Reproduce the CI token collision on every run, with all corpus pins
+        # and leak/state/health assertions inherited unchanged.
+        with mock.patch('capital.auth.secrets.token_urlsafe', return_value='SIMULATED__TOKEN____PORT__'):
+            super().setUpClass()
 
 
 class RegenerationTests(unittest.TestCase):
