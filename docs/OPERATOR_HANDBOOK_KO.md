@@ -71,8 +71,8 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
-| auditor | 없음. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
+| organizer | 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| auditor | 없음. 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
 | observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
 | agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
 
@@ -247,7 +247,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/permissions`, `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…`, `GET /api/cases/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest`, `GET /api/export/facts`, `GET /api/export/facts/schema` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -710,6 +710,54 @@ python3 scripts/lifecycle_claims_check.py --execute
 두 행은 통과가 아니라 `DOCUMENTED_DIVERGENCE`로 기록된다. 첫째, upstream은 찢긴 쓰기의 꼬리만 버리고 체크섬이 맞는 앞선 레코드를 재생하지만 Capital은 찢긴 꼬리를 버리지 않고 파일 전체를 WORKSPACE_UNREADABLE로 닫는다 — 단일 파일 작업공간에는 부분 프레임 재생 경로가 없으므로 실패 쪽으로 닫고, 앞선 상태를 조용히 부분 복원하지 않는다. 둘째, upstream은 응답 전 내구 기록 완료를 요구하지만 Capital은 receipt를 persist 전에 메모리에 저장하므로 저장 실패 뒤 조회는 메모리의 ACCEPTED receipt를 돌려준다 — 503으로 성공은 반환하지 않지만 조회 결과는 upstream의 record-first 의미와 어긋난다. 각 행은 `divergent` 관측과 이 절 안의 근거 needle 재확인(`note_cited`)을 함께 고정하며, Capital이 divergence를 없애면 그 행은 실패한다.
 
 수용 사다리의 `upstream-claims` 단계는 이제 명령을 일곱 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행), 넷째가 `scripts/ce1_claims_check.py --execute`(49행), 다섯째가 `scripts/adapter_identity_claims_check.py --execute`(30행), 여섯째가 `scripts/lifecycle_claims_check.py --execute`(12행), 일곱째가 `scripts/readiness_claims_check.py --execute`(13행)다. 단계의 `passed`와 `total`은 일곱 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39+49+30+12+13=324행이고 label은 그대로 `CLAIM_CONFORMANCE`다. 이 노드의 두 `DOCUMENTED_DIVERGENCE`(`documented_divergences=2`)는 passed에 더하지 않고 따로 센다. 앞선 절들의 옛 열거와 합계(다섯·여섯 명령, 282·311)는 표가 적었을 때의 기록이며 고치지 않는다. CAP-11(내구 거래·inbox/outbox)과 CAP-16(exact producer/SDK tuple)은 이 표에서도 계속 NOT_BOUND다. 이 표는 vendor 핀 `7481b0e`의 새 소비 범위로 리핀 정책 §3.1의 소비자 명시(대상 경로·소비 범위·검사·binding)를 표 헤더의 `pin_class`·`consumption_scope`에 담는다; `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`의 `bound_tables` 인벤토리 등록은 그 노트 소유자의 다음 갱신에서 이루어지며 이 노드는 노트를 갱신하지 않는다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:advance-case-dossier -->
+### advance-case-dossier
+
+운영 데스크에서 사례를 선택하고 **dossier 다운로드**를 누르면
+`GET /api/cases/{advance_id}/dossier?instance_id=`로 한 사례의 JSON 문서를
+읽는다. 형식은 `KIX_CAPITAL_CASE_DOSSIER_V1`, 라벨은 `SIMULATED`, 모드는
+`READ_ONLY_CASE_DOSSIER`다. `projection:read`를 가진 organizer·auditor만
+조회하며 observer·agent는 `403 ROLE_FORBIDDEN`이다. 실명·인증은 NOT_BOUND다.
+
+기존 조회의 사례·원본 receipt chain·심사 기록·조건·오버레이 full-payoff
+allocation quote·margin/covenant 상태·READ_ONLY_FIXTURE 정산 근거를 단일
+잠금 아래 복사한다. 날짜는 기록된 `sim_day`이며 가정 날짜나 금액을 받지 않는다.
+underwriting은 `DOSSIER_READ_ONLY` 역할의 rule evaluation copied for audit;
+not a decision by the reader다. `proposal`·`approve_authority`는 규칙 출력이며
+읽는 사람에게 심사 결정 권한을 주지 않는다. 장부와 operation_count는 바뀌지 않는다.
+
+조건 미결합은 숫자 없는 `NOT_BOUND`, 조건 결합 후 미인출은
+`NOT_APPLICABLE / NOT_DRAWN` 블록이다. 알 수 없는 사례는
+`404 CASE_NOT_FOUND`, instance가 다르면 `409 SESSION_CHANGED`, 불필요하거나
+중복된 질의는 `400 INVALID_ARGUMENTS`다. 저널 없는 receipt는 workspace 전체
+목록이며 `case_association: NOT_INFERRED`로 표시한다.
+
+`cut`은 상태·오버레이·fixture digest와 terms version을 담는다.
+`dossier_digest`는 자신을 제외하고 기존 volatile session/time 키를 재귀적으로
+제거한 canonical JSON의 SHA256이다. 같은 작업공간의 반복 조회는 동일 바이트다.
+콘텐츠 해시는 원격 증명이나 인증이 아니다. 데스크 매니페스트 호환 여부와 독립적으로
+다운로드하며 서버 문자열은 textContent로만 표시한다. JSON만 제공하고 PDF·복수
+사례 묶음·evidence-pack 포함·실제 신원은 범위 밖이다.
+
+고정 예제: `tests/vectors/dossiers/`, `python3 scripts/dossier_vectors.py --check`.
+검증: `tests/test_dossier.py`, `tests/browser/case-dossier.spec.cjs`.
+브라우저 사양은 organizer·auditor 각 1280px·375px 화면을 캡처한다.
+<!-- /handbook-section -->
+
+<!-- handbook-section:contract-invariants-claims -->
+
+### contract-invariants-claims
+
+`tests/contract_invariants.json` (`KIX_CAPITAL_CONTRACT_INVARIANTS_V1`) maps six `CLAIM_CONFORMANCE` rows to `CONTRACT_INVARIANTS.md` §3 INV-1..INV-5 at kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. `capital/contract_invariants.py` observes the real CapitalService + FileWorkspace facade: twelve pinned seeds, concurrent duplicate ids, shared-face competing draws on demo-beta-festival/demo-gamma-tour, capacity `SIMULATION_CAPACITY` refusals without eviction, repay/cancel, advance_day, reopen and the crash-matrix SIGKILL boundary. Rust is a read-only contract source, nothing is vendored or executed upstream. Labels are `SIMULATED` / `CLAIM_CONFORMANCE`; finite traces prove no general correctness or bank exactly-once guarantee.
+
+Run `python3 scripts/contract_invariants_check.py --execute`, then `python3 scripts/contract_invariants_check.py --check`. `--seed N` reproduces a sequence without modifying pins; `--write` explicitly regenerates the default seed digests after successful predicates. `--protocol-dir PATH` reads section needles only. No checkout gives citation `SKIPPED`; forbidden loopback bind gives `SKIPPED_LOOPBACK` for HTTP/SIGKILL, not a pass. Tests are `tests/test_contract_invariants.py`; sensitivity corrupts copies of observed traces. This is not an `upstream-claims` stage command.
+
+INV-3 compares canonical receipt projection bytes after every later step, including reopen and errors. Command receipts retain the original instance_id; post-restart reads require the current session and reject the old session with SESSION_CHANGED. `inv.3.overlay_projection` is a `DOCUMENTED_DIVERGENCE`: replay rebuilds the overlay instance and omits overlay_state_digest, so those envelope fields and transport_duplicate are excluded. Operation payload fields remain covered and the initial overlay digest must equal the folded state digest. INV-5 retains claim/trade/currency/amount, drawn_exposure/draw_id/journal index and journal/overlay entries; repayment may lower outstanding exposure. These are mock reservation and capture facts, not money.
+
+The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Follow-up `upstream-repin-inventory-contract-invariants` registers `tests/contract_invariants.json` in binding-note §3.2 bound_tables and §3.6 default impact list, plus a decision_bindings test_module record for `tests/test_contract_invariants.py`. Stage5 durability and external authority stay `NOT_BOUND`.
 
 <!-- /handbook-section -->
 
