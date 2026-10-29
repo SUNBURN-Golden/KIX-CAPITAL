@@ -2544,6 +2544,72 @@ CI. Exact commands, earlier failures, fixes and the temporary loopback browser
 port adaptation are recorded in [FACTS_CURSOR_EXPORT_EVIDENCE.md](FACTS_CURSOR_EXPORT_EVIDENCE.md).
 
 
+## finance-property-fuzz
+
+Local SIMULATED arithmetic verification only. `capital/finance_properties.py` uses
+stdlib `random.Random`, separate property streams and pinned seeds starting at
+74820000. Six properties cover clock-step accrual and rational carry (including
+partial repayments and effective-maturity acceleration boundaries), allocation
+conservation and note order, principal-scaled rational cost caps, risk bucket
+conservation, scheduled forecast legs and stress monotonicity. Every forecast seed
+checks both provided and absent settlement days. Half the cap cases retain the
+adopted note; the other half use deep-copied, in-memory `SYNTHETIC_PROBE` policies
+for exact cap boundaries and a one-bps synthetic fee. These are arithmetic probes,
+not new terms or an offer. No server, persistence or external service is used.
+
+Each property has a one-won fold mutation; cap and annualized cost mutations are
+checked separately with a principal-scaled +1 KRW cost. Counterexamples report the
+seed and regenerated valid spec, retain the original violation code, and disclose
+shrinking budget exhaustion instead of claiming a proven minimum. Local minima
+refer only to the documented greedy drop/halving candidates. No new vector file
+is introduced. Goldens, decision notes, vendor files/manifest and `.aiops/` are
+unchanged. Runtime folds and `capital/export.py` are unchanged.
+
+| Command | Actual local result |
+|---|---|
+| `python3 -m unittest tests.test_finance_properties -v` | Exit 0; 18 tests, 2.814 s; 200 pinned cases per property and six one-won mutations detected. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` (initial implementation) | Exit 0; six properties, 200 cases each, zero violations. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three packages installed from local cache; lockfile unchanged. |
+| `unshare -Urn -- bash -c 'ip link set lo up && echo isolated-loopback-ok'` | Exit 0; isolated loopback available for unchanged browser ports. |
+| `python3 -m unittest tests.test_finance_properties tests.test_acceptance tests.test_decision_bindings tests.test_closeout_digest -v` | Exit 0; 111 tests, 20.741 s. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 scripts/finance_properties.py --seeds 1000 --check` | Exit 0; six properties, 1000 cases each, zero violations. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests, 0.002 s. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references match. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; 16 seeds, 736 commands. |
+| `python3 scripts/seed_demo.py` | Exit 0; existing golden matches; debit = credit = 385000 synthetic units. |
+| `git diff --check` | Exit 0. |
+| `git diff --stat origin/main -- tests/golden docs/decisions capital/vendor .aiops capital/export.py` and stdlib SHA256 verification of the manifest's five files | Exit 0; no protected-path diff; all five locked hashes match. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (pass 1) | Exit 0; `ok:true`, all nine stages passed. Unit: 1142 tests, 278.314 s; storage: 19; vendor: 7; claims: 311; Chromium: 69; packaged smoke: 8; seeded demo: 1; integrated journeys: 4. |
+| `cp build/acceptance-evidence.json build/finance-props-pass1.json` | Exit 0; first-pass evidence preserved before regeneration. |
+| `python3 scripts/closeout_digest.py --write` then `python3 scripts/finance_vectors.py --write` | Both exit 0; 4578-byte digest and 98040-byte finance pack generated from successful first-pass evidence. No manual vector edits. |
+| `python3 -m unittest tests.test_closeout_digest -v` (after regeneration and STAGES update) | Exit 0; 61 tests, 0.476 s. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (pass 2) | Exit 0; `ok:true`, all nine stages passed with the same counts as pass 1. Unit: 1142 tests, 245.944 s; Chromium: 69. No timeout or test weakening. |
+| `python3 -m unittest discover -s tests -v` (executed by both ladder passes) | Exit 0 twice; 1142 tests each. |
+| `npm run test:browser` (executed in isolated loopback by both ladder passes) | Exit 0 twice; all 69 Chromium tests passed each time. |
+| `cp build/acceptance-evidence.json build/finance-props-pass2.json` | Exit 0; second-pass evidence preserved. |
+| `python3 scripts/closeout_digest.py --check-evidence`; `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | All exit 0; new evidence matches the generated digest and embedded copy; 98040-byte finance pack matches. |
+| stdlib `build_artifact(pass1)` / `build_artifact(pass2)` / candidate-byte comparison | Exit 0; all equal, including the finance pack embedded copy. Digest SHA256 `ca8f82597636658107954c5d894361dddb079fdf0c26a3529c6b3868a3fc76af`; packaged SHA256 `d05e28cda5f792611b7b92e22ed8e661561762e0c1ad3458e0dc8be4c52007f0`. |
+| stdlib `/proc` inspection scoped to this worktree | Exit 0; no `capital.server` process remains. |
+
+The two-pass CAPITAL-CLOSEOUT-REGEN-V1 procedure completed: preserve the successful
+first evidence, generate the digest and pack once, update the hand-maintained
+closeout command expectation, run the second ladder, then compare without rewriting
+either vector. Only the unit command, unit test count and packaged SHA256 changed
+in the digest and its embedded copy. Evidence is retained locally in
+`build/finance-props-pass1.json` and `build/finance-props-pass2.json` (untracked).
+
+Implementation detail relative to the plan: repayment cash is materialized with
+an independent Fraction oracle rather than the folds under mutation, so the
+one-won mutants cannot corrupt the generator itself. Acceleration inputs adjust
+the effective maturity at segment boundaries; this verifies accrual arithmetic
+and does not introduce margin-policy or envelope-replay testing. Existing host
+ports are avoided with the already-proven isolated-loopback runner; no browser
+configuration or timeout was changed. No product decision, external action,
+commit, push, PR, issue or comment was made. All results are local and SIMULATED.
+
 ## http-hostile-corpus — conflict-fix round 2 (2026-10-26)
 
 Resolved the append conflict in this file by retaining both the hostile-HTTP round-1 history and main's fold-fuzz round-1 history verbatim. Main's fold-fuzz generator, tests, corpus and integration documentation are preserved. The hostile generator, replay tests, all 76 recipes, server fixes, facade contract and handbook remain byte-identical to this node's merge parent. README and the docs registry retain both corpora. No runtime, test or CI change was needed.
@@ -2561,6 +2627,100 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts and nine stages. |
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+
+## finance-property-fuzz — conflict-fix round 1 (2026-10-27)
+
+Merged main `b3b56fef384a7c7687d2e5c4243d67887f6f93ba` into feature parent
+`f04c9a1eeb6bea3a2c6640e62a94999444552164`. `docs/VALIDATION.md` retains
+both parents' complete validation histories. `tests/vectors/finance_vectors.json`
+retains all eight candidate groups, main's facade contract digest (including
+`INVALID_TARGET`), and this node's finance-property CLI in the unit stage's
+embedded closeout command list. The finance generators, properties and mutation
+tests are byte-identical to the feature parent; main's hostile HTTP server fixes,
+76-request corpus and fold-fuzz implementation are preserved. README and the
+acceptance unit stage include both features.
+
+The existing generated closeout update was checked against the saved successful
+first merged acceptance run in `build/finance-props-round1/pass1.json`: its bytes
+match exactly. Only the packaged artifact SHA256 and unit test count change from
+the feature parent's closeout digest, with the same changes in the finance pack's
+embedded copy. These are generated SIMULATED evidence, not goldens or new product
+decisions. The prior confirmation run in `build/finance-props-round1/pass2.json`
+failed two browser checks (67 passed); it is retained as failed evidence, not
+reported as a successful ladder.
+
+Current verification logs are under ignored `build/finance-property-merge/`.
+Browser verification uses the unchanged checked-in configuration and Chromium in
+an isolated loopback network namespace to avoid occupied shared host ports.
+No test, timeout or CI rule is weakened. All results are local and SIMULATED.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.2 min. |
+| `python3 scripts/http_hostile.py --check`; `python3 scripts/fold_fuzz.py --check` | Both exit 0; 76 hostile recipes and 16 fold-fuzz seeds / 736 commands match. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 31 routes, 117 artifacts, nine stages; declared decision references match. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; 98040-byte pack and 4578-byte closeout with matching embedded copy. |
+| `python3 build/finance-property-merge/verify_merge.py` | Exit 0; both validation histories preserved in order; feature code/tests preserved; all eight finance groups retained with only expected generated changes; five vendor SHA256 locks match; vendor/manifest, goldens, decision notes, legacy export and `.aiops/` match both parents; no conflict markers or unmerged entries. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1151 tests passed in 288.528 s, including 200 seeded cases per property and one-won mutation checks. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 0; `ok:true`, all nine stages passed. Unit: 1151 tests (782.903 s) plus decision-binding and 200-case property CLIs; storage: 19; vendor: seven; claims: 311; Chromium: 69 (2.1 min); packaged smoke: eight; seeded demo: one; integrated journeys: four. |
+| `python3 scripts/closeout_digest.py --check-evidence`, `--check`; `python3 scripts/finance_vectors.py --check` after the final ladder | All exit 0. Saved first-pass and final evidence project to identical closeout bytes and the embedded copy, completing the two-pass confirmation without another vector rewrite. Closeout SHA256: `02b3954b0f7604b4ec081842a3157f3f63655216d6e9acfef6ee3c694c5afafa`; packaged SHA256: `377e6697c8928025364d693a43703d16a959dde16e3694f76c44177f2f5297af`. Final evidence is preserved in `build/finance-property-merge/final-evidence.json`. |
+| `git diff --cached --check`; `git diff MERGE_HEAD --check` | Both exit 0. |
+
+Final ladder tools: Python 3.13.5, Node v20.19.2, npm 11.21.1, Playwright
+1.58.2, Capital 0.1.0. Both conflicted files and the generated closeout update
+are staged; the merge remains uncommitted for the supervisor. No abort, commit,
+push, rebase or reset was performed. No external post, Protocol/Commerce change,
+consequential product decision, golden/decision-note/vendor change or `.aiops/`
+edit was made.
+
+## finance-property-fuzz — PR fix round 1 (2026-10-28)
+
+The supplied exact-head failure was the fold-fuzz subprocess exceeding its
+unchanged 120-second limit. The unmodified tree passed all 1151 tests locally in
+1100.364 s, so this is an intermittent timing failure rather than a reproduced
+arithmetic or corpus mismatch. A profiled single replay issued 92 fsync calls;
+the complete checker performs 1472 real saves and 2944 fsync calls across its
+independent workspaces. Physical scratch storage makes that work sensitive to
+shared-disk synchronization delays.
+
+`scripts/fold_fuzz.py` now prefers temporary directories under Linux `/dev/shm`.
+If directory creation there raises OSError (including absent or inaccessible
+shared memory), it uses the normal tempfile location. Both paths retain real
+FileWorkspace files, locks, atomic saves, fsync calls, copied-journal folds,
+per-prefix byte comparisons, all 16 seeds / 736 commands in each replay, and
+fresh-session reload checks. No timeout, seed, assertion, corpus or CI rule was
+removed or relaxed. This remains SIMULATED determinism evidence, with no storage
+durability or performance guarantee. Local timings are observations under
+varying shared-machine load, not a before/after benchmark or a claim that every
+CI resource condition fits the timeout.
+
+A new regression exercises successful scratch selection and unavailable-memory
+fallback, compares actual persisted bytes and checkpoints, and verifies cleanup
+on both normal completion and a propagated verification failure. README documents
+the scratch selection. The finance-property implementation and its one-won
+mutations, runtime code, main's HTTP work, and all existing vectors are unchanged.
+
+All results below are local SIMULATED verification. Logs are under ignored
+`build/finance-property-fix/`. This run did not invoke remote CI or post anything.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` (after fix) | Exit 0; 1152 passed in 292.568 s, including both full checker subprocesses under PYTHONHASHSEED 1 and 987654321 with the original 120-second timeout, 200 cases per finance property and every one-won mutation. Log: `unit-after.log`. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds / 736 commands, 36.893 s wall time. Log: `fold-after.log`. Corpus bytes unchanged. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.6 min, using the unchanged browser configuration in an isolated loopback namespace. Log: `browser.log`. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 31 routes, 117 artifacts, nine stages; declared references match. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; existing 98040-byte finance pack and 4578-byte closeout artifact, including its embedded copy, match without regeneration. These remain prior historical evidence, not evidence of a new acceptance ladder. |
+| SHA256 verification against `capital/vendor/manifest.json` | All five locks match commit 7481b0e16ce9b903abbffa62249bb91cd9e63cfe. |
+| `git diff HEAD` and `git diff origin/main` for protected paths | No differences in vendor files/manifest, `.aiops/`, goldens, decision notes or `capital/export.py`. |
+
+No product decision, Protocol/Commerce modification, credential, provider call,
+real money, production action, commit, push or external post was involved.
 
 ## contract-invariants-claims — conflict-fix round 3 (2026-10-27)
 
@@ -2611,6 +2771,7 @@ ProducerPort and CAP-16 remain NOT_BOUND, and semantic_conformance remains false
 Logs are in ignored `build/producer-tuple-preflight-round3/`. Only `docs/VALIDATION.md`
 was edited this round. No Protocol/Commerce changes, executable re-pinning, external
 posts, merge abort, commit, push, rebase or reset were performed.
+
 ## margin-agent-journeys — conflict-fix round 2 (2026-10-27)
 
 Resolved the supervisor-started merge of `origin/main` in `docs/VALIDATION.md` and
@@ -2802,6 +2963,43 @@ loopback namespace because foreign processes hold host ports 8765/8766.
 | Vendor and protected paths | All five vendored reference files match their manifest SHA256 values; `git diff` of `capital/vendor` and `.aiops` against both merge parents is empty. |
 | Merge hygiene | Both conflicted docs resolved with both sides preserved (staged docs are a strict superset of main's versions plus this node's additions); no line-start conflict markers, no unmerged index entries, `git diff --check` clean. Merge left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
+## finance-property-fuzz — conflict-fix round 2 (2026-10-28)
+
+Resolved all four conflicts against incoming main `e445f38` (permission-catalog
+surface and the typed facts cursor export) while preserving both sides.
+`docs/VALIDATION.md` retains both parent histories verbatim and in order (pure
+append union, zero lines dropped from either parent). `tests/test_fold_fuzz.py`
+keeps this node's `/dev/shm` scratch-fallback regression and gains main's
+persisted-journal divergence test. `tests/vectors/closeout_digest.json` keeps
+this node's recorded digest (the unit stage includes the finance-properties
+CLI). `tests/vectors/finance_vectors.json` was regenerated once through
+`scripts/finance_vectors.py --write` from the merged tree: all eight candidate
+groups survive, the `facade_read_model` group covers every route from both
+parents (34 GET routes including `/api/permissions` and the facts export), and
+the embedded `closeout_digest` copy equals the committed artifact. No
+combination defect required an implementation change; no test, timeout or CI
+rule was weakened.
+
+The two-pass closeout procedure was not rerun: the committed digest remains
+prior recorded evidence and `--check` still byte-matches it and its embedded
+copy. All results below are local and SIMULATED; the merge is left uncommitted
+for the supervisor.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1172 passed** in 264.530 s, including `test_finance_properties` (200 pinned cases per property, six one-won mutations), the facts export/vector suites, and both fold-fuzz regressions. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; SIMULATED, 16 seeds / 736 commands. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 99130 bytes match. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4578 bytes, embedded copy matches. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 34 routes, 250 artifacts, 9 stages. |
+| `python3 scripts/{auth_matrix,manifest_vectors,workspace_vectors,pack_vectors,facts_vectors,forecast_vectors,decision_bindings,not_bound_checklist,http_hostile}.py --check` | All exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed (2.1 min) in an isolated loopback namespace (host ports 8765/8766 were occupied by unrelated stale processes, which were left untouched); committed Playwright configuration unchanged. |
+| Vendor and protected paths | All five vendored kix-protocol `7481b0e` files verify against `manifest.json` SHA256 locks; `capital/vendor`, `.aiops/`, `tests/golden/`, `docs/decisions/` and `capital/export.py` are unchanged against both merge parents. |
+| Merge hygiene | Both parent documents verified preserved in full and in order; all parent facade routes and all eight finance groups retained; no conflict markers or unmerged index entries; `git diff --check` and `git diff e445f38 --check` clean. No abort, commit, push, rebase or reset performed. |
+
 ## producer-tuple-preflight — conflict-fix round 1 (2026-10-28)
 
 Resolved both conflict blocks in `docs/VALIDATION.md`, preserving every line of
@@ -2834,6 +3032,7 @@ test. Logs are in ignored `build/producer-tuple-preflight-merge-20261028/`.
 The merge is staged and left uncommitted for the supervisor. No external posts,
 Protocol/Commerce edits, executable re-pinning, merge abort, commit, push, rebase
 or reset were performed.
+
 ## margin-agent-journeys — conflict-fix round 3 (2026-10-28)
 
 Resolved the supervisor-started merge of incoming main `e445f382` into this
@@ -2948,6 +3147,48 @@ authentication NOT_BOUND. Logs are in ignored `build/margin-merge-round1/`.
 
 No external posting, provider call or consequential product decision was required.
 
+## finance-property-fuzz — conflict-fix round 3 (2026-10-28)
+
+Resolved the supervisor-started merge of incoming main `863de6b` into feature
+parent `c8262d4`. Both complete parent validation histories survive verbatim and
+in order. Regenerated `tests/vectors/finance_vectors.json` with its existing
+writer: all eight groups remain; relative to the feature parent only
+`facade_read_model` changes, and relative to main only `closeout_digest` changes.
+The facade group matches main's combined contract, including the what-if routes,
+and the embedded historical closeout remains this branch's unchanged snapshot
+with the finance-property CLI in its unit commands. It still matches
+`tests/vectors/closeout_digest.json`. No new full acceptance-ladder run or new
+closeout evidence is claimed.
+
+The finance-property implementation, CLI, tests, fold-fuzz scratch selection and
+regressions remain byte-identical to the feature parent. Main's what-if feature,
+scenario vectors, N1/N2 journeys, tests and goldens remain byte-identical to main.
+The acceptance unit stage retains the finance CLI alongside main's journey
+registration. No runtime, test, timeout, CI, golden or decision-note adjustment
+was needed. The only conflict resolutions are this document and the finance pack.
+
+All results below are local SIMULATED verification. Logs and the preservation
+checker are under ignored `build/finance-property-round3/`. Chromium ran in an
+isolated loopback network namespace using the unchanged repository configuration
+and the locally available pinned headless shell. No external post or provider
+call was made.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1200 tests passed in 272.349 s, including 200 pinned cases per finance property, every one-won mutation, both fold-fuzz regressions, main's what-if scenarios and all six journeys. Log: `unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.1 min. Log: `browser.log`. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 251 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; 99953 finance bytes match; unchanged 4578-byte historical closeout matches its embedded copy. |
+| `python3 scripts/{risk_scenario_vectors,sim_journeys,auth_matrix,pack_vectors,facts_vectors,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist,http_hostile}.py --check` | All exit 0; 37747 scenario bytes, six journey goldens, nine pack files, 133 facts files, 19 manifest files, six workspace files and 76 hostile-HTTP files match. Log: `vectors.log`. |
+| `python3 build/finance-property-round3/verify_merge.py` | Exit 0; both parent documents preserved in full and in order, every parent facade value retained, all eight finance groups retained, feature and incoming-main implementation/tests preserved. All five vendor SHA256 locks match; vendor/manifest, `.aiops/`, decisions, legacy export and CI match both parents; goldens exactly match incoming main. No conflict markers or unmerged entries. |
+| `git diff --cached --check`; `git diff MERGE_HEAD --check` | Both exit 0. Resolutions are staged; merge remains uncommitted for the supervisor. |
+
+No abort, commit, push, rebase or reset was performed. No consequential product
+decision or `DECISION_REQUIRED.md` was needed.
+
 ## contract-invariants-claims — conflict-fix round 2 (2026-10-28)
 
 Resolved all three append conflicts in `docs/VALIDATION.md` in the
@@ -3010,6 +3251,40 @@ Logs are in ignored `build/producer-tuple-preflight-supervised-round2/`. No exte
 posts, Protocol/Commerce edits, executable re-pinning, merge abort, commit, push,
 rebase or reset were performed. No consequential product decision was required.
 
+
+## finance-property-fuzz — supervised conflict-fix round 1 (2026-10-29)
+
+Resolved all three append conflicts in `docs/VALIDATION.md` by retaining both
+parents' complete validation histories verbatim and in order. This document is
+the only file edited during resolution. The finance-property generators, CLI,
+seeded tests, one-won mutations and acceptance-unit registration remain unchanged
+from the feature parent. Incoming main's compatibility preflight implementation,
+gate integration, tests, fixtures and documentation survive unchanged. No runtime,
+test, CI or fixture fix was needed.
+
+All evidence below is local SIMULATED / READ_ONLY_FIXTURE verification. The
+compatibility preflight remains BOOTSTRAP with semantic consumption HOLD,
+semantic_conformance false and adoption NOT_BOUND. Browser verification used the
+unchanged configuration and installed Chromium headless shell in an isolated
+loopback network namespace. Logs are in ignored
+`build/finance-property-merge-20261029/`. Historical closeout evidence was checked,
+not regenerated; no new full acceptance-ladder result is claimed.
+
+| Verification actually run | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1220 tests passed in 291.627 s, including 200 pinned cases per finance property, all one-won mutations and incoming compatibility-preflight coverage. Log: `unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.4 min. Log: `browser.log`. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 267 artifacts and nine stages. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; HOLD / NOT_BOUND. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check`; `python3 scripts/decision_bindings.py --check` | All exit 0; 99953 finance bytes and unchanged 4578-byte embedded historical closeout match; declared decision references match. |
+| Preservation and merge hygiene | Both parent validation histories retained in order; all five vendor SHA256 locks match. Vendor files/manifest, goldens, decisions, legacy export, `.aiops/` and CI match both parents. No conflict markers or unmerged entries; staged and incoming-parent whitespace checks pass. |
+
+Resolution is staged; the merge remains uncommitted for the supervisor. No abort,
+commit, push, rebase, reset, external post, Protocol/Commerce modification or
+consequential product decision was performed or needed.
 ## contract-invariants-claims — supervised conflict-fix round 3 (2026-10-29)
 
 Resolved all three append conflicts in this file for the supervisor-started merge
@@ -3044,3 +3319,37 @@ Full-suite, browser and citation-execution logs are in ignored
 upstream modification, abort, commit, push, rebase or reset was performed.
 No consequential product decision was required; the existing pin-registration
 follow-up remains documented without changing scope.
+
+
+## finance-property-fuzz — supervised conflict-fix round 2 (2026-10-29)
+
+Resolved all three append conflicts in `docs/VALIDATION.md`, retaining both
+complete parent validation histories verbatim and in order. Only this document
+was edited during resolution. The finance-property implementation, CLI, seeded
+and one-won mutation tests, fold-fuzz scratch selection and acceptance-unit
+registration remain byte-identical to the feature parent. Main's contract
+invariant implementation, checker, fixture, tests and hostile-token regression
+remain byte-identical to incoming main. No code, test or fixture repair was needed.
+
+All results below are local SIMULATED verification. Logs are in ignored
+`build/finance-property-conflict-round2/`. Chromium used the installed pinned
+headless shell and unchanged browser configuration in an isolated loopback
+network namespace. Historical closeout evidence was checked without regeneration;
+no new full acceptance-ladder run or upstream semantic conformance is claimed.
+
+| Verification actually run | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1251 tests passed in 293.915 s, including 200 pinned cases per finance property, one-won mutations and incoming contract-invariant and hostile-token coverage. Log: `unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. Log: `vendor.log`. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.2 min. Log: `browser.log`. |
+| `python3 scripts/finance_properties.py --seeds 200 --check` | Exit 0; six properties, 200 cases each, zero violations. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 267 artifacts, nine stages. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six predicates pass, all 12 pinned seed digests MATCH, loopback EXECUTED. Protocol citation verification was SKIPPED without `--protocol-dir`; no citation verification pass is claimed. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; semantic consumption HOLD, adoption NOT_BOUND. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check`; `python3 scripts/decision_bindings.py --check` | All exit 0; 99953 finance bytes and unchanged 4578-byte embedded historical closeout match; declared decision references match. |
+| Preservation and merge hygiene | Both complete parent validation histories retained in order; all five vendor SHA256 locks match. Vendor references/manifest, goldens, decision notes, legacy export, `.aiops/` and CI match both parents. No tracked conflict markers or unmerged entries; staged and incoming-parent whitespace checks pass. |
+
+Resolution is staged; the merge remains uncommitted for the supervisor. No abort,
+commit, push, rebase, reset, external post, Protocol/Commerce modification or
+consequential product decision was performed or needed.

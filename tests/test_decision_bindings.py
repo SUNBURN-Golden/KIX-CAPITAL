@@ -267,7 +267,8 @@ class BindingTests(unittest.TestCase):
         stage = acceptance.build_plan()[0]
         self.assertEqual(stage['commands'], [
             [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
-            [sys.executable, 'scripts/decision_bindings.py', '--check']])
+            [sys.executable, 'scripts/decision_bindings.py', '--check'],
+            [sys.executable, 'scripts/finance_properties.py', '--seeds', '200', '--check']])
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.object(acceptance, 'run_argv', side_effect=[(0, 'Ran 1 test\nOK', ''), (1, '', 'drift')]), \
                 mock.patch.object(acceptance, 'head_sha', return_value=('fixture', None)), \
