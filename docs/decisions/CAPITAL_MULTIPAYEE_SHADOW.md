@@ -274,12 +274,14 @@
 | 상속 우선순위·최대 잉여·동률 비교자 유지, 다섯 예시 | §3.4 (동률 예시는 `payee_label` 오름차순으로 명시) |
 | 동결 스냅샷 하나, 기존 노드 경계 | §3.3 |
 | production NOT_AUTHORIZED, 그림자 효과 미적용 | 배너, §3.6 |
-| 문서 색인 참조 | `docs/CAP_COVERAGE.md` 11행이 이 노트를 링크한다(완료). `tests/decision_bindings.json`에 여섯 항목의 `PENDING_CONSUMER` 행(변경 없음) |
+| 문서 색인 참조 | 이 PR 범위가 노트·바인딩·팩 벡터로 한정되어 `docs/CAP_COVERAGE.md` 색인 행은 이 PR에서 빠졌다(supervisor 통합 단계, §7). `tests/decision_bindings.json`의 여섯 `PENDING_CONSUMER` 행은 유지 |
 | 결정 원장 검증 | 라운드 7에서 이 워크트리에서 실행: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/pack_vectors.py --check`, `python3 -m unittest tests/test_decision_bindings.py tests/test_evidence_pack.py`. 라운드 7 결과: 원장 0(이 노트 여섯 ADOPTED), 바인딩 ok, 팩 9파일 일치(날짜 변경으로 코퍼스 변화 없음), 단위 테스트 42개 OK |
 
 **차단 소견 처리(라운드 7):** (1) mode/status: 수용. §3.6·§4 참조. (2) `tests/test_coa_candidate.py`: 수용. 이 브랜치의 변경을 `origin/main` 바이트로 되돌려 diff에서 제거했다. 그 결과 라운드 7 실행에서 `test_v1_and_golden_files_are_untouched`가 `['docs/decisions/CAPITAL_MULTIPAYEE_SHADOW.md'] != []`로 실패함을 확인했다(가드가 `docs/decisions` 전체를 `origin/main` 대비로 비교하므로); 이는 모든 결정 PR에 공통인 기존 가드 동작이며 완화는 별도 범위 승인 대상으로 남긴다(§7). (3) 색인 문구: 수용.
 
 **차단 소견 처리(라운드 5):** (1) 동률 규칙: 수용. 상속 비교자를 금지하던 문장을 제거하고 `payee_label` 오름차순을 상속 규칙으로 명시했다. (2) FSM 표현 불가: 수용. `fsm_expressible: false`, 고정 두 수취인 기준선, fabricated row 금지를 §3.4와 §4에 추가했다.
+
+**CI 수정 라운드(팩 재고정):** 범위 축소 커밋(268fd35)이 `docs/CAP_COVERAGE.md`의 색인 행을 빼면서 원장 `expected` 목록에서 이 노트가 빠져 extras(파일명 정렬) 자리로 옮겨졌다. 팩 `decisions` 절은 그 원장 출력을 담으므로 커밋된 벡터가 드리프트해 exact-head CI가 실패했다. `python3 scripts/pack_vectors.py --write`로 현재 트리 기준 9파일을 재고정했고 `--check`가 통과한다. 결정 내용은 바꾸지 않았다. 재생성 벡터는 `SIMULATED`다.
 
 ## 6. Open risks
 
@@ -289,7 +291,7 @@
 
 | 작업 | 담당 | 상태 |
 |---|---|---|
-| `docs/CAP_COVERAGE.md` 색인 참조 | supervisor 통합 | 완료(11행) |
+| `docs/CAP_COVERAGE.md` 색인 참조 | supervisor 통합 | 이 PR 범위 밖 — 통합 단계에서 추가 예정(현재 미편입) |
 | `tests/test_coa_candidate.py`의 새 결정 노트 가드 처리 | supervisor(별도 범위 승인) | 이 PR 밖 |
 | `multipayee-shadow-input` 구현: 정책 로드·digest 동결, 순열 독립성, `payee_label` 오름차순 동률, 중복·미지 클래스 거부, 수치·용량 경계, 보존 불변식, `mode` 고정과 `adapter_outcome`→`shadow_status` 사상, 비호환 비교 검증. 새 벡터는 `scripts/docs_surface.py` 등록과 README needle 필요 | 구현 노드 | 미구축 |
 | 다중 수취인 결과의 FSM 행 번역 | upstream FSM 변경 후 별도 노드 | 이 노트 밖 |
