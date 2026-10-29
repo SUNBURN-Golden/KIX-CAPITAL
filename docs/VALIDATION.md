@@ -2439,6 +2439,170 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
+## Contract invariant claims — local builder evidence (2026-10-26)
+
+`capital/contract_invariants.py`, `tests/contract_invariants.json`,
+`scripts/contract_invariants_check.py` and `tests/test_contract_invariants.py`
+implement six `CLAIM_CONFORMANCE` / `SIMULATED` rows covering Capital analogues
+of INV-1..INV-5 at kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`,
+`docs/contracts/CONTRACT_INVARIANTS.md` §3. The Rust kernel is a read-only contract
+source; no upstream code is added or executed, and no semantic conformance,
+performance or real financial effect is claimed.
+
+Twelve pinned stdlib-random seeds each execute 16 main cells through the real
+CapitalService + FileWorkspace facade. Dedicated cells guarantee concurrent
+shared-face competition on v1 and both large caps fixtures, receipt/overlay
+saturation and replay before/after reopen, and repayment. One seed also runs
+through the loopback HTTP facade. The SIGKILL cell uses the existing crash-matrix
+boundary and subprocess harness, verifies complete pre/post lost-write recovery,
+replays the draw and resumes the matrix through repayment and another day advance.
+
+INV-3 checks canonical receipt projection bytes after every later step, including
+errors and reopen; missing probes fail the predicate. Command receipts keep the
+original instance_id, while reads require the current session. The documented
+`inv.3.overlay_projection` divergence excludes rebuilt instance_id,
+overlay_state_digest and transport_duplicate; all operation payload fields remain
+covered, and the initial overlay digest must equal the folded state. INV-5 retains
+journal bytes, overlay reservation ids, claim/trade/currency/amount, drawn amount,
+draw binding and journal index; repayment may lower outstanding exposure.
+Mutation tests corrupt copies of observed traces for every predicate.
+
+The table self-declares an EXECUTABLE_CITATION consumer, with
+`PENDING_NOTE_REGISTRATION` and named follow-up
+`upstream-repin-inventory-contract-invariants` for binding-note §3.2 bound_tables,
+§3.6 impact list and a decision_bindings test_module record. This follows the
+approved plan/current tests; the supervisor ruling permits this alignment without
+blocking on note registration. No note, binding map, service, vendor, CI or
+existing invariant test was changed. This checker is outside upstream-claims.
+
+Commands actually run in this completion round (all results are local SIMULATED
+verification; expected drift messages inside negative tests are not failures):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_contract_invariants -v` | Initial inherited implementation: 26 tests pass in 10.276 s; HTTP/SIGKILL executed, zero skips. |
+| `time python3 -m unittest tests.test_contract_invariants -v` | Strengthened implementation: 28 tests pass in 10.767 s (10.890 s wall), below the 20 s target. Includes two script subprocesses and a fresh second corpus. |
+| `python3 -m unittest tests.test_handbook tests.test_coverage tests.test_docs_surface -v` | 26 tests pass. |
+| `python3 scripts/contract_invariants_check.py` | Explicit SKIPPED, no execution requested, not a pass. |
+| `python3 scripts/contract_invariants_check.py --execute` | Six of six rows pass; loopback EXECUTED. Citation verification separately SKIPPED without checkout. |
+| `python3 scripts/contract_invariants_check.py --check` | Six of six rows pass; all 12 pinned seed digests MATCH; loopback EXECUTED. Repeated after strengthening. |
+| `python3 scripts/contract_invariants_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Six of six citation needles verified, read-only. |
+| `python3 scripts/contract_invariants_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Final combined run: six rows pass, loopback EXECUTED, six citation needles verified. |
+| `python3 -m unittest discover -s tests -v` | Branch checkout: 868 tests in 158.862 s, one failure (867 pass), zero errors/skips. The pre-existing V1 byte guard compares untouched capital/overlay.py, capital/ports.py and docs/decisions/CAPITAL_UPSTREAM_BINDING.md to newer origin/main revisions. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven tests pass. The node test independently verifies all five locked SHA256 values and manifest commit. |
+| `python3 -m compileall -q capital` | Pass. |
+| `node --check capital/static/app.js` | Pass. |
+| `python3 scripts/docs_surface.py --check` | Pass: 30 routes, 38 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Pass, zero findings. |
+| `npm ci --offline --ignore-scripts` | Three pinned packages installed from cache, zero vulnerabilities, lockfile unchanged. |
+| `npm run test:browser` | Initial run could not start: host ports 8765/8766 belong to unrelated workspaces. Their services were left running. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | 69 Chromium tests pass in 1.8 min; unchanged configuration, isolated loopback only. Servers cleaned up by Playwright. |
+| `python3 scripts/build_release.py --out /tmp/capital-contract-invariants-dist-one` | Pass; deterministic zipapp built. |
+| `python3 scripts/build_release.py --out /tmp/capital-contract-invariants-dist-two` | Pass; independent second build. |
+| `cmp /tmp/capital-contract-invariants-dist-one/capital-*.pyz /tmp/capital-contract-invariants-dist-two/capital-*.pyz` | Identical bytes, SHA256 fb4108f3a4c007e14e79086fc6ab11b41f4ac29f739c617f53dd6aeeca07d4af. |
+| `python3 scripts/smoke_release.py /tmp/capital-contract-invariants-dist-one/capital-*.pyz` | Eight smoke checks pass, including restarted receipts. |
+| `git diff --check` | Pass. |
+| `git diff --name-only HEAD -- capital/vendor .aiops .github docs/decisions tests/decision_bindings.json` | Empty: protected paths unchanged by this node. An origin/main comparison includes inherited main-only note/binding changes, not local edits. |
+
+Integration verification uses an isolated detached checkout of current
+origin/main (`aab0a7364c79ef00d34e031e4a827a817f7ae544`) at `/tmp/capital-contract-invariants-integration`, with this
+node's four new files and five tracked-file edits applied. The three text
+conflicts in requirements/validation/handbook tests were resolved there by
+preserving both main and node additions. No original branch/ref was changed,
+no tests or guards were weakened and no git commit/push/PR/issue/comment occurred.
+`python3 -m unittest tests.test_contract_invariants -v` there passes all 28 tests
+in 12.050 s. `scripts/docs_surface.py --check` passes (31 routes, 41 artifacts,
+nine stages), and `scripts/decision_bindings.py --check` has zero findings.
+The complete `python3 -m unittest discover -s tests -v` integration run passes
+**1,152 tests in 294.084 s**, zero failures/errors/skips. The 27 integration
+handbook/coverage/docs-surface tests also pass after syncing final documentation.
+This passing integration result supersedes the old branch baseline mismatch;
+it does not relabel the original 868-test run as green.
+
+Deviations from rev 2: competing draws and saturation are guaranteed dedicated
+cells rather than probabilistic insertions; one seed runs over HTTP and the
+other seeds use the same facade in process. Coverage was strengthened for missing
+receipt probes, immutable draw identity/amount and overlay saturation after
+reopen. Current-main integration verification addresses the old branch's baseline
+comparison without altering its guard; browser verification isolates occupied
+host ports without changing test configuration. Pin registration remains the
+explicit named follow-up allowed by the plan and supervisor ruling.
+
+## contract-invariants-claims — conflict-fix round 1 (2026-10-26)
+
+Resolved the supervisor's pending merge of `origin/main`
+`aab0a7364c79ef00d34e031e4a827a817f7ae544` into node HEAD
+`3a453530894bb3dc6bc0f9d6e06eaa2ef24a0b93`. Requirements retain main's
+lifecycle pin and this node's CE1/invariant citation inventory and pending
+registration disclosure. Validation retains both complete evidence additions;
+the handbook test retains both invariant and adapter-identity entries. No
+implementation or test behavior needed changes after combining them.
+
+These results are local `CLAIM_CONFORMANCE` / `SIMULATED` verification, with
+read-only Protocol citations; they do not claim upstream kernel execution or
+`SEMANTIC_CONFORMANCE`.
+
+| Command / check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,152 tests pass in 262.902 s, zero failures/errors/skips. Includes invariant mutations, concurrent duplicates, HTTP and SIGKILL/restart coverage plus main's regression tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests pass. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six of six predicates pass, all 12 pinned seed digests match, loopback EXECUTED. Citation verification SKIPPED in this invocation. |
+| `python3 scripts/contract_invariants_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; all six pinned citation needles verified, read-only. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; zero findings. |
+| `npm run test:browser` | Could not start because a host port was occupied; existing services left running. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests pass in 1.9 min, unchanged Playwright configuration on isolated loopback. |
+| Vendor integrity | All five SHA256 locks match; five reference files and manifest byte-identical to HEAD, MERGE_HEAD and origin/main. |
+| Merge hygiene | Both validation additions and both handbook entries preserved byte-for-byte; no tracked conflict markers or unmerged entries; staged and unstaged whitespace checks pass. |
+
+The three resolutions are staged for the supervisor. No merge abort, commit,
+push, rebase or reset was performed. No `.aiops/`, vendor, Protocol, Commerce,
+CI or test guard changes were made in this conflict-fix round. Pin registration
+remains the existing documented follow-up; no new product decision is needed.
+
+## contract-invariants-claims — PR fix round 2 (2026-10-27)
+
+The blocking INV-4 finding was valid. Counting zero-to-positive transitions
+missed replay increases after partial repayment, and did not require the first
+recorded draw to increase exposure. The predicate now requires the initial draw
+to add its full drawn amount, rejects every later increase for that advance,
+and rejects exposure without a recorded draw. Draw identity and amount bounds
+remain checked. The INV-4 claim text now states this stronger observation rule;
+the twelve seeded command/reply digests are unchanged.
+
+The new facade regression draws 5,000 synthetic fixture units, repays 2,000,
+reopens the workspace and concurrently replays the same draw id. Observed
+balances are 5,000 / 3,000 / 3,000 / 3,000. Mutating the final balance back to
+5,000 fails INV-4. Separate mutations remove or understate the first draw's
+increase, or introduce exposure before a draw. Running the replay and initial
+draw regressions against the original HEAD predicate produces three expected
+assertion failures; the revised predicate passes both tests and rejects all
+three mutations. This is finite-trace `SIMULATED` / `CLAIM_CONFORMANCE` evidence,
+not upstream kernel execution or a real economic effect.
+
+The supplied CI tail contains successful artifact uploads and runner deprecation
+warnings, without the failing stage or assertion. Local verification results for
+this round are recorded below; they do not assert that remote CI was rerun.
+
+| Command / check | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_contract_invariants -v` | Exit 0; 31 tests in 12.145 s, zero failures/errors/skips, including the new INV-4 mutations. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,155 tests in 263.339 s, zero failures/errors/skips. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 0; all nine stages pass: unit 1,155, storage 19, vendor 7, upstream claims 311, node syntax, browser 69, package smoke 8, seeded demo 1, simulated journeys 4. Local `build/acceptance-evidence.json` records `ok=true`, `SIMULATED`, and no funds executed. No CI failure reproduced. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven tests pass. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests pass in 2.0 min. Existing host services on ports 8765/8766 remain running; Playwright uses unchanged configuration on isolated loopback. |
+| `python3 scripts/contract_invariants_check.py --execute` | Exit 0; six of six rows pass, loopback EXECUTED. Citation verification separately SKIPPED without a checkout argument. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six of six rows pass, all 12 pinned seed digests MATCH, loopback EXECUTED. |
+| `python3 scripts/contract_invariants_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; all six citation needles verify read-only. |
+| `python3 scripts/docs_surface.py --check` and `python3 scripts/decision_bindings.py --check` | Both exit 0; 31 routes, 41 artifacts, nine stages; zero binding findings. |
+| `python3 -m unittest tests.test_handbook tests.test_coverage tests.test_docs_surface -v` | Exit 0; all 27 tests pass after adding this round's validation notes. |
+| Deterministic release builds and `scripts/smoke_release.py` | Two independent temporary builds are byte-identical (SHA256 `e12f4b5a97a8f1a64c42a25ad74d45b095d7d0a91fab429ca6a2050fd4288e2c`); all eight smoke checks pass. |
+| Vendor integrity and protected paths | All five SHA256 locks match; all five references and `manifest.json` are byte-identical to HEAD. No edits to vendor, `.aiops/`, CI, legacy export construction, Protocol or Commerce. |
+| `git diff --check` | Exit 0. |
+
 ## producer-tuple-preflight — conflict-fix round 2 (2026-10-26)
 
 Resolved `docs/SEAMS.md` and `docs/VALIDATION.md` while retaining the producer
@@ -2587,6 +2751,23 @@ All results below are local SIMULATED verification. Logs are in ignored `build/h
 | Vendor integrity | All five SHA256 locks match; those five reference files and `manifest.json` are byte-identical to both merge parents. |
 | Merge hygiene | Both conflicted histories preserved verbatim; no conflict markers or unmerged entries; whitespace checks pass against both merge parents. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
+## contract-invariants-claims — conflict-fix round 3 (2026-10-27)
+
+Merged incoming main `b3b56fe` (http-hostile-corpus plus the unit-stage timeout raise to 900 s) while preserving both sides. The two conflicted paths were append conflicts: `docs/OPERATOR_HANDBOOK_KO.md` retains this node's `contract-invariants-claims` handbook section and main's `http-hostile-corpus` section in full, and `docs/VALIDATION.md` retains this node's builder evidence, round-1 and PR-fix-round-2 entries alongside main's http-hostile-corpus and fold-fuzz histories verbatim. README carries both corpora bullets and both check commands; `scripts/docs_surface.py` registers the `http/` corpus beside `pack/`; `capital/server.py`, `capital/contract/facade-v1.json` (`INVALID_TARGET`) and the regenerated `tests/vectors/finance_vectors.json` come in unchanged from main. This node's `capital/contract_invariants.py`, `scripts/contract_invariants_check.py`, `tests/contract_invariants.json` and `tests/test_contract_invariants.py` are byte-identical to the feature merge parent; the combination required no code repair. No conflict markers or unmerged entries remain and the merge is left uncommitted for the supervisor.
+
+All results below are local SIMULATED verification. No external action, product decision, Protocol/Commerce modification or `.aiops/` edit was made.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1164 passed** in 261.850 s — both corpora, contract-invariant predicates and mutations, hostile post-state/health probes, drift/missing/unexpected-file rejection and the legacy COA byte guards (now clean against merged main). |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. All five SHA256 locks and `manifest.json` byte-identical to both merge parents. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js`; `git diff --check` | All exit 0. |
+| `python3 scripts/contract_invariants_check.py --execute` | Exit 0; six of six `CLAIM_CONFORMANCE` rows pass, loopback `EXECUTED`. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six rows pass, all 12 pinned seed digests `MATCH`. |
+| `python3 scripts/{docs_surface,http_hostile,finance_vectors,manifest_vectors,workspace_vectors,pack_vectors,fold_fuzz,decision_bindings,not_bound_checklist,closeout_digest,auth_matrix}.py --check` | All exit 0; docs surface reports the merged artifact set with no drift. `scripts/decision_ledger.py` exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 1.9 m in an isolated loopback namespace (host ports 8765/8766 held by foreign processes, left running). |
+| Vendor and protected paths | `git diff --name-only` for `capital/vendor` and `.aiops` is empty against both merge parents. |
+| Merge hygiene | No markers, no unmerged index entries, both histories preserved; no abort, commit, push, rebase or reset performed. |
 ## producer-tuple-preflight — conflict-fix round 3 (2026-10-27)
 
 Resolved the append conflict in this file by retaining both this node's round-2
@@ -2765,6 +2946,50 @@ Logs and temporary browser configurations are retained in ignored
 `build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
 responsibility for the merge commit; no abort, commit, push, rebase or reset was
 performed.
+## contract-invariants-claims — conflict-fix round 1 (2026-10-28)
+
+Merged incoming main `e445f38` (permission-catalog-surface #107 and
+facts-cursor-export #136) into this node, preserving both sides. Both conflicts
+were documentation appends. `docs/OPERATOR_HANDBOOK_KO.md` retains this node's
+`contract-invariants-claims` section and needles plus main's `/api/permissions`
+(reference:read) and `/api/export/facts` (export:read) table rows and Facts
+offline-verification section. `docs/VALIDATION.md` retains this node's builder
+evidence and prior merge rounds alongside main's permission-catalog and
+facts-export histories verbatim. README keeps both feature bullets, main's
+cursor-paginated facts section and this node's two check commands;
+`docs/CAPITAL_REQUIREMENTS_KO.md` keeps this node's declared
+`PENDING_NOTE_REGISTRATION` consumer note; `tests/test_handbook.py` adds this
+node's needles beside main's. `scripts/docs_surface.py`, `capital/auth.py`,
+`capital/server.py`, `capital/service.py`, `capital/verify.py`,
+`capital/facts.py`, `capital/contract/facade-v1.json`, `tests/auth_matrix.json`,
+`tests/vectors/finance_vectors.json`, the `pack/` and `facts/` corpora and all
+of main's tests arrive unchanged from main. This node's
+`capital/contract_invariants.py`, `scripts/contract_invariants_check.py`,
+`tests/contract_invariants.json` and `tests/test_contract_invariants.py` are
+byte-identical to the feature merge parent; the combination required no code or
+fixture repair.
+
+The first full unit run reported one failure: the `upstream-claims` acceptance
+stage inside `test_read_model_claims` timed out (`exit=124`, first table's 87
+claims counted) while the Chromium suite ran concurrently on the same host. The
+identical stage passed earlier in that same run under `test_agent_claims`
+(311/311), the test alone passed in 2.4 s, and the clean rerun below passed all
+1,184 tests. That is a load-induced timeout, not a merge regression. The
+Chromium run itself used the unchanged committed config inside an isolated
+loopback namespace because foreign processes hold host ports 8765/8766.
+
+| Verification | Actual local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | First run: 1,183 passed, 1 failed (`upstream-claims` stage exit=124 under concurrent browser load). Clean rerun: **1,184 passed** in 308.884 s. |
+| `python3 -m unittest tests.test_read_model_claims.ReadModelClaimsTests.test_acceptance_stage_runs_all_claim_tables -v` | Exit 0 in isolation; stage passed 311/311 claims in 2.4 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **69 passed** in 1.9 m (committed config, isolated loopback namespace; host ports 8765/8766 held by foreign processes, left running). |
+| `python3 scripts/contract_invariants_check.py --execute`; `--check` | Both exit 0; six of six `CLAIM_CONFORMANCE` rows pass, loopback EXECUTED, all 12 pinned seed digests MATCH; protocol citation SKIPPED without `--protocol-dir` (not a pass). |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 34 routes, 250 artifacts, 9 stages. |
+| `python3 scripts/{auth_matrix,finance_vectors,facts_vectors,pack_vectors,manifest_vectors,workspace_vectors,forecast_vectors,http_hostile,fold_fuzz,decision_bindings,not_bound_checklist,closeout_digest}.py --check`; `python3 scripts/decision_ledger.py` | All exit 0 (finance 99070 bytes; facts 133 files; pack 9; manifest 19; workspace 6; forecast 6456 bytes; http 76; fold fuzz 16 seeds / 736 commands; closeout 4518 bytes embedded). Each of the six upstream-claims stage scripts also exits 0 standalone. |
+| Vendor and protected paths | All five vendored reference files match their manifest SHA256 values; `git diff` of `capital/vendor` and `.aiops` against both merge parents is empty. |
+| Merge hygiene | Both conflicted docs resolved with both sides preserved (staged docs are a strict superset of main's versions plus this node's additions); no line-start conflict markers, no unmerged index entries, `git diff --check` clean. Merge left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
 
 ## advance-case-dossier — conflict-fix round 2 (2026-10-28)
@@ -2964,6 +3189,36 @@ authentication NOT_BOUND. Logs are in ignored `build/margin-merge-round1/`.
 
 No external posting, provider call or consequential product decision was required.
 
+## contract-invariants-claims — conflict-fix round 2 (2026-10-28)
+
+Resolved all three append conflicts in `docs/VALIDATION.md` in the
+supervisor-started merge of main `863de6b0f76cbb8caba11834d25782a3cba8e490`
+into node `b4c2e7a981451c1bf4a96b6c861170455ca6817a`. Both complete parent
+documents remain verbatim and in order. The four invariant implementation,
+checker, table and test files are byte-identical to the node parent; main's
+risk-scenario and simulated-journey implementations, tests and fixtures survive
+unchanged. No implementation, test or fixture repair was needed.
+
+These are local `SIMULATED` / `CLAIM_CONFORMANCE` results, with read-only
+Protocol citation verification. They do not claim upstream kernel execution,
+`SEMANTIC_CONFORMANCE`, authentication or real financial effects. Logs are in
+ignored `build/contract-invariants-conflict-round2/`.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,212 tests pass in 276.028 s, zero failures/errors/skips. Includes invariant mutation, replay/restart, concurrency and main's regression coverage. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests pass. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/contract_invariants_check.py --check --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; six of six predicates pass, all 12 pinned seed digests MATCH, loopback EXECUTED, all six citation needles verified read-only. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 251 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; zero findings. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests pass in 2.0 min, unchanged repository configuration in an isolated loopback namespace. |
+| Vendor and protected paths | All five SHA256 locks match; five references and manifest byte-identical to both merge parents and origin/main. `.aiops/`, `capital/export.py` and CI unchanged from both parents. |
+| Merge hygiene | Both complete validation histories preserved in order; no tracked conflict markers or unmerged entries; staged, unstaged and origin/main whitespace checks pass. Resolution staged; merge remains uncommitted for the supervisor. |
+
+No abort, commit, push, rebase, reset, external post, provider call or upstream
+modification was performed. No new consequential product decision was needed.
+The existing pin-registration follow-up remains documented without changing scope.
 
 ## advance-case-dossier — conflict-fix round 3 (2026-10-28)
 
@@ -3091,3 +3346,79 @@ staged; no unmerged index entries or tracked conflict markers remain. Staged
 and incoming-main whitespace checks pass. The merge remains uncommitted for
 the supervisor; no abort, commit, push, rebase, reset or external posting was
 performed.
+
+## contract-invariants-claims — supervised conflict-fix round 3 (2026-10-29)
+
+Resolved all three append conflicts in this file for the supervisor-started merge
+of main `bae7a5378b57eb4927afa53efdb2ee1852af0914` into node
+`e9c067a1acaffd0106d794bc78d4cec9eb7ad643`. Both complete parent validation
+histories remain verbatim and in order. The invariant implementation, checker,
+table and tests remain byte-identical to the node parent; producer preflight
+implementation and tests remain byte-identical to main. Only this document was
+edited during resolution. No code, test or fixture repair was needed.
+
+These results are local `SIMULATED` / `CLAIM_CONFORMANCE` verification, with
+read-only Protocol citations. They do not claim upstream kernel execution,
+`SEMANTIC_CONFORMANCE` or real financial effects. Producer byte agreement remains
+`BOOTSTRAP`, semantic consumption `HOLD`, adoption `NOT_BOUND`.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,232 tests pass in 290.570 s, zero failures/errors/skips. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests pass. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six predicates pass, all 12 pinned seed digests match, loopback EXECUTED. Citation verification separately SKIPPED in this invocation. |
+| `python3 scripts/contract_invariants_check.py --execute --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; six predicates pass, loopback EXECUTED, all six citation needles verified read-only. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 267 artifacts, nine stages. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; HOLD / NOT_BOUND. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references valid. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests pass in 2.1 min, unchanged configuration in an isolated loopback network namespace. |
+| Protected paths | All five vendor SHA256 locks match; five references and manifest are byte-identical to both merge parents. Legacy export, CI and `.aiops/` also match both parents. |
+| Merge hygiene | Both complete parent histories preserved in order; no conflict markers or unmerged entries; staged, unstaged and incoming-main whitespace checks pass. Resolution staged; merge remains uncommitted for the supervisor. |
+
+Full-suite, browser and citation-execution logs are in ignored
+`build/contract-invariants-conflict-round3/`. No external post, provider call,
+upstream modification, abort, commit, push, rebase or reset was performed.
+No consequential product decision was required; the existing pin-registration
+follow-up remains documented without changing scope.
+
+
+## advance-case-dossier — supervised conflict-fix round 2 (2026-10-29)
+
+Resolved both documentation conflicts in the supervisor-started merge of incoming
+main `b3bed1c48411b9de7ed608a4b8c62dea0d65f774` into node
+`eeef765d5ac04aeee9c0b92abad0b6c002f42529`. The resolved files are
+`docs/OPERATOR_HANDBOOK_KO.md` and `docs/VALIDATION.md`. The handbook retains
+separate complete `advance-case-dossier` and `contract-invariants-claims`
+sections, alongside the combined permission table. Both complete parent
+validation histories remain verbatim and in order.
+
+The dossier implementation, route/auth contract, UI, tests and six vectors remain
+byte-identical to the feature parent. Incoming contract-invariant implementation,
+checker, table and tests, plus main's hostile-HTTP token regression fix, remain
+byte-identical to incoming main. No code, test, fixture or CI repair was needed.
+
+These are local `SIMULATED` / `READ_ONLY_FIXTURE` / `CLAIM_CONFORMANCE` results.
+Compatibility preflight reports matched `BOOTSTRAP` bytes with semantic
+consumption `HOLD`, semantic_conformance false and adoption `NOT_BOUND`.
+No real identity, financial execution, provider integration or upstream kernel
+execution is claimed.
+
+| Verification actually run | Actual local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,247 tests passed** in 496.215 s, including dossier acceptance tests, incoming invariant coverage and the unchanged legacy byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all **76 Chromium tests passed** in 2.0 min, including organizer/auditor dossier downloads and captures at 1280px and 375px, literal text under CSP and fallback/error handling. Host ports 8765/8766 were occupied, so the unchanged repository configuration ran in an isolated loopback namespace using locally available Chromium. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/contract_invariants_check.py --check` | Exit 0; six predicates pass, all 12 pinned seed digests match, loopback EXECUTED. Protocol citation verification is SKIPPED without `--protocol-dir`; no citation pass is claimed. |
+| `python3 scripts/{auth_matrix,dossier_vectors,compat_preflight,finance_vectors,pack_vectors,facts_vectors,risk_scenario_vectors,sim_journeys,decision_bindings,not_bound_checklist}.py --check` (each separately) | All exit 0; six dossier vectors, 101048 finance bytes, nine pack files, 133 facts files, 37747 scenario bytes and all six simulated journey goldens match. |
+| Preservation and protected paths | All five vendor SHA256 locks match protocol commit `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. Vendor files and manifest, legacy `capital/export.py`, `.aiops/` and CI are byte-identical to both merge parents. No Protocol/Commerce edits. |
+| Merge hygiene | Both conflicts resolved and staged; no unmerged entries or tracked conflict markers. Staged, unstaged and incoming-main whitespace checks pass. Merge remains uncommitted for the supervisor. |
+
+Logs are retained in ignored `build/dossier-supervised-round2/`: `unit.log`,
+`browser.log`, `checks.log` and `preservation.log`. The pre-existing deletion of
+obsolete root `DECISION_REQUIRED.md` is retained and staged: its moved-main
+baseline blocker is resolved and the unmodified guard passes. No consequential
+product decision was needed. No abort, commit, push, rebase, reset, external post
+or provider call was performed.
