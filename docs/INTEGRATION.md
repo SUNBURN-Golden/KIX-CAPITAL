@@ -169,6 +169,8 @@ Envelope v2 (overlay): every save writes `envelope_version: 2` (`format` stays t
 
 `python3 scripts/seed_demo.py --producer gate-fake` and `python3 -m capital.server --producer gate-fake` opt in to `GateHttpProducer`. The default remains `PinnedFsmProducer`. The fake gate is `scripts/fake_gate.py`, a stdlib server that binds a loopback address only and wraps the same pinned FSM. Its label is `LOCAL_FAKE_GATE`. It is not a promoted catalogue, not an OpenAPI pin, and not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND`. Command bodies reject unknown fields. `operationId` must equal `operation_id`. `actor` is not authentication. If the gate applies a command and drops the response, the client reports `UNKNOWN`, does not POST again, and a later GET of that receipt returns the original receipt. The gate also accepts armed fault hooks `drop-before`, `drop-after`, `timeout`, `error-5xx`, and `malformed-json`, and answers `409 IDEMPOTENCY_CONFLICT` when a replayed `operationId` carries a different action or body (the first receipt is never replaced). The facade maps a lost or dropped command response to an `UNKNOWN` outcome with `retry_authorized` false and never resends; a gate 5xx becomes a `502 GATE_FAILED` and an unparseable gate body `502 INVALID_JSON`, neither a business rejection. `tests/vectors/gate_faults.json` (format `KIX_CAPITAL_GATE_FAULTS_V1`) pins accept, 5xx, malformed JSON, dropped-connection, delayed-then-lost, and conflicting same-`operationId` replay cases; `python3 scripts/gate_faults.py --check` replays the corpus on `127.0.0.1` through the real facade and exits nonzero on drift. It rewrites nothing and is not SEMANTIC_CONFORMANCE.
 
+`make_preflighted_fake_producer` in `capital/gate_producer.py` rehearses the exact producer-tuple check before constructing that same fake. The offline stdlib checker `capital/compat_preflight.py` validates a synthetic `kix-compat-manifest/1` bundle (`tests/vectors/compat/bundle/`, `READ_ONLY_FIXTURE`) against a caller-pinned expected tuple (`tests/vectors/compat/expected.json`, format `capital-compat-expected/1`): producer identity, profile kind/revision/digest, both contract files (path, Git blob, sha256), generator and `node-24` toolchain metadata, SDK output, ordered vector hashes, and the manifest sidecar digest. Duplicate JSON keys, forbidden self-digest/finality fields, missing files, and paths escaping the fixture root are rejected. A `MISMATCH` raises `PreflightRejected` before any gate starts, so no command POST is ever attempted; a bundle whose bytes declare `SEMANTIC_CONFORMANCE` cannot open the rehearsal (`BOOTSTRAP_REHEARSAL_ONLY`) — the factory accepts `BOOTSTRAP` only. `python3 scripts/compat_preflight.py --check` verifies the pinned corpus and exits nonzero on drift. Even a `MATCHED` report keeps `semantic_consumption` `HOLD`, `semantic_conformance` `false`, and `adoption` `NOT_BOUND`: byte agreement is not semantic qualification, and CAP-16 stays `NOT_BOUND`. The manifest shape and its `kix-canonical-json/1` encoding cite the Protocol contract `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md` at research commit `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915` (read-only; the executable vendor pin stays `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`); `docs/COMPAT_PREFLIGHT.md` has the fixture contract.
+
 ## Upstream adapter replacement prerequisites (NOT_BOUND)
 
 Before consuming promoted commands or finance queries, require exact producer repository/commit/tree, domain/schema, OpenAPI source+generated hashes, generated SDK/toolchain/output hashes, immutable manifest and SEMANTIC_CONFORMANCE profile kind/revision/digest and positive/negative vectors. BOOTSTRAP or a prior profile pass is insufficient. Map command bytes/receipt meanings explicitly; never reuse similar catalogue names.
@@ -215,6 +217,7 @@ Each cell is the HTTP result for that caller and route. A bare `200` means the g
 | GET | `/api/policy[/…]` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/preview/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/underwrite/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/cases/…` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/operations/…` | `receipt:read` | 200 | 200 | 200 | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/export/manifest` | `export:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
@@ -279,6 +282,45 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+### Advance case dossier
+
+- `GET /api/cases/{advance_id}/dossier?instance_id=`: `projection:read` for
+  organizer and auditor; observer and agent receive `403 ROLE_FORBIDDEN`.
+  Only one `instance_id` query parameter is accepted. Missing or stale instance
+  yields `409 SESSION_CHANGED`, unknown case yields `404 CASE_NOT_FOUND`,
+  other child paths yield `404 NOT_FOUND`, extra/duplicate query parameters
+  yield `400 INVALID_ARGUMENTS`. No caller-supplied amount or hypothetical day.
+
+The `KIX_CAPITAL_CASE_DOSSIER_V1` / `SIMULATED` / `READ_ONLY_CASE_DOSSIER`
+response holds one service lock across sibling reads. `sim_day` is copied from
+the recorded overlay fold. The case, indexed F04 journal with original receipts,
+indexed case/global clock and terms-binding overlay rows, underwriting record,
+terms line, ledger row, allocation quote, margin and covenant rows and matching
+READ_ONLY_FIXTURE settlement rows are copied from existing readers.
+`allocation_quote` copies the overlay's full-payoff proposal (`allocation`,
+`fsm_repay`, `close_ready`); it introduces no cash assumption or arithmetic.
+Underwriting is the complete enveloped rule evaluation at that day with
+`decided_by_role: DOSSIER_READ_ONLY`, not a decision by the reader;
+`proposal` and any `approve_authority` values remain rule outputs.
+Receipts without journal rows retain WORKSPACE_WIDE scope and
+`case_association: NOT_INFERRED`; no case association is guessed.
+
+`cut` includes state, overlay and fixture digests and the terms version.
+`dossier_digest` hashes canonical bytes after removing itself and recursively
+stripping the existing export volatile key set. The read-only envelope is
+covered except for volatile fields. Repeated reads of the same workspace are
+byte-identical; session identity may change after restart but content digest
+stays stable. This is local content integrity, not authentication or remote
+attestation. `funds_executed`, `workspace_mutated`, `write_authorized` are false.
+The canonical state, journal length, overlay and operation count are guarded.
+
+Missing terms produce number-free `NOT_BOUND` blocks for underwriting and the
+five terms-dependent blocks. Bound terms with no accepted F04 draw give the
+five blocks `NOT_APPLICABLE / NOT_DRAWN`. Sibling `NOT_BOUND` exceptions become
+labelled blocks; other errors propagate. The dossier download uses text nodes
+and the existing CSP, independent of auditor manifest compatibility. JSON only;
+no PDF, multi-case bundle, evidence-pack inclusion or real identity.
 
 Lifecycle claim mappings (`tests/lifecycle_claims.json`,
 `scripts/lifecycle_claims_check.py --execute`) exercise the unchanged

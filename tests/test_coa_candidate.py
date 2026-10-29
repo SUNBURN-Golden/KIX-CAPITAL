@@ -211,18 +211,7 @@ class V1UnchangedTests(unittest.TestCase):
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
-            # A decision branch can add its reviewed note before main contains it.
-            # Keep main's guard for every existing path, and byte-pin additions
-            # to the reviewed branch tip instead of treating them as main edits.
-            added_notes = self._git('diff', '--name-only', '--diff-filter=A', base, 'HEAD',
-                                    '--', 'docs/decisions')
-            self.assertEqual(added_notes.returncode, 0, added_notes.stderr)
-            self.assertEqual(guarded.stdout.split(), added_notes.stdout.split())
-            for note in added_notes.stdout.split():
-                reviewed_note = subprocess.run(['git', 'show', f'HEAD:{note}'], cwd=ROOT,
-                                               capture_output=True)
-                self.assertEqual(reviewed_note.returncode, 0, reviewed_note.stderr)
-                self.assertEqual((ROOT / note).read_bytes(), reviewed_note.stdout, note)
+            self.assertEqual(guarded.stdout.split(), [])
             # Also preserve the closeout binding note against the incoming reviewed
             # commit during a merge, when HEAD still points at the old branch tip.
             binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'

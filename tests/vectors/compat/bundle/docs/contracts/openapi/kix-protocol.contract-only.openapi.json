@@ -1,0 +1,22 @@
+{
+  "info": {
+    "version": "READ_ONLY_FIXTURE/1"
+  },
+  "x-kix-source": {
+    "domain": "capital:SIMULATED:compat"
+  },
+  "x-kix-live-http-server": false,
+  "x-kix-production-endpoint": false,
+  "components": {
+    "schemas": {
+      "LocalCallEnvelope": {
+        "type": "object"
+      },
+      "simulated_noop": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      }
+    }
+  }
+}
