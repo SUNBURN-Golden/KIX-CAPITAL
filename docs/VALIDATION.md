@@ -1,52 +1,48 @@
 # Validation scope
 
-## Portfolio history comparison — PR fix round 2, review of `6764540`
+## Portfolio history comparison — PR fix round 3, review of `9b1f3fe`
 
-2026-10-29, baseline HEAD `67645402d62f099be30782aa76805e37ca7f2bdb`;
-local SIMULATED verification only.
+2026-10-29, baseline HEAD `9b1f3fefd0c32c02d969ea1001f4d4813c5f0200`.
+All verification in this record uses local SIMULATED fixtures.
 
-The blocking finding is valid. The reviewed HEAD still contains the obsolete
-root `DECISION_REQUIRED.md`, despite earlier records describing its deletion.
-This round retains the interrupted worktree deletion and stages it with
-`git add -u -- DECISION_REQUIRED.md`. The file is absent from the worktree and
-index; the staged patch deletes all 45 lines. No product decision is required.
+The blocking finding is valid: the baseline commit contains an obsolete
+`DECISION_REQUIRED.md`. The fix deletes that file in full. No integration-baseline
+or product decision remains open. The deletion must be included in the supervisor's
+next commit; a documentation update alone does not fix the reviewed head.
+The builder is explicitly prohibited from committing, pushing or posting, so this
+record describes the prepared patch and does not claim a changed PR head or an
+exact-head CI pass.
 
-This is a prepared, uncommitted fix. HEAD has not changed, and removal from the
-committed PR head requires the supervisor to include this deletion in its next
-commit. No commit, push or external post was performed. Only the stale document
-and this validation record change; runtime code, tests, CI, policy inputs,
-vendored references and manifest, and `.aiops/` remain unchanged.
+Only the obsolete decision record and this validation record change. Runtime code,
+tests, CI, policy inputs, the five vendored references and manifest, and `.aiops/`
+remain unchanged.
 
 | Current check | Result |
 | --- | --- |
-| `test ! -e DECISION_REQUIRED.md`; `git ls-files -- DECISION_REQUIRED.md`; `git diff --cached --numstat -- DECISION_REQUIRED.md` | Absent on disk; no index entry; staged deletion of 45 lines |
-| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,160 passed in 283.896s, including comparison CLI, determinism, input preservation and baseline byte guards |
+| Decision-record deletion | All 45 lines deleted; file absent from disk, index and the tree produced by `git write-tree` |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,160 passed in 262.469s, including comparison CLI, deterministic output, input preservation and baseline byte guards |
 | `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all 7 passed |
 | `python3 -m compileall -q capital` | Exit 0 |
 | `node --check capital/static/app.js` | Exit 0 |
 | `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
 | `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` |
-| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.6m |
-| Inline SHA256 and HEAD-byte comparison | All five vendor references match manifest pins and HEAD; manifest bytes match HEAD |
-| `git diff --exit-code HEAD -- capital tests scripts .github .aiops playwright.config.cjs package.json package-lock.json` | Exit 0; protected paths and test/configuration files unchanged |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 1.9m |
+| Vendor integrity | All five SHA256 pins match; references and manifest byte-identical to baseline HEAD |
+| Protected paths | Runtime, tests, scripts, CI, browser/dependency configuration and `.aiops/` unchanged against HEAD |
 | `git diff --check`; `git diff --cached --check` | Exit 0 |
 
-The unit log is `/tmp/portfolio-r2-current-unit.log`; the default browser log is
-`/tmp/portfolio-r2-current-browser-default.log`; the passing browser log is
-`/tmp/portfolio-r2-current-browser-isolated.log`. Browser verification used the
-unchanged repository configuration and installed Chromium in an isolated loopback
-network namespace. No browser download, config override or interruption of
-unrelated services was needed. No test or CI setting was changed. These are local
-checks of the prepared patch, not an exact-head CI result or a new full acceptance
-ladder run.
+Logs: `/tmp/portfolio-r3-unit.log`, `/tmp/portfolio-r3-browser-default.log`,
+`/tmp/portfolio-r3-browser-isolated.log`. Installed headless Chromium ran with the
+unchanged browser configuration in a separate loopback network namespace; no
+unrelated service was stopped. No browser download, test weakening, policy change
+or external action was needed. These results are local patch verification, not a
+new run of the full nine-stage acceptance ladder.
 
 ### Historical verification records
 
-The sections below describe their stated earlier sessions and baselines. Their
-claims about deletion, staging, HEAD, open blockers and acceptance totals do not
-establish the current tree or index state. The current record above supersedes
-those project-status claims. In particular, prior worktree deletions did not
-remove the stale document from the reviewed commit.
+The sections below describe earlier sessions and baselines. Their deletion,
+staging, blocker and acceptance claims are historical, not evidence of the current
+commit. The round 3 record above supersedes those project-status claims.
 
 ## Portfolio history comparison PR fix round 3
 
