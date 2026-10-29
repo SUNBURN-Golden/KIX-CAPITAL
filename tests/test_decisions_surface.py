@@ -1,7 +1,9 @@
 """GET /api/decisions: the machine-readable summary of the capital-decision-v1 notes."""
 import http.client
+import hashlib
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -9,6 +11,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from capital.auth import ROUTE_PERMISSIONS, LocalRoleAuthorizer, Principal, route_permission
 from capital.decisions import DECISIONS_NOT_BOUND, DecisionIndex
@@ -98,7 +101,7 @@ class DecisionRowsTests(unittest.TestCase):
         self.assertEqual(sorted(Path(row['note']).name for row in body['rows']), files)
         for row in body['rows']:
             block = _block(ROOT / row['note'])
-            self.assertEqual(set(row), {'note', 'decision_id', 'status', 'provisional', 'version', 'entries'})
+            self.assertEqual(set(row), {'note', 'decision_id', 'status', 'provisional', 'version', 'entries', 'notes_source', 'note_sha256'})
             self.assertEqual(row['decision_id'], block['decision_id'], row['note'])
             self.assertEqual(row['status'], block['status'], row['note'])
             self.assertIs(row['provisional'], block['provisional'], row['note'])
@@ -132,7 +135,9 @@ class DecisionRowsTests(unittest.TestCase):
         ledger = _load('ledger_for_surface', ROOT / 'scripts' / 'decision_ledger.py')
         coverage = (DOCS / 'CAP_COVERAGE.md').read_text(encoding='utf-8')
         expected = ledger.build_index(NOTES, ledger.expected_note_paths(coverage))
-        self.assertEqual(self.service.decisions()['rows'], expected)
+        actual = [{k: v for k, v in row.items() if k not in ('notes_source', 'note_sha256')}
+                  for row in self.service.decisions()['rows']]
+        self.assertEqual(actual, expected)
 
     def test_envelope_is_read_only_and_does_not_touch_the_book(self):
         before = (self.service.machine.state_digest(), len(self.service.receipts))
@@ -163,6 +168,49 @@ class DecisionRowsTests(unittest.TestCase):
 
 
 class DecisionIndexEdgeTests(unittest.TestCase):
+    def test_validation_reuse_tracks_bytes_removal_and_recovery_without_shared_rows(self):
+        name = 'CAPITAL_FINANCIAL_TERMS.md'
+        with tempfile.TemporaryDirectory() as tmp:
+            original = _note_text('terms', version='VERSION-A')
+            docs = _docs(tmp, {name: original, 'OTHER.md': _note_text('other')})
+            path = docs / 'decisions' / name
+            timestamp = path.stat().st_mtime_ns
+            index = DecisionIndex(docs)
+            ledger = index._load_ledger()
+            with patch.object(ledger, 'validate_note_bytes', wraps=ledger.validate_note_bytes) as validate:
+                first = index.rows()
+                self.assertEqual(validate.call_count, 2)
+                first[0]['entries'].clear()
+                again = index.rows()
+                self.assertTrue(again[0]['entries'])
+                self.assertEqual(validate.call_count, 2)
+
+                # Equal size and timestamp must not conceal a policy revision.
+                changed = original.replace('VERSION-A', 'VERSION-B').encode('utf-8')
+                path.write_bytes(changed)
+                os.utime(path, ns=(timestamp, timestamp))
+                row = index.rows()[0]
+                self.assertEqual(validate.call_count, 3)
+                self.assertEqual(row['version'], 'VERSION-B')
+                self.assertEqual(row['note_sha256'], hashlib.sha256(changed).hexdigest())
+
+                path.write_bytes(b'\xff')
+                self.assertEqual(index.rows()[0]['status'], 'INVALID')
+                self.assertEqual(validate.call_count, 4)
+                path.unlink()
+                row = index.rows()[0]
+                self.assertEqual((row['status'], row['notes_source'], row['note_sha256']),
+                                 ('PENDING', 'NONE', None))
+                self.assertEqual(validate.call_count, 4)
+                path.write_bytes(b'\xff')
+                self.assertEqual(index.rows()[0]['status'], 'INVALID')
+                self.assertEqual(validate.call_count, 5)
+                path.write_text(original, encoding='utf-8')
+                row = index.rows()[0]
+                self.assertEqual(row['version'], 'VERSION-A')
+                self.assertEqual(row['notes_source'], 'OVERRIDE_FILE')
+                self.assertEqual(validate.call_count, 6)
+
     def test_pending_invalid_and_live_status_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             docs = _docs(tmp, {
@@ -172,7 +220,7 @@ class DecisionIndexEdgeTests(unittest.TestCase):
                 'ABSENT.md': None,
             })
             rows = {Path(row['note']).name: row for row in DecisionIndex(docs).rows()}
-        self.assertEqual(list(rows['GOOD.md'].values())[1:], ['good', 'PROVISIONAL_PRODUCT_DECISION', True, 'GOOD-V3', {'item': 'ADOPTED'}])
+        self.assertEqual([rows['GOOD.md'][k] for k in ('decision_id', 'status', 'provisional', 'version', 'entries')], ['good', 'PROVISIONAL_PRODUCT_DECISION', True, 'GOOD-V3', {'item': 'ADOPTED'}])
         self.assertEqual(rows['WITHDRAWN.md']['status'], 'WITHDRAWN')
         self.assertEqual(rows['BROKEN.md']['status'], 'INVALID')
         self.assertEqual((rows['BROKEN.md']['provisional'], rows['BROKEN.md']['version']), (None, None))
@@ -356,7 +404,7 @@ class DecisionsHttpTests(unittest.TestCase):
 
 
 class DecisionsZipappTests(unittest.TestCase):
-    def test_zipapp_has_no_docs_so_the_route_is_not_bound(self):
+    def test_zipapp_reports_bundled_decision_index(self):
         build = _load('build_release_decisions', ROOT / 'scripts' / 'build_release.py')
         with tempfile.TemporaryDirectory() as tmp:
             pyz = build.build(tmp, ROOT)
@@ -373,11 +421,12 @@ class DecisionsZipappTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         result = json.loads(proc.stdout)
         body = result['decisions']
-        self.assertEqual((body['status'], body['reason'], body['rows']), ('NOT_BOUND', DECISIONS_NOT_BOUND, []))
+        self.assertEqual((body['status'], body['reason']), ('BOUND', None))
+        self.assertTrue(body['rows'])
+        self.assertEqual(body['notes_source'], 'BUNDLED_IN_ARTIFACT')
         self.assertEqual(body['mode'], 'READ_ONLY_DECISION_INDEX')
         self.assertFalse(_has_number(body))
-        self.assertIn('NOT_BOUND per docs/decisions/CAPITAL_FINANCIAL_TERMS.md', result['blockers'])
-        self.assertFalse(any('PROVISIONAL' in item and 'docs/decisions' in item for item in result['blockers']))
+        self.assertIn(TERMS_LINE, result['blockers'])
 
 
 if __name__ == '__main__':
