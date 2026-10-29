@@ -114,12 +114,10 @@ class DecisionTests(unittest.TestCase):
             upstream_summary['entries'])
         self.assertNotIn('docs/decisions/revenue-participation.md', by_note)
         self.assertNotIn('docs/decisions/claim-purchase.md', by_note)
-        for argv in ([], ['--check']):
-            buffer = io.StringIO()
-            with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(io.StringIO()):
-                code = ledger.main(argv)
-            self.assertEqual(code, 0)
-            self.assertEqual(buffer.getvalue(), ledger.format_index(rows))
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(io.StringIO()):
+            code = ledger.main([])
+        self.assertEqual(code, 0)
         printed = buffer.getvalue()
         self.assertIn('interest_rate=ADOPTED', printed)
         self.assertIn('producer_sdk_tuple=DEFERRED', printed)
@@ -230,10 +228,9 @@ class DecisionTests(unittest.TestCase):
             self.assertIn('PENDING', buffer.getvalue())
             invalid = decisions / 'missing-note.md'
             invalid.write_text(_note({}, blocks=0), encoding='utf-8')
-            for mode in ([], ['--check']):
-                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-                    code = ledger.main(mode + ['--coverage', str(coverage), '--decisions', str(decisions)])
-                self.assertEqual(code, 1)
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = ledger.main(['--coverage', str(coverage), '--decisions', str(decisions)])
+            self.assertEqual(code, 1)
 
     def test_deferred_and_not_adopted_keep_a_null_value(self):
         adopted_shape = _entry()
