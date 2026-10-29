@@ -2439,6 +2439,26 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
+## Bundled policy runtime 0.2.0
+
+Current zipapps bundle the authorized decision inputs and serve bound provisional terms, decided settlement policy, underwriting and the decision index outside checkout. The older 0.1.0 NOT_BOUND observations above are historical evidence. Current packaged smoke also checks note-byte provenance and persisted simulation-clock accrual across a temporary workspace restart. Local verification commands and measured results for this node are recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; all journeys are SIMULATED.
+
+## bundled-policy-runtime — conflict-fix round 1 (2026-10-25)
+
+The merge retains bundled decision-note provenance alongside main's repayment
+posting, default recovery, claim slices and extended shadow arithmetic. New
+packaged regression coverage checks that these policy consumers read archive
+resources outside the checkout and fail closed for missing or malformed notes.
+The legacy overlay, export and five vendored reference files remain byte-identical
+to incoming main. The original policy simulation digest is still checked after
+independently validating the newly added provenance fields.
+
+Current merged-build SHA256, resolved-file inventory and measured verification
+results are recorded in the conflict-fix round 1 section of
+`BUNDLED_POLICY_RUNTIME_EVIDENCE.md`. All rehearsals are SIMULATED/provisional;
+the artifact remains local, unsigned and unpublished.
+
+
 ## Contract invariant claims — local builder evidence (2026-10-26)
 
 `capital/contract_invariants.py`, `tests/contract_invariants.json`,
@@ -2830,6 +2850,23 @@ All results below are local SIMULATED verification. The SQL report remains `LOCA
 
 Final `python3 scripts/docs_surface.py --check` and `git diff --check` pass after this record was updated. This round changes only the obsolete blocker deletion and this validation record. No runtime, tests, CI, dependencies, financial terms, Protocol or Commerce files were changed. No commit, push or external post was made.
 
+## bundled-policy-runtime — conflict-fix round 2 (2026-10-27)
+
+The merge preserves the bundled policy runtime and main's hostile-HTTP corpus,
+request-target validation, facade contract and documentation registry. Both
+handbook sections and both validation histories are retained verbatim. Finance
+vectors are regenerated from the combined contract: only the facade read-model
+group changes; the other seven groups and top-level metadata match both parents.
+The existing tests, reviewed bundling implementation and incoming hostile-HTTP
+fixtures are preserved. No combination-specific runtime or test change was needed.
+
+Measured results and the merged artifact SHA256 are recorded in the conflict-fix
+round 2 section of `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`. Logs are local ignored
+files under `build/bundled-round2/`. Rehearsals remain SIMULATED/provisional,
+unsigned, unpublished and loopback-only. This is local working-tree evidence,
+not a remote CI or production result. The merge is left uncommitted for the
+supervisor.
+
 ## contract-invariants-claims — conflict-fix round 3 (2026-10-27)
 
 Merged incoming main `b3b56fe` (http-hostile-corpus plus the unit-stage timeout raise to 900 s) while preserving both sides. The two conflicted paths were append conflicts: `docs/OPERATOR_HANDBOOK_KO.md` retains this node's `contract-invariants-claims` handbook section and main's `http-hostile-corpus` section in full, and `docs/VALIDATION.md` retains this node's builder evidence, round-1 and PR-fix-round-2 entries alongside main's http-hostile-corpus and fold-fuzz histories verbatim. README carries both corpora bullets and both check commands; `scripts/docs_surface.py` registers the `http/` corpus beside `pack/`; `capital/server.py`, `capital/contract/facade-v1.json` (`INVALID_TARGET`) and the regenerated `tests/vectors/finance_vectors.json` come in unchanged from main. This node's `capital/contract_invariants.py`, `scripts/contract_invariants_check.py`, `tests/contract_invariants.json` and `tests/test_contract_invariants.py` are byte-identical to the feature merge parent; the combination required no code repair. No conflict markers or unmerged entries remain and the merge is left uncommitted for the supervisor.
@@ -3025,6 +3062,28 @@ Logs and temporary browser configurations are retained in ignored
 `build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
 responsibility for the merge commit; no abort, commit, push, rebase or reset was
 performed.
+
+
+## bundled-policy-runtime — conflict-fix round 3 (2026-10-28)
+
+Resolved all 13 merge conflicts while retaining bundled note provenance and
+main's permissions catalog and facts cursor export. Both document histories and
+handbook additions survive. Finance and pack fixtures were regenerated from the
+combined code: the pack carries both the updated authorization matrix and the
+decision provenance fields. No combination-specific runtime, test or CI change
+was needed; vendor locks and legacy export/golden bytes match both parents.
+
+Local SIMULATED verification passed: 1,165 unit tests (268.000 s), seven vendor
+tests, all 69 Chromium tests (2.0 min), Python compilation, JavaScript syntax,
+docs surface (34 routes / 250 artifacts / nine stages), vector checks and the
+11-check packaged smoke. Two builds were byte-identical, with exactly the
+18 authorized additional decision inputs and matching per-file hashes.
+
+The complete resolved-file inventory, commands, artifact SHA256 and evidence
+table are in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`, conflict-fix round 3. Logs are
+local ignored files under `build/bundled-round3/`. Artifacts remain unsigned,
+unpublished and provisional. The merge is left uncommitted for the supervisor.
+
 ## contract-invariants-claims — conflict-fix round 1 (2026-10-28)
 
 Merged incoming main `e445f38` (permission-catalog-surface #107 and
@@ -3556,3 +3615,82 @@ independent external assurance remain `NOT_BOUND`. Logs are in ignored
 
 No abort, commit, push, rebase, reset, external post, Protocol/Commerce change
 or consequential product decision was made.
+
+
+## bundled-policy-runtime — supervisor conflict-fix round 1 (2026-10-29)
+
+Resolved all 13 conflicts in the merge of incoming main `97fb680` while
+preserving bundled decision-note provenance, contract invariant claims,
+compatibility preflight, risk what-if, case dossiers and simulation journeys.
+Both parent validation histories and all three conflicting handbook sections
+are retained. The unchanged generators rebuild the combined finance and pack
+fixtures; six new dossier fixtures additionally carry underwriting provenance
+and updated content digests. The obsolete moved-main `DECISION_REQUIRED.md`
+blocker is removed, and the existing byte guard passes unchanged.
+
+Local results: 1,259 Python tests (277.775 s), seven vendor tests, 76 Chromium
+tests, Python/JavaScript syntax checks, docs surface (36 routes / 273 artifacts /
+nine stages), all final vector/ledger checks, reproducible builds and all eleven
+packaged smoke checks pass. The archive has exactly 82 members, including 18
+authorized additional inputs with matching per-file hashes. The vendor pins,
+manifest, legacy export and demo golden match both merge parents. No runtime,
+test assertion, CI, `.aiops/` or policy edit was needed for the resolution.
+
+The complete resolved-file inventory, measured evidence table, merged artifact
+SHA256 and local log paths are recorded in the 2026-10-29 section of
+`BUNDLED_POLICY_RUNTIME_EVIDENCE.md`. Results are local SIMULATED/provisional
+rehearsals; artifacts remain unsigned and unpublished. Optional Protocol citation
+verification without a supplied checkout remains SKIPPED, not a pass.
+All resolutions are staged; the merge is left uncommitted for the supervisor.
+
+
+## sql-projection-crosscheck — supervised conflict-fix round 2 (2026-10-30)
+
+Resolved the supervisor-started merge of incoming main
+`95815c45cfcfe447ae2c15b62dbb4545d5a80cc4` into node HEAD
+`d25d3b403c606d17089b9af1eedd4cd4494c7bb9`. Both conflicts are resolved:
+
+- `docs/VALIDATION.md`: both append conflicts retain both sides in full, with
+  the SQL node records followed by main's bundled-policy records. Every line
+  from both complete parent histories survives in order, followed by this record.
+- `DECISION_REQUIRED.md`: retain main's deletion of the obsolete supervisor
+  baseline blocker. The requested integration has occurred and the existing
+  main V1/golden byte guard passes. No consequential product decision is needed.
+
+The SQL implementation and its 36 tests remain byte-identical to the node
+parent. All 51 incoming main paths outside the combined prose documents and
+resolved blocker are preserved exactly, including bundled policy runtime,
+provenance consumers, release packaging, tests and regenerated fixtures.
+The SQL README and integration sections match the node parent exactly; those
+documents also retain every substantive line from main in order. No code, test,
+fixture, dependency or CI repair was needed for this combination.
+
+All results below are local `SIMULATED` verification. The SQL report remains
+`LOCAL_ONLY / SYNTHETIC_UNADOPTED`, with `funds_executed:false`; stage7,
+source authentication and independent external assurance remain `NOT_BOUND`.
+Logs and generated local artifacts are under ignored
+`build/sql-projection-crosscheck-supervised-round2/`.
+
+| Verification completed | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,295 passed** in 315.372 s, including both feature sets, all 36 SQL tests and the existing V1/golden byte guard (`unit.log`). |
+| `python3 -m unittest discover -s tests -p test_sql_audit.py -v` | Exit 0; **36 passed** in 4.980 s; seeded/empty books, rehashed semantic tampering, exact bounds, CLI behavior, independence and input non-mutation (`sql-tests.log`). |
+| `PYTHONPATH=tests python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 0; byte guard passes on the merged tree. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **seven passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 Chromium tests passed** in one 2.4-minute run (`browser.log`). The unchanged repository configuration uses installed Chromium headless shell in an isolated loopback network namespace. |
+| `python3 -m capital.sql_audit tests/vectors/pack/clean.json` | Exit 0; **all 17 checks MATCHED** on main's regenerated pack (`sql-clean.json`). SIMULATED drawn 65,000; repaid 20,000; outstanding 45,000; debit = credit = 385,000. Input SHA256 `04dad47c25d33beaa1b36174b02b2adc09af15279a61644110de3f306dcaef95`. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; **36 routes, 273 artifacts, nine stages**. |
+| `python3 scripts/{pack_vectors,finance_vectors,dossier_vectors,auth_matrix,compat_preflight,facts_vectors,risk_scenario_vectors,sim_journeys,closeout_digest,manifest_vectors,workspace_vectors,forecast_vectors,http_hostile,fold_fuzz,decision_bindings,not_bound_checklist}.py --check` (each separately); `python3 scripts/decision_ledger.py` | All exit 0; combined fixtures and documentation have no drift (`checks.log`). |
+| `python3 scripts/build_release.py --out build/sql-projection-crosscheck-supervised-round2/release1` and matching `release2` build; byte comparison | Both exit 0; identical archive SHA256 `a9ac9f9bb4acd2a160e0e79435a2548fdb250ee917cded74a4e356eb9c7b5474`. Local unsigned, unpublished simulation artifacts only. |
+| `python3 scripts/smoke_release.py build/sql-projection-crosscheck-supervised-round2/release1/capital-*.pyz` | Exit 0; **all 11 checks pass**, including bundled policy provenance, accrual, restart and the synthetic lifecycle (`smoke.log`). |
+| Preservation and merge hygiene | All five vendor SHA256 locks match; references, manifest and legacy `capital/export.py` match both merge parents. `.aiops/` is unchanged. Both complete validation histories survive; no tracked conflict markers or unmerged entries; staged and unstaged whitespace checks pass (`preservation.log`). |
+
+The isolated byte-guard probe initially used a package-qualified test name
+without `PYTHONPATH=tests` and failed to import `test_overlay` before running the
+test. The corrected invocation above and the required full discovery run pass.
+No tests or assertions were changed to address that invocation error.
+
+Resolutions are staged; the merge remains uncommitted for the supervisor.
+No abort, commit, push, rebase, reset, external post, provider call,
+Protocol/Commerce change or consequential product decision was made.

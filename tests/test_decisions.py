@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -64,6 +65,39 @@ def _note(entries, blocks=1, raw=None):
 
 
 class DecisionTests(unittest.TestCase):
+    def test_fence_scanning_preserves_boundaries_and_parse_failures(self):
+        header = '```capital-decision-v1'
+        cases = [
+            ('no fence', []),
+            (header + '\n{}', []),  # Unclosed fences were never inputs.
+            (header + '\r\n{}\n```', []),
+            (header + ' extra\n{}\n```', []),
+            (header + '\n{}\n```' + header + '\n{"next":1}\n```', [{}, {'next': 1}]),
+            (header + '\n{}\n```' + header + '\n{', [{}]),
+            ('`' + header + '\n{"ticks":"` and ``", "label":"모의"}\n````',
+             [{'ticks': '` and ``', 'label': '모의'}]),
+        ]
+        cases.extend((header + whitespace + '\n{}\n```', [{}])
+                     for whitespace in ('', ' ', '\t', ' \t'))
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(ledger.extract_blocks(text), expected)
+        for body in ('', '{', '[]', '{"a":1,"a":2}', '{"ticks":"```"}'):
+            with self.subTest(body=body), self.assertRaises(ledger.DecisionParseError):
+                ledger.extract_blocks(header + '\n' + body + '\n```')
+        # A later opening fence closes an earlier malformed fence; it must not
+        # skip the bad input and silently accept the later valid object.
+        with self.assertRaises(ledger.DecisionParseError):
+            ledger.extract_blocks(header + '\n{\n' + header + '\n{}\n```')
+
+    def test_fence_scanning_matches_the_legacy_parser_on_the_note_corpus(self):
+        legacy = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
+        for path in sorted((ROOT / 'docs' / 'decisions').glob('*.md')):
+            text = path.read_text(encoding='utf-8')
+            with self.subTest(note=path.name):
+                expected = [json.loads(raw) for raw in legacy.findall(text)]
+                self.assertEqual(ledger.extract_blocks(text), expected)
+
     def test_script_does_not_import_capital(self):
         tree = ast.parse((ROOT / 'scripts' / 'decision_ledger.py').read_text(encoding='utf-8'))
         for node in ast.walk(tree):

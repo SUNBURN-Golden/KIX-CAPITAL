@@ -88,7 +88,7 @@
 
 **결정값:**
 
-- 새 필드 `notes_source` ∈ `{CHECKOUT, BUNDLED_IN_ARTIFACT, OVERRIDE_FILE, NONE}` — `NONE`은 로드된 노트가 없을 때 (그때 상태는 `NOT_BOUND`).
+- 새 필드 `notes_source` ∈ `{CHECKOUT, BUNDLED_IN_ARTIFACT, OVERRIDE_FILE, NONE}` — `NONE`은 로드된 노트가 없을 때 (그때 상태는 `NOT_BOUND`; missing expected decision row는 `PENDING` 예외).
 - 새 필드 `note_sha256` — 실제 로드한 노트 바이트의 sha256 hex; `NONE`이면 `null`.
 - 추가 위치: `GET /api/terms`, `GET /api/terms/{id}`, `GET /api/terms/{id}/allocation`, `GET /api/policy`, `GET /api/policy/{id}`, `GET /api/underwrite/{id}`, `GET /api/decisions` (본문 + 행별), `GET /api/state`의 `terms` 스냅샷.
 - 상태 어휘 불변: `BOUND`, `PARTIAL`, `NOT_BOUND`, `DECIDED`, `INVALID`, `PENDING`, `UNKNOWN_UNRESOLVED` — 새 상태 토큰을 만들지 않는다.
@@ -104,6 +104,18 @@
 **게이트:** 네 엔드포인트 응답 스키마, 핸드북 라벨 표, UI 문구.
 
 **아티팩트 라벨:** 선택 경로 → `BOUND`/`DECIDED` with `notes_source=BUNDLED_IN_ARTIFACT`; 미선택 경로였다면 `NOT_BOUND` with `notes_source=NONE`.
+
+**Supervisor clarification — ADOPTED 2026-10-23 (JunTae delegated ruling):**
+Each endpoint/row hashes its actual loaded input bytes: terms and underwriting use
+`CAPITAL_FINANCIAL_TERMS.md`, policy uses `CAPITAL_SETTLEMENT_POLICY.md`, and each
+decision row uses its named note. The decision index body uses the named actual-note
+anchor `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`, never a collection digest.
+A missing/unreadable input has `notes_source=NONE`, `note_sha256=null`, without fallback.
+Missing expected rows remain `PENDING` with NONE/null as an explicit exception.
+Readable invalid notes retain their actual source/hash and existing INVALID row behavior;
+an absent or invalid body anchor makes the body NOT_BOUND while preserving available rows.
+Explicit overrides are exclusive. These rules supersede the former §3.5 financial-terms-only
+smoke comparison and apply equally to checkout and bundled execution.
 
 ### 3.4 `version_source_disclosure` — 버전·출처 공개
 
@@ -132,7 +144,7 @@
 - 미주장: 크로스 플랫폼·크로스 인터프리터 바이트 동일성.
 - 결합: docs 바이트 변경 → `.pyz` sha256 변경 (의도).
 - 핀된 어서션 이동: `tests/test_release.py` `_BANNED`에서 `'docs/'` 제거 (`'tests/'`, `'.git'`, `'node_modules'`, `'.aiops'`, `'.github'`는 유지 — `docs/` 금지는 명시적 번들 허용목록 + `_expected_names` 완전 일치 검사로 대체). `_expected_names`에 번들 경로 추가.
-- smoke 지시: packaged smoke가 `/api/terms`·`/api/policy`·`/api/decisions`의 `notes_source == BUNDLED_IN_ARTIFACT`를 확인하고, `note_sha256`이 매니페스트의 `docs/decisions/CAPITAL_FINANCIAL_TERMS.md` 항목과 같은지 대조하며, `/api/terms` status ∈ {BOUND, PARTIAL} 확인.
+- smoke 지시: packaged smoke가 `/api/terms`·`/api/policy`·`/api/decisions`의 `notes_source == BUNDLED_IN_ARTIFACT`를 확인하고, `note_sha256`이 실제 입력 노트의 매니페스트 항목과 같은지 대조하며 (terms/underwriting 및 decision body anchor: `CAPITAL_FINANCIAL_TERMS.md`; policy: `CAPITAL_SETTLEMENT_POLICY.md`; decision row: 해당 `note`), `/api/terms` status ∈ {BOUND, PARTIAL} 확인.
 
 **근거:** 번들 추가는 결정론적 빌드를 깨지 않는다 — 이미 vendor·static이 같은 규칙으로 들어간다. docs 바이트와 digest의 결합은 취약점이 아니라 정직성 자산이다.
 
@@ -257,7 +269,7 @@
       "value": {
         "new_fields": {
           "notes_source": ["CHECKOUT", "BUNDLED_IN_ARTIFACT", "OVERRIDE_FILE", "NONE"],
-          "note_sha256": "hex sha256 of the note bytes actually loaded; null when notes_source is NONE"
+          "note_sha256": "hex sha256 of actual loaded note bytes; terms/underwriting and decision body anchor CAPITAL_FINANCIAL_TERMS.md; policy CAPITAL_SETTLEMENT_POLICY.md; rows their named note; null when NONE; missing expected rows remain PENDING with NONE/null; readable invalid rows preserve INVALID and source/hash"
         },
         "fields_added_to": ["GET /api/terms", "GET /api/terms/{id}", "GET /api/terms/{id}/allocation", "GET /api/policy", "GET /api/policy/{id}", "GET /api/underwrite/{id}", "GET /api/decisions (body and per-row)", "GET /api/state terms snapshot"],
         "status_vocabulary_unchanged": ["BOUND", "PARTIAL", "NOT_BOUND", "DECIDED", "INVALID", "PENDING", "UNKNOWN_UNRESOLVED"],
@@ -306,7 +318,7 @@
         "not_claimed": "byte identity across platforms or interpreter versions",
         "digest_coupling": "any bundled docs byte change changes the .pyz sha256 (intended)",
         "pinned_assertions_to_update": ["tests/test_release.py _BANNED drops 'docs/' — tests/, .git, node_modules, .aiops, .github stay banned and _expected_names equality forbids strays", "test_two_builds_match_and_archive_is_pinned _expected_names gains the bundled paths"],
-        "smoke_direction": ["packaged smoke asserts notes_source == BUNDLED_IN_ARTIFACT on /api/terms, /api/policy, /api/decisions", "note_sha256 equals the manifest entry for the bundled note", "/api/terms status in [BOUND, PARTIAL] under the bundled CAPITAL-TERMS-V1 note"]
+        "smoke_direction": ["packaged smoke asserts notes_source == BUNDLED_IN_ARTIFACT on /api/terms, /api/policy, /api/decisions", "note_sha256 equals the manifest entry for the actual loaded note: terms/underwriting and decision body anchor CAPITAL_FINANCIAL_TERMS.md; policy CAPITAL_SETTLEMENT_POLICY.md; each decision row its named note", "/api/terms status in [BOUND, PARTIAL] under the bundled CAPITAL-TERMS-V1 note"]
       },
       "provided_by": "Devin swe-2 (RO by prompt), delegated by JunTae 2026-10-08 (model 10-14 10:07)",
       "date": "2026-10-14",
