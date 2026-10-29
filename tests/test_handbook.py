@@ -248,6 +248,7 @@ class HandbookTests(unittest.TestCase):
         text = (Path(__file__).resolve().parent.parent / 'docs' / 'OPERATOR_HANDBOOK_KO.md').read_text(encoding='utf-8')
         self.assertEqual(text.count('<!-- handbook-section:'), text.count('<!-- /handbook-section -->'))
         needed = {
+            'advance-case-dossier': ('GET /api/cases/{advance_id}/dossier', 'dossier_digest', 'SIMULATED', 'NOT_BOUND', 'CASE_NOT_FOUND', 'tests/test_dossier.py'),
             'shadow-refund-resale': ('SHADOW_NOT_APPLIED', 'SHADOW_DEFERRED'),
             'caps-binding-fixtures': ('CAPITAL-DEMO-BOOK-V1', 'portfolio_cap_krw'),
             'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),
@@ -295,6 +296,12 @@ class HandbookTests(unittest.TestCase):
                 'CreditMachine', 'SettlementMachine', 'capital/vendor/manifest.json',
                 'VENDOR_HASH_MISMATCH', '--protocol-dir', 'SKIPPED',
                 'tests/test_fsm_contract_claims.py', 'upstream-claims'),
+            'contract-invariants-claims': (
+                'tests/contract_invariants.json', 'KIX_CAPITAL_CONTRACT_INVARIANTS_V1',
+                'scripts/contract_invariants_check.py --execute', 'CLAIM_CONFORMANCE',
+                'INV-1', 'INV-5', 'SIGKILL', 'SIMULATION_CAPACITY', 'SKIPPED_LOOPBACK',
+                'DOCUMENTED_DIVERGENCE', 'PENDING_NOTE_REGISTRATION',
+                'upstream-repin-inventory-contract-invariants', 'tests/test_contract_invariants.py'),
             'adapter-identity-claims': (
                 'tests/adapter_identity_claims.json', 'KIX_CAPITAL_ADAPTER_IDENTITY_CLAIMS_V1',
                 'scripts/adapter_identity_claims_check.py --execute', 'CLAIM_CONFORMANCE',

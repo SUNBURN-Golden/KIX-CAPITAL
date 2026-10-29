@@ -200,30 +200,26 @@ class V1UnchangedTests(unittest.TestCase):
             self.assertEqual(status.stdout.split(), [])
             base = 'HEAD'
         # Keep main's live byte guard as well as the original COA change's historical guard.
-        # Pin this branch's reviewed second-approver note to HEAD. The binding note is
-        # reviewed on main, so an in-progress merge must pin it to the incoming parent;
-        # outside a merge, HEAD includes that reviewed update. Neither note is unguarded.
         # ports.py uses the authorized append-only ObservationPort check below; overlay.py is
-        # byte-pinned below to the reviewed recovery implementation.
+        # byte-pinned below to the reviewed recovery implementation. The merged closeout binding
+        # note is guarded against main's reviewed bytes with every other note.
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
             guarded = self._git('diff', '--name-only', base, '--',
                                 *[name for name in self.GUARDED if name not in
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
-                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json',
-                                ':(exclude)docs/decisions/CAPITAL_UPSTREAM_BINDING.md',
-                                ':(exclude)docs/decisions/CAPITAL_SECOND_APPROVER.md')
+                                'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
             self.assertEqual(guarded.stdout.split(), [])
-            binding_base = ('MERGE_HEAD' if self._git('rev-parse', '--verify', '-q',
-                                                     'MERGE_HEAD').returncode == 0 else 'HEAD')
-            for note, ref in (('CAPITAL_UPSTREAM_BINDING.md', binding_base),
-                              ('CAPITAL_SECOND_APPROVER.md', 'HEAD')):
-                path = 'docs/decisions/' + note
-                reviewed = self._git('show', f'{ref}:{path}')
-                self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
-                self.assertEqual((ROOT / path).read_bytes(), reviewed.stdout.encode('utf-8'), path)
+            # Also preserve the closeout binding note against the incoming reviewed
+            # commit during a merge, when HEAD still points at the old branch tip.
+            binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
+            reviewed_ref = ('MERGE_HEAD' if self._git(
+                'rev-parse', '--verify', '-q', 'MERGE_HEAD').returncode == 0 else 'HEAD')
+            reviewed = self._git('show', f'{reviewed_ref}:{binding_note}')
+            self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
+            self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
         # Preserve the exact reviewed overlay bytes from a5b2e2d5b5ecfa820462298cf075cbc223ee60f0,
         # rather than main's earlier overlay. Export, V1 projection and vendor remain pinned to main.
