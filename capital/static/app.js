@@ -675,6 +675,7 @@ function deskAct(op){
  command(op,c.advance_id,{});
 }
 function deskFence(){
+ $('desk-dossier').disabled=busy||!can('projection:read')||!state?.cases?.some(item=>item.advance_id===selected);
  if(!$('desk')||$('desk').hidden)return;
  const blocked=busy||!!pending||writesBlocked();
  $('desk-refresh').disabled=busy;$('desk-case').disabled=busy;
@@ -768,6 +769,9 @@ function paintDeskAudit(c){
  $('desk-audit-unknown').textContent=JSON.stringify({unknown_policy:report.unknown_policy,unknown_unresolved:report.unknown_unresolved},null,2);
 }
 function renderDesk(){
+ if($('desk-dossier').dataset.case!==selected){$('desk-dossier').dataset.case=selected??'';$('desk-dossier-note').textContent='';$('desk-dossier-result').textContent='';$('desk-dossier-result').hidden=true;}
+ $('desk-dossier').hidden=!can('projection:read');
+ $('desk-dossier').disabled=busy||!can('projection:read')||!state?.cases?.some(item=>item.advance_id===selected);
  paintDeskAudit(state?.cases?.find(item=>item.advance_id===selected));
  const open=applyDeskVisibility();
  if(!open||!state)return;
@@ -981,6 +985,36 @@ function manifestValid(data,next){
  const gaps=Array.isArray(data.not_bound)?data.not_bound:[];
  return ['cursor','watermark','source_cut'].every(id=>gaps.some(row=>row.id===id&&row.status==='NOT_BOUND'&&row.value===null));
 }
+function dossierValid(body,s,id){
+ return body?.format==='KIX_CAPITAL_CASE_DOSSIER_V1'&&body.label==='SIMULATED'&&body.mode==='READ_ONLY_CASE_DOSSIER'
+  &&body.instance_id===s?.instance_id&&body.advance_id===id&&body.case?.advance_id===id
+  &&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false
+  &&Number.isInteger(body.sim_day)&&body.clock_source==='SIM_LOGICAL_CLOCK'
+  &&['BOUND','PARTIAL','NOT_BOUND'].includes(body.terms_status)
+  &&/^[0-9a-f]{64}$/.test(body.cut?.state_digest)&&body.observed_state_digest===body.cut.state_digest
+  &&/^[0-9a-f]{64}$/.test(body.cut?.overlay_state_digest)&&/^[0-9a-f]{64}$/.test(body.cut?.fixtures_digest)
+  &&Array.isArray(body.receipt_chain?.journal)&&Array.isArray(body.overlay_rows?.entries)
+  &&Array.isArray(body.settlement_evidence?.rows)&&body.settlement_evidence.label==='READ_ONLY_FIXTURE'
+  &&['ledger_row','allocation_quote','margin_status','covenant_status','terms_line','underwriting'].every(key=>body[key]&&typeof body[key]==='object')
+  &&/^[0-9a-f]{64}$/.test(body.dossier_digest);
+}
+$('desk-dossier').onclick=async()=>{
+ if(busy||!can('projection:read')||!selected)return;
+ const id=selected,s=state,note=$('desk-dossier-note'),pre=$('desk-dossier-result');
+ busy=true;fence();$('desk-dossier').disabled=true;note.textContent='dossier 조회 중 · SIMULATED';pre.hidden=true;pre.textContent='';
+ try{
+  const body=await request(`/api/cases/${encodeURIComponent(id)}/dossier?instance_id=${encodeURIComponent(s.instance_id)}`);
+  if(selected!==id||state.instance_id!==s.instance_id||!dossierValid(body,s,id))throw Error('INVALID_DOSSIER');
+  const text=JSON.stringify(body,null,2);
+  try{
+   const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+   const link=document.createElement('a');link.href=url;link.download=`capital-dossier-${id}.json`;document.body.append(link);link.click();link.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch{pre.hidden=false;pre.textContent=text;}
+  note.textContent=`SIMULATED · read-only · sim_day=${body.sim_day} · dossier_digest=${body.dossier_digest} · ${body.terms_status} · ${body.terms_reason??'rule evaluation copied for audit; not a decision by the reader'}`;
+ }catch(error){note.textContent=`dossier 조회 실패 · ${error.message}`;}
+ finally{busy=false;fence();renderDesk();}
+};
 $('export-manifest').onclick=async()=>{
  if(busy)return;
  if(!can('export:read')){notice(`역할 경계: ${permissionReason('export:read')}`,true);return;}

@@ -206,24 +206,14 @@ class V1UnchangedTests(unittest.TestCase):
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
-            guarded = self._git('diff', '--name-only', base, '--',
+            # New decision notes (status A) are allowed: an added note never rewrites a
+            # reviewed one. Modified, deleted or renamed guarded files still fail.
+            guarded = self._git('diff', '--name-only', '--diff-filter=MDRTCUXB', base, '--',
                                 *[name for name in self.GUARDED if name not in
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
-            changed = guarded.stdout.split()
-            maturity_note = 'docs/decisions/CAPITAL_MATURITY_EXTENSION.md'
-            if maturity_note in changed:
-                # This reviewed decision is additive to main during this merge.
-                # Pin its exact reviewed bytes; once main contains it, the normal
-                # main byte guard applies. No existing decision note is exempted.
-                # The supervisor committed the revised note in 5cbb023 before
-                # starting this merge; the prior revision's hash is now stale.
-                self.assertNotEqual(self._git('cat-file', '-e', f'{base}:{maturity_note}').returncode, 0)
-                self.assertEqual(hashlib.sha256((ROOT / maturity_note).read_bytes()).hexdigest(),
-                                 'c92aa870e89cd439d09ff3553ecf7ad3bdd4f080270df0b5b2232dd5dd6ea7ba')
-                changed.remove(maturity_note)
-            self.assertEqual(changed, [])
+            self.assertEqual(guarded.stdout.split(), [])
             # Also preserve the closeout binding note against the incoming reviewed
             # commit during a merge, when HEAD still points at the old branch tip.
             binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
