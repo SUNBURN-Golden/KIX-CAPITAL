@@ -108,18 +108,30 @@ class BindingTests(unittest.TestCase):
             self.assertIn({'kind': 'module', 'path': 'capital/overlay.py', 'status': 'CONSUMED'},
                           row['bindings'])
 
-    def test_partial_builds_do_not_claim_future_bundling_or_seed_budget(self):
-        expected = {
-            ('artifact-docs-bundling-decision', name): 'packaging-release'
-            for name in ('artifact_digest_policy', 'handbook_and_release_docs',
-                         'not_bound_labeling', 'notes_bundling_scope')}
-        expected[('demo-book-profile-decision', 'portfolio_scale_target')] = 'demo-book-seed'
+    def test_bundling_is_consumed_while_future_seed_budget_stays_pending(self):
+        consumed = {
+            'artifact_digest_policy': 'scripts/build_release.py',
+            'build_reproducibility': 'tests/test_release.py',
+            'handbook_and_release_docs': 'tests/test_handbook.py',
+            'not_bound_labeling': 'tests/test_release.py',
+            'notes_bundling_scope': 'scripts/build_release.py',
+            'version_source_disclosure': 'tests/test_release.py',
+        }
+        found = set()
         for row in self.data['entries']:
-            identity = (row['decision_id'], row['entry'])
-            if identity in expected:
+            if row['decision_id'] == 'artifact-docs-bundling-decision':
+                found.add(row['entry'])
+                self.assertEqual(len(row['bindings']), 1)
+                binding, = row['bindings']
+                self.assertEqual(binding['status'], 'CONSUMED')
+                self.assertEqual(binding['path'], consumed[row['entry']])
+                self.assertNotIn('reason', binding)
+                self.assertNotIn('consumer_node', binding)
+            elif (row['decision_id'], row['entry']) == ('demo-book-profile-decision', 'portfolio_scale_target'):
                 self.assertTrue(all(binding['status'] == 'PENDING_CONSUMER'
-                                    and binding['consumer_node'] == expected[identity]
+                                    and binding['consumer_node'] == 'demo-book-seed'
                                     for binding in row['bindings']))
+        self.assertEqual(found, set(consumed))
 
     def test_missing_entry(self):
         self.data['entries'].pop()

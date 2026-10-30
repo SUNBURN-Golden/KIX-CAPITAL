@@ -2575,6 +2575,26 @@ The committed vectors therefore rest on the first complete `ok=true` ladder
 plus `--check-evidence` byte agreement; the later `ok=false` evidences were not
 used for regeneration. This section claims no independent review, CI run,
 commit, push or deploy.
+## Bundled policy runtime 0.2.0
+
+Current zipapps bundle the authorized decision inputs and serve bound provisional terms, decided settlement policy, underwriting and the decision index outside checkout. The older 0.1.0 NOT_BOUND observations above are historical evidence. Current packaged smoke also checks note-byte provenance and persisted simulation-clock accrual across a temporary workspace restart. Local verification commands and measured results for this node are recorded in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`; all journeys are SIMULATED.
+
+## bundled-policy-runtime — conflict-fix round 1 (2026-10-25)
+
+The merge retains bundled decision-note provenance alongside main's repayment
+posting, default recovery, claim slices and extended shadow arithmetic. New
+packaged regression coverage checks that these policy consumers read archive
+resources outside the checkout and fail closed for missing or malformed notes.
+The legacy overlay, export and five vendored reference files remain byte-identical
+to incoming main. The original policy simulation digest is still checked after
+independently validating the newly added provenance fields.
+
+Current merged-build SHA256, resolved-file inventory and measured verification
+results are recorded in the conflict-fix round 1 section of
+`BUNDLED_POLICY_RUNTIME_EVIDENCE.md`. All rehearsals are SIMULATED/provisional;
+the artifact remains local, unsigned and unpublished.
+
+
 ## Contract invariant claims — local builder evidence (2026-10-26)
 
 `capital/contract_invariants.py`, `tests/contract_invariants.json`,
@@ -2946,6 +2966,23 @@ Second-pass completion for this round:
 | `python3 scripts/closeout_digest.py --check-evidence --evidence build/readiness-round3/acceptance-second.json` (also repeated against first evidence) | Both exit 0; each successful evidence file reproduces the identical 4572-byte committed digest. The policy's two-pass covered-field agreement is satisfied. |
 | Final vector checks | `closeout_digest.py --check` and `finance_vectors.py --check` exit 0 after the second pass. |
 | Final merge hygiene | No unmerged entries or conflict markers; staged and working-tree whitespace checks pass. The merge and generated artifacts are staged for the supervisor, with no commit made. |
+## bundled-policy-runtime — conflict-fix round 2 (2026-10-27)
+
+The merge preserves the bundled policy runtime and main's hostile-HTTP corpus,
+request-target validation, facade contract and documentation registry. Both
+handbook sections and both validation histories are retained verbatim. Finance
+vectors are regenerated from the combined contract: only the facade read-model
+group changes; the other seven groups and top-level metadata match both parents.
+The existing tests, reviewed bundling implementation and incoming hostile-HTTP
+fixtures are preserved. No combination-specific runtime or test change was needed.
+
+Measured results and the merged artifact SHA256 are recorded in the conflict-fix
+round 2 section of `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`. Logs are local ignored
+files under `build/bundled-round2/`. Rehearsals remain SIMULATED/provisional,
+unsigned, unpublished and loopback-only. This is local working-tree evidence,
+not a remote CI or production result. The merge is left uncommitted for the
+supervisor.
+
 ## contract-invariants-claims — conflict-fix round 3 (2026-10-27)
 
 Merged incoming main `b3b56fe` (http-hostile-corpus plus the unit-stage timeout raise to 900 s) while preserving both sides. The two conflicted paths were append conflicts: `docs/OPERATOR_HANDBOOK_KO.md` retains this node's `contract-invariants-claims` handbook section and main's `http-hostile-corpus` section in full, and `docs/VALIDATION.md` retains this node's builder evidence, round-1 and PR-fix-round-2 entries alongside main's http-hostile-corpus and fold-fuzz histories verbatim. README carries both corpora bullets and both check commands; `scripts/docs_surface.py` registers the `http/` corpus beside `pack/`; `capital/server.py`, `capital/contract/facade-v1.json` (`INVALID_TARGET`) and the regenerated `tests/vectors/finance_vectors.json` come in unchanged from main. This node's `capital/contract_invariants.py`, `scripts/contract_invariants_check.py`, `tests/contract_invariants.json` and `tests/test_contract_invariants.py` are byte-identical to the feature merge parent; the combination required no code repair. No conflict markers or unmerged entries remain and the merge is left uncommitted for the supervisor.
@@ -3141,6 +3178,28 @@ Logs and temporary browser configurations are retained in ignored
 `build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
 responsibility for the merge commit; no abort, commit, push, rebase or reset was
 performed.
+
+
+## bundled-policy-runtime — conflict-fix round 3 (2026-10-28)
+
+Resolved all 13 merge conflicts while retaining bundled note provenance and
+main's permissions catalog and facts cursor export. Both document histories and
+handbook additions survive. Finance and pack fixtures were regenerated from the
+combined code: the pack carries both the updated authorization matrix and the
+decision provenance fields. No combination-specific runtime, test or CI change
+was needed; vendor locks and legacy export/golden bytes match both parents.
+
+Local SIMULATED verification passed: 1,165 unit tests (268.000 s), seven vendor
+tests, all 69 Chromium tests (2.0 min), Python compilation, JavaScript syntax,
+docs surface (34 routes / 250 artifacts / nine stages), vector checks and the
+11-check packaged smoke. Two builds were byte-identical, with exactly the
+18 authorized additional decision inputs and matching per-file hashes.
+
+The complete resolved-file inventory, commands, artifact SHA256 and evidence
+table are in `BUNDLED_POLICY_RUNTIME_EVIDENCE.md`, conflict-fix round 3. Logs are
+local ignored files under `build/bundled-round3/`. Artifacts remain unsigned,
+unpublished and provisional. The merge is left uncommitted for the supervisor.
+
 ## contract-invariants-claims — conflict-fix round 1 (2026-10-28)
 
 
@@ -3783,3 +3842,67 @@ unchanged guard passes. No new consequential product decision was needed.
 Resolutions are staged; the merge remains uncommitted for the supervisor.
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit or provider call was performed.
+
+## bundled-policy-runtime — supervisor conflict-fix round 1 (2026-10-29)
+
+Resolved all 13 conflicts in the merge of incoming main `97fb680` while
+preserving bundled decision-note provenance, contract invariant claims,
+compatibility preflight, risk what-if, case dossiers and simulation journeys.
+Both parent validation histories and all three conflicting handbook sections
+are retained. The unchanged generators rebuild the combined finance and pack
+fixtures; six new dossier fixtures additionally carry underwriting provenance
+and updated content digests. The obsolete moved-main `DECISION_REQUIRED.md`
+blocker is removed, and the existing byte guard passes unchanged.
+
+Local results: 1,259 Python tests (277.775 s), seven vendor tests, 76 Chromium
+tests, Python/JavaScript syntax checks, docs surface (36 routes / 273 artifacts /
+nine stages), all final vector/ledger checks, reproducible builds and all eleven
+packaged smoke checks pass. The archive has exactly 82 members, including 18
+authorized additional inputs with matching per-file hashes. The vendor pins,
+manifest, legacy export and demo golden match both merge parents. No runtime,
+test assertion, CI, `.aiops/` or policy edit was needed for the resolution.
+
+The complete resolved-file inventory, measured evidence table, merged artifact
+SHA256 and local log paths are recorded in the 2026-10-29 section of
+`BUNDLED_POLICY_RUNTIME_EVIDENCE.md`. Results are local SIMULATED/provisional
+rehearsals; artifacts remain unsigned and unpublished. Optional Protocol citation
+verification without a supplied checkout remains SKIPPED, not a pass.
+All resolutions are staged; the merge is left uncommitted for the supervisor.
+
+## readiness-runtime-claims — supervised conflict-fix round 2 (2026-10-30)
+
+Resolved the supervisor-started merge of incoming main
+`95815c45cfcfe447ae2c15b62dbb4545d5a80cc4` into readiness parent
+`5b151679776eb48d2ee339628e8f409607f41fcb`. The two conflicts were
+`docs/VALIDATION.md` and `tests/vectors/finance_vectors.json`. Both complete
+parent validation histories survive in order. The finance fixture was
+regenerated with the unchanged `scripts/finance_vectors.py --write`: relative
+to readiness HEAD, its only changes are 14 facade-read-model digest values
+from main's bundled-policy contract; relative to main, its only changes are
+six historical closeout fields from readiness. Every other group matches both
+parents. The standalone closeout snapshot was preserved, not regenerated.
+
+The readiness implementation, CLI, table and mutation tests are byte-identical
+to readiness HEAD. Main's bundled-policy runtime, provenance, tests and fixtures
+survive. All seven upstream-claims commands retain their existing order, with
+readiness seventh after the intervening adapter-identity and lifecycle tables.
+CAP-11 and CAP-16 remain NOT_BOUND. No readiness journal format is vendored or
+implemented; results remain local SIMULATED / CLAIM_CONFORMANCE observations.
+
+| Check | Measured result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,275 passed** in 322.368 s, including readiness mutations, citation drift, incoming bundled-policy coverage and the legacy byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** in 2.0 min, using installed Playwright 1.58.2 / Chromium headless-shell build 1208, unchanged configuration and assertions in an isolated loopback namespace. |
+| `python3 scripts/readiness_claims_check.py --execute --protocol-dir build/readiness-round3/pinned-protocol` | Exit 0; 11 passes, two named DOCUMENTED_DIVERGENCE rows, zero failures; all 13 citations verified against the retained isolated pinned document, SHA256 `d7070991409eb2d7bd65d6ea137ca32e08a5a1e9dd56b2b0ac3ba094418dd27e`. No Protocol checkout changed. |
+| Bare readiness checker; planted citation mutation in a temporary copy | Bare invocation exits 0 with SKIPPED and no pass count. Mutation exits 1 with `DRIFT readiness-bind-loopback missing needle`. |
+| Selected unchanged `upstream-claims` stage | Exit 0; seven commands, 322 passes plus two documented divergences / 324 evaluated rows, zero failures. Selected-stage evidence only; no new full-ladder closeout run claimed. |
+| `scripts/{auth_matrix,dossier_vectors,compat_preflight,finance_vectors,pack_vectors,risk_scenario_vectors,facts_vectors,closeout_digest,manifest_vectors,workspace_vectors,forecast_vectors,http_hostile,fold_fuzz,decision_bindings,not_bound_checklist,sim_journeys,contract_invariants_check,docs_surface}.py --check` (each separately); `scripts/decision_ledger.py` | All 19 exit 0. Finance matches 101102 bytes, closeout matches 4572 bytes and its embedded copy; docs surface reports 36 routes / 273 artifacts / nine stages. Invariant citation verification remains separately SKIPPED without `--protocol-dir`. |
+| Preservation and hygiene | All five vendor SHA256 locks match; vendor files, manifest and legacy export match both parents. No `.aiops/` or CI changes. No unmerged entries or tracked conflict markers; staged, unstaged and incoming-main whitespace checks pass. |
+
+Logs, checker results and selected-stage evidence are under ignored
+`build/readiness-merge-round2/`. No consequential product decision was needed.
+No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
+edit, provider call or funds movement was performed. The resolved merge is
+staged and left uncommitted for the supervisor.
