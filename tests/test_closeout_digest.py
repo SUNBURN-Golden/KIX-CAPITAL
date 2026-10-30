@@ -24,6 +24,7 @@ from capital import __version__ as CAPITAL_VERSION
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / 'tests' / 'vectors' / 'closeout_digest.json'
 VECTORS = ROOT / 'tests' / 'vectors' / 'finance_vectors.json'
+READINESS = ROOT / 'tests' / 'readiness_claims.json'
 GOLDEN = ROOT / 'tests' / 'golden' / 'demo.json'
 SCRIPT = ROOT / 'scripts' / 'closeout_digest.py'
 VENDOR = ROOT / 'capital' / 'vendor' / 'manifest.json'
@@ -55,7 +56,8 @@ STAGES = (
                          'python3 scripts/read_model_claims_check.py --execute',
                          'python3 scripts/ce1_claims_check.py --execute',
                          'python3 scripts/adapter_identity_claims_check.py --execute',
-                         'python3 scripts/lifecycle_claims_check.py --execute']),
+                         'python3 scripts/lifecycle_claims_check.py --execute',
+                         'python3 scripts/readiness_claims_check.py --execute']),
     ('node-check', ['node --check capital/static/app.js']),
     ('browser', ['npm run test:browser']),
     ('packaged-smoke', ['python3 scripts/build_release.py --out build/acceptance-dist',
@@ -624,11 +626,17 @@ class CommittedArtifactTests(unittest.TestCase):
         counts = {row['stage_id']: row['test_count'] for row in self.digest['stages']}
         self.assertIsNone(counts['node-check'])
         self.assertGreater(counts['unit']['ran'], 300)
+        divergences = sum(
+            1 for row in json.loads(READINESS.read_text(encoding='utf-8'))['claims']
+            if row['expected'].get('divergent'))
         for stage_id in ('unit', 'storage-conformance', 'pinned-vendor', 'upstream-claims', 'seeded-demo'):
             with self.subTest(stage=stage_id):
                 count = counts[stage_id]
                 self.assertEqual(count['failed'], 0)
-                self.assertEqual(count['passed'], count['ran'])
+                if stage_id == 'upstream-claims':
+                    self.assertEqual(count['passed'] + divergences, count['ran'])
+                else:
+                    self.assertEqual(count['passed'], count['ran'])
         self.assertEqual(counts['seeded-demo'], {'ran': 1, 'passed': 1, 'failed': 0})
 
     def test_golden_vendor_and_packaged_pins(self):
