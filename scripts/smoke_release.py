@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import http.client
 import json
 import os
@@ -20,6 +21,7 @@ import threading
 import time
 import zipfile
 from pathlib import Path
+from fractions import Fraction
 
 # Two repayments match tests/test_capital.py so the following close is ACCEPTED.
 ADVANCE = 'sim-journey'
@@ -134,7 +136,7 @@ def _request(port: int, method: str, path: str, body=None, token=None):
         if token is not None:
             headers['X-Capital-Token'] = token
     last = None
-    for _ in range(25):
+    for _ in range(1 if method == 'POST' else 25):
         conn = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
         try:
             conn.request(method, path, body=data, headers=headers)
@@ -150,7 +152,15 @@ def _request(port: int, method: str, path: str, body=None, token=None):
 
 
 def _json(port: int, method: str, path: str, body=None, token=None) -> dict:
-    status, raw = _request(port, method, path, body, token)
+    try:
+        status, raw = _request(port, method, path, body, token)
+    except AssertionError:
+        if method != 'POST' or not body or 'operation_id' not in body:
+            raise
+        # A mutation is sent once. Resolve an ambiguous transport via its receipt.
+        if path == '/api/overlay/commands':
+            return _json(port, 'GET', f"/api/overlay?operation_id={body['operation_id']}")['operation']
+        return _json(port, 'GET', f"/api/operations/{body['operation_id']}?instance_id={body['instance_id']}")
     try:
         parsed = json.loads(raw.decode('utf-8'))
     except (UnicodeError, json.JSONDecodeError) as exc:
@@ -159,6 +169,98 @@ def _json(port: int, method: str, path: str, body=None, token=None) -> dict:
         raise AssertionError(f'{method} {path} status {status}: {parsed}')
     return parsed
 
+
+
+def _bundled_surfaces(pyz, port, instance, state=None):
+    with zipfile.ZipFile(pyz) as archive:
+        manifest = json.loads(archive.read('RELEASE-MANIFEST.json'))
+        for name, digest in manifest['files'].items():
+            if hashlib.sha256(archive.read(name)).hexdigest() != digest:
+                raise AssertionError(f'release manifest hash mismatch: {name}')
+    terms_note = 'docs/decisions/CAPITAL_FINANCIAL_TERMS.md'
+    policy_note = 'docs/decisions/CAPITAL_SETTLEMENT_POLICY.md'
+
+    def check(body, note):
+        if (body.get('notes_source') != 'BUNDLED_IN_ARTIFACT'
+                or body.get('note_sha256') != manifest['files'][note]):
+            raise AssertionError(f'bundled provenance {note}: {body}')
+        return body
+
+    terms = check(_json(port, 'GET', '/api/terms'), terms_note)
+    if terms['status'] not in ('BOUND', 'PARTIAL'):
+        raise AssertionError(f'terms unbound: {terms}')
+    policy = check(_json(port, 'GET', '/api/policy'), policy_note)
+    if policy['outcome'] != 'DECIDED':
+        raise AssertionError(f'policy undecided: {policy}')
+    check(_json(port, 'GET', '/api/policy/simulation'), policy_note)
+    decisions = check(_json(port, 'GET', '/api/decisions'), terms_note)
+    if decisions['status'] != 'BOUND' or not decisions['rows']:
+        raise AssertionError(f'decisions unbound: {decisions}')
+    for row in decisions['rows']:
+        check(row, row['note'])
+    check((state or _json(port, 'GET', '/api/state'))['terms'], terms_note)
+    underwriting = check(_json(port, 'GET',
+        f'/api/underwrite/sim-committed?instance_id={instance}&amount=60000'), terms_note)
+    if underwriting['status'] != 'BOUND' or not underwriting['checks']:
+        raise AssertionError(f'underwriting unbound: {underwriting}')
+    return terms
+
+
+def _accrual_restart(pyz, server, servers, workdir, cwd, env, instance, token, checks):
+    with zipfile.ZipFile(pyz) as archive:
+        namespace = {'__name__': 'smoke_ledger', '__file__': 'scripts/decision_ledger.py'}
+        exec(compile(archive.read('scripts/decision_ledger.py'), namespace['__file__'], 'exec'), namespace)
+        block, = namespace['extract_blocks'](archive.read(
+            'docs/decisions/CAPITAL_FINANCIAL_TERMS.md').decode('utf-8'))
+    rate = block['entries']['interest_rate']['value']
+    state = _json(server.port, 'GET', '/api/state')
+    case = next(c for c in state['cases'] if c['advance_id'] == ADVANCE)
+    tier = next(t for t in rate['tiers'] if t['condition']['settlement_gate'] == case['settlement_gate']
+                and t['condition'].get('refund_face', 0) == 0)
+    day_count = int(re.fullmatch(r'ACT_(\d+)_FIXED', rate['day_count']).group(1))
+    day = 3  # synthetic rehearsal interval, not a financial term
+    receipt = _json(server.port, 'POST', '/api/overlay/commands', {
+        'instance_id': instance, 'operation_id': 'sim-clock', 'op': 'advance_day',
+        'from_sim_day': 0, 'to_sim_day': day, 'reason': 'SIMULATED packaged rehearsal'}, token)
+    if receipt['outcome'] != 'APPLIED':
+        raise AssertionError(f'advance_day failed: {receipt}')
+    before = _json(server.port, 'GET', '/api/overlay?operation_id=sim-clock')
+    row, = before['advances']
+    exact = Fraction(60000 * day * tier['all_in_bps_annual'], 10000 * day_count)
+    posted = exact.numerator // exact.denominator
+    remainder = exact - posted
+    if (posted <= 0 or row['interest_due_krw'] != posted
+            or row['carried_remainder_contract'] != f'{remainder.numerator}/{remainder.denominator}'
+            or before['sim_day'] != day or before['status'] != 'BOUND'):
+        raise AssertionError(f'accrual does not match bundled note: {before}')
+    query = f'?instance_id={instance}&draw_day=0&as_of_day={day}'
+    detail = _json(server.port, 'GET', f'/api/terms/{ADVANCE}' + query)
+    allocation = _json(server.port, 'GET', f'/api/terms/{ADVANCE}/allocation' + query + '&cash=60000')
+    terms = _json(server.port, 'GET', '/api/terms')
+    for body in (detail, allocation):
+        if (body['notes_source'], body['note_sha256']) != (terms['notes_source'], terms['note_sha256']):
+            raise AssertionError(f'case provenance differs: {body}')
+    checks.append('bundled-accrual')
+    server.stop()
+    restarted = _start(pyz, workdir, cwd, env)
+    servers.append(restarted)
+    state = _json(restarted.port, 'GET', '/api/state')
+    after = _json(restarted.port, 'GET', '/api/overlay')
+    for key in ('sim_day', 'terms_binding', 'terms_binding_matches', 'overlay_state_digest',
+                'entry_count', 'advances', 'status', 'capacity'):
+        if before[key] != after[key]:
+            raise AssertionError(f'overlay changed after restart: {key}')
+    if state['instance_id'] == instance:
+        raise AssertionError('accrual restart reused instance_id')
+    restored = _json(restarted.port, 'GET', '/api/overlay?operation_id=sim-clock')['operation']
+    if restored != before['operation']:
+        raise AssertionError(f'clock receipt changed: {restored}')
+    restored_terms = _bundled_surfaces(pyz, restarted.port, state['instance_id'], state)
+    for key in ('status', 'terms_version', 'notes_source', 'note_sha256'):
+        if restored_terms[key] != terms[key]:
+            raise AssertionError(f'policy provenance changed: {key}')
+    checks.append('restart-overlay-provenance')
+    return restarted, state['instance_id'], state['local_token']
 
 def smoke(pyz, workdir) -> list[str]:
     pyz = Path(pyz).resolve()
@@ -202,8 +304,14 @@ def smoke(pyz, workdir) -> list[str]:
             if status != 200 or index != packaged:
                 raise AssertionError(f'static index mismatch status={status} bytes={len(index)}')
             checks.append('static-index')
+            _bundled_surfaces(pyz, server.port, instance, state)
+            checks.append('bundled-policy-provenance')
 
-            for operation_id, op, args in STEPS:
+            for step_index, (operation_id, op, args) in enumerate(STEPS):
+                if step_index == 4:
+                    server, instance, token = _accrual_restart(
+                        pyz, server, servers, workdir, cwd, env, instance, token, checks)
+
                 receipt = _json(server.port, 'POST', '/api/commands', {
                     'instance_id': instance,
                     'operation_id': operation_id,

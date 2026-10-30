@@ -214,6 +214,10 @@ class VectorTests(unittest.TestCase):
         for body in (simulation_before, simulation_after):
             body = dict(body)
             body.pop('instance_id')
+            # Bundling adds raw-note provenance; keep the pre-bundling policy
+            # result byte-pinned and independently verify the added fields.
+            self.assertEqual(body.pop('notes_source'), 'CHECKOUT')
+            self.assertEqual(body.pop('note_sha256'), hashlib.sha256(SETTLEMENT.read_bytes()).hexdigest())
             self.assertEqual(canonical_digest(body), SIMULATION_GOLDEN)
         self.assertIs(service.scenario_results, scenarios)
         self.assertEqual((len(scenarios), sum(len(s['steps']) for s in scenarios.values())), (9, 35))
