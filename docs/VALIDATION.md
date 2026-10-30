@@ -1,5 +1,348 @@
 # Validation scope
 
+## Portfolio history comparison — supervisor conflict-fix round 2
+
+2026-10-30. Resolved the supervisor-started merge of incoming main
+`95815c45cfcfe447ae2c15b62dbb4545d5a80cc4` into feature parent
+`65d455079e59d4849cc78104e1a0301eee9b7af9`. All results use local
+SIMULATED fixtures; no real payments or authenticated ownership are inferred.
+
+The nine conflicts are generated files under `tests/vectors/pack/`:
+`clean.json`, `content-digest.json`, `section-auth_matrix.json`,
+`section-decisions.json`, `section-export_manifest.json`,
+`section-reconciliation.json`, `section-workspace_audit.json`, `truncated.json`
+and `volatile.json`. Regenerated all nine with the merged
+`python3 scripts/pack_vectors.py --write`, preserving main's expanded
+authorization matrix and decision-note provenance with consistent section and
+content hashes. All authorization routes from both parents survive (39 total);
+each negative vector remains its intended one-byte change or truncation.
+
+`capital/portfolio_compare.py` and `tests/test_portfolio_compare.py` remain
+byte-identical to the feature parent. The merged README, requirements,
+integration contract and validation history preserve main's complete text in
+order alongside this node's comparison documentation. No runtime, test or CI
+repair was needed. Retained and staged the existing deletion of the obsolete
+root `DECISION_REQUIRED.md`, which described an earlier integration baseline
+blocker. No product decision is outstanding in this conflict repair.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,286 passed in 298.376s, including all 26 comparison tests, CLI determinism, input preservation and baseline byte guards |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; all 9 files match |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 scripts/{workspace_vectors,finance_vectors,closeout_digest}.py --check` | Exit 0 each |
+| `npm run test:browser` | Exit 1 at startup; default loopback port already occupied (`Errno 98`) |
+| `npm run test:browser -- --config /tmp/portfolio-history-round2-playwright.config.cjs` | Exit 0; all 76 Chromium tests passed in 2.0m |
+| Vendor integrity | All five SHA256 pins match; vendored files and manifest byte-identical to both merge parents |
+| Protected paths | `capital/vendor/`, `.aiops/` and `capital/export.py` byte-identical to incoming main |
+| Merge hygiene | All resolutions staged; no unmerged entries or tracked conflict markers; whitespace checks pass against incoming main and for resolved paths |
+
+The temporary browser configuration requires the tracked configuration and
+preserves every test, assertion, project, timeout and retry. It remaps only
+loopback ports 8765–8768 to 29765–29768 and supplies absolute test/output paths
+and the repository server working directory. No unrelated service was stopped,
+no browser was installed and no committed browser configuration was changed.
+
+Logs: `/tmp/portfolio-history-round2-unit.log`,
+`/tmp/portfolio-history-round2-browser-default.log` and
+`/tmp/portfolio-history-round2-browser.log`. This records the requested local
+checks, not a separate execution of the full nine-stage acceptance ladder.
+Merge remains uncommitted for the supervisor. No merge abort, commit, push,
+rebase, reset, external post or Protocol/Commerce modification was performed.
+
+## Portfolio history comparison — PR fix round 4, review of `a159ae5`
+
+2026-10-29, baseline HEAD `a159ae5cfccfee41b7b461c1998b61ccf161f45b`.
+All verification in this record uses local SIMULATED fixtures.
+
+The blocking finding is valid: `a159ae5` committed only the round-3
+validation update, so the obsolete `DECISION_REQUIRED.md` remained in the
+committed head. The fix repeats the deletion and, unlike last round, stages
+it in the index so the supervisor's next commit necessarily contains it.
+
+A second problem surfaced during verification: the local `origin/main` was
+fast-forwarded to `59900e9` (PR #113), which added
+`docs/decisions/CAPITAL_OBSERVATION_RECORD.md`. The byte guard
+`test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`
+requires `docs/decisions` byte-identical to `origin/main` and failed on
+exactly that missing file; main's own relaxed guard (`97fb680`,
+`--diff-filter=MDRTCUXB`) still fails a note that is missing or modified
+relative to main. The fix adopts the note byte-identically from
+`origin/main`, applies `59900e9`'s eight-entry addition to
+`tests/decision_bindings.json` (the branch file was identical to the
+patch base), and regenerates the nine pack vectors with
+`python3 scripts/pack_vectors.py --write` because the note changes the
+`/api/decisions` content embedded in the pack. The regenerated vectors
+are this branch's bytes, not main's; no note content was authored here.
+
+| Current check | Result |
+| --- | --- |
+| `DECISION_REQUIRED.md` removal | 45 lines deleted; absent from disk, index (`git ls-files --error-unmatch` fails) and the `git write-tree` output |
+| `git diff --exit-code origin/main -- docs/decisions/` | Exit 0; directory byte-identical to `origin/main` |
+| `python3 -m unittest discover -s tests -v` | Pre-fix run: 1 failure (the byte guard above). Post-fix run: exit 0; all 1,160 passed in 298.186s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match after regeneration |
+| `python3 scripts/{workspace_vectors,closeout_digest,finance_vectors,not_bound_checklist}.py --check` | Exit 0 each |
+| `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` (ports 8765/8766 held by unrelated local services) |
+| `npm run test:browser -- --config /tmp/portfolio-r4-playwright.config.cjs` | Exit 0; all 69 Chromium tests passed in 1.9m |
+| Vendor integrity | All five SHA256 pins match `capital/vendor/manifest.json`; manifest bytes match HEAD |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py tests/golden playwright.config.cjs package.json package-lock.json` | Exit 0; protected files unchanged |
+| `git diff --check`; `git diff --cached --check` | Exit 0 |
+
+Two earlier remapped full-browser runs each showed one different flaky spec
+(`portfolio.spec.cjs` keyboard-order, then `projection.spec.cjs` route-abort
+error panel); both passed in immediate isolation reruns and the final full
+run above is clean. The temporary config requires the tracked config,
+preserves every test, project, assertion, timeout and retry, remaps only
+loopback ports 8765–8768 to 19765–19768 and supplies absolute test/output
+paths and the repository server working directory. No unrelated service was
+stopped, no browser was installed and no committed configuration changed.
+
+Only the staged deletion, the adopted main note, its bindings entries, the
+regenerated pack vectors and this validation record change. Runtime code,
+test logic, CI, policy inputs, the five vendored references and manifest,
+and `.aiops/` remain unchanged. No commit, push or external post was
+performed; these results are local patch verification, not a new run of the
+full nine-stage acceptance ladder.
+
+### Historical verification records
+
+The sections below describe earlier sessions and baselines. Their deletion,
+staging, blocker and acceptance claims are historical, not evidence of the current
+commit. The round 4 record above supersedes those project-status claims.
+
+## Portfolio history comparison — PR fix round 3, review of `9b1f3fe`
+
+2026-10-29, baseline HEAD `9b1f3fefd0c32c02d969ea1001f4d4813c5f0200`.
+All verification in this record uses local SIMULATED fixtures.
+
+The blocking finding is valid: the baseline commit contains an obsolete
+`DECISION_REQUIRED.md`. The fix deletes that file in full. No integration-baseline
+or product decision remains open. The deletion must be included in the supervisor's
+next commit; a documentation update alone does not fix the reviewed head.
+The builder is explicitly prohibited from committing, pushing or posting, so this
+record describes the prepared patch and does not claim a changed PR head or an
+exact-head CI pass.
+
+Only the obsolete decision record and this validation record change. Runtime code,
+tests, CI, policy inputs, the five vendored references and manifest, and `.aiops/`
+remain unchanged.
+
+| Current check | Result |
+| --- | --- |
+| Decision-record deletion | All 45 lines deleted; file absent from disk, index and the tree produced by `git write-tree` |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,160 passed in 262.469s, including comparison CLI, deterministic output, input preservation and baseline byte guards |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 1.9m |
+| Vendor integrity | All five SHA256 pins match; references and manifest byte-identical to baseline HEAD |
+| Protected paths | Runtime, tests, scripts, CI, browser/dependency configuration and `.aiops/` unchanged against HEAD |
+| `git diff --check`; `git diff --cached --check` | Exit 0 |
+
+Logs: `/tmp/portfolio-r3-unit.log`, `/tmp/portfolio-r3-browser-default.log`,
+`/tmp/portfolio-r3-browser-isolated.log`. Installed headless Chromium ran with the
+unchanged browser configuration in a separate loopback network namespace; no
+unrelated service was stopped. No browser download, test weakening, policy change
+or external action was needed. These results are local patch verification, not a
+new run of the full nine-stage acceptance ladder.
+
+## Portfolio history comparison PR fix round 3
+
+2026-10-28, node `portfolio-history-comparison`, baseline HEAD
+`6a36c7fabe0d09061d46111400105586c07ae9a1`; SIMULATED local fixtures only.
+Retained the interrupted worktree's deletion of root `DECISION_REQUIRED.md` and
+verified that the file is absent. This resolves the blocking review finding:
+the stale integration blocker and failed-gate claims are removed from the current
+tree. No product decision remains open for this node.
+
+This round changes only that deletion and this validation record. No production
+code, tests, CI configuration, policy inputs, vendor files or `.aiops/` files changed.
+No commit, push or external post was performed. Historical sections below retain
+their original baselines; this round reran only the checks listed here, not the
+complete nine-stage acceptance ladder.
+
+| Round 3 check | Result |
+| --- | --- |
+| `test ! -e DECISION_REQUIRED.md` and `git diff --numstat -- DECISION_REQUIRED.md` | Absent; tracked deletion of all 45 lines |
+| `python3 -m unittest discover -s tests -v` | 1,160 passed in 265.708s, including comparison CLI, determinism, input preservation and the unchanged baseline byte guard |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `npm run test:browser` | Exit 1 at server startup: `OSError: [Errno 98] Address already in use` |
+| `npm run test:browser -- --config /tmp/portfolio-round3-playwright.config.cjs` | Exit 0; all 69 passed in 1.9m |
+| Inline SHA256 and HEAD-byte comparison | All five vendor references match manifest pins and HEAD; manifest bytes match HEAD |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py tests .github playwright.config.cjs package.json package-lock.json` | Exit 0; protected sources, tests, CI and browser/dependency configuration unchanged |
+| `git diff --check` | Exit 0 |
+
+Logs are `/tmp/portfolio-round3-unit.log`, `/tmp/portfolio-round3-vendor.log`,
+`/tmp/portfolio-round3-browser-default.log` and `/tmp/portfolio-round3-browser.log`.
+Installed Playwright headless Chromium was used without installation. The temporary
+browser config requires the tracked config and preserves every test, project,
+assertion, timeout and retry. It remaps only loopback ports 8765–8768 to 19765–19768
+and supplies absolute test/output paths and the repository server working directory.
+No unrelated service was stopped. The default-port command's failure remains
+explicitly recorded; the passing browser result uses this local port override.
+
+## Portfolio history comparison PR fix round 2
+
+2026-10-28, node `portfolio-history-comparison`, baseline HEAD
+`cec40b5246876a4c6aecbfdf427fb2d3111bedb7`; SIMULATED local fixtures only.
+The blocking review finding is resolved by retaining the interrupted worktree's
+deletion of the stale root `DECISION_REQUIRED.md`. That document described an
+obsolete integration failure; no product decision remains open for this node.
+The earlier builder verification below is historical evidence from its stated HEAD.
+
+The review's build-output note was confirmed: `dist2/capital-0.1.0.pyz` was tracked.
+It is removed, and `dist2/` is ignored alongside `dist/`. No production code,
+tests, CI configuration, policy inputs, vendor files or `.aiops/` files changed.
+No commit, push or external post was performed.
+
+Round 2 verification logs are under `/tmp/portfolio-round2-*.log`. The unchanged
+default browser command fails at server startup because a configured port is
+already occupied. The browser rerun uses
+`npm run test:browser -- --config /tmp/portfolio-round2-playwright.config.cjs`.
+That temporary configuration retains the original tests, projects, assertions,
+timeouts and retries, remaps only loopback ports 8765–8768 to 18765–18768, and
+resolves test/output directories and server working directories to this repository.
+Installed headless Chromium is available; no browser installation was needed.
+
+| Round 2 check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | 1,160 passed in 257.561s; unchanged baseline byte guard passed |
+| `python3 -m unittest tests.test_portfolio_compare tests.test_workspace_audit tests.test_evidence_pack tests.test_risk tests.test_covenant_watch tests.test_portfolio_snapshot -v` | 107 passed in 23.473s, including CLI, determinism and input-preservation checks |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 117 artifacts, 9 stages |
+| `npm run test:browser` | Exit 1 at server startup: configured port already in use |
+| `npm run test:browser -- --config /tmp/portfolio-round2-playwright.config.cjs` | Exit 0; all 69 passed in 1.9m |
+| Inline SHA256 and HEAD-byte comparison | All five vendor references match manifest pins and HEAD; manifest bytes match HEAD |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py tests .github playwright.config.cjs package.json package-lock.json` | Exit 0; protected sources, tests, CI and browser/dependency configuration unchanged |
+| `git diff --check` | Exit 0 |
+
+## Portfolio history comparison builder verification
+
+2026-10-26, node `portfolio-history-comparison`; SIMULATED local fixtures only.
+Revalidated after the supervisor's integration merge at HEAD
+`bb7b0d111798f00cb9edf1c33fb9da7d3e97ae57` (local origin/main
+`aab0a7364c79ef00d34e031e4a827a817f7ae544`). The earlier baseline byte-guard
+failure is resolved: the unmodified guard passes. The stale root
+`DECISION_REQUIRED.md` was removed; no product decision remains open for this node.
+No git/GitHub mutation was performed by this builder.
+
+The existing implementation follows the supplied plan: audit each captured workspace
+once, restore through save-forbidden memory storage, detach inputs, apply explicit
+policy completeness gates, and recompute existing risk/covenant views without forecast
+or terms-rollup readiness. Review required no additional production-code changes.
+The node diff includes `capital/portfolio_compare.py`, the byte-entry audit helper,
+the comparison/audit tests and the four requested documentation files.
+
+`tests/test_portfolio_compare.py` covers new draw (+10,000 exposure/+150 reserve),
+partial principal reduction (10,000→6,000; 150→90 reserve), day 60→61 clock-only
+aging (150→2,500 reserve), default before maturity (150→10,000 reserve, unchanged
+exposure), empty books, combined independently expected deltas, per-advance floor
+arithmetic, aging boundaries, watch entry/exit/reasons, required policies on empty
+and drawn books, applicable margin cure/rate/payee inputs, NOT_APPLICABLE rows,
+compatibility failures, strict/corrupt input, captured-byte replacement, input hashes,
+one-read capture, held locks, unchanged recursive names/bytes/modes, CLI exits and
+deterministic canonical JSON. Audit byte-entry parity covers legacy and overlay
+documents, malformed JSON and checksum failures. Malformed nested receipt results
+produce `DRAW_RECEIPT_GATE_MISSING` without an exception.
+
+This session extended the tests with all six required entries loaded individually
+from unusable temporary decision notes, on both empty and drawn books. Expected
+required names are pinned independently of the implementation's tuple. Equal local
+policy digests still fail completeness and leave dependent views NOT_CHECKED. A
+subprocess CLI regression verifies reversed, individually audited snapshots produce
+NON_COMPARABLE, ordered clock/prefix reasons and no changes, without modifying inputs.
+
+Commands actually run in this builder session (logs: `/tmp/portfolio-builder-*.log`):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_portfolio_compare tests.test_workspace_audit tests.test_evidence_pack tests.test_risk tests.test_covenant_watch tests.test_portfolio_snapshot -v` | Initial 105 passed; final 107 passed after extending regressions |
+| `python3 scripts/workspace_vectors.py --check` | Exit 0; 6 files match |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, 9 stages; rerun after final documentation edits |
+| `python3 -m unittest discover -s tests -v` | Initial 1,149 passed; final acceptance run 1,151 passed in 284.325s, no failures/errors/skips |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed standalone and in acceptance |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 standalone and in acceptance |
+| `node -e` checking `chromium.executablePath()` exists | Exit 0; installed Chromium available |
+| `npm run test:browser` | Exit 1 at webServer startup: unrelated local services occupy ports 8765/8766 |
+| `npm run test:browser -- --config /tmp/portfolio-playwright.config.cjs` | First remapped run: 68 passed, 1 auditor UI timeout; sequential acceptance rerun: all 69 passed, exit 0 |
+| `python3 scripts/build_release.py --out /tmp/portfolio-builder-dist-a` | Exit 0; package SHA256 `2710e2f09e4f050ee298a84b16d16b4cafea88fddc106f0132cee68649c5f846` |
+| `python3 scripts/build_release.py --out /tmp/portfolio-builder-dist-b` | Exit 0; matching package SHA256 |
+| `cmp /tmp/portfolio-builder-dist-a/capital-*.pyz /tmp/portfolio-builder-dist-b/capital-*.pyz` | Exit 0; byte-identical builds |
+| `python3 scripts/smoke_release.py /tmp/portfolio-builder-dist-a/capital-*.pyz` | Exit 0; all 8 packaged smoke checks passed |
+| `python3 scripts/decision_bindings.py --check` | Exit 0 standalone and in acceptance |
+| Acceptance inline Python shown below | Exit 0; 9/9 stages, `build/acceptance-evidence.json` has `ok: true` |
+| Inline Python `compare_workspaces('build/demo-workspace', 'build/demo-workspace')` with COMPARABLE assertion | Exit 0; both audits and all four reconciliation flags matched |
+| Inline Python SHA256 check of all five vendor manifest entries and manifest bytes against `git show HEAD:capital/vendor/manifest.json` | Exit 0; all pins and manifest bytes unchanged |
+| `git diff --check` | Exit 0 |
+| `git diff --exit-code HEAD -- capital/vendor .aiops capital/export.py docs/decisions tests/golden .github playwright.config.cjs package.json package-lock.json` | Exit 0; protected files, policy notes, CI/browser config and dependency files untouched |
+
+The executed local acceptance equivalent uses the repository's complete plan and
+runner, with only the browser command extended to select the temporary port config:
+
+```sh
+python3 - <<'PY' > /tmp/portfolio-builder-acceptance.log 2>&1
+from pathlib import Path
+from scripts.acceptance import ROOT, build_plan, execute_plan
+plan = build_plan()
+for stage in plan:
+    if stage['id'] == 'browser':
+        stage['commands'][0].extend(['--', '--config', '/tmp/portfolio-playwright.config.cjs'])
+raise SystemExit(execute_plan(plan, root=ROOT, evidence_path=ROOT / 'build' / 'acceptance-evidence.json'))
+PY
+```
+
+Acceptance results: unit 1,151; storage-conformance 19; pinned vendor 7; upstream
+claims 311; JavaScript syntax passed; browser 69; packaged smoke 8; seeded demo 1;
+and all four SIMULATED journeys passed. The claim commands actually executed were
+`scripts/upstream_claims_check.py`, `scripts/agent_claims_check.py`,
+`scripts/read_model_claims_check.py`, `scripts/ce1_claims_check.py`,
+`scripts/adapter_identity_claims_check.py` and `scripts/lifecycle_claims_check.py`,
+each with `python3` and `--execute`. Storage commands were
+`python3 -m unittest discover -s tests -p test_storage_conformance.py -v` and
+`python3 -m unittest tests.test_crash_replay -v`. Acceptance also ran
+`python3 scripts/build_release.py --out build/acceptance-dist`,
+`python3 scripts/smoke_release.py build/acceptance-dist/capital-0.1.0.pyz`,
+`python3 scripts/seed_demo.py` and `python3 scripts/sim_journeys.py`; all exited 0.
+
+The temporary browser config requires the original config, retains every project,
+assertion and setting, and remaps only configured loopback server ports/base URLs
+8765–8768 to 18765–18768. Absolute test/output directories and the repository working
+directory are supplied because the override lives in `/tmp`. No unrelated service
+was stopped and no committed CI/test configuration, timeout, retry or assertion was
+changed. The initial remapped auditor timeout did not recur during the sequential
+acceptance run; no UI change was needed. All test-created servers have stopped.
+The plain default-port browser command remains unsuitable for this shared runner;
+the passing acceptance result above explicitly includes the port override.
+
+Plan deviations: reused the complete implementation already on the merged node
+baseline, strengthened regressions and refreshed verification. Compatible
+BOUND/PARTIAL recorded terms bindings follow the existing service, with unrelated
+fees outside readiness gates. Nonregular-file rejection preserves the auditor's
+predicate and avoids FIFO blocking. Browser ports were remapped locally as described.
+No new financial/legal/accounting values, policy notes, vectors, vendor bytes,
+`.aiops/`, legacy export construction, Protocol/Commerce, HTTP routes or UI files
+were changed. No test was weakened. All outputs remain local SIMULATED diagnostics;
+this record claims no human acceptance, authenticated ownership, real payments,
+upstream qualification or production deployment. Nothing was posted externally.
+
 ## Provider observation adapter
 
 `tests/test_observation_port.py` exposes `run_observation_vectors(factory)` for a
