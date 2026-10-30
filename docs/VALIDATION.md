@@ -3508,3 +3508,68 @@ SHA256 and local log paths are recorded in the 2026-10-29 section of
 rehearsals; artifacts remain unsigned and unpublished. Optional Protocol citation
 verification without a supplied checkout remains SKIPPED, not a pass.
 All resolutions are staged; the merge is left uncommitted for the supervisor.
+
+## loss-allowance-decision — conflict-fix round 1 (2026-10-30)
+
+Resolved the merge of incoming main `95815c4` into branch HEAD `9a7adc7`.
+The reviewed allowance note remains byte-identical to branch HEAD, with seven
+provisional ADOPTED entries, professional-review flags and pending
+`loss-allowance-postings` consumers. Main's bundled-note runtime, observation
+decision, provenance fields, documentation and validation histories survive.
+The binding table retains the union of both parents' entry identities, including
+main's reviewed consumption updates. No combination-specific runtime, test or
+CI change was needed.
+
+The unchanged generators rebuilt six dossier files, the finance vector and all
+nine pack files. Dossier and finance bytes match incoming main. The combined
+pack retains every decision and entry status from both parents, with note
+provenance. Existing tamper and truncation cases remain generated negative
+fixtures. No new vector path or docs-surface registration was required.
+The old root `DECISION_REQUIRED.md` concerned advance-case-dossier's moved-main
+baseline; this merge resolves that condition and the unchanged byte guard passes,
+so the obsolete blocker is removed.
+
+Resolved files (21):
+
+- `README.md`
+- `docs/INTEGRATION.md`
+- `docs/OPERATOR_HANDBOOK_KO.md`
+- `docs/VALIDATION.md`
+- `tests/decision_bindings.json`
+- `tests/vectors/dossiers/sim-cancelled.json`
+- `tests/vectors/dossiers/sim-closed.json`
+- `tests/vectors/dossiers/sim-defaulted.json`
+- `tests/vectors/dossiers/sim-pending-settlement.json`
+- `tests/vectors/dossiers/sim-rejected.json`
+- `tests/vectors/dossiers/sim-unbound.json`
+- `tests/vectors/finance_vectors.json`
+- `tests/vectors/pack/clean.json`
+- `tests/vectors/pack/content-digest.json`
+- `tests/vectors/pack/section-auth_matrix.json`
+- `tests/vectors/pack/section-decisions.json`
+- `tests/vectors/pack/section-export_manifest.json`
+- `tests/vectors/pack/section-reconciliation.json`
+- `tests/vectors/pack/section-workspace_audit.json`
+- `tests/vectors/pack/truncated.json`
+- `tests/vectors/pack/volatile.json`
+
+| Check | Local evidence |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | PASS: 1,259 tests in 293.246 s; no failures or errors, including the unchanged COA/V1 byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | PASS: seven tests. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | PASS. |
+| `npm run test:browser -- --config build/loss-allowance-round1/playwright.config.cjs` | PASS: all 76 Chromium tests in 2.0 min. The default invocation stopped before tests because ports 8765/8766 were occupied. An ignored temporary config uses four free loopback ports and an isolated seeded workspace; tests, assertions and committed config are unchanged. |
+| `python3 scripts/docs_surface.py --check` | PASS: 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | PASS: both decision notes indexed; pending consumers remain pending. |
+| `python3 scripts/dossier_vectors.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | PASS: six dossiers, 101,048-byte finance vector, nine pack files. |
+| Direct loopback `GET /api/decisions` | HTTP 200, BOUND; all seven allowance entries ADOPTED/provisional, observation-record decision present. |
+| Build and packaged smoke | PASS: `scripts/build_release.py --out build/loss-allowance-round1/dist`, then `scripts/smoke_release.py build/loss-allowance-round1/dist/capital-0.2.0.pyz`; all eleven smoke checks pass. Outside-checkout archive import independently confirms both decisions as BUNDLED_IN_ARTIFACT and preserves the allowance note's original bytes. |
+| Vendor and boundary integrity | All five SHA256 locks and `capital/vendor/manifest.json` match both merge parents byte-for-byte. Legacy export, V1 projection, demo golden and governing TERMS/COA notes also match both parents. `.aiops/` is unchanged. |
+| Merge hygiene | No conflict-marker lines or unmerged index entries. Whitespace checks against both parents pass. Resolutions are staged and the merge remains uncommitted; no abort, commit, push, rebase or reset was performed. |
+
+Logs and the temporary browser config are local ignored files under
+`build/loss-allowance-round1/`. The local zipapp SHA256 is
+`bea5187fe6f3710f8ec4ab3242f03c29fb46cf06594691b197e05ebe2b340881`.
+All results are SIMULATED/provisional; the artifact is unsigned and unpublished.
+Accounting remains SYNTHETIC_UNADOPTED and tax remains NOT_BOUND. Optional
+Protocol citation checks without a supplied checkout remain SKIPPED, not passes.
