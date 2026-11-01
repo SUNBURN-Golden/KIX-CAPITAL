@@ -32,13 +32,9 @@
 
 ## 2. KIX 비전 연결
 
-[kix-protocol README](/workspace/capital-run/kixproto-ro/README.md)는 티켓 권리·거래와 환불·정산·금융 근거의 연결을 지향하면서 현재 구현과 운영 권위를 구분한다. 이 결정은 여러 claim의 금융 산술을 하나의 재현 가능한 북으로 연결하되, 그 결과에 결제·소유권·운영 권위를 부여하지 않는다.
+[CAPITAL_CLAIM_SLICE_REGISTRY.md](CAPITAL_CLAIM_SLICE_REGISTRY.md)의 제공 발췌와 supervisor의 홀더 우선 요구를 따라 동일 잔여액의 이중사용을 금지한다. 여러 claim의 금융 근거를 재현 가능한 북으로 연결하되 복수 payee 배정이나 결제 권위로 확장하지 않는 것이 이 결정의 KIX 비전 해석이다.
 
-[AUTHORITY_MODEL_1.md](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md)의 A-4는 과거 재생이 새로운 외부 실행 허가가 아님을 명시한다. 따라서 보정창 밖 사건도 입력·진단에서는 보존하지만 새로운 지급이나 외부사실 기록으로 승격하지 않는다.
-
-[CAPITAL_CLAIM_SLICE_REGISTRY.md](CAPITAL_CLAIM_SLICE_REGISTRY.md)의 제공 발췌와 supervisor의 홀더 우선 요구를 따라 동일 잔여액의 이중사용을 금지한다. [CAPITAL_DEMO_BOOK.md](CAPITAL_DEMO_BOOK.md)의 합성 fixture·별도 golden·그림자 수취인 경계를 유지하며 다수 claim을 다수 payee 배정으로 확장하지 않는다.
-
-[SEAMS.md](../SEAMS.md)와 [CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md)의 제공 발췌에 따라 로컬 재생은 상위 계약 채택이나 SEMANTIC_CONFORMANCE가 아니다. [CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md)의 발췌에 따른 회계·법률 검토 경계도 유지한다. 나머지 부분이나 이들 문서가 링크하는 추가 문서는 열지 않았다.
+[SEAMS.md](../SEAMS.md)와 [CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md)의 제공 발췌에 따라 로컬 재생은 상위 계약 채택이나 SEMANTIC_CONFORMANCE가 아니다. [CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md)의 회계·법률 검토 경계도 유지한다. 인용은 제공 발췌에 한정하며 링크된 추가 원문은 열지 않았다.
 
 ## 3. 항목별 결정
 
@@ -75,7 +71,7 @@
 
 홀더 몫은 합성 내부 역할이며 제3자 투자를 채택하지 않는다. 선지급 상계가 홀더 몫을 침범하지 않으며, 상계·홀더 지급으로 사용한 금액을 참여 기초에 다시 넣지 않는다. 보정은 원 사건의 고정 우선권 입력으로 이 분해를 다시 계산하고 이전 결과와의 차이를 표시한다. 미상계·미충족 잔액은 진단으로 남기며 다른 claim으로 자동 이동하지 않는다.
 
-예를 들어 두 claim의 분해는 다음과 같다. 숫자는 산술 전용 합성 단위다.
+예를 들어 두 claim의 분해는 다음과 같다. 숫자는 산술 전용 합성 단위다. 이 예시와 아래 경계·한도·나머지 예시는 모두 `UNSUPPORTED_BY_PINNED_FSM`인 로컬 제품 산술이며 vendor FSM 실행·대사 결과가 아니다. 참여 배정은 명세서 합계에서만 계산하며 claim별 참여자 배분을 만들지 않는다.
 
 | claim | 총 분류액 | 보호 | 수수료 | 준비금 | Q | H | A | N |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -137,9 +133,24 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 
 출력에는 결정 ID·정책 버전·조건 출처와 digest·입력 digest·명세서 tuple·revision digest·정렬키·원 사건 참조·제외액·우선 분해·참여 전후값·한도 소비·환수·나머지·창 밖 차이를 포함한다.
 
-필수 라벨은 `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE`, `SHADOW_NOT_APPLIED`, `funds_executed:false`, `persistent_commands:false`, `automatic_payouts:false`, `production:NOT_AUTHORIZED`, `upstream_adoption_claimed:false`다. 로컬 digest는 인증·체인 확정·회계 증빙을 뜻하지 않는다.
+필수 라벨은 `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE`, `SHADOW_NOT_APPLIED`, `UNSUPPORTED_BY_PINNED_FSM`, `SIMULATION_ONLY_NOT_OFFERED_V1`, `fsm_expressible:false`, `vendor_fsm_reconciliation:false`, `funds_executed:false`, `persistent_commands:false`, `automatic_payouts:false`, `production:NOT_AUTHORIZED`, `upstream_adoption_claimed:false`다. 로컬 digest는 인증·체인 확정·회계 증빙을 뜻하지 않는다.
 
-노트와 여덟 항목의 소비자 연결은 `participation-window-replay`로 지정하되 상태는 `PENDING_IMPLEMENTATION`이다. 기존 registry의 정확한 등록 형식은 허용 자료에 없으므로 **UNDETERMINED**다. 다음 블록은 등록 의도를 제공하며 등록 완료 영수증을 대신하지 않는다.
+리뷰가 제공한 선행 참여 정책 분류에 따라 cross-claim 계산·참여 배정·cap 추적은 **`UNSUPPORTED_BY_PINNED_FSM`**이다. 여덟 선택 전체는 이 로컬 재생 계약의 일부로 `fsm_expressible:false`를 기록한다. `SHADOW_NOT_APPLIED`는 적용하지 않았다는 뜻이고, FSM 비지원은 표현할 수 없다는 별도 분류다. 문서 채택·바인딩 검사 통과로 이 분류가 바뀌지 않는다.
+
+`tests/decision_bindings.json`의 기존 형식에 맞춰 여덟 행을 실제 등록했다. 모두 `kind:module`, `status:PENDING_CONSUMER`, `consumer_node:participation-window-replay`이며, reason에 기존 통합 앵커일 뿐 해당 구현은 미완료임을 명시한다. 구현 상태는 계속 `PENDING_IMPLEMENTATION`이다.
+
+| entry | 기존 integration anchor | 미구현 내용 |
+|---|---|---|
+| `event_claim_membership` | `capital/shadow.py` | 고정 다중 claim 멤버십 |
+| `statement_anchor_and_day_order` | `capital/overlay.py` | 불변 명세서·당일 순서 |
+| `advance_slice_priority_inputs` | `capital/shadow.py` | 홀더·상계·참여 분해 |
+| `adjustment_window_boundary` | `capital/overlay.py` | 참여 90일 보정창 |
+| `cap_clawback_and_term_end` | `capital/terms.py` | 누적 한도·환수 latch |
+| `rounding_carry_and_duplicates` | `capital/shadow.py` | 명세서 나머지·중복 처리 |
+| `disposable_replay_bounds` | `capital/service.py` | 제한된 일회성 재생 |
+| `provenance_and_output_labels` | `capital/export.py` | 재생 출처·FSM 비지원 출력 |
+
+앵커 경로는 등록 파일에서 확인했으며 구현 파일을 열거나 수정하지 않았다. 특히 overlay 앵커는 영속 append를 승인하지 않고 export 앵커는 legacy export construction 변경을 승인하지 않는다.
 
 ## 4. 기계 판독 결정 블록
 
@@ -150,35 +161,13 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-01",
   "provisional": true,
-  "bases": {
-    "capital_main": "c4114c7",
-    "kix_protocol_main": "fd33335",
-    "verification": "SUPERVISOR_SUPPLIED"
-  },
-  "execution_provenance": {
-    "document_author": "Codex",
-    "model_attribution": "SUPERVISOR_REQUIRED",
-    "claude_cli_execution_verified": false
-  },
-  "consumer_registration": {
-    "target": "participation-window-replay",
-    "status": "PENDING_IMPLEMENTATION",
-    "registration_applied": false,
-    "checks_run": false
-  },
+  "bases": {"capital_main": "c4114c7", "kix_protocol_main": "fd33335", "verification": "SUPERVISOR_SUPPLIED"},
+  "execution_provenance": {"document_author": "Codex", "model_attribution": "SUPERVISOR_REQUIRED", "claude_cli_execution_verified": false},
+  "consumer_registration": {"target": "participation-window-replay", "status": "PENDING_CONSUMER", "implementation_status": "PENDING_IMPLEMENTATION", "registry": "tests/decision_bindings.json", "entry_count": 8, "registration_applied": true},
   "entries": {
     "event_claim_membership": {
       "status": "ADOPTED",
-      "value": {
-        "agreements": 1,
-        "beneficiaries": 1,
-        "membership": "FIXED_MANIFEST",
-        "claim_originals": "ONE_PER_CLAIM_PER_BOOK",
-        "source_amount_identity": "UNIQUE_PER_BOOK",
-        "events": ["ORIGINAL", "ADJUSTMENT"],
-        "adjustment": "SAME_CLASSIFICATION_REPLACEMENT_AMOUNT",
-        "inputs": "SYNTHETIC_ALREADY_CLASSIFIED_ONLY"
-      },
+      "value": {"agreements": 1, "beneficiaries": 1, "membership": "FIXED_MANIFEST", "claim_originals": "ONE_PER_CLAIM_PER_BOOK", "source_amount_identity": "UNIQUE_PER_BOOK", "events": ["ORIGINAL", "ADJUSTMENT"], "adjustment": "SAME_CLASSIFICATION_REPLACEMENT_AMOUNT", "inputs": "SYNTHETIC_ALREADY_CLASSIFIED_ONLY", "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-01", "CAP-08"],
@@ -188,15 +177,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "statement_anchor_and_day_order": {
       "status": "ADOPTED",
-      "value": {
-        "identity": ["book_id", "agreement_id", "anchor_day"],
-        "anchor": "EXPLICIT_IMMUTABLE_SIM_DAY",
-        "original_day": "ANCHOR_DAY",
-        "order": ["sim_day", "sequence"],
-        "sequence": "UNIQUE_WITHIN_DAY",
-        "close": "AFTER_ALL_EVENTS_OF_DAY",
-        "wall_clock": false
-      },
+      "value": {"identity": ["book_id", "agreement_id", "anchor_day"], "anchor": "EXPLICIT_IMMUTABLE_SIM_DAY", "original_day": "ANCHOR_DAY", "order": ["sim_day", "sequence"], "sequence": "UNIQUE_WITHIN_DAY", "close": "AFTER_ALL_EVENTS_OF_DAY", "wall_clock": false, "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-01", "CAP-15"],
@@ -206,13 +187,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "advance_slice_priority_inputs": {
       "status": "ADOPTED",
-      "value": {
-        "excluded": ["PROTECTED_LINES", "PLATFORM_FEES", "REFUND_RESERVES"],
-        "order": ["SLICE_HOLDER_FIRST", "ADVANCE_SETOFF_ON_REMAINDER", "PARTICIPATION", "BENEFICIARY_RESIDUAL"],
-        "obligations": "PINNED_DISJOINT_CLAIM_BUDGETS",
-        "conflict": "REJECT_BOOK",
-        "conservation": "GROSS_EQUALS_EXCLUDED_PLUS_HOLDER_PLUS_ADVANCE_PLUS_PARTICIPATION_PLUS_RESIDUAL"
-      },
+      "value": {"excluded": ["PROTECTED_LINES", "PLATFORM_FEES", "REFUND_RESERVES"], "order": ["SLICE_HOLDER_FIRST", "ADVANCE_SETOFF_ON_REMAINDER", "PARTICIPATION", "BENEFICIARY_RESIDUAL"], "obligations": "PINNED_DISJOINT_CLAIM_BUDGETS", "conflict": "REJECT_BOOK", "conservation": "GROSS_EQUALS_EXCLUDED_PLUS_HOLDER_PLUS_ADVANCE_PLUS_PARTICIPATION_PLUS_RESIDUAL", "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-04", "CAP-08"],
@@ -222,13 +197,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "adjustment_window_boundary": {
       "status": "ADOPTED",
-      "value": {
-        "days_after_anchor": 90,
-        "predicate": "anchor_day <= adjustment_day <= anchor_day + 90",
-        "boundary_inclusive": true,
-        "outside_window": "DIAGNOSTIC_ONLY_NO_RESTATEMENT",
-        "reanchor": false
-      },
+      "value": {"days_after_anchor": 90, "predicate": "anchor_day <= adjustment_day <= anchor_day + 90", "boundary_inclusive": true, "outside_window": "DIAGNOSTIC_ONLY_NO_RESTATEMENT", "reanchor": false, "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-01", "CAP-05"],
@@ -238,16 +207,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "cap_clawback_and_term_end": {
       "status": "ADOPTED",
-      "value": {
-        "terms": "PRESERVE_EXISTING_RATIO_CAP_AND_TERM",
-        "missing_terms": "BLOCK_CALCULATION",
-        "cap_basis": "CUMULATIVE_ACCEPTED_POSITIVE_ALLOCATIONS",
-        "clawback_reopens_cap": false,
-        "cap_reached": "IRREVERSIBLE_LATCH",
-        "negative_delta": "LIMIT_TO_CURRENT_STATEMENT_NET_ALLOCATION",
-        "unallocated_positive_delta": "NO_BACKLOG",
-        "term_end": "INCLUSIVE_THEN_NEGATIVE_ADJUSTMENTS_ONLY_WITHIN_ORIGINAL_WINDOW"
-      },
+      "value": {"terms": "PRESERVE_EXISTING_RATIO_CAP_AND_TERM", "missing_terms": "BLOCK_CALCULATION", "cap_basis": "CUMULATIVE_ACCEPTED_POSITIVE_ALLOCATIONS", "clawback_reopens_cap": false, "cap_reached": "IRREVERSIBLE_LATCH", "negative_delta": "LIMIT_TO_CURRENT_STATEMENT_NET_ALLOCATION", "unallocated_positive_delta": "NO_BACKLOG", "term_end": "INCLUSIVE_THEN_NEGATIVE_ADJUSTMENTS_ONLY_WITHIN_ORIGINAL_WINDOW", "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-01", "CAP-04"],
@@ -257,15 +217,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "rounding_carry_and_duplicates": {
       "status": "ADOPTED",
-      "value": {
-        "arithmetic": "INTEGER_BPS",
-        "uncapped_amount": "floor(sum_current_claim_bases * ratio_bps / 10000)",
-        "carry": "REMAINDER_WITHIN_STATEMENT_ONLY",
-        "final_fraction": "DISCLOSE_WITHOUT_ROUNDUP",
-        "duplicate_identical": "NO_OP",
-        "duplicate_conflicting": "REJECT_BOOK",
-        "adjustments": "RECOMPUTE_FROM_REPLACEMENT_AMOUNTS"
-      },
+      "value": {"arithmetic": "INTEGER_BPS", "uncapped_amount": "floor(sum_current_claim_bases * ratio_bps / 10000)", "carry": "REMAINDER_WITHIN_STATEMENT_ONLY", "final_fraction": "DISCLOSE_WITHOUT_ROUNDUP", "duplicate_identical": "NO_OP", "duplicate_conflicting": "REJECT_BOOK", "adjustments": "RECOMPUTE_FROM_REPLACEMENT_AMOUNTS", "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-08", "CAP-15"],
@@ -275,18 +227,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "disposable_replay_bounds": {
       "status": "ADOPTED",
-      "value": {
-        "max_claims": 32,
-        "max_statements": 16,
-        "max_input_events": 256,
-        "max_input_bytes": 1048576,
-        "max_day_span": 365,
-        "max_book_amount": 1000000000000,
-        "complete_history_required": true,
-        "persistent_commands": false,
-        "automatic_payouts": false,
-        "failure": "ATOMIC_REJECTION"
-      },
+      "value": {"max_claims": 32, "max_statements": 16, "max_input_events": 256, "max_input_bytes": 1048576, "max_day_span": 365, "max_book_amount": 1000000000000, "complete_history_required": true, "persistent_commands": false, "automatic_payouts": false, "failure": "ATOMIC_REJECTION", "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM"},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-08", "CAP-13"],
@@ -296,16 +237,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
     },
     "provenance_and_output_labels": {
       "status": "ADOPTED",
-      "value": {
-        "labels": ["SIMULATED", "SYNTHETIC_FIXTURE_PROFILE", "SHADOW_NOT_APPLIED", "SIMULATION_ONLY_NOT_OFFERED_V1"],
-        "production": "NOT_AUTHORIZED",
-        "funds_executed": false,
-        "upstream_adoption_claimed": false,
-        "consumer": "participation-window-replay",
-        "consumer_status": "PENDING_IMPLEMENTATION",
-        "registration_applied": false,
-        "required_provenance": ["DECISION", "TERMS_SOURCE", "INPUT_DIGEST", "STATEMENT_IDENTITY", "REVISION_DIGEST", "EVENT_LINEAGE"]
-      },
+      "value": {"labels": ["SIMULATED", "SYNTHETIC_FIXTURE_PROFILE", "SHADOW_NOT_APPLIED", "SIMULATION_ONLY_NOT_OFFERED_V1", "UNSUPPORTED_BY_PINNED_FSM"], "production": "NOT_AUTHORIZED", "funds_executed": false, "upstream_adoption_claimed": false, "consumer": "participation-window-replay", "consumer_status": "PENDING_CONSUMER", "registration_applied": true, "required_provenance": ["DECISION", "TERMS_SOURCE", "INPUT_DIGEST", "STATEMENT_IDENTITY", "REVISION_DIGEST", "EVENT_LINEAGE"], "fsm_expressible": false, "fsm_support": "UNSUPPORTED_BY_PINNED_FSM", "implementation_status": "PENDING_IMPLEMENTATION", "vendor_fsm_reconciliation": false, "persistent_commands": false, "automatic_payouts": false},
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-01",
       "cap_rows": ["CAP-09", "CAP-20"],
@@ -325,7 +257,8 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 | 멤버십·정체성·순서·90일 경계 | §3.1–3.2·3.4, 89/90/91일 독립 예시 |
 | 상계·홀더 우선·참여 보존 | §3.3–3.4, 제외액 포함 합계 대사 |
 | 한도·환수·나머지·일회성 북 | §3.5–3.7 |
-| pending 소비자 등록과 검사 | 등록 의도 명시; 실제 등록·검사 **미실행** |
+| FSM 표현 가능성 | §3.3·3.8·§4, 모두 `UNSUPPORTED_BY_PINNED_FSM`; 합성 산술과 vendor 대사 구분 |
+| pending 소비자 등록과 검사 | 여덟 `PENDING_CONSUMER` 행 등록; 검사 결과는 §7 |
 | 기존 범위와 owner gates 유지 | 복수 payee·영업일 배치·외부사실·법률 승인·제3자 투자·production 제외 |
 
 ## 6. Open risks
@@ -336,8 +269,6 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 
 ## 7. 후속 작업
 
-Supervisor는 이 문서를 지정 경로에 저장하고, 기존 결정 등록 관례에 따라 여덟 항목을 pending 소비자에 연결한다. 등록 API·파일 형식은 여기서 추정하지 않는다.
+등록은 완료했으며 소비자 구현은 후속 노드에 남긴다. Supervisor가 최종 결정문을 저장한다. 후속 구현은 기존 참여 조건의 정확한 출처를 고정하고 경계일, 같은 날 순서, 홀더 부족, 상계 예산 중복, cap 후 환수, 음의 보정과 나머지, 중복 충돌, 용량 거절을 검증한다. 새 vectors가 생기면 `scripts/docs_surface.py`의 수동 목록과 README needles도 함께 반영한다.
 
-후속 구현은 기존 참여 조건의 정확한 출처를 고정하고 경계일, 같은 날 순서, 홀더 부족, 상계 예산 중복, cap 후 환수, 음의 보정과 나머지, 중복 충돌, 용량 거절을 검증한다. 새 vectors가 생기면 `scripts/docs_surface.py`의 수동 목록과 README needles도 함께 반영한다.
-
-저장·등록 후 `python3 scripts/decision_ledger.py --check`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check`를 실행해 실제 결과를 기록한다. 이번 읽기 전용 작업에서는 해당 스크립트를 열거나 실행하지 않았으므로 **통과를 주장하지 않는다**. parked multi-payee 입력과 기존 `PENDING_OWNER_ACTION` gates는 변경하지 않는다.
+2026-11-01 로컬 검증: `python3 scripts/decision_ledger.py` exit 0, `python3 scripts/decision_bindings.py --check` exit 0, `python3 scripts/docs_surface.py --check` exit 0. Ledger는 `--check`를 지원하지 않아 해당 시도는 exit 2였으며, 지원되는 기본 명령으로 확인했다. 검사는 문서·등록 유효성을 확인하며 재생 구현 완료나 vendor FSM 적합성을 증명하지 않는다. pack vectors와 parked multi-payee 입력, 기존 `PENDING_OWNER_ACTION` gates는 변경하지 않는다.
