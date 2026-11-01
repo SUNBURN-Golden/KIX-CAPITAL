@@ -9,7 +9,7 @@
 - 선행: `shadow-participation-slice-uc`, `claim-slice-registry`, `sim-clock-ledger`
 - 예정 소비자: `participation-window-replay` — **PENDING_IMPLEMENTATION**
 
-시뮬레이션·제품 설계만을 위한 결정이다. 실자금은 없으며 production은 **`NOT_AUTHORIZED`**다. `ADOPTED`는 이 문서의 잠정 제품 선택이며 upstream 채택이나 구현 완료가 아니다. 청약 라벨 `SIMULATION_ONLY_NOT_OFFERED_V1`과 제3자 투자·토큰화 슬라이스의 `NOT_ADOPTED` 상태를 유지한다.
+시뮬레이션·제품 설계만을 위한 결정이다. 실자금은 없으며 production은 **`NOT_AUTHORIZED`**다. 개별 항목의 `ADOPTED`는 잠정 제품 선택이며 upstream 채택이나 구현 완료가 아니다. 문서 전체 상태는 `PROVISIONAL_PRODUCT_DECISION`이다. 청약 라벨 `SIMULATION_ONLY_NOT_OFFERED_V1`과 제3자 투자·토큰화 슬라이스의 `NOT_ADOPTED` 상태를 유지한다.
 
 작성 provenance: 이 문서는 Codex가 작성했다. 위 모델명과 아래 `decided_by`·`provided_by`는 supervisor가 요구한 지정 귀속 문자열이다. Claude CLI 실행, Sonnet 심의, 세 번의 실패 또는 Fable 인계가 실제 발생했다는 증거는 없으며 이를 주장하지 않는다.
 
@@ -17,7 +17,7 @@
 
 ## 1. 결정 요약
 
-아래 CAP 연결은 이 결정의 추적 대상이다. 현재 CAP 구현 완료나 상위 바인딩을 뜻하지 않는다. 소비자 `replay`는 모두 예정 노드 `participation-window-replay`를 가리킨다.
+아래 CAP 연결은 추적 대상이며 현재 구현 완료나 상위 바인딩을 뜻하지 않는다. `replay`는 예정 노드 `participation-window-replay`다.
 
 | item | 결정 | CAP rows | consumer |
 |---|---|---|---|
@@ -42,11 +42,11 @@
 
 북 manifest는 `book_id`, `agreement_id`, 단일 `beneficiary_id`, 참여 조건 출처, 고정 claim 목록, 시작일 `S`, 종료일 `T`, 관측일 `as_of_day`를 가진다. 금액은 이미 분류된 합성 KRW 정수다. 외부 매출·결제·환불 사실을 조회하거나 새로 분류하지 않는다.
 
-각 claim은 북에서 하나의 명세서에만 속하고 하나의 `ORIGINAL` 사건을 가진다. 동일 원천 금액을 다른 claim ID로 중복 투입하지 못하도록 `source_amount_id`도 북 전체에서 유일해야 한다. 각 claim의 단일 수익자는 manifest 수익자와 일치해야 한다.
+각 claim은 북에서 하나의 명세서에만 속하고 하나의 `ORIGINAL` 사건을 가진다. 동일 원천 금액의 중복 투입을 막기 위해 `source_amount_id`도 북 전체에서 유일해야 한다. 각 claim의 단일 수익자는 manifest 수익자와 일치해야 한다.
 
 사건 종류는 `ORIGINAL`과 `ADJUSTMENT`뿐이다. 보정은 원 사건 ID와 동일 claim·명세서를 참조하고, 기존 분류를 유지한 **대체 금액**을 제출한다. delta는 재생기가 계산한다. 음수 금액, 원 사건 없는 보정, 분류 변경, 미등록 claim, 중복 원천 또는 소급 멤버 추가는 북 전체를 거절한다.
 
-보호 줄·플랫폼 수수료·환불 준비금은 별도 제외액이다. 이 북에서 이 금액을 참여 가능 잔여로 전환하는 사건은 지원하지 않는다.
+보호 줄·플랫폼 수수료·환불 준비금은 별도 제외액이다. 이 금액을 참여 가능 잔여로 전환하는 사건은 지원하지 않는다.
 
 ### 3.2 `statement_anchor_and_day_order`
 
@@ -60,7 +60,7 @@
 
 ### 3.3 `advance_slice_priority_inputs`
 
-각 claim에는 서로 겹치지 않는 원천 범위, 합성 홀더 우선 청구액 `H_due`, 잔여에만 적용 가능한 선지급 상계액 `A_due`를 고정한다. 같은 선지급의 claim별 상계 예산 합은 그 선지급의 입력 잔액을 넘을 수 없다. 우선순위·담보 범위가 불명확하거나 중복되면 추측하지 않고 `PRIORITY_INPUT_CONFLICT`로 거절한다.
+각 claim에는 서로 겹치지 않는 원천 범위, 합성 홀더 우선 청구액 `H_due`, 잔여에만 적용 가능한 선지급 상계액 `A_due`를 고정한다. 같은 선지급의 claim별 상계 예산 합은 그 선지급의 입력 잔액을 넘을 수 없다. 우선순위·담보 범위가 불명확하거나 중복되면 `PRIORITY_INPUT_CONFLICT`로 거절한다.
 
 보호·수수료·준비금을 제외한 분류액을 `Q`라 할 때:
 
@@ -69,9 +69,9 @@
 - 참여 기초 `N = Q − H − A`
 - 참여 배정 `E`와 수익자 잔여 `R`는 `N = E + R`
 
-홀더 몫은 합성 내부 역할이며 제3자 투자를 채택하지 않는다. 선지급 상계가 홀더 몫을 침범하지 않으며, 상계·홀더 지급으로 사용한 금액을 참여 기초에 다시 넣지 않는다. 보정은 원 사건의 고정 우선권 입력으로 이 분해를 다시 계산하고 이전 결과와의 차이를 표시한다. 미상계·미충족 잔액은 진단으로 남기며 다른 claim으로 자동 이동하지 않는다.
+홀더 몫은 합성 내부 역할이며 제3자 투자를 채택하지 않는다. 상계·홀더 지급으로 사용한 금액을 참여 기초에 다시 넣지 않는다. 보정은 원 사건의 고정 우선권 입력으로 분해를 다시 계산하고 이전 결과와의 차이를 표시한다. 미상계·미충족 잔액은 진단으로 남기며 다른 claim으로 자동 이동하지 않는다.
 
-예를 들어 두 claim의 분해는 다음과 같다. 숫자는 산술 전용 합성 단위다. 이 예시와 아래 경계·한도·나머지 예시는 모두 `UNSUPPORTED_BY_PINNED_FSM`인 로컬 제품 산술이며 vendor FSM 실행·대사 결과가 아니다. 참여 배정은 명세서 합계에서만 계산하며 claim별 참여자 배분을 만들지 않는다.
+다음 숫자는 산술 전용 합성 단위다. 이 예시와 아래 경계·한도·나머지 예시는 모두 `UNSUPPORTED_BY_PINNED_FSM`인 로컬 제품 산술이며 vendor FSM 실행·대사 결과가 아니다. 참여 배정은 명세서 합계에서만 계산하며 claim별 참여자 배분을 만들지 않는다.
 
 | claim | 총 분류액 | 보호 | 수수료 | 준비금 | Q | H | A | N |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -83,7 +83,7 @@
 
 ### 3.4 `adjustment_window_boundary`
 
-보정 가능 조건은 정확히 **`0 ≤ adjustment_day − anchor_day ≤ 90`**이다. anchor 당일 보정과 그 뒤 90개 논리 일의 보정을 허용한다. 따라서 날짜값으로는 91개가 포함되며, `anchor + 90`일 종료 후 닫힌다. `anchor + 91`부터 결과는 `OUTSIDE_WINDOW`다.
+보정 가능 조건은 정확히 **`0 ≤ adjustment_day − anchor_day ≤ 90`**이다. anchor 당일과 그 뒤 90개 논리 일의 보정을 허용한다. 날짜값으로는 91개가 포함되며, `anchor + 90`일 종료 후 닫힌다. `anchor + 91`부터 결과는 `OUTSIDE_WINDOW`다.
 
 창 밖 사건은 입력 digest와 진단에 포함하지만 기존 명세서 금액·나머지·한도를 변경하지 않는다. 재명세서화나 새 사건 ID로 창을 우회할 수 없다.
 
@@ -117,7 +117,7 @@
 
 각 명세서에서 현재 claim별 참여 기초의 합을 `N_s`라 한다. 정수 bps 참여율을 사용하여 `U_s = (N_s × r) // 10000`, `carry_s = (N_s × r) % 10000`으로 계산한다. 부동소수점과 claim별 선반올림은 금지한다.
 
-나머지는 동일 명세서의 다음 사건으로 이월하며 보정 때 합계에서 다시 계산한다. 예를 들어 설명용 10%에서 기초 7과 7은 각각 절사하지 않고 합계 14에서 참여 1, 나머지 4,000을 만든다. 다른 명세서·계약으로 나머지를 이전하지 않는다. 창 종료 시 나머지를 진단에 보존하고 지급액으로 올림하지 않는다.
+나머지는 동일 명세서의 다음 사건으로 이월하며 보정 때 합계에서 다시 계산한다. 설명용 10%에서 기초 7과 7은 각각 절사하지 않고 합계 14에서 참여 1, 나머지 4,000을 만든다. 다른 명세서·계약으로 나머지를 이전하지 않는다. 창 종료 시 나머지를 진단에 보존하고 지급액으로 올림하지 않는다.
 
 동일 `event_id`와 동일 정규화 payload는 한 번만 처리한다. 같은 ID의 다른 payload는 `DUPLICATE_CONFLICT`로 북 전체를 거절한다. 다른 ID로 반복한 동일 대체 금액은 차이가 0이므로 추가 배정을 만들지 않는다. 입력 재배열은 결과를 바꾸지 않지만 sequence 변경은 의미 변경이므로 digest도 달라진다.
 
@@ -135,9 +135,9 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 
 필수 라벨은 `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE`, `SHADOW_NOT_APPLIED`, `UNSUPPORTED_BY_PINNED_FSM`, `SIMULATION_ONLY_NOT_OFFERED_V1`, `fsm_expressible:false`, `vendor_fsm_reconciliation:false`, `funds_executed:false`, `persistent_commands:false`, `automatic_payouts:false`, `production:NOT_AUTHORIZED`, `upstream_adoption_claimed:false`다. 로컬 digest는 인증·체인 확정·회계 증빙을 뜻하지 않는다.
 
-리뷰가 제공한 선행 참여 정책 분류에 따라 cross-claim 계산·참여 배정·cap 추적은 **`UNSUPPORTED_BY_PINNED_FSM`**이다. 여덟 선택 전체는 이 로컬 재생 계약의 일부로 `fsm_expressible:false`를 기록한다. `SHADOW_NOT_APPLIED`는 적용하지 않았다는 뜻이고, FSM 비지원은 표현할 수 없다는 별도 분류다. 문서 채택·바인딩 검사 통과로 이 분류가 바뀌지 않는다.
+리뷰가 제공한 선행 참여 정책 분류에 따라 cross-claim 계산·참여 배정·cap 추적은 **`UNSUPPORTED_BY_PINNED_FSM`**이다. 여덟 선택 전체에 `fsm_expressible:false`를 기록한다. `SHADOW_NOT_APPLIED`는 미적용, FSM 비지원은 표현 불가능이라는 별도 분류다. 문서 채택·바인딩 검사 통과로 이 분류가 바뀌지 않는다.
 
-`tests/decision_bindings.json`의 기존 형식에 맞춰 여덟 행을 실제 등록했다. 모두 `kind:module`, `status:PENDING_CONSUMER`, `consumer_node:participation-window-replay`이며, reason에 기존 통합 앵커일 뿐 해당 구현은 미완료임을 명시한다. 구현 상태는 계속 `PENDING_IMPLEMENTATION`이다.
+제공된 이전 라운드 문서와 리뷰에 따르면 `tests/decision_bindings.json`에 여덟 행이 등록되어 있다. 모두 `kind:module`, `status:PENDING_CONSUMER`, `consumer_node:participation-window-replay`이며 reason은 기존 통합 앵커와 미완료 구현을 구분한다. 구현 상태는 계속 `PENDING_IMPLEMENTATION`이다.
 
 | entry | 기존 integration anchor | 미구현 내용 |
 |---|---|---|
@@ -150,7 +150,7 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 | `disposable_replay_bounds` | `capital/service.py` | 제한된 일회성 재생 |
 | `provenance_and_output_labels` | `capital/export.py` | 재생 출처·FSM 비지원 출력 |
 
-앵커 경로는 등록 파일에서 확인했으며 구현 파일을 열거나 수정하지 않았다. 특히 overlay 앵커는 영속 append를 승인하지 않고 export 앵커는 legacy export construction 변경을 승인하지 않는다.
+이번 개정에서는 구현 파일을 열거나 수정하지 않았다. overlay 앵커는 영속 append를, export 앵커는 legacy export construction 변경을 승인하지 않는다.
 
 ## 4. 기계 판독 결정 블록
 
@@ -158,12 +158,13 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 {
   "schema": "capital-decision-v1",
   "decision_id": "participation-window-decision",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-01",
   "provisional": true,
   "bases": {"capital_main": "c4114c7", "kix_protocol_main": "fd33335", "verification": "SUPERVISOR_SUPPLIED"},
   "execution_provenance": {"document_author": "Codex", "model_attribution": "SUPERVISOR_REQUIRED", "claude_cli_execution_verified": false},
-  "consumer_registration": {"target": "participation-window-replay", "status": "PENDING_CONSUMER", "implementation_status": "PENDING_IMPLEMENTATION", "registry": "tests/decision_bindings.json", "entry_count": 8, "registration_applied": true},
+  "consumer_registration": {"target": "participation-window-replay", "status": "PENDING_CONSUMER", "implementation_status": "PENDING_IMPLEMENTATION", "registry": "tests/decision_bindings.json", "entry_count": 8, "registration_applied": true, "verification": "SUPERVISOR_REVIEW_SUPPLIED"},
   "entries": {
     "event_claim_membership": {
       "status": "ADOPTED",
@@ -253,22 +254,24 @@ V1은 계약 1개·수익자 1명, claims 최대 32개, 명세서 최대 16개, 
 
 | 기준 | 대응·현재 상태 |
 |---|---|
-| 여덟 결정과 단일 기계 판독 블록 | §3·§4, 모두 잠정 `ADOPTED` |
+| 여덟 결정과 단일 기계 판독 블록 | §3·§4, 항목은 잠정 `ADOPTED`; 최상위 상태는 `PROVISIONAL_PRODUCT_DECISION` |
 | 멤버십·정체성·순서·90일 경계 | §3.1–3.2·3.4, 89/90/91일 독립 예시 |
 | 상계·홀더 우선·참여 보존 | §3.3–3.4, 제외액 포함 합계 대사 |
 | 한도·환수·나머지·일회성 북 | §3.5–3.7 |
 | FSM 표현 가능성 | §3.3·3.8·§4, 모두 `UNSUPPORTED_BY_PINNED_FSM`; 합성 산술과 vendor 대사 구분 |
-| pending 소비자 등록과 검사 | 여덟 `PENDING_CONSUMER` 행 등록; 검사 결과는 §7 |
+| pending 소비자 등록과 검사 | 제공 리뷰가 여덟 `PENDING_CONSUMER` 행 확인; 검사 provenance는 §7 |
 | 기존 범위와 owner gates 유지 | 복수 payee·영업일 배치·외부사실·법률 승인·제3자 투자·production 제외 |
 
 ## 6. Open risks
 
 기존 참여 조건의 정확한 값·필드와 전체 슬라이스 우선권 규칙은 제공 발췌만으로 확인할 수 없다. 구현자는 원문과 충돌하면 영향을 받는 계산을 중단하고 별도 후속 결정으로 해결해야 한다. 이 문서로 기존 조건을 묵시적으로 덮어쓰지 않는다.
 
-비회전 한도는 환수 후 순참여액이 한도보다 낮아지는 결과를 의도적으로 허용한다. 창 밖 차이는 미해결 진단이며 회계·법률상 면책을 뜻하지 않는다. 계정·세무·법률 취급은 계속 전문가 검토 전 작업 가정이다.
+비회전 한도는 환수 후 순참여액이 한도보다 낮아지는 결과를 의도적으로 허용한다. 창 밖 차이는 미해결 진단이며 회계·법률상 면책을 뜻하지 않는다. 계정·세무·법률 취급은 **전문가 검토 전 작업 가정(`WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`)이며 법률·세무·회계 자문이 아니다.**
 
 ## 7. 후속 작업
 
-등록은 완료했으며 소비자 구현은 후속 노드에 남긴다. Supervisor가 최종 결정문을 저장한다. 후속 구현은 기존 참여 조건의 정확한 출처를 고정하고 경계일, 같은 날 순서, 홀더 부족, 상계 예산 중복, cap 후 환수, 음의 보정과 나머지, 중복 충돌, 용량 거절을 검증한다. 새 vectors가 생기면 `scripts/docs_surface.py`의 수동 목록과 README needles도 함께 반영한다.
+Supervisor가 최종 결정문을 저장한다. 이번 개정은 최상위 `status:PROVISIONAL_PRODUCT_DECISION`을 추가하여 항목 상태의 roll-up 문제를 해소하고, 비자문 문구를 명시한다. 여덟 제품 선택과 pending 소비자 등록은 유지한다.
 
-2026-11-01 로컬 검증: `python3 scripts/decision_ledger.py` exit 0, `python3 scripts/decision_bindings.py --check` exit 0, `python3 scripts/docs_surface.py --check` exit 0. Ledger는 `--check`를 지원하지 않아 해당 시도는 exit 2였으며, 지원되는 기본 명령으로 확인했다. 검사는 문서·등록 유효성을 확인하며 재생 구현 완료나 vendor FSM 적합성을 증명하지 않는다. pack vectors와 parked multi-payee 입력, 기존 `PENDING_OWNER_ACTION` gates는 변경하지 않는다.
+제공된 이전 라운드 문서는 2026-11-01에 `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check`가 각각 exit 0이었다고 보고했다. Ledger의 `--check` 시도는 exit 2였으며 지원되는 기본 명령으로 확인했다고 기록했다. **이번 문서 출력 라운드에서는 명령을 재실행하지 않았다.** 저장 후 동일 검사와 결정 표면의 잠정 상태 확인이 필요하다. 이전 검사 결과를 이번 개정 바이트의 통과 증거로 간주하지 않는다.
+
+후속 소비자는 기존 조건 출처를 고정하고 경계일, 같은 날 순서, 홀더 부족, 상계 예산 중복, cap 후 환수, 음의 보정과 나머지, 중복 충돌, 용량 거절을 검증한다. 새 vectors에는 `scripts/docs_surface.py` 수동 목록과 README needles를 함께 반영한다. pack vectors, parked multi-payee 입력과 기존 `PENDING_OWNER_ACTION` gates는 이번 개정으로 변경하지 않는다. 문서·등록 검사는 재생 구현 완료나 vendor FSM 적합성을 증명하지 않는다.
