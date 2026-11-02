@@ -1,5 +1,71 @@
 # Capital local API and future integration
 
+## Offline portfolio comparison contract
+
+`python3 -m capital.portfolio_compare --before DIR_A --after DIR_B` reads each explicit
+`workspace.json` once. `audit_workspace_bytes(raw, workspace=...)` audits those same
+bytes with the existing audit stages; both audits are attempted. The comparator uses
+`evidence.offline_service` with save-forbidden memory storage and detached
+`portfolio_snapshot.FrozenInputs`, then recomputes `risk.build` and `covenants.build`.
+It opens no FileWorkspace, lock or signing key and creates no directory. No HTTP/UI
+surface, collection, import/resume, forecast, what-if model or history database is added.
+Python callers can use `capital.portfolio_compare.compare_workspaces(before_dir,
+after_dir)` to obtain the same report dict. Each argument is an explicit snapshot
+directory; no live workspace service or signing material is required.
+
+The canonical sorted-key JSON format is `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1`, labeled
+`SIMULATED`. `inputs.before` and `inputs.after` each carry `workspace_sha256`,
+`payload_sha256`, the full `audit`, `state_digest`, `overlay_state_digest`, `sim_day`,
+`fixtures_digest`, `policy_inputs_digest`, `inputs_digest`, `risk_digest` and
+`covenant_digest`. Unavailable digests are null. Existing snapshot digest recipes are
+reused: `fixtures_digest` hashes fixture rows; compatibility also compares profiles,
+beneficiary mappings and projection IDs. `policy_inputs_digest` includes loaded terms,
+overlay bounds and the frozen-input assumptions. These hashes identify comparison-time
+local inputs; workspace envelopes do not archive complete historical fixtures/policy.
+No timestamp/session ID is generated in the report; existing audit envelope metadata
+is retained. Repeated comparisons of unchanged files/local inputs emit identical bytes.
+
+`comparability.checks` is ordered and contains `{id, side, status, reason, entries}`.
+Status is `MATCHED`, `MISMATCH` or `NOT_CHECKED` for dependent unavailable checks.
+Both sides explicitly require these entries to exist and be usable `ADOPTED` values
+after DecisionNoteTermsPolicy loading: `interest_rate`, `term`,
+`default_loss_treatment`, `reserve`, `additional_margin`, `underwriting_depth`.
+Missing names are `REQUIRED_POLICY_ENTRY_MISSING`; unusable names are
+`REQUIRED_POLICY_ENTRY_UNUSABLE`. Neither top-level BOUND nor matching hashes nor
+an empty book replaces this gate. Overlay bounds and risk terms must be usable.
+Applicable drawn tiers must supply `margin_terms`, including cure/rate/payee inputs;
+otherwise `APPLICABLE_MARGIN_TERMS_UNUSABLE`. No-matching-tier rows retain their
+legitimate `NOT_APPLICABLE` semantics; uncovered nonzero reserve exposure fails.
+Fees/forecast readiness is not a comparison requirement.
+An audited draw receipt can still lack usable nested result/gate evidence; absent,
+malformed, empty or non-string gates yield `DRAW_RECEIPT_GATE_MISSING` and leave
+dependent views `NOT_CHECKED`.
+
+Both recomputed views must be BOUND and reconciled, with complete risk reserve
+calculation coverage. Covenant reserve-pool funding/coverage legitimately remains
+`NOT_BOUND`. Pair checks require identical fixture inputs and policy-input digests,
+nondecreasing sim_day, canonical F04/overlay prefixes (legacy v1 overlay is empty),
+new overlay entries at `after_journal_index >= len(before F04 journal)`, stable existing
+advance mappings and draw-receipt gates, and recorded terms bindings compatible with
+loaded terms. Any failure gives `status: NON_COMPARABLE`, `changes: null`, and exit 1.
+Argument misuse exits 2; comparable results exit 0.
+
+`changes.advances` joins sorted drawn IDs, retaining presence, endpoint beneficiary,
+phase, exposure, maturity/aging, reserve class/requirement, covenant status, original
+reasons and margin facts. `watch_change` reports entry, exit and changed reasons.
+`changes.beneficiaries` aggregates by synthetic beneficiary_role.
+`changes.totals` and beneficiary rows contain `before`, `after` and `delta` for
+outstanding/reserve, maturity/aging-bucket exposure and watch-status counts. Deltas
+are after minus before, using zero for absent additive measures only; categorical
+endpoints remain null if absent. Per-advance reserves use existing integer floor
+arithmetic. `changes.reconciliation` checks endpoint views, beneficiary totals and all
+additive deltas; ratios and categorical transitions are never summed.
+
+The report describes observed differences only. `historical_policy_provenance`,
+`authentication`, `common_ownership` and `actual_payments` are `NOT_BOUND`;
+`funds_executed` and `workspace_mutated` are false. No payment, causal explanation,
+authenticated ownership, reserve booking or new accounting policy is inferred.
+
 ## Observation fixture seam
 
 `ObservationPort` exposes `fold(facts, *, bindings) -> dict`; `LocalFakeObservation`
@@ -80,7 +146,7 @@ before verification. Never use fixture keys outside tests.
 - `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, `terms` (a `{status, reason, terms_version, notes_source, note_sha256}` snapshot of the decision-note overlay, where `status` is `BOUND`, `PARTIAL` or `NOT_BOUND`, `reason` is null unless `NOT_BOUND`, and `terms_version` is the note's version or null), pinned source, `assets`, local CSRF token, capacity, workspace status and undecided capabilities. `assets` is an array of exactly one entry, the declared KRW AssetSpec `{namespace: "fiat", reference: "KRW", decimals: 0, max_atoms: 1000000000000}` (declared once in `capital/assets.py`; PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` section 3.6). `max_atoms` is the pinned FSM `MONEY_MAX` fixture bound, not a registry limit. There is no asset registry (DEFERRED), no FX (NOT_ADOPTED) and no second asset; amounts stay integers in that one asset. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery. The claim table `tests/read_model_claims.json` maps this route's case views to the pinned upstream draft `docs/contracts/READ_MODEL_QUERIES.md` `get_credit_advance` (checked by `scripts/read_model_claims_check.py`, label CLAIM_CONFORMANCE); the route itself is unchanged.
 - `POST /api/commands`: strict `{instance_id, operation_id, op, advance_id, args}` plus the optional `proposal_id` and the optional `asset`. `asset`, when present, must equal the declared KRW AssetSpec exactly (every field and its type; a bare `"KRW"`, a float or boolean in place of an integer, an extra or missing key all fail). Any other value is `400 ASSET_MISMATCH`, checked after the role check and `SESSION_CHANGED` and before the idempotency lookup, so a mismatch writes no journal entry and no receipt, leaves `state_digest` unchanged, and `GET /api/operations/{id}` still answers `UNKNOWN`. A body that carries the declared asset is applied exactly as one without it. `asset` is not echoed into the receipt. ID must start `sim-`; operation identity is immutable. `X-Capital-Token` from the same process and `Content-Type: application/json` required. The token is the role bound by `POST /api/session` (the process starts with the organizer token). Maximum request 8192 bytes; maximum retained operations 500 (demo resource bound, not financial policy).
 - `POST /api/session`: (opt-in `--authorizer fake-idp` also requires `Authorization: Bearer` from `scripts/fake_idp.py`; label `LOCAL_FAKE_IDP`, identity stays `NOT_BOUND`) strict `{role}` where `role` is `organizer`, `auditor`, `observer`, or `agent`. Requires a token already bound to some synthetic role, plus `Content-Type: application/json`. Returns the process-local loopback token for that role. The same role returns the same token. The `agent` role returns the agent token for the simulated QUERY/PROPOSE lane (`SIMULATED_AGENT_GRANT`); the response still reports `agent_grant: NOT_BOUND`, and that token is denied every GET and every command (`403 ROLE_FORBIDDEN`). It holds only the five `agent:*` lane permissions (`agent:query_grant`, `agent:query_subject`, `agent:propose_action`, `agent:withdraw_proposal`, `agent:propose_grant_change`), so it cannot call `POST /api/session` itself. This does not change `operation_count` or `state_digest`. It is self-selection on loopback, not authentication.
-- `GET /api/operations/{operation_id}?instance_id=…`: original ACCEPTED/REJECTED receipt, UNKNOWN if absent. An absent receipt never authorizes a retry. Session mismatch is 409.
+- `GET /api/operations/{operation_id}?instance_id=…`: original ACCEPTED/REJECTED receipt, UNKNOWN if absent. An absent receipt never authorizes a retry. Session mismatch is 409. The claim table `tests/readiness_claims.json` binds this route's stored-first-result and UNKNOWN semantics plus the loopback bind, lock and torn-file behaviors to the pinned `docs/contracts/READINESS_RUNTIME.md` boundary prose (`scripts/readiness_claims_check.py`, label CLAIM_CONFORMANCE, SIMULATED analogue — the upstream `readiness/` journal format is not vendored or implemented); the routes themselves are unchanged.
 - `GET /api/evidence`: read-only immutable settlement fixture values, per-view digest, source pin, missing live financial measures; no source cut or completeness invented. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`.
 - `GET /api/projection`: read-only local candidate. Permission `projection:read` (organizer and auditor; observer is forbidden). Omitted `mode` and `mode=simulation` project the accepted F04 journal plus the three immutable settlement views into `SIMULATION_FIXED_V1`. The envelope is `mode=LOCAL_PROJECTION_CANDIDATE`, `accounting_policy=SYNTHETIC_UNADOPTED`, `tax=NOT_BOUND`, `legal=NOT_BOUND`, `operating_ledger=NOT_BOUND`, `funds_executed=false`, `policy_adopted=false`, `workspace_mutated=false`. `cut` is the current `state_digest`. `mode=coa-candidate` returns the additive `CAPITAL-COA-V1` candidate (`mode=LOCAL_PROJECTION_COA_CANDIDATE`, chart `SIMULATION_FIXED_V2`, from `capital/coa.py`): 4-digit codes, dimensions (`asset`, `advance_id`, `claim_id`, `sim_day`, `chart_version`, `terms_version`) on each entry, KRW as the one declared AssetSpec, debit = credit per asset and `sim_day` in `balance_groups`, interest postings read from the overlay ledger (`1110` Dr / `4100` or `4110` Cr; after the accepted `default` the accrual goes to the `9700` memo with a candidate-only `9790` counter-memo and not to income), settlement claim face only in the `9100`/`9110` memo accounts, and `9150`/`9160` derived. A non-KRW asset is `ASSET_MISMATCH`. The labels stay `SYNTHETIC_UNADOPTED`, `tax=NOT_BOUND`, `legal=NOT_BOUND`, `operating_ledger=NOT_BOUND`, `policy_adopted=false`; it is not revenue-recognition adoption. The V1 response and the export manifest do not change. Any other mode, including `operating`, `ledger`, and `operating-ledger`, returns 400 `NOT_BOUND` and does not project. There is no POST. The handler reads copies only: receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This is not `fin-ledger-contract`, not revenue recognition, and not an operating ledger.
 - `GET /api/scenarios` and `/api/scenarios/{id}`: nine fixed F01–F03 fixtures, 35 replay steps with per-payee values, expected refusal and public conservation checks. Disposable books are separate from workspace state; GET does not append commands, receipts or reservations. No caller-provided policy or write endpoint. The two allocation orders and 500bps policy are explicit test fixtures, never a selected operating policy.

@@ -335,6 +335,13 @@ class HandbookTests(unittest.TestCase):
                 'capital/ce1_claims.py', 'capital/store.py',
                 '--protocol-dir', 'SKIPPED', 'tests/test_ce1_claims.py',
                 'upstream-claims'),
+            'readiness-runtime-claims': (
+                'tests/readiness_claims.json', 'KIX_CAPITAL_READINESS_CLAIMS_V1',
+                'scripts/readiness_claims_check.py --execute', 'CLAIM_CONFORMANCE',
+                'READINESS_RUNTIME', 'DOCUMENTED_DIVERGENCE',
+                'WORKSPACE_UNREADABLE', 'LOCAL_FILE_WORKSPACE',
+                'capital/readiness_claims.py', '--protocol-dir', 'SKIPPED',
+                'NOT_BOUND', 'tests/test_readiness_claims.py', 'upstream-claims'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')
@@ -355,7 +362,7 @@ class HandbookTests(unittest.TestCase):
         self.assertLess(
             unit_commands.index(next(c for c in unit_commands if 'discover' in c)),
             unit_commands.index(fence[0]))
-        self.assertEqual(len(upstream_commands), 6)
+        self.assertEqual(len(upstream_commands), 7)
         for argv in upstream_commands:
             self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
@@ -372,6 +379,7 @@ class HandbookTests(unittest.TestCase):
             self.assertEqual(positions, sorted(positions))
             self.assertIn('추가 명령', doc)
             self.assertIn('네 번째', doc)
+            self.assertIn('일곱 번째', doc)
             self.assertIn('tests/test_fsm_contract_claims.py', doc)
             self.assertIn('SKIPPED', doc)
 
