@@ -6,9 +6,9 @@
 
 시뮬레이션·제품 설계 전용이다. 청약이나 대출 제안이 아니며 실자금은 없다. production은 `NOT_AUTHORIZED`다. upstream 채택·완료, 인증, SEMANTIC_CONFORMANCE를 주장하지 않는다. 회계·세무·법무 입장은 선행 노트의 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`를 유지한다.
 
-노드 `policy-capsule-decision`의 deps는 `artifact-docs-bundling-decision`, `overlay-digest-export-decision`, `portfolio-history-comparison`이다. 위임 원문: “금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해.” 이번 수정 범위는 이 노트와 `tests/decision_bindings.json`의 여섯 등록 행이다. 실행 구현·기존 workspace·vendor·upstream pin은 변경하지 않는다.
+노드 `policy-capsule-decision`의 deps는 `artifact-docs-bundling-decision`, `overlay-digest-export-decision`, `portfolio-history-comparison`이다. 위임 원문: “금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해.” 허용 수정 범위는 이 노트, `tests/decision_bindings.json`의 여섯 등록 행과 `tests/vectors/pack/`의 합성 검증 자료다. 실행 구현·기존 workspace·vendor·upstream pin은 변경하지 않는다.
 
-읽기 근거는 제공된 팩과 리뷰, 허용된 등록부다. `CAPITAL_OVERLAY_DIGEST_EXPORT.md` 본문은 허용 읽기 범위 밖이라 열지 않았다. 실제 manifest 태그는 리뷰가 제공한 `KIX_CAPITAL_EXPORT_MANIFEST_V2|V3`를 사용한다. 기존 형식·금융 값은 선행 결정이 우선한다. 여기서 ADOPTED는 로컬 잠정 제품 결정이며 upstream 계약 채택을 뜻하지 않는다.
+읽기 근거는 제공된 팩과 리뷰, 등록부 및 직접 읽은 `CAPITAL_ARTIFACT_BUNDLING.md`·`CAPITAL_OVERLAY_DIGEST_EXPORT.md`의 ADOPTED 블록이다. 번들링 결정의 실제 입력 바이트별 출처·해시 규칙과 overlay 결정의 빈 overlay/V2·비어 있지 않은 overlay/V3 형식 구분을 따른다. 기존 형식·금융 값은 선행 결정이 우선하며, UNDETERMINED/DEFERRED 항목은 계속 `NOT_BOUND`다. 여기서 ADOPTED는 로컬 잠정 제품 결정이며 upstream 계약 채택을 뜻하지 않는다.
 
 ## 1. 결정 요약
 
@@ -49,7 +49,7 @@
 
 workspace 결합은 `workspace_id + manifest_format + manifest_sha256`다. 마지막 값은 **기존 export manifest 파일의 정확한 바이트**를 해시한 캡슐 필드이며 기존 스키마에 같은 필드가 있다고 가정하지 않는다. 기록된 workspace 식별자를 확보할 수 없으면 새 식별자를 역사적 값으로 꾸미지 않는다.
 
-workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류·출력은 그대로 둔다. 캡슐은 비교 입력의 필수 요소도, 기존 동등성 판정의 추가 조건도 아니다. 캡슐 검증 결과는 별도 결과다. 관련 pack 벡터를 새 정책에 맞춰 재생성하지 않는다.
+workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류·출력은 그대로 둔다. 캡슐은 비교 입력의 필수 요소도, 기존 동등성 판정의 추가 조건도 아니다. 캡슐 검증 결과는 별도 결과다. 역사 workspace나 기존 비교·manifest golden을 새 정책에 맞춰 재생성하지 않는다. `tests/vectors/pack/`은 현재 결정 노트의 실제 SHA256을 포함하는 SIMULATED 검증 자료이므로, 노트 변경 후 기존 `python3 scripts/pack_vectors.py --write`로 갱신한다. 이는 결정 섹션과 그 종속 해시·잘림 벡터를 동기화하는 작업이며 내장 export manifest·workspace audit·reconciliation·auth matrix의 본문은 보존한다. 변조 벡터의 한 바이트 변경과 기존 거부 판정도 유지한다.
 
 구 workspace에 manifest가 없으면 digest를 `null`로 남기고 `binding_note`에 이유를 적는다. 진단용 포착은 가능하지만 상태는 `INCOMPLETE`, workspace 검증은 `WORKSPACE_UNBOUND`다. 기록된 terms 바인딩의 부재도 명시한다. 현재 노트를 붙였다는 이유로 당시 바인딩이 생기지 않는다. 기존 기록은 변조하지 않으며, 그 기록이 실제로 참이었다는 인증도 부여하지 않는다.
 
@@ -106,7 +106,7 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
     "capital_main": "c4114c7",
     "kix_protocol": "41ace61"
   },
-  "unread_deps": "CAPITAL_OVERLAY_DIGEST_EXPORT.md was not opened; actual export-manifest tags come from the supplied review; prior decisions govern existing formats",
+  "dependency_policy": "Read CAPITAL_ARTIFACT_BUNDLING.md and CAPITAL_OVERLAY_DIGEST_EXPORT.md ADOPTED blocks; preserve actual-note source/hash disclosure, empty-overlay V2 and nonempty-overlay V3; UNDETERMINED/DEFERRED remain NOT_BOUND",
   "upstream_adoption_claimed": false,
   "entries": {
     "capsule_contents": {
@@ -314,11 +314,11 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
 | envelope·V2/V3·비교 불변 | §3.2; 추가형 사이드카만 |
 | 결정 등록 | §3.6; 여섯 `PENDING_CONSUMER` 행 |
 
-수정 후 검증: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check` 모두 exit 0. `python3 -m unittest discover -s tests -p test_decision_bindings.py -v`는 25개 테스트 통과(실제 트리·정렬 등록부 검사 포함). 이는 결정·등록 검증이며 정책 캡슐 구현 테스트의 통과를 의미하지 않는다.
+검증 명령: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check`, `python3 scripts/pack_vectors.py --check`, `python3 -m unittest discover -s tests -v`. pack 검증은 현재 노트 해시, 결정론적 재생성, clean/변조 자료의 기존 판정을 확인한다. 이는 결정·등록·기존 증거 pack 검증이며 정책 캡슐 구현 테스트의 통과를 의미하지 않는다.
 
 ## 6. Open risks
 
-- overlay export 선행 본문은 미독이다. 리뷰가 제공한 실제 태그를 반영했으며, 기존 필드의 구체적 추출 경로는 후속 구현에서 선행 결정과 대조한다.
+- 기존 필드의 구체적 추출 경로는 후속 구현에서 선행 결정 및 실제 workspace/manifest 바이트와 대조한다. 캡슐 결정 자체는 추출·재생 구현을 제공하지 않는다.
 - 정확한 노트 원문에는 민감한 override 내용이 있을 수 있다. 공개·자동 업로드를 하지 않으며, 원문을 제거한 산출물을 완전한 캡슐로 표시하지 않는다.
 - V1 크기 한도를 넘는 입력은 거부된다. 한도 확대는 버전·자원 검증과 함께 별도 검토한다.
 - 구 workspace의 부재 증거와 식별 불가능한 evaluator는 이 사이드카로 복원할 수 없다.
@@ -326,5 +326,5 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
 ## 7. 후속 작업
 
 1. `policy-capsule-capture`에서 오프라인 capture/verify와 §3.5의 실패 사례를 구현한다. 정확한 바이트 왕복, 결정론, 무변경 workspace, evaluator 불일치, 바인딩 충돌을 검증한다.
-2. 합성 fixture를 새로 커밋할 때 `scripts/docs_surface.py`와 README 등록을 함께 수행한다. 이번 수정에는 fixture나 pack 벡터 변경이 없다.
+2. 새 합성 fixture 경로를 추가할 때 `scripts/docs_surface.py`와 README 등록을 함께 수행한다. 이번 수정은 기존에 등록된 pack 경로만 동기화하며 새 fixture 경로를 추가하지 않는다.
 3. 소비 구현과 검증 영수증이 생긴 항목만 등록부 상태를 갱신한다. UI 표면과 역사 재생은 각각 별도 작업으로 남긴다.
