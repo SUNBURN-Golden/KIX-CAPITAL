@@ -1,92 +1,95 @@
-# Capital 정책 캡슐 결정 — 로컬 포착 금융 증거와 나란히 보존하는 정책 입력 사이드카
+# Capital 정책 캡슐 결정 — 로컬 금융 증거와 함께 보존하는 정책 입력
 
 **상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).**
-이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 청약이나 대출 제안이 아니고, 실자금이 움직이지 않으며, production은 계속 `NOT_AUTHORIZED`다. 어떤 upstream 계약의 채택도 주장하지 않고 SEMANTIC_CONFORMANCE도 주장하지 않는다. diff는 `docs/decisions/CAPITAL_POLICY_CAPSULE.md` 한 파일이고, `capital/`·`tests/`·vendor 바이트·골든·workspace envelope·기존 결정 노트의 상태 토큰은 건드리지 않는다.
+**결정자(선행 결정 기록): Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07).**
+**결정일: 2026-11-02 · KIX-CAPITAL main: `c4114c7` · kix-protocol: `41ace61` (supervisor pack 기준).**
 
-| 항목 | 값 |
-|---|---|
-| 결정 노드 | `policy-capsule-decision` (Decision: preserve policy inputs alongside locally captured financial evidence) · deps `artifact-docs-bundling-decision`, `overlay-digest-export-decision`, `portfolio-history-comparison` · kind `decision` · user_merge `False` |
-| 결정자 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
-| 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
-| 결정일 | 2026-11-02 |
-| KIX-CAPITAL 기준 | main `c4114c7` |
-| kix-protocol 기준 | `fd33335` (읽기 전용 `/workspace/capital-run/kixproto-ro`) |
-| 읽기 범위 | supervisor pack이 허용한 경로만 읽었다. deps 중 `CAPITAL_OVERLAY_DIGEST_EXPORT.md`는 허용 경로 밖이라 **직접 열지 않았다.** envelope 어휘(`WORKSPACE_ENVELOPE_V2|V3`, `manifest_sha256`, `workspace_id`)는 노드 명세와 허용 노트의 인용으로만 참조한다. **필드명이 충돌하면 선행 노트가 이기고, 캡슐 형식·판정 규칙은 이 노트가 이긴다.** |
-| 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. **UNDETERMINED** = 값을 정할 수 없어 이유만(`value: null`, 방향은 `target`). 여섯 항목 모두 ADOPTED다 |
+시뮬레이션·제품 설계 전용이다. 청약이나 대출 제안이 아니며 실자금은 없다. production은 `NOT_AUTHORIZED`다. upstream 채택·완료, 인증, SEMANTIC_CONFORMANCE를 주장하지 않는다. 회계·세무·법무 입장은 선행 노트의 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`를 유지한다.
+
+노드 `policy-capsule-decision`의 deps는 `artifact-docs-bundling-decision`, `overlay-digest-export-decision`, `portfolio-history-comparison`이다. 위임 원문: “금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해.” 이번 수정 범위는 이 노트와 `tests/decision_bindings.json`의 여섯 등록 행이다. 실행 구현·기존 workspace·vendor·upstream pin은 변경하지 않는다.
+
+읽기 근거는 제공된 팩과 리뷰, 허용된 등록부다. `CAPITAL_OVERLAY_DIGEST_EXPORT.md` 본문은 허용 읽기 범위 밖이라 열지 않았다. 실제 manifest 태그는 리뷰가 제공한 `KIX_CAPITAL_EXPORT_MANIFEST_V2|V3`를 사용한다. 기존 형식·금융 값은 선행 결정이 우선한다. 여기서 ADOPTED는 로컬 잠정 제품 결정이며 upstream 계약 채택을 뜻하지 않는다.
 
 ## 1. 결정 요약
 
-| item | 결정 (요지) | CAP rows | 소비 노드 / seam |
+| item | 결정 | CAP rows | consumer |
 |---|---|---|---|
-| `capsule_contents` | **ADOPTED.** `CAPITAL-POLICY-CAPSULE-V1`: 데이터 전용 JSON 사이드카. 노트 바이트 원문(base64)·`note_sha256`·경로, workspace 약속(`workspace_id`·`manifest_format`·`manifest_sha256`), evaluator 식별 블록. 실행 코드·evaluator 바이트·upstream 바이트는 들어가지 않는다 | CAP-15, CAP-20 | offline capture/verify 스크립트 후속 노드 |
-| `workspace_and_policy_binding` | **ADOPTED.** 캡슐은 추가형이다. workspace와는 `manifest_sha256`로만 묶이고 V2/V3 envelope·manifest·비교 산술 바이트는 절대 재작성하지 않는다. 정책과는 노트 원문 바이트+sha256로 묶인다 | CAP-14, CAP-15 | portfolio-history-comparison·export 표면 |
-| `capture_time_evidence_grade` | **ADOPTED.** 세 등급 어휘: `CAPTURE_TIME_POLICY_EVIDENCE`(캡슐의 유일한 주장) / `AUTHENTICATED_HISTORICAL_POLICY`(주장 안 함) / `ORIGINAL_DRAW_TIME_PROVENANCE`(주장 안 함, 구 workspace에 소급 출처 없음) | CAP-09, CAP-20 | 모든 캡슐 소비자·export 라벨 |
-| `evaluator_identity` | **ADOPTED.** 식별 = `{name, version, source_pin, notes_source, interface}`. `notes_source`는 번들링 노트의 열거(`CHECKOUT/BUNDLED_IN_ARTIFACT/OVERRIDE_FILE/NONE`)를 그대로 쓴다. 식별은 기술적(description)이지 인증·버전 승인이 아니다 | CAP-01, CAP-02 | terms-overlay·policy-simulator 조회 경로 |
-| `compatibility_and_refusal_rules` | **ADOPTED.** 캡슐 도중 노트 변경 → `CAPTURE_INCONSISTENT`; 노트 부재 → `INCOMPLETE`+`MISSING_NOTE`; evaluator 불일치 → `NOT_EVALUATED`; 기록된 terms 바인딩과 불일치 → `BINDING_DISAGREEMENT`+`REFUSE`. 기록된 바인딩이 역사적 사실로 우선하고 캡슐은 덮어쓰지 않는다 | CAP-04, CAP-20 | verify 경로 판정 표 |
-| `storage_and_consumption_scope` | **ADOPTED.** 첫 소비자는 **오프라인 포착+검증**뿐. 저장은 workspace export 옆 사이드카(`*.policy-capsule.json`)와 선택적 커밋 fixture. 라벨 `LOCAL_SIMULATION_ARTIFACT`/`SIMULATED`. 역사 재생(replay)의 전제조건은 별도 절에 기술하되 채택하지 않는다. CAP-11·CAP-16은 `NOT_BOUND` 유지 | CAP-11, CAP-15 | 후속 capture 노드·미래 replay 후보 |
+| `capsule_contents` | ADOPTED — `KIX_CAPITAL_POLICY_CAPSULE_V1`, 정확한 노트 바이트·해시·workspace 약속·evaluator 식별의 유계 데이터 JSON | CAP-15, CAP-20 | `policy-capsule-capture` |
+| `workspace_and_policy_binding` | ADOPTED — 기존 manifest 바이트와 기록된 terms 바인딩을 참조하는 추가형 사이드카 | CAP-14, CAP-15 | 오프라인 capture/verify |
+| `capture_time_evidence_grade` | ADOPTED — `CAPTURE_TIME_POLICY_EVIDENCE`만 주장; 인증된 역사·인출 시점 출처는 주장하지 않음 | CAP-09, CAP-20 | 모든 캡슐 소비자 |
+| `evaluator_identity` | ADOPTED — name/version/source_pin/notes_source/interface; 코드 미포함·자동 버전 수용 없음 | CAP-01, CAP-02 | 오프라인 verifier |
+| `compatibility_and_refusal_rules` | ADOPTED — 변경·부재·evaluator 차이·기록 바인딩 충돌을 분리하여 판정 | CAP-04, CAP-20 | 오프라인 verifier |
+| `storage_and_consumption_scope` | ADOPTED — 첫 소비자는 오프라인 포착·검증; 역사 재생은 별도 결정 | CAP-11, CAP-15 | `policy-capsule-capture` 후속 노드 |
 
-## 2. KIX 비전과의 연결
+## 2. KIX 비전 연결
 
-읽은 팩 경로와 적용이다(인용은 이 팩의 경로로 한정).
-
-- **기록과 재생의 필수 분리.** `/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md`의 승인 A-4 — "과거 사실 재생은 새로운 외부 실행 허가가 아니"고 "과거에 유효했던 약정은 당시 의미와 증거로 복원"한다 — 이 `capture_time_evidence_grade`의 정본이다. 캡슐은 *기록*이지 *재생 허가*가 아니다.
-- **권위 모델 경계.** 같은 문서와 `/workspace/capital-run/kixproto-ro/README.md`(모델 1: 체인 권위/오프체인 위임 실행, 실자금·체인 보증 없음)는 캡슐이 오프체인 증거이며 온체인 권위·인증을 주장하지 않는 근거다.
-- **번들링·라벨 선행.** `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md`의 `notes_source` 열거와 `note_sha256` 표면·`RELEASE-MANIFEST.json` per-file SHA256 규칙을 `evaluator_identity`와 캡슐 다이제스트에 그대로 재사용한다. `signed:false`·`published:false`·`LOCAL_SIMULATION_ARTIFACT` 라벨도 계승한다.
-- **결정론적 다이제스트 선행.** `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`의 "per-run 필드를 제거한 결정론적 다이제스트" 패턴을 캡슐의 `volatile` 분리에 적용한다.
-- **비교·envelope 불변.** `docs/VALIDATION.md`의 portfolio history comparison(워크스페이스 비교는 fixture 게이트, 바이트 보존)이 `workspace_and_policy_binding`의 "envelope·manifest·비교 의미론 불변" 조건이다.
-- **정직 라벨.** `docs/decisions/CAPITAL_DEMO_BOOK.md`의 `SYNTHETIC_*` 라벨 규칙과 `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`의 `WORKING_ASSUMPTION` 태도를 캡슐 라벨에 따른다. `docs/SEAMS.md`·`docs/CAPITAL_REQUIREMENTS_KO.md`의 `NOT_BOUND` 어휘를 유지한다.
+- `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md` 팩의 노트 원문·per-file SHA256·`notes_source` 규칙을 따른다. 릴리스 전체 번들과 달리 증거 사이드카에는 정책 데이터만 보존한다. `signed:false`, `published:false`, `LOCAL_SIMULATION_ARTIFACT`를 유지한다.
+- `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md` 팩의 결정론적 다이제스트 목적을 적용하여 per-run 정보는 digest에서 분리한다. 로컬 산출물을 upstream 수용 영수증으로 취급하지 않는다.
+- `docs/VALIDATION.md`의 비교·입력 보존 원칙과 `docs/SEAMS.md`의 로컬 검증 경계를 따른다. 과거 자료를 수정하지 않고, 캡슐 유무가 기존 비교 결과를 바꾸지 않는다.
+- `docs/CAPITAL_REQUIREMENTS_KO.md`의 핀별 범위를 유지한다. `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`의 한도 출처 원칙에 따라 정책 숫자를 새 값으로 복사·재결정하지 않는다. 회계·법무 경계는 `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`의 작업 가정을 계승한다.
 
 ## 3. 항목별 결정
 
-공통 라벨: 모든 값은 `basis = PRODUCT_DECISION`, `provisional = true`다.
+### 3.1 capsule_contents
 
-### 3.1 capsule_contents (CAP-15, CAP-20)
+형식은 `KIX_CAPITAL_POLICY_CAPSULE_V1`, `capsule_version`은 `V1`이다. UTF-8 JSON 한 문서이며 필수 구성은 다음과 같다.
 
-- **값.** 형식 `KIX_CAPITAL_POLICY_CAPSULE_V1`, 단일 JSON 문서, UTF-8. 최상위 필드:
-  - `format`, `capsule_version`("V1"), `capsule_digest`(아래 digestible 부분집합의 canonical JSON SHA256).
-  - `subject`: `{workspace_id, manifest_format ∈ {WORKSPACE_ENVELOPE_V2, WORKSPACE_V3, OTHER}, manifest_sha256, export_digests[]}` — 모두 **참조**(digest)만, envelope 바이트 재포함 없음.
-  - `policy_inputs.notes[]`: `{path(repo-relative POSIX), note_sha256, bytes_len, encoding:"utf-8", bytes_b64, binding_role}`. 대상 집합은 **유계(bounded)**: 포착 표면이 해석하는 `docs/decisions/*.md` 결정 노트와 그 노트가 참조하는 coverage 문서만. 코드·fixture·vendor 바이트·실행물은 어떤 형태로도 포함하지 않는다.
-  - `policy_inputs.terms_bindings[]`: workspace 표면이 이미 기록한 바인딩(`note_sha256`, terms 버전 참조 예 `CAPITAL-TERMS-V1` **이름 인용만**, 숫자 복사 금지 — `한도 출처 규칙`과 같은 원칙).
-  - `evaluator`: §3.4.
-  - `capture`: `{tool, tool_version, volatile{…}}` — 시각·호스트·로컬 경로 등 per-run 값은 `volatile`에만 두고 `capsule_digest`에서 제외한다(closeout 다이제스트 선례).
-  - `evidence_grade`, `status`(§3.3, §3.5).
-- **근거.** "정확한 노트 바이트 + 해시 + workspace 약속 + evaluator 식별"이 수용 기준이 요구하는 최소 완전 집합이다. 바이트 원문을 넣되 유계 집합으로 제한하면 재현 검증이 가능하고 증거 안에 실행 코드가 섞이지 않는다.
-- **대안.** 해시만 기록: 노트가 체크아웃에서 사라지면 검증 불가라 기각. checkout 전체 스냅샷: 비유계·코드 혼입이라 기각.
+- `subject`: `workspace_id`, `manifest_format`, `manifest_sha256`, `export_digests[]`. 지원 manifest 태그는 `KIX_CAPITAL_EXPORT_MANIFEST_V2`, `KIX_CAPITAL_EXPORT_MANIFEST_V3`다. 각 export 참조는 `{path, sha256}`이며 기존 파일 바이트의 해시다. 원본 envelope나 manifest를 재직렬화하지 않는다.
+- `policy_inputs.notes[]`: `{path, note_sha256, bytes_len, encoding, bytes_b64, binding_role}`. `encoding`은 `utf-8`; base64는 정확한 원문 바이트를 보존한다. 줄바꿈·공백·BOM을 정규화하지 않는다. SHA256은 디코딩한 원문에 적용한다. 부재 항목은 별도 `missing_notes[]`에 path/expected_sha256/reason으로 남긴다.
+- 대상은 포착 표면이 사용하는 **명시적 노트 목록**과 참조된 `docs/CAP_COVERAGE.md`로 닫는다. 링크를 재귀 탐색하지 않는다. 노트 경로는 repo-relative POSIX이며 중복·절대경로·상위경로 탈출을 거부한다. 포함된 텍스트나 base64는 실행하지 않는다.
+- V1 한도는 노트 128개, 노트당 1 MiB, 디코딩된 원문 합계 8 MiB, 완성 JSON 16 MiB다. 한도 초과는 `CAPSULE_LIMIT_EXCEEDED`로 거부하며 자르거나 조용히 생략하지 않는다. 코드·fixture·vendor·evaluator 실행 바이트는 포함하지 않는다.
+- `policy_inputs.terms_bindings[]`에는 workspace가 **이미 기록한** 바인딩과 그 위치 참조만 보존한다. 정책 한도·비율을 독립 상수로 복사하지 않는다. 기록이 없으면 `null`과 이유를 남긴다. 노트 원문 속 숫자의 원형 보존은 새 정책 값의 채택이 아니다.
+- `evaluator`, `capture{tool,tool_version,volatile}`, `evidence_grade`, `explicit_non_claims`, `status`, `diagnostics`를 둔다. 시각·호스트·로컬 절대경로는 필요한 경우에만 `capture.volatile`에 둔다.
 
-### 3.2 workspace_and_policy_binding (CAP-14, CAP-15)
+`capsule_digest`는 자기 자신과 `capture.volatile`만 제외한 전체 문서의 SHA256이다. canonical 직렬화는 UTF-8, 객체 키 정렬, 공백 없는 구분자, `ensure_ascii=true`; float·중복 키를 거부한다. notes/missing_notes/export_digests는 path 순서, terms_bindings/diagnostics는 각 항목의 canonical JSON 바이트 순서로 정렬한다. 해시는 소문자 64자리 hex다. verifier는 원문 길이·base64·각 해시와 최종 digest를 각각 확인한다.
 
-- **값.** (1) 캡슐→workspace 결합은 `manifest_sha256` + `workspace_id` 한 쌍이다. V2/V3 manifest·envelope·`section-*`/`content-digest` 벡터·비교 산술은 **한 바이트도 바꾸지 않는다** — 캡슐은 옆에 놓이는 사이드카다. (2) 캡슐→정책 결합은 `notes[].note_sha256`과 `terms_bindings[]`의 digest 대조다. (3) envelope digest가 없는 workspace(구 fixture 등)는 `manifest_sha256: null` + `binding_note`를 기록하고 포착은 허용하되 검증 등급은 §3.3 상한을 넘지 않는다.
-- **근거.** 역사 workspace를 다시 쓰지 않는다는 노드 목적 그대로다. 추가형 결합만이 기존 비교 의미론을 보존한다.
-- **대안.** envelope 안에 캡슐 참조 삽입: 역사 바이트 재작성이라 기각.
+해시만 저장하면 노트가 사라졌을 때 입력을 복원하지 못한다. 전체 checkout을 저장하면 실행 코드가 섞인다. 이 유계 원문 집합을 최소 재현 입력으로 채택한다.
 
-### 3.3 capture_time_evidence_grade (CAP-09, CAP-20)
+### 3.2 workspace_and_policy_binding
 
-- **값.** `evidence_grade` 필드는 정확히 `CAPTURE_TIME_POLICY_EVIDENCE`다. 의미: "캡처 시점에 이 evaluator가 해석한 정책 입력이 이 바이트들이었다." 다음 둘은 **명시적 비주장** 라벨로 문서·필드에 남긴다: `AUTHENTICATED_HISTORICAL_POLICY: false`(서명·인증 없음), `ORIGINAL_DRAW_TIME_PROVENANCE: false`(인출 시점 출처 아님). 캡슐이 없던 과거 workspace는 어떤 소급 출처 주장도 받지 않는다 — 오늘 포착한 캡슐은 "포착일의 노트"를 증명할 뿐 "인출일의 노트"를 증명하지 않는다.
-- **근거.** A-4의 기록/재생 분리와 `signed:false` 번들 선행에 정확히 대응한다.
-- **대안.** "best-effort provenance" 중간 등급: 애매한 주장이 오독을 부르므로 기각 — 등급은 셋으로 닫는다.
+workspace 결합은 `workspace_id + manifest_format + manifest_sha256`다. 마지막 값은 **기존 export manifest 파일의 정확한 바이트**를 해시한 캡슐 필드이며 기존 스키마에 같은 필드가 있다고 가정하지 않는다. 기록된 workspace 식별자를 확보할 수 없으면 새 식별자를 역사적 값으로 꾸미지 않는다.
 
-### 3.4 evaluator_identity (CAP-01, CAP-02)
+workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류·출력은 그대로 둔다. 캡슐은 비교 입력의 필수 요소도, 기존 동등성 판정의 추가 조건도 아니다. 캡슐 검증 결과는 별도 결과다. 관련 pack 벡터를 새 정책에 맞춰 재생성하지 않는다.
 
-- **값.** `evaluator = {name, version, source_pin, notes_source, interface}`. `source_pin`은 체크아웃 main SHA 또는 아티팩트 manifest SHA256 중 캡처 경로가 실제로 쓴 것. `notes_source`는 `CAPITAL_ARTIFACT_BUNDLING`의 열거를 그대로 쓴다. **evaluator 실행 바이트는 넣지 않는다** — 식별은 "어떤 evaluator였는가"의 기술이지 그 버전의 정확성·승인이 아니다. 구 evaluator 결과의 자동 수용은 범위 밖(노드 명세)이며 이 항목은 그 자동 수용을 만들지 않는다.
-- **근거.** 재현성에는 "누가 읽었는가"가 필요하고, 코드 미포함에는 "바이트 대신 식별자"가 필요하다.
-- **대안.** evaluator 소스 해시만: 어떤 소스 트리의 해시인지 애매하므로 name+version+pin 셋을 채택.
+구 workspace에 manifest가 없으면 digest를 `null`로 남기고 `binding_note`에 이유를 적는다. 진단용 포착은 가능하지만 상태는 `INCOMPLETE`, workspace 검증은 `WORKSPACE_UNBOUND`다. 기록된 terms 바인딩의 부재도 명시한다. 현재 노트를 붙였다는 이유로 당시 바인딩이 생기지 않는다. 기존 기록은 변조하지 않으며, 그 기록이 실제로 참이었다는 인증도 부여하지 않는다.
 
-### 3.5 compatibility_and_refusal_rules (CAP-04, CAP-20)
+### 3.3 capture_time_evidence_grade
 
-- **값.** 판정 표(검증 verdict):
-  - 포착 중 노트 변경(읽기-해시-재읽기 불일치, 또는 `note_sha256` ≠ 기록된 바인딩): `status: CAPTURE_INCONSISTENT`로 발행하되 `mismatches[]`를 적고 검증 verdict `REFUSE_VERIFIED`. 어느 한 쪽을 조용히 선택하지 않는다.
-  - 기록된 바인딩이 가리키는 노트 부재: `MISSING_NOTE` 엔트리(`path`, `expected_sha256` 또는 `null`, 바이트 없음), `status: INCOMPLETE`, verdict `INCOMPLETE`. 조용한 생략 금지.
-  - verifier evaluator ≠ 캡슐 `evaluator`: `EVALUATOR_MISMATCH` → verdict `NOT_EVALUATED`. 명시적 거부이며 자동 수용이 아니다.
-  - 캡슐 `note_sha256` ≠ workspace 기록 terms 바인딩: `BINDING_DISAGREEMENT` → verdict `REFUSE`. **기록된 바인딩이 역사적 사실로 이기고** 캡슐은 그것을 덮어쓰지 않는다.
-  - 알 수 없는 `format`/`capsule_version`: `UNSUPPORTED_CAPSULE_VERSION` → 거부.
-  - `manifest_sha256`가 workspace와 불일치: `WORKSPACE_UNBOUND` → 거부.
-- **근거.** "무엇이 틀렸는가"를 verdict 이름으로 남기는 것이 조용한 통과보다 증거로 낫고, 기존 `REFUSE`/`NOT_EVALUATED` 류 거부 어휘와 맞는다.
+`evidence_grade`의 유일한 값은 `CAPTURE_TIME_POLICY_EVIDENCE`다. 이는 포착 과정에서 관찰한 정책 입력을 설명한다. 캡슐 자체의 해시 일치는 자기 일관성 검사이며, 독립적인 시각 증명·서명·인출 당시 정책 증명이 아니다.
 
-### 3.6 storage_and_consumption_scope (CAP-11, CAP-15)
+`explicit_non_claims`에는 `AUTHENTICATED_HISTORICAL_POLICY:false`, `ORIGINAL_DRAW_TIME_PROVENANCE:false`를 반드시 둔다. 과거 workspace에 오늘 캡슐을 붙여도 소급 출처는 없다. 부재·충돌 상태의 캡슐은 진단 기록이며 완전한 포착 증거로 승격하지 않는다. 유효 캡슐도 평가 결과의 옳음이나 실거래의 정당성을 보증하지 않는다.
 
-- **값.** (1) 첫 소비자는 **오프라인 포착 + 오프라인 검증**뿐이다. (2) 저장 위치: workspace export 산출물 옆 사이드카 `<workspace>.policy-capsule.json`; 재현 fixture는 `tests/vectors/` 아래 커밋 후보(구현 시 `scripts/docs_surface.py` 등록·README needle이 필요 — 저장소 검증 규칙). (3) 라벨 `LOCAL_SIMULATION_ARTIFACT`/`SIMULATED`; production·인증·보존기간 주장 없음. CAP-11(durable transactions)·CAP-16(producer tuple)은 `NOT_BOUND` 유지. (4) **후일 역사 재생(replay)의 전제조건 — 기술하되 채택하지 않음**: 서명된 manifest(인증된 노트 출처), evaluator 버전 레지스트리와 수용 정책, 구 노트→신 정책 마이그레이션 규칙, upstream 영수증. 넷 모두 이 노트 밖의 별도 결정이다.
-- **근거.** 범위를 offline capture/verify로 닫으면 결정 가능하고, replay 전제를 열거하면 다음 노드가 무엇을 닫아야 하는지 보인다.
-- **대안.** 지금 replay까지 정의: 인증·버전 수용이 범위 밖이라 기각.
+### 3.4 evaluator_identity
+
+`evaluator = {name, version, source_pin, notes_source, interface}`를 보존한다. `source_pin`은 종류와 값을 함께 기록한다. 실제 사용한 소스 commit 또는 릴리스 manifest SHA256이며, 단순히 현재 main을 넣지 않는다. 변경된 작업 트리를 깨끗한 commit 실행으로 표시하지 않는다. 식별을 확정할 수 없으면 해당 값을 `null`과 이유로 남기고 완전 검증을 거부한다.
+
+`notes_source`는 선행 번들링 결정의 `CHECKOUT`, `BUNDLED_IN_ARTIFACT`, `OVERRIDE_FILE`, `NONE`이다. `interface`는 포착한 표면·계약 버전을 식별한다. 이 튜플은 기술적 식별이며 인증이나 승인 목록이 아니다.
+
+첫 verifier는 보존된 바이트·바인딩·식별 튜플만 검사하며 금융 정책을 실행하지 않는다. 지정된 검증 대상 evaluator와 튜플이 다르면 `EVALUATOR_MISMATCH`/`NOT_EVALUATED`다. 바이트 무결성 결과는 별도로 보고할 수 있지만, 튜플 일치도 구 evaluator의 자동 수용이나 정책 재평가 성공을 뜻하지 않는다.
+
+### 3.5 compatibility_and_refusal_rules
+
+포착은 입력 목록을 먼저 고정하고 그 목록의 바이트를 읽는다. 그 바이트에서 해시와 식별 정보를 만들고, 종료 전에 목록·노트·workspace commitment를 다시 확인한다. 가능한 입력은 하나의 불변 스냅샷을 사용한다. 재읽기만 가능한 경우 순간 변경 후 복귀까지 탐지했다고 주장하지 않는다.
+
+| 조건 | 기록과 판정 |
+|---|---|
+| 포착 도중 목록·노트 바이트 변경 | `CAPTURE_INCONSISTENT`, 차이를 diagnostics에 남김, `REFUSE_VERIFIED`; 조용한 재시도나 한쪽 선택 금지 |
+| 필수 노트 부재 | `MISSING_NOTE`, expected_sha256 또는 null, `INCOMPLETE`; 빈 바이트를 정상 노트로 저장하지 않음 |
+| evaluator 튜플 불일치 | `EVALUATOR_MISMATCH`, `NOT_EVALUATED`; 기존 코드 실행·다운로드 없음 |
+| 포착 노트 해시와 기록된 terms 바인딩 불일치 | `BINDING_DISAGREEMENT`, `REFUSE`; 기록된 바인딩 유지, 현재 노트로 덮어쓰지 않음 |
+| 알 수 없는 capsule/manifest 형식 | `UNSUPPORTED_CAPSULE_VERSION`, `REFUSE`; `OTHER`를 지원 형식으로 수용하지 않음 |
+| workspace 식별자·manifest 해시 불일치 또는 결합 자료 부재 | `WORKSPACE_UNBOUND`, `REFUSE`; 부재 포착 상태는 `INCOMPLETE` |
+| 원문 길이·해시·capsule digest 불일치 또는 형식 한도 위반 | 무결성 진단과 `REFUSE` |
+
+현재 노트가 과거 기록과 다른 것과 **포착 도중 변경된 것**은 별개다. 전자는 `BINDING_DISAGREEMENT`, 후자는 `CAPTURE_INCONSISTENT`이며 둘 다 있으면 모두 기록한다. 우선순위는 `REFUSE > REFUSE_VERIFIED > INCOMPLETE > NOT_EVALUATED > VERIFIED_CAPTURE_ONLY`다. 마지막 판정은 완전한 입력·결합·식별·무결성 검사를 통과한 포착에만 사용하며 역사 인증이나 재생 승인이 아니다.
+
+### 3.6 storage_and_consumption_scope
+
+첫 소비 노드는 `policy-capsule-capture`: 오프라인 포착과 검증만 구현한다. 저장은 export 옆 `<workspace>.policy-capsule.json`이며 원본을 수정하지 않는다. `LOCAL_SIMULATION_ARTIFACT`, `SIMULATED`, `signed:false`, `published:false`를 유지한다. CAP-11·CAP-16은 계속 `NOT_BOUND`다.
+
+여섯 ADOPTED 항목은 `tests/decision_bindings.json`에 각각 `PENDING_CONSUMER`로 등록한다. `capital/export.py`는 contents/workspace-binding/storage의 기존 anchor, `capital/terms.py`는 evidence-grade/evaluator/refusal의 기존 anchor다. 이는 파일 변경이나 소비 구현 완료를 뜻하지 않는다. 미구현 스크립트 경로를 존재하는 소비자로 등록하지 않는다.
+
+역사 재생은 별도다. 필요한 전제는 당시 입력의 완전성과 인증 출처 정책, 별도 확보한 evaluator 및 명시적 버전 수용 정책, 결정론적 실행 환경·재생 검증 벡터, 별도 권한 결정과 적용 가능한 upstream 영수증이다. 서명만으로 당시 적용 사실이 입증되지 않는다. 원래 정책 재생에 신정책 마이그레이션을 강제하지 않는다. live migration·소급 채택·법정 보존기간·인증 도입·구 버전 자동 수용·upstream repin은 이 결정 밖이다.
 
 ## 4. 기계 판독 결정 블록
 
@@ -98,10 +101,12 @@
   "date": "2026-11-02",
   "provisional": true,
   "status": "PROVISIONAL_PRODUCT_DECISION",
-  "scope": "KIX-CAPITAL simulation and product design only; no real money; production NOT_AUTHORIZED; not an offer; no upstream adoption claimed",
-  "delegation": "2026-10-08 18:25 KST JunTae Park delegated financial terms, settlement policy, upstream binding and accounts/tax/legal; decided by Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), lanes 10-16 09:07",
-  "bases": {"capital_main": "c4114c7", "kix_protocol": "fd33335"},
-  "unread_deps": "CAPITAL_OVERLAY_DIGEST_EXPORT.md was outside the allowed read set; envelope field names (WORKSPACE_ENVELOPE_V2|V3, manifest_sha256, workspace_id) are cited by name only and the prior note wins on collision",
+  "scope": "Simulation/product design only; no real money; not an offer; production NOT_AUTHORIZED; no upstream adoption or SEMANTIC_CONFORMANCE claimed",
+  "bases": {
+    "capital_main": "c4114c7",
+    "kix_protocol": "41ace61"
+  },
+  "unread_deps": "CAPITAL_OVERLAY_DIGEST_EXPORT.md was not opened; actual export-manifest tags come from the supplied review; prior decisions govern existing formats",
   "upstream_adoption_claimed": false,
   "entries": {
     "capsule_contents": {
@@ -109,28 +114,57 @@
       "value": {
         "format": "KIX_CAPITAL_POLICY_CAPSULE_V1",
         "kind": "DATA_ONLY_SIDECAR",
-        "fields": ["format", "capsule_version", "capsule_digest", "subject{workspace_id,manifest_format,manifest_sha256,export_digests}", "policy_inputs.notes[]{path,note_sha256,bytes_len,encoding,bytes_b64,binding_role}", "policy_inputs.terms_bindings[]", "evaluator", "capture{tool,tool_version,volatile}", "evidence_grade", "status"],
-        "note_set_bound": "docs/decisions/*.md notes resolved by the capture surface plus their cited coverage doc; no code, no vendor bytes, no evaluator bytes",
-        "digest_rule": "capsule_digest = SHA256 of canonical digestible subset; per-run capture fields isolated under capture.volatile and excluded"
+        "fields": [
+          "format",
+          "capsule_version",
+          "capsule_digest",
+          "subject",
+          "policy_inputs",
+          "evaluator",
+          "capture",
+          "evidence_grade",
+          "explicit_non_claims",
+          "status",
+          "diagnostics"
+        ],
+        "manifest_formats": [
+          "KIX_CAPITAL_EXPORT_MANIFEST_V2",
+          "KIX_CAPITAL_EXPORT_MANIFEST_V3"
+        ],
+        "note_set_bound": "Explicit capture-surface decision-note inventory plus docs/CAP_COVERAGE.md when referenced; no recursive traversal, code, vendor or evaluator bytes",
+        "limits": {
+          "max_notes": 128,
+          "max_note_bytes": 1048576,
+          "max_total_note_bytes": 8388608,
+          "max_capsule_bytes": 16777216
+        },
+        "digest_rule": "SHA256 of UTF-8 JSON: sorted object keys, compact separators, ensure_ascii=true, no floats or duplicate keys; omit only capsule_digest and capture.volatile; arrays sorted as specified in section 3.1"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-15", "CAP-20"],
-      "rationale": "Exact note bytes plus hashes plus workspace commitments plus evaluator identity is the minimal complete set the acceptance asks for; bounding the note set keeps executable code out of evidence.",
+      "cap_rows": [
+        "CAP-15",
+        "CAP-20"
+      ],
+      "rationale": "Exact note bytes, hashes, workspace commitments and evaluator identity provide bounded data-only capture evidence.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "workspace_and_policy_binding": {
       "status": "ADOPTED",
       "value": {
-        "workspace_link": "manifest_sha256 + workspace_id reference only; V2/V3 envelopes, manifests and comparison bytes are never rewritten",
-        "policy_link": "notes[].note_sha256 compared against recorded terms_bindings[]",
-        "missing_manifest": "manifest_sha256: null + binding_note; capture allowed, verification grade capped"
+        "workspace_link": "workspace_id + manifest_format + SHA256 of exact existing export-manifest bytes; no workspace, V2/V3 manifest or comparison changes",
+        "policy_link": "Preserve existing terms bindings as recorded; compare referenced note digests without substituting current policy",
+        "missing_manifest": "null digest with reason; capture INCOMPLETE, workspace verification WORKSPACE_UNBOUND",
+        "missing_terms_binding": "null with reason; no inferred or retroactive provenance"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-14", "CAP-15"],
-      "rationale": "Additive sidecar binding is the only form that preserves historical workspaces and existing comparison semantics.",
+      "cap_rows": [
+        "CAP-14",
+        "CAP-15"
+      ],
+      "rationale": "An additive sidecar preserves historical bytes and existing comparison semantics.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -138,61 +172,130 @@
       "status": "ADOPTED",
       "value": {
         "claimed": "CAPTURE_TIME_POLICY_EVIDENCE",
-        "explicit_non_claims": {"AUTHENTICATED_HISTORICAL_POLICY": false, "ORIGINAL_DRAW_TIME_PROVENANCE": false},
-        "retroactive_provenance": "none; older workspaces get no retroactive claim, a capsule proves notes-at-capture only"
+        "explicit_non_claims": {
+          "AUTHENTICATED_HISTORICAL_POLICY": false,
+          "ORIGINAL_DRAW_TIME_PROVENANCE": false
+        },
+        "retroactive_provenance": "none; self-consistent capture data does not authenticate history or original draw-time policy"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-09", "CAP-20"],
-      "rationale": "Mirrors the approved A-4 record/replay separation: the capsule is a record, not replay authorization and not draw-time provenance.",
+      "cap_rows": [
+        "CAP-09",
+        "CAP-20"
+      ],
+      "rationale": "Capture-time inputs and integrity checks cannot establish authenticated historical policy.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "evaluator_identity": {
       "status": "ADOPTED",
       "value": {
-        "fields": ["name", "version", "source_pin", "notes_source", "interface"],
-        "notes_source_enum": ["CHECKOUT", "BUNDLED_IN_ARTIFACT", "OVERRIDE_FILE", "NONE"],
+        "fields": [
+          "name",
+          "version",
+          "source_pin",
+          "notes_source",
+          "interface"
+        ],
+        "source_pin": "Typed actual source commit or release-manifest SHA256; unknown values are null with reason",
+        "notes_source_enum": [
+          "CHECKOUT",
+          "BUNDLED_IN_ARTIFACT",
+          "OVERRIDE_FILE",
+          "NONE"
+        ],
         "bytes_embedded": false,
-        "auto_acceptance": "none; identity is descriptive, not version approval"
+        "auto_acceptance": false,
+        "verification": "Offline byte-integrity and binding checks only; policy evaluation is not run"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-01", "CAP-02"],
-      "rationale": "Reproducibility needs which evaluator read the notes; keeping bytes out requires an identifying tuple, reusing the bundling note's notes_source vocabulary.",
+      "cap_rows": [
+        "CAP-01",
+        "CAP-02"
+      ],
+      "rationale": "Descriptive evaluator identity supports later reproducibility without code bundling or version approval.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "compatibility_and_refusal_rules": {
       "status": "ADOPTED",
       "value": {
-        "changed_notes_during_capture": {"status": "CAPTURE_INCONSISTENT", "verdict": "REFUSE_VERIFIED", "records": "mismatches[]"},
-        "missing_notes": {"entry": "MISSING_NOTE{path,expected_sha256|null}", "status": "INCOMPLETE", "verdict": "INCOMPLETE"},
-        "evaluator_mismatch": {"marker": "EVALUATOR_MISMATCH", "verdict": "NOT_EVALUATED"},
-        "binding_disagreement": {"marker": "BINDING_DISAGREEMENT", "verdict": "REFUSE", "winner": "recorded workspace terms binding"},
-        "unknown_format": {"marker": "UNSUPPORTED_CAPSULE_VERSION", "verdict": "REFUSE"},
-        "workspace_mismatch": {"marker": "WORKSPACE_UNBOUND", "verdict": "REFUSE"}
+        "changed_notes_during_capture": {
+          "status": "CAPTURE_INCONSISTENT",
+          "verdict": "REFUSE_VERIFIED"
+        },
+        "missing_notes": {
+          "marker": "MISSING_NOTE",
+          "status": "INCOMPLETE",
+          "verdict": "INCOMPLETE"
+        },
+        "evaluator_mismatch": {
+          "marker": "EVALUATOR_MISMATCH",
+          "verdict": "NOT_EVALUATED"
+        },
+        "binding_disagreement": {
+          "marker": "BINDING_DISAGREEMENT",
+          "verdict": "REFUSE",
+          "winner": "Recorded workspace binding remains unchanged, without authentication claim"
+        },
+        "unknown_format": {
+          "marker": "UNSUPPORTED_CAPSULE_VERSION",
+          "verdict": "REFUSE"
+        },
+        "workspace_mismatch": {
+          "marker": "WORKSPACE_UNBOUND",
+          "verdict": "REFUSE"
+        },
+        "precedence": [
+          "REFUSE",
+          "REFUSE_VERIFIED",
+          "INCOMPLETE",
+          "NOT_EVALUATED",
+          "VERIFIED_CAPTURE_ONLY"
+        ],
+        "integrity_failure": "REFUSE; retain all diagnostics; never silently choose or repair inputs"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-04", "CAP-20"],
-      "rationale": "Every failure mode gets a named verdict; silent pass and silent selection are forbidden, and recorded bindings remain the historical fact.",
+      "cap_rows": [
+        "CAP-04",
+        "CAP-20"
+      ],
+      "rationale": "Distinct failure modes and explicit precedence prevent silent acceptance or replacement of recorded evidence.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "storage_and_consumption_scope": {
       "status": "ADOPTED",
       "value": {
-        "first_consumer": "offline capture + offline verification only",
-        "location": "sidecar <workspace>.policy-capsule.json beside workspace exports; optional committed fixture under tests/vectors/ with docs_surface registration",
-        "labels": ["LOCAL_SIMULATION_ARTIFACT", "SIMULATED"],
-        "not_bound": ["CAP-11 durable transactions", "CAP-16 producer/SDK tuple"],
-        "replay_prerequisites_not_adopted": ["signed manifests / authenticated note provenance", "evaluator version registry + acceptance policy", "old-note migration policy", "upstream receipts"]
+        "first_consumer": "policy-capsule-capture: offline capture and offline verification only",
+        "location": "Sidecar <workspace>.policy-capsule.json beside exports; optional separately registered synthetic fixture",
+        "labels": [
+          "LOCAL_SIMULATION_ARTIFACT",
+          "SIMULATED"
+        ],
+        "signed": false,
+        "published": false,
+        "not_bound": [
+          "CAP-11",
+          "CAP-16"
+        ],
+        "replay_prerequisites_not_adopted": [
+          "Historical input completeness and authenticated provenance policy",
+          "Separately obtained evaluator and explicit version acceptance",
+          "Deterministic environment and replay conformance vectors",
+          "Separate authority decision and applicable upstream receipts"
+        ]
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-11", "CAP-15"],
-      "rationale": "Scoping the first consumer to offline capture/verify keeps the decision inside delegation while naming exactly what a future replay node must close.",
+      "cap_rows": [
+        "CAP-11",
+        "CAP-15"
+      ],
+      "rationale": "Offline capture and verification are buildable now; historical replay requires separate evidence and acceptance decisions.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
@@ -204,22 +307,24 @@
 
 | 수용 기준 | 충족 위치 |
 |---|---|
-| 하나의 유효한 `capital-decision-v1` 블록, 모든 항목 커버 | §4, entries 여섯 개 전부 |
-| 유계 데이터 전용 동반 형식: 노트 바이트·해시·workspace 약속·evaluator 식별 | §3.1 (`KIX_CAPITAL_POLICY_CAPSULE_V1`) |
-| 포착 시점 증거 ↔ 인증된 역사 정책 ↔ 인출 시점 출처 구분; 구 workspace 소급 출처 없음 | §3.3 |
-| 캡처 중 노트 변경·노트 부재·evaluator 불일치·terms 바인딩 불일치 동작 | §3.5 판정 표 |
-| workspace envelope·V2/V3 manifest·비교 의미론 보존; `decision_ledger.py` 통과 | §3.2(추가형 사이드카), §4 단일 블록 |
+| 단일 유효 결정 블록, 여섯 항목 | §4; 모두 ADOPTED, 값·출처·날짜·CAP·근거 포함 |
+| 유계 데이터 전용 원문·해시·workspace·evaluator | §3.1–3.2, §3.4 |
+| 포착·인증된 역사·인출 출처 구별 | §3.3; 소급 주장 없음 |
+| 변경·부재·evaluator 차이·terms 충돌 | §3.5; 개별 진단과 우선순위 |
+| envelope·V2/V3·비교 불변 | §3.2; 추가형 사이드카만 |
+| 결정 등록 | §3.6; 여섯 `PENDING_CONSUMER` 행 |
+
+수정 후 검증: `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check` 모두 exit 0. `python3 -m unittest discover -s tests -p test_decision_bindings.py -v`는 25개 테스트 통과(실제 트리·정렬 등록부 검사 포함). 이는 결정·등록 검증이며 정책 캡슐 구현 테스트의 통과를 의미하지 않는다.
 
 ## 6. Open risks
 
-- `CAPITAL_OVERLAY_DIGEST_EXPORT.md` 미독: envelope 필드명이 실제와 다르면 구현 노드가 선행 노트 표기로 맞춘다(선행 노트 우선 규칙).
-- 노트 바이트 임베딩은 캡슐 크기를 키운다 — 유계 집합이라 실용적이지만, docs가 크게 늘면 바이트 대신 해시+위임 저장으로 V2를 검토할 수 있다.
-- `MISSING_NOTE`의 `expected_sha256`는 기록된 바인딩이 없으면 채울 수 없다 — 그 경우 `null`로 두고 `INCOMPLETE`를 유지한다.
-- evaluator `version` 문자열의 정본(릴리스 태그 vs 코드 상수)은 아직 없다 — capture 구현 노드가 정한다.
+- overlay export 선행 본문은 미독이다. 리뷰가 제공한 실제 태그를 반영했으며, 기존 필드의 구체적 추출 경로는 후속 구현에서 선행 결정과 대조한다.
+- 정확한 노트 원문에는 민감한 override 내용이 있을 수 있다. 공개·자동 업로드를 하지 않으며, 원문을 제거한 산출물을 완전한 캡슐로 표시하지 않는다.
+- V1 크기 한도를 넘는 입력은 거부된다. 한도 확대는 버전·자원 검증과 함께 별도 검토한다.
+- 구 workspace의 부재 증거와 식별 불가능한 evaluator는 이 사이드카로 복원할 수 없다.
 
 ## 7. 후속 작업
 
-1. capture 스크립트(후보 `scripts/capture_policy_capsule.py`)와 verify 스크립트 — 이 노트의 형식·판정 표를 그대로 구현.
-2. `tests/vectors/` 커밋 fixture 시 `scripts/docs_surface.py` 엔트리·README needle 추가 후 `--check` 통과(저장소 검증 규칙).
-3. `/api/state` 등 표면에 캡슐 존재·검증 verdict 노출 여부는 별도 표면 결정.
-4. replay 전제 넷(서명 manifest, evaluator 레지스트리, 마이그레이션, upstream 영수증)은 각각 독립 결정 노드 후보.
+1. `policy-capsule-capture`에서 오프라인 capture/verify와 §3.5의 실패 사례를 구현한다. 정확한 바이트 왕복, 결정론, 무변경 workspace, evaluator 불일치, 바인딩 충돌을 검증한다.
+2. 합성 fixture를 새로 커밋할 때 `scripts/docs_surface.py`와 README 등록을 함께 수행한다. 이번 수정에는 fixture나 pack 벡터 변경이 없다.
+3. 소비 구현과 검증 영수증이 생긴 항목만 등록부 상태를 갱신한다. UI 표면과 역사 재생은 각각 별도 작업으로 남긴다.
