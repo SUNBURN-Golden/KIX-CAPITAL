@@ -1,80 +1,152 @@
-# Capital 환불 충격 경계 결정 — 차입기초 커버리지를 무너뜨리는 최소 환불 충격(역방향 스트레스)
+# Capital 환불 충격 경계 결정 — 차입기초 커버리지를 위반하는 최소 환불액
 
-**상태: PROVISIONAL PRODUCT DECISION (잠정 제품 결정).**
-이 문서는 KIX-CAPITAL 저장소 안의 **시뮬레이션·제품 설계용** 결정이다. 청약이나 대출 제안이 아니고, 실자금이 움직이지 않으며, production은 계속 `NOT_AUTHORIZED`다. 법률·회계 관련 언급(손상·소구의 성격)은 **전문가 검토 전의 작업 가정(WORKING ASSUMPTION)** 이며 자문이 아니다. 어떤 upstream 계약의 채택도 주장하지 않고 SEMANTIC_CONFORMANCE도 아니다. 이 문서는 kix-protocol·kix-commerce-apps를 수정하지 않고, diff는 `docs/decisions/CAPITAL_REFUND_FRONTIER.md` 한 파일이다. `capital/`·`tests/`·vendor 바이트·골든 digest·기존 결정 노트·기존 고정 충격 결과의 상태 토큰은 건드리지 않는다.
+**PROVISIONAL PRODUCT DECISION — 시뮬레이션·제품 설계 전용. 실자금 없음. production `NOT_AUTHORIZED`.**
 
 | 항목 | 값 |
 |---|---|
-| 결정 노드 | `refund-frontier-decision` (Decision: define the smallest refund shock that breaches borrowing-base coverage) · deps `financial-terms-decision`, `risk-whatif-scenarios`, `claim-slice-registry` · kind `decision` · user_merge `False` |
-| 결정자 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
-| 위임 원문 | 2026-10-08 18:25 KST JunTae Park: "금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해." |
-| 결정일 | 2026-11-02 |
-| 기준 | KIX-CAPITAL main `c4114c7` · kix-protocol `fd33335` (읽기 전용 `/workspace/capital-run/kixproto-ro`) · vendor pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` (다섯 파일 SHA256 불변) |
-| 의도 소비자 | `capital/refund_frontier.py` (구현 노드가 새로 쓰는 읽기 전용 모듈)과 `GET /api/risk`의 추가형 `refund_frontier` 블록 |
-| 상태 어휘 | **ADOPTED** = 위임 범위 안의 잠정 값. **UNDETERMINED** = 값을 정할 수 없어 이유만(`value: null`, 방향은 `target`). 여섯 항목 모두 ADOPTED |
-| 숫자 출처 규칙 | 한도·비율·선지급률 숫자를 복사하지 않는다. `CAPITAL-TERMS-V1` 필드명(`additional_margin`, `underwriting_depth`, 티어별 `advance_rate`)으로만 인용한다. 선행 노트 `CAPITAL_FINANCIAL_TERMS.md`는 허용 경로 밖이라 직접 열지 않았고, 필드명은 허용된 노트의 인용으로만 참조한다. 이름·숫자가 충돌하면 **선행 노트가 이기고, 경계 산술과 라벨은 이 노트가 이긴다.** |
+| 결정 노드 | `refund-frontier-decision` |
+| 요청된 결정자·위임 표기 | **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)** |
+| 날짜·기준 | 2026-11-02 · Capital main `c4114c7` · kix-protocol `590d68d` |
+| 의존 결정·구현 | `financial-terms-decision`, `risk-whatif-scenarios`, `claim-slice-registry` |
+| 의도 소비자 | `capital/refund_frontier.py`, `GET /api/risk`의 추가형 `refund_frontier` |
+| 변경 범위 | 이 결정 문서만. 기존 terms·마진 정책·고정 충격 결과 불변 |
+
+위 결정자 표기는 요청된 위임 메타데이터다. 이 개정은 현재 Codex 응답으로 작성했으며, 지정 Claude CLI 실행·세 번의 실패·대체 모델 승계는 확인하지 않았다. upstream 채택·영수증·SEMANTIC_CONFORMANCE를 주장하지 않는다. 법률·회계적 해석은 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`이며 이 문서로 확정하지 않는다.
 
 ## 1. 결정 요약
 
-| item | 결정 (요지) | CAP rows | 소비 노드 / seam |
+| item | decision | CAP rows | consumer |
 |---|---|---|---|
-| `shock_basis_and_domain` | **ADOPTED.** 충격은 수익자별 정수 KRW 환불 액면 합 `s ∈ [0, Σ eligible_L]`(각 줄 `s_L ∈ [0, eligible_L]`). 기존 bps 그리드 `[500,1000,2500,5000]`는 바이트 불변, 경계는 그 역문제 | CAP-04, CAP-12 | `capital/refund_frontier.py` |
-| `coverage_breach_predicate` | **ADOPTED.** 엄밀 위반 = 기존 마진 평가 술어를 그대로 반전: `outstanding_B > base_B(s)`(`=`는 커버됨). `base_B(s) = Σ_L floor(max(0, eligible_L(s) − encumbered_L(s)) × advance_rate(tier_L)/10000)` | CAP-04, CAP-01 | `capital/refund_frontier.py`, `GET /api/risk` |
-| `eligible_case_scope` | **ADOPTED.** 대상 = `SIMULATED_DISPOSABLE_BOOK`의 수익자별 노출만. 부도·종결 등 종결 선지급, 노출 0, 매핑·티어 입력 부재, 소유 모호 줄은 각 전용 라벨로 미산출 | CAP-01, CAP-04 | `capital/refund_frontier.py` |
-| `shared_claim_and_slice_treatment` | **ADOPTED.** 청구 공유는 줄 단위 귀속으로 닫고, 슬라이스 점유 `encumbered_L`을 감산한 자유 면만 충격이 줄인다. 충격 시 `eligible_L(s) < outstanding_S`이면 가상 `SLICE_IMPAIRMENT_ELIGIBLE` 표지를 함께 보고(기록 없음) | CAP-03, CAP-04, CAP-08 | `capital/refund_frontier.py`, `claim-slice-registry` 조회 |
-| `rounding_and_boundary_witness` | **ADOPTED.** 줄별 내림 → 합산 → 엄밀 비교 순서. `s*`는 **전 배분 최소**로 정의하고, 대표 증인은 각 줄의 base 감소 스텝 위치를 전역 오름차순으로 살린 배분 + `s*−1`/`s*` 두 지점의 (base, outstanding) | CAP-04, CAP-12 | `capital/refund_frontier.py` |
-| `result_labels_and_consumers` | **ADOPTED.** 라벨 열거 6종 + 상수 플래그(`SIMULATED`, `hypothetical:true`, `applied:false`, `margin_call_recorded:false`, `journal_written:false`, `funds_executed:false`). 기록된 마진콜·부도 적격·손실 확률·대출 승인과 명시 구분 | CAP-04, CAP-09 | `GET /api/risk` `refund_frontier` 블록 |
+| `shock_basis_and_domain` | 실제 식별되는 청구·payee 줄의 추가 환불액을 정수 KRW로 배분한다. 목적값은 중복 제거한 총 환불액이다. | CAP-04, CAP-12 | `capital/refund_frontier.py` |
+| `coverage_breach_predicate` | 선지급별 바인딩 청구·선지급률로 평가한다. 적격 액면 합산 → 비율 적용 → 한 번 내림 → `outstanding > base`. 수익자 요약은 어느 선지급이든 위반하는 최초 경계다. | CAP-01, CAP-04 | frontier, `/api/risk` |
+| `eligible_case_scope` | 일회용 장부의 비종결 선지급을 평가한다. 기존 위반은 0, 노출 0은 경계 없음. 입력 부재·지원 제외는 별도 상태다. | CAP-01, CAP-04 | frontier |
+| `shared_claim_and_slice_treatment` | 공유 청구의 환불은 한 번만 세고 연결된 모든 선지급을 재평가한다. 양수 슬라이스 점유 청구는 V1 미지원으로 확정한다. | CAP-03, CAP-04, CAP-08 | frontier, registry 조회 |
+| `rounding_and_boundary_witness` | 선지급별 정확한 닫힌식의 최솟값을 사용한다. 전역 감소 스텝 정렬은 폐기한다. 정해진 배분과 1원 전 경계를 출력한다. | CAP-04, CAP-12 | frontier |
+| `result_labels_and_consumers` | 파생 조회값만 제공한다. 마진콜 기록·부도 적격·확률·대출 승인과 구분하고 기존 고정 충격 결과를 보존한다. | CAP-04, CAP-09 | `/api/risk` |
 
-## 2. KIX 비전 연결 — 읽은 pack 경로
+여섯 항목의 `ADOPTED`는 잠정 제품 결정을 뜻한다. 미지원 범위를 결정한 것은 그 범위의 수치 경계를 결정했다는 뜻이 아니다.
 
-- `/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md` (모델 1·A-4). 「과거 사실의 재생은 새로운 외부 실행 허가가 아니다」와 「예약 확정 ≠ 결제 확인」에 따라, 경계 계산은 저널에 아무것도 쓰지 않는 순수 함수다. 가상 충격이 만드는 "위반"은 기록된 사실이 아니라 조건부 답이다.
-- `/workspace/capital-run/kixproto-ro/README.md` §1·§3. 현재는 mock·비운영 범위이고 자체 저장·로그 신규 구현은 금지다. 그래서 결과는 상태가 아니라 요청 시점 입력의 파생값으로만 존재한다.
-- `docs/CAPITAL_REQUIREMENTS_KO.md` CAP-04 행(읽기 전용 `/api/risk`, 고정 환불 충격 `[500,1000,2500,5000]` bps는 SIMULATED 가정이며 마진콜을 기록하지 않음, `SIMULATED_DISPOSABLE_BOOK`에서만 마진 발동, fixture는 `FIXTURE_VIEWS_IMMUTABLE`). 이 노트는 그 표면의 **역문제**를 같은 격리 규칙 아래 둔다. CAP-01·03·08·12 행(발췌만).
-- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md` §3.4·§3.6(G0 `eligible_face` 감산, `encumbered(L) = min(outstanding(S), eligible_L)`, 불변식 I-BASE와 "환불로 `eligible_L`이 줄면 손상" 규칙), §3.5(홀더 우선). 경계 계산은 같은 줄 산술을 공유한다.
-- `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` §4.1·§4.8(마진콜→치유→가속은 **기록된** 마커의 폴드, 사람 명령). 이 노트의 가상 위반은 그 폴드에 진입하지 않는다.
-- `docs/decisions/CAPITAL_DEMO_BOOK.md` §3.3(`beneficiary_payee_map`, `eligible_face` 규칙, `SHADOW_NOT_APPLIED` 라벨 문법)과 정직 라벨 규칙.
-- `docs/SEAMS.md`(새 `typing.Protocol`·행 추가 없음 — 읽기 전용 산술은 port가 아님), `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md` §3.1(COA 게시 없음), `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md` §3.3(구현 시 `test_count`가 바뀌면 `CAPITAL-CLOSEOUT-REGEN-V1` 재생성 절차).
-- 사용하지 않은 pack 경로: `CAPITAL_ARTIFACT_BUNDLING.md`(새 노트는 번들에 자동 포함), `docs/VALIDATION.md`(발췌만).
-- 「포부」의 번역: 고정 충격이 "주어진 충격에 견디는가"를 묻는다면 경계는 "어디서 무너지는가"를 닫는다. 담보 기하(공유 줄·슬라이스 점유)를 구현 전에 먼저 정해 두면, what-if 엔진이 커질 때 재결정이 필요 없다.
+## 2. KIX 비전 연결 — 사용한 pack 근거
+
+- `docs/CAPITAL_REQUIREMENTS_KO.md` 제공 발췌는 실행 핀과 역사적 결정 출처를 구분한다. 이 문서의 기준 커밋도 출처이며 upstream 구속이나 채택 증명이 아니다.
+- `docs/SEAMS.md` 제공 발췌에 따라 로컬 검증을 upstream 적합성으로 승격하지 않는다. frontier는 기존 입력을 읽는 계산 소비자이며 새 port 채택을 선언하지 않는다.
+- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md` 제공 발췌의 공유 한도·이중사용 방지 목적을 유지한다. 공유 담보를 중복 환불하거나, 확인되지 않은 슬라이스 배분 규칙을 만들어내지 않는다.
+- `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` 제공 발췌의 가속·부도·상각 구분을 유지한다. 가상 경계는 기록된 운영 사건을 발생시키지 않는다.
+- `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md` 제공 발췌처럼 합성 산술에서 법률·회계 입장을 추론하지 않는다.
+
+기존 고정 충격의 질문을 “어느 환불액에서 처음 위반하는가”로 확장하되, 현재 마진 평가의 의미를 보존한다. 검토자가 제공한 `capital/margin.py:72–84` 및 FINANCIAL_TERMS 설명은 **2차 근거**로 사용했다. 해당 원문은 허용 경로 밖이라 열지 않았다. 발췌가 생략된 Protocol 문서의 내용은 근거로 주장하지 않는다.
 
 ## 3. 항목별 결정
 
-공통 정의(모두 정수 KRW, 선행 노트와 동일): 줄 `L = (claim_id, payee_label)`, `eligible_L = max(0, line_face(L) − refund_open(L))`, `encumbered_L(s_L) = min(outstanding_S(L), eligible_L − s_L)`(비종결 슬라이스가 없으면 0), 자유 면 `free_L(s_L) = max(0, eligible_L − s_L − encumbered_L(s_L))`. 수익자 `B`의 줄 집합 = `B`에 바인딩된 청구 중 `payee_label ∈ beneficiary_payee_map[B]`인 pinned 원장 줄.
+### 3.1 `shock_basis_and_domain` — ADOPTED
 
-### 3.1 shock_basis_and_domain — ADOPTED
-- **값.** 충격은 수익자 하나에 대한 **가상 환불 액면의 줄별 배분** `s = (s_L)`, 각 `s_L ∈ [0, eligible_L]` 정수, 총량 `|s| = Σ s_L ∈ [0, Σ eligible_L]`. `eligible_L`을 넘는 충격은 의미가 없다(자유 면은 이미 0). 정의역 상한에서 `base_B = 0`이므로 `outstanding_B ≥ 1`이면 위반은 항상 도달 가능하다.
-- **기존 스트레스와의 관계.** 기존 고정 충격(환불 액면 대비 bps 그리드)은 **그대로 유지**하며 결과 바이트·라벨·그리드를 바꾸지 않는다. 경계는 그 역문제: "위반이 시작되는 최소 총량 `s* = min{ |s| : breach(s) }`".
-- **근거.** 절대 KRW 정수는 bps 변환의 반올림을 배제해 경계를 정확히 잡는다. 줄 상한이 있는 유한 정의역은 "도달 불가" 판정을 결정론적으로 만든다.
+물리적 줄의 키는 `L = (claim_id, payee_label)`이다. 같은 줄이 여러 선지급에 연결돼도 충격 변수는 하나다.
 
-### 3.2 coverage_breach_predicate — ADOPTED
-- **값.** 위반 술어는 기존 마진 평가와 **동일한 술어의 반전**이다: `breach_B(s) ⇔ outstanding_B > base_B(s)`. 등식(`outstanding = base`)은 커버됨이며 위반이 아니다 — 커버리지 부족은 **엄밀 부등호**다. `base_B(s) = Σ_L floor(free_L(s_L) × advance_rate_bps(tier_L) / 10000)`이고, 티어별 선지급률 적용·줄별 내림은 기존 U3/마진 산술의 순서를 그대로 쓴다(이 노트가 새 반올림을 만들지 않는다). 선행 TERMS의 마진 발화 술어가 이 형태와 다르면 **TERMS 술어가 이기고**, 경계는 그 술어를 그대로 반전한다. 가상 충격은 `outstanding_B`를 바꾸지 않는다(환불은 담보를 줄이지 부채를 줄이지 않는다).
-- **근거.** 기존 발화 조건과 다른 술어를 만들면 "가상 위반인데 기록된 마진콜 조건은 아님"이라는 모순이 생긴다. 같은 술어의 반전이라야 경계가 진짜 경계다.
+- `E_L = max(0, line_face_L − refund_open_L)`: 현재 적격 액면.
+- `x_L`: 기존 환불에 추가되는 가상 환불액.
+- 정의역: `x_L ∈ {0, …, E_L}`.
+- 총 충격: `s = Σ_L x_L`. 합계는 중복 제거한 줄 집합에 대해 계산한다.
 
-### 3.3 eligible_case_scope — ADOPTED
-- **값.** 대상 = `SIMULATED_DISPOSABLE_BOOK` 안에서, `outstanding_B ≥ 1`이고 비종결 선지급이 있는 수익자. 워크스페이스 fixture(`FIXTURE_VIEWS_IMMUTABLE`)는 기존대로 미발동이다. 미산출은 각각 명시 라벨로 답한다(§3.6):
-  - `s* = 0`이 되는 기존 위반(`outstanding_B > base_B(0)`): `ALREADY_BREACHED_ZERO_SHOCK` — **가상 평가의 결과이지 기록된 마진콜과 동일하지 않다.**
-  - 노출 0: `FRONTIER_UNDEFINED_NO_OUTSTANDING`(`s*` 없음; base ≥ 0 = outstanding이므로 엄밀 위반 불가).
-  - 해당 수익자의 모든 선지급이 종결(FSM `CLOSED`/`DEFAULTED`, 오버레이 상각 게시): `NOT_COMPUTED_TERMINAL` — 종결 건의 커버리지는 회수 폭포의 문제이지 차입기초의 문제가 아니다.
-  - 매핑된 줄이 하나도 없거나 줄에 티어 선지급률이 없어 `base_B`를 구성할 수 없음: `NOT_COMPUTED_MISSING_INPUTS`(`missing` 목록 첨부). 선지급률 0인 줄은 배분 후보에서 제외되나 정상 산출이다.
-  - 한 줄이 둘 이상의 수익자 `eligible_face`에 동시 기여하는 모호 소유(V1 맵 구조상 발생하지 않아야 함): `NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP`.
-- **근거.** "경계 없음"을 "0"이나 "무한"으로 압축하면 소비자가 위험도를 오독한다. 원인별 라벨이 정직한 답이다.
+기존 환불은 `E_L`에 이미 반영했으므로 다시 차감하지 않는다. 가상 환불은 선지급 잔액을 상환하지 않는다. 현금 흐름·시간·티어·수수료·이자는 고정한다.
 
-### 3.4 shared_claim_and_slice_treatment — ADOPTED
-- **값.** (a) **공유 청구:** 충격은 줄 단위로 귀속된다. 수익자 B의 경계는 B의 줄 집합에만 적용되고, 같은 청구의 다른 payee 줄(다른 수익자 소유, 또는 `SHADOW_NOT_APPLIED` 그림자 줄)은 건드리지 않는다. 그림자 줄은 base에 기여하지 않으므로 배분 후보가 아니다. (b) **슬라이스 점유:** 자유 면 산식 `free_L(s_L)`에 이미 `encumbered_L` 감산이 들어 있고, 충격으로 `eligible_L`이 `outstanding_S` 아래로 줄면 점유가 함께 줄어 자유 면은 0에 수렴한다 — 즉 **슬라이스 점유 줄에 대한 충격은 빠르게 무력화된다**(감산 항이 함께 사라져 base 감소가 `outstanding_S`까지만 일어남). 이는 I-BASE 위반이 아니라 레지스트리 노트 §3.6의 **손상** 조건이므로, `s*` 계산과 별도로 `impairment_threshold_krw = min{ |s| : ∃L, eligible_L − s_L < outstanding_S(L) }`(충족 줄 없으면 null)를 함께 보고하고 결과에 `would_trigger: SLICE_IMPAIRMENT_ELIGIBLE`을 단다. 홀더 우선 순서(`served`)는 분배 사건이 없으므로 경계에 영향이 없다. (c) **소구·손상 기록 없음:** 가상 손상은 `SLICE_IMPAIR` 명령을 만들지 않고, 추천도 하지 않는다.
-- **근거.** 매각된 면은 수익자 자산이 아니므로(레지스트리 §3.5) 환불 충격이 먹는 것은 홀더 앞의 잔여가 아니라 줄의 자유 면이다. 구현 노드가 요구한 "공유 담보·슬라이스 처리"를 이 산식으로 닫는다.
+수익자 B의 충격 후보는 평가 대상 선지급들의 바인딩 청구에서 B에게 매핑된 줄의 합집합이다. 다른 수익자의 줄과 그림자 줄은 후보가 아니다. 특정 선지급의 경계를 찾을 때는 그 선지급에 영향을 주는 줄만 필요하다.
 
-### 3.5 rounding_and_boundary_witness — ADOPTED
-- **값.** 산술 순서: (1) 줄별 `free_L` 정수 계산 → (2) 줄별 `× advance_rate_bps` 후 **내림** → (3) 합산 → (4) `outstanding_B`와 엄밀 비교. 부동소수 없음.
-- **`s*` 정의.** `s* = min{ Σ s_L : breach_B(s) }`(전 배분 최소). 각 줄의 base 기여는 `s_L`의 비증가 계단 함수이고 단위 충격의 한계 감소는 0 또는 1이므로, `s*`는 "k번째 base 감소 스텝이 필요한 충격 단위 수"를 모든 줄에 대해 전역 오름차순으로 정렬해 필요한 감소량 `R = base_B(0) − outstanding_B + 1`번째까지 채우는 값과 같다. **대표 증인 배분** = 그 정렬 순서대로 채운 배분(동률은 `(claim_id, payee_label)` 오름차순)으로 유일하게 고정한다. 단순한 "최고 선지급률 줄 포화"는 정의가 아니다(내림 경계에서 엄밀 최소가 아닐 수 있음).
-- **증인 필드.** `frontier_krw`, `allocation[{claim_id, payee_label, shock_krw}]`, `base_at_frontier`, `base_at_frontier_minus_1`, `outstanding`, `required_reduction R`. `s*−1`에서는 술어가 성립(커버됨), `s*`에서는 위반이어야 한다 — 양쪽 값을 함께 낸다.
-- **작업 예시 1(합성, 슬라이스 없음).** 줄 `demo-delta-small` organizer 면 47,500,000, `refund_open` 0, 선지급률 5000 bps, `outstanding` 20,000,000. `base(0) = floor(47,500,000 × 0.5) = 23,750,000`, `R = 3,750,001`. 자유 면을 `x`로 두면 `floor(x/2) ≤ 19,999,999 ⇔ x ≤ 39,999,999`이므로 `s* = 47,500,000 − 39,999,999 = 7,500,001`. 검증: `s*−1 = 7,500,000` → 자유 40,000,000 → `base = 20,000,000 = outstanding`(커버됨, 엄밀 위반 아님); `s*` → 자유 39,999,999 → `base = 19,999,999 < outstanding`(위반).
-- **작업 예시 2(슬라이스 점유).** 같은 줄에 `outstanding_S = 10,000,000`, `outstanding` 8,000,000. `base(0) = floor((47,500,000−10,000,000)/2) = 18,750,000`. 위반에는 자유 면 `< 16,000,000`이 필요 → `eligible − s − 10,000,000 ≤ 15,999,999` → `s ≥ 21,500,001` = `s*`. 이때 `eligible(s*) = 25,999,999 > outstanding_S`라 `impairment_threshold_krw`는 `s* > 37,500,000` 이후라 별도 보고되고 경계 자체는 손상 없이 도달한다.
+기존 고정 bps 충격은 독립적으로 유지한다. 이 경계는 고정 그리드의 보간값이나 “최소 bps”가 아니라, 허용된 모든 정수 배분에 대한 최소 KRW다.
 
-### 3.6 result_labels_and_consumers — ADOPTED
-- **라벨 열거.** `BREACH_FRONTIER_KRW`(증인 포함) · `ALREADY_BREACHED_ZERO_SHOCK`(`frontier_krw: 0`, `base(0)`·`outstanding` 포함) · `FRONTIER_UNDEFINED_NO_OUTSTANDING` · `NOT_COMPUTED_TERMINAL` · `NOT_COMPUTED_MISSING_INPUTS` · `NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP`.
-- **상수 플래그(모든 결과).** `label: SIMULATED`, `hypothetical: true`, `applied: false`, `margin_call_recorded: false`, `default_eligibility_changed: false`, `journal_written: false`, `funds_executed: false`, `policy_adopted: false`.
-- **소비.** 의도 소비자 `capital/refund_frontier.py`(순수 함수, FSM·오버레이·슬라이스 조회를 입력으로 받음)와 `GET /api/risk` 응답의 추가형 `refund_frontier` 블록(일회용 장부에서만; 부재 시 기존 응답 바이트 불변). 새 `typing.Protocol`·`docs/SEAMS.md` 행·저널 엔트리·COA 분개·골든 변경은 없다. AI lane은 조회만 가능하고 이 결과로 실행을 제안할 수 있다(`proposal` 소비는 별도 권한 규칙).
-- **비주장(non-claims).** 이 결과는 (i) 기록된 마진콜이 아니며 치유 창·가속·부도 적격 계산을 시작하지 않고, (ii) 확률·기대손실이 아니다(정확한 결정론적 역치이며 `loss probability` 주장 없음), (iii) 대출 승인·인출 게이트(U1–U6)와 무관한 자문값이며, (iv) 실제 담보 평가·집행이 아니다.
+### 3.2 `coverage_breach_predicate` — ADOPTED
+
+검토 발췌에 맞춰 평가 단위를 **선지급 a**로 고정한다.
+
+- `L(a)`: a의 바인딩 청구에서 해당 수익자에게 매핑된 적격 줄.
+- `E_a = Σ_{L∈L(a)} E_L`.
+- `O_a`: 기존 마진 평가에 쓰이는 a의 미상환 노출.
+- `r_a`: 기존 terms·티어 매핑으로 해석된 a의 정수 bps 선지급률.
+
+지원 범위의 술어는 다음 하나다.
+
+```text
+base_a(x) = ((E_a − Σ[L∈L(a)] x_L) × r_a) // 10000
+breach_a(x) ⇔ O_a > base_a(x)
+breach_B(x) ⇔ 평가 대상 a 중 breach_a(x)가 하나라도 참
+```
+
+`//`는 비음수 정수 내림이다. **줄별 내림을 합산하지 않는다.** 서로 다른 청구의 담보를 수익자별로 합쳐 다른 선지급의 부족분을 상쇄하지 않는다. 선지급마다 다른 비율이 있으면 각 평가에 따로 적용한다. 동일 청구에 여러 선지급이 묶여도 노출을 합쳐 새 마진 술어를 만들지 않는다.
+
+등식은 커버됨이다. 별도 완충률이나 새로운 마진 임계값을 추가하지 않는다. 기존 문서의 “TERMS가 다르면 다른 산식을 적용”하는 조항은 삭제한다. 구현에서 이 산식과 기존 마진 결과의 불일치가 발견되면 호환성 실패로 처리하고 정확한 frontier 출력을 보류한다. 두 정의 중 하나를 조용히 선택하거나 기존 마진 정책을 수정하지 않는다.
+
+### 3.3 `eligible_case_scope` — ADOPTED
+
+`SIMULATED_DISPOSABLE_BOOK`에서만 계산한다. fixture에는 계산을 적용하지 않는다.
+
+선지급별 처리 순서는 다음과 같다.
+
+1. FSM `CLOSED`·`DEFAULTED` 또는 상각 게시된 선지급은 `NOT_COMPUTED_TERMINAL`.
+2. 잔액을 알 수 없으면 `NOT_COMPUTED_MISSING_INPUTS`. 알려진 `O_a = 0`이면 `FRONTIER_UNDEFINED_NO_OUTSTANDING`.
+3. 양수 노출의 청구·payee 매핑·티어·비율·registry 상태를 검증한다. 누락은 `NOT_COMPUTED_MISSING_INPUTS`, 중첩 소유는 `NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP`.
+4. 양수 슬라이스 점유 또는 지원하지 않는 평가 형태는 §3.4·§3.6의 전용 상태.
+5. 검증된 입력에서 `O_a > base_a(0)`이면 `ALREADY_BREACHED_ZERO_SHOCK`, 경계는 0.
+6. 그 외 양수 노출은 정확한 양수 경계를 계산한다.
+
+알려진 0과 누락은 다르다. 비율 0·양수 노출은 기존 위반이다. 유효한 줄들이 모두 적격 액면 0이어도 양수 노출이면 기존 위반이다. 매핑된 줄 자체가 없으면 담보 0으로 추정하지 않고 입력 부재로 처리한다.
+
+수익자 요약은 평가 가능한 양수 노출들의 경계 중 최솟값이다. 미지원·입력 부재 건이 남으면 정확한 수익자 경계는 `null`이다. 단, 검증된 선지급 하나가 이미 위반이면 전체 최소값 0은 확정할 수 있으며 `evaluation_complete:false`를 함께 표시한다. 종결·노출 0인 건은 양수 노출 집합에서 제외하고 이유를 유지한다.
+
+### 3.4 `shared_claim_and_slice_treatment` — ADOPTED
+
+**공유 청구:** 같은 물리적 줄의 환불액은 목적값에서 한 번만 센다. 해당 줄에 연결된 선지급은 모두 같은 충격을 받는다. 수익자 내부에서 한 청구를 여러 선지급이 참조한다는 이유만으로 입력을 모호하다고 하지 않는다. 이는 기존 선지급별 평가를 재현하는 것이며, 담보 재사용이나 추가 대출을 허가하지 않는다.
+
+서로 다른 수익자가 동일 청구의 분리된 payee 줄을 갖는 것은 허용한다. 같은 물리적 줄이 서로 다른 수익자에게 중첩 매핑되면 영향을 받는 평가를 미산출한다. 임의의 비례 배분으로 해결하지 않는다.
+
+**슬라이스:** V1은 관련 청구의 registry 상태가 완전하고 **잔존 점유가 0임을 확인한 경우만** 수치 경계를 지원한다. 관련 청구에 양수 점유가 있으면 `NOT_COMPUTED_SLICE_ENCUMBRANCE`, `frontier_krw:null`이다. 종료 슬라이스도 잔존 점유가 있으면 같은 처리다. registry 조회가 없으면 무점유로 간주하지 않는다.
+
+이 제한은 구체적인 지원 범위 결정이다. pack은 자유 면 감산 정책의 존재를 보여주지만, 그 감산을 현재 선지급별 마진 평가의 어느 입력에 반영하는지까지 증명하지 않는다. frontier에서만 점유를 빼면 기존 마진의 역산이라는 주장이 깨질 수 있다. 따라서 구현자가 새로운 감산·우선순위·손실 배분을 선택하게 두지 않는다.
+
+슬라이스 손상 임계값도 이번 버전에서는 `null`이다. 가상 `SLICE_IMPAIR` 명령·손상 기록·추천을 생성하지 않는다. 양수 점유 지원에는 기존 마진과 registry 입력의 연결을 확인한 별도 결정이 필요하다.
+
+### 3.5 `rounding_and_boundary_witness` — ADOPTED
+
+반올림 순서는 **줄별 정수 잔여액 → 바인딩 청구 내 합산 → 해당 선지급률 곱셈 → 한 번 내림 → 엄밀 비교**다. 부동소수 연산은 사용하지 않는다.
+
+지원되는 선지급이 현재 커버되고 `O_a > 0`이면 `r_a > 0`이며 다음이 정확하다.
+
+```text
+T_a = (10000 × O_a − 1) // r_a
+f_a = E_a − T_a
+```
+
+이유는 `floor(z × r_a / 10000) < O_a`와 `z × r_a ≤ 10000 × O_a − 1`이 동치이기 때문이다. 따라서 `1 ≤ f_a ≤ E_a`. 모든 관련 줄을 환불하면 base가 0이므로 양수 노출의 위반은 도달 가능하다.
+
+완전한 수익자 평가에서는 `f_B = min_a f_a`다. 어느 배분이 선지급 a를 위반시키려면 그 청구에 적어도 `f_a`원이 필요하고, 전체 충격은 그보다 작을 수 없다. 반대로 최소 `f_a`를 가진 선지급의 줄에 그 금액을 배분하면 실제 위반하므로 하한과 상한이 일치한다.
+
+대표 증인은 최소 경계 선지급을 고르되 동률이면 `advance_id`의 UTF-8 바이트 순으로 선택한다. 선택한 선지급의 줄을 `(claim_id, payee_label)` 같은 순서로 정렬하고, 앞줄부터 `E_L` 한도까지 채워 총 `f_B`원을 배분한다. 여기서는 같은 선지급률이 합산액에 한 번 적용되므로 모든 동일 총액 배분의 base가 같다. 이 규칙은 최적화 휴리스틱이 아니라 증인의 결정론적 선택이다.
+
+1원 전 증인은 위 배분의 마지막 양수 줄에서 1원을 뺀다. 양쪽에서 모든 관련 선지급의 base를 다시 출력한다. 전역 최소성 증명은 위 식이며, 한 경로의 두 점만 확인해서 최소라고 주장하지 않는다. 0 경계에는 음수 충격 증인을 만들지 않는다.
+
+아래 숫자는 합성 검증 입력이며 새로운 금융 조건이 아니다.
+
+| 예시 | 입력 | 정확한 경계와 양측 값 |
+|---|---|---|
+| 단일 줄 | `E=47,500,000`, `r=5000`, `O=20,000,000` | `f=7,500,001`. 직전 base `20,000,000`, 경계 base `19,999,999`. |
+| 같은 청구의 두 줄 | `E=(6,4)`, `r=5000`, `O=4` | `f=3`, 증인 `(3,0)`. 직전 `(2,0)`은 base `4`, 경계는 `3`. |
+| 서로 다른 청구·비율 | A: `E=20,r=8500,O=15`; B: `E=10,r=5000,O=3` | 개별 경계 A=`3`, B=`5`; 수익자 경계 `3`. `(2,0)`의 bases=`(15,5)`, `(3,0)`의 bases=`(14,5)`. |
+| 기존 위반 반례 | 두 청구 각각 `E=100,r=5000`; 노출 `(60,10)` | bases=`(50,50)`. 첫 선지급이 이미 위반이므로 경계 `0`. 합산 노출 `70`과 합산 base `100`으로 상쇄하지 않는다. |
+| 동일 청구 공유 | 한 청구 `E=100,r=5000`; 선지급 노출 `(50,10)` | 개별 경계 `(1,81)`. 환불 `1`원을 한 번 세면 bases=`(49,49)`이고 첫 선지급이 위반한다. |
+
+두 줄 예시에서 충격 `(1,1)`은 총 2원이고 올바른 base는 `floor((5+3)/2)=4`다. 줄별 내림 합계 `2+1=3`은 잘못된 위반을 만든다.
+
+검토의 `20@8500`, `10@5000`을 하나의 합산 base로 보고 노출 18을 비교하는 목적함수는 채택하지 않는다. 위 세 번째 예시는 노출을 실제 선지급별로 명시한다. 기존 전역 스텝 정렬은 누적 비용과 선행 스텝 제약을 처리하지 못하므로 폐기한다. 한 선지급 안에서 줄마다 비율이 다른 입력도 이번 닫힌식의 지원 범위가 아니다.
+
+### 3.6 `result_labels_and_consumers` — ADOPTED
+
+수치 경계 상태는 `BREACH_FRONTIER_KRW`, `ALREADY_BREACHED_ZERO_SHOCK`이다. 그 외 상태의 `frontier_krw`는 `null`이며 이유와 영향을 받는 선지급을 명시한다. 라벨 전체는 §4에 고정한다.
+
+결과에는 평가 범위, 선지급·청구 식별자, 입력 출처, 계산 완전성, 줄별 배분, 경계와 직전의 선지급별 base·노출을 담는다. 같은 입력의 출력 순서는 결정론적이어야 한다.
+
+공통 플래그는 `label:SIMULATED`, `hypothetical:true`, `applied:false`, `margin_call_recorded:false`, `default_eligibility_changed:false`, `journal_written:false`, `funds_executed:false`, `policy_adopted:false`다. 여기서 기록·적용 플래그는 **이 계산의 효과**를 뜻하며 기존 장부에 마진콜이 없다는 뜻이 아니다.
+
+`capital/refund_frontier.py`는 조회 입력의 순수 소비자다. `/api/risk`에 추가 블록으로 연결하며 기존 고정 충격의 값·순서·라벨·계산을 바꾸지 않는다. 기능이 빠진 기존 응답은 그대로 유지한다. 새 저널·COA·자동 호출·port를 만들지 않는다.
+
+경계는 기록된 마진콜도, 치유 창 시작도, 가속·부도 적격 변경도 아니다. 손실 확률·기대손실·실제 담보 가치·대출 또는 인출 승인도 아니다.
 
 ## 4. 기계 판독 결정 블록
 
@@ -85,120 +157,150 @@
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-02",
   "provisional": true,
-  "status": "PROVISIONAL_PRODUCT_DECISION",
-  "scope": "KIX-CAPITAL simulation and product design only; not an offer; no real money; production NOT_AUTHORIZED; deterministic hypothetical bound, not a probability, not a recorded margin call, not lending authorization; no upstream contract claimed adopted",
-  "bases": {"capital_main": "c4114c7", "kix_protocol": "fd33335", "vendor_pin_commit": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe", "terms_version": "CAPITAL-TERMS-V1"},
+  "bases": {
+    "capital_main": "c4114c7",
+    "kix_protocol": "590d68d",
+    "terms_version": "CAPITAL-TERMS-V1"
+  },
   "upstream_adoption_claimed": false,
-  "name_conflict_rule": "CAPITAL_FINANCIAL_TERMS.md was not opened (outside allowed paths); field and check names come from allowed notes citing it; on a name or number conflict the terms note wins, on frontier arithmetic and labels this note wins",
   "entries": {
     "shock_basis_and_domain": {
       "status": "ADOPTED",
       "value": {
-        "shock_unit": "integer KRW refund face per line",
-        "allocation_domain": "s_L in [0, eligible_L] integer for each beneficiary-owned line L; total |s| in [0, sum eligible_L]",
-        "beneficiary_lines": "lines on claims bound to beneficiary B with payee_label in beneficiary_payee_map[B] and present on the pinned ledger",
-        "reachability": "if outstanding_B >= 1 breach is always reachable because base_B = 0 at the domain top; s = 0 means already breached",
-        "bps_grid": "existing fixed shocks [500,1000,2500,5000] bps unchanged, byte-identical; the frontier is the inverse question in absolute KRW",
+        "unit": "integer KRW additional refund face",
+        "line_key": ["claim_id", "payee_label"],
+        "eligible": "E_L = max(0, line_face_L - refund_open_L)",
+        "domain": "integer 0 <= x_L <= E_L",
+        "objective": "minimize sum x_L over distinct physical lines",
+        "scope": "union of beneficiary-mapped lines on evaluated bound claims",
+        "fixed_shocks": "existing grid, calculations, values and labels unchanged",
         "consumer": "capital/refund_frontier.py"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
       "cap_rows": ["CAP-04", "CAP-12"],
-      "rationale": "Absolute integer KRW removes bps-conversion rounding at the boundary, and a finite per-line domain makes reachability decidable while leaving the existing bps stress grid untouched.",
+      "rationale": "A distinct-line integer domain measures additional refunds without duplicate collateral shocks or bps conversion rounding.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "coverage_breach_predicate": {
       "status": "ADOPTED",
       "value": {
-        "predicate": "breach_B(s) iff outstanding_B > base_B(s); equality is covered, not a breach (strict inequality)",
-        "base": "base_B(s) = sum over L of floor(max(0, eligible_L - s_L - encumbered_L(s_L)) * advance_rate_bps(tier_L) / 10000); per-line floor and tier-rate application follow the existing U3/margin arithmetic exactly",
-        "terms_override": "if CAPITAL-TERMS-V1's actual margin trigger differs in form, that predicate wins and the frontier is defined as its inverse; the strict-breach convention is kept",
-        "outstanding_unchanged": "hypothetical refunds shrink collateral, never the advance debt",
-        "consumer": "capital/refund_frontier.py; GET /api/risk refund_frontier block"
+        "evaluation_unit": "one advance and its bound claim",
+        "inputs": "O_a from existing margin exposure; r_a from existing terms and tier mapping; E_a is the sum of mapped eligible lines on the bound claim",
+        "base": "base_a(x) = ((E_a - sum(x_L for L in L(a))) * r_a) // 10000",
+        "predicate": "O_a > base_a(x); equality is covered",
+        "beneficiary_predicate": "any evaluated advance breaches; never compare summed exposure with summed claim bases",
+        "debt": "unchanged by hypothetical refunds",
+        "compatibility": "mismatch with existing margin evaluation blocks exact output; no alternate terms override or policy rewrite",
+        "consumer": "capital/refund_frontier.py; GET /api/risk"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
-      "cap_rows": ["CAP-04", "CAP-01"],
-      "rationale": "The frontier only means something if it inverts the same predicate that fires recorded margin calls; a divergent predicate would manufacture imaginary breaches.",
+      "cap_rows": ["CAP-01", "CAP-04"],
+      "rationale": "Per-advance evaluation and aggregate-then-floor arithmetic preserve the margin semantics supplied in the review.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "eligible_case_scope": {
       "status": "ADOPTED",
       "value": {
-        "computed_for": "beneficiaries in SIMULATED_DISPOSABLE_BOOK with outstanding_B >= 1 and at least one non-terminal advance",
-        "workspace_fixtures": "FIXTURE_VIEWS_IMMUTABLE; not computed, same as existing margin machinery",
-        "not_computed_labels": {
-          "ALREADY_BREACHED_ZERO_SHOCK": "outstanding_B > base_B(0); frontier 0; still hypothetical, not a recorded call",
-          "FRONTIER_UNDEFINED_NO_OUTSTANDING": "outstanding_B = 0",
-          "NOT_COMPUTED_TERMINAL": "all advances CLOSED/DEFAULTED or written off",
-          "NOT_COMPUTED_MISSING_INPUTS": "no mapped lines or missing tier advance rate; missing list attached",
-          "NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP": "one line feeding two beneficiaries' eligible_face"
-        },
-        "zero_rate_lines": "advance_rate 0 lines are excluded from the allocation set but the case still computes",
+        "workspace": "SIMULATED_DISPOSABLE_BOOK only",
+        "precedence": ["terminal", "unknown or zero exposure", "input and ownership validation", "unsupported case", "existing breach", "positive frontier"],
+        "terminal": "CLOSED, DEFAULTED or posted writeoff; exclude with explicit status",
+        "zero_exposure": "frontier null; strict breach impossible",
+        "existing_breach": "validated O_a > base_a(0) gives frontier 0",
+        "missing": "unknown exposure, claim, mapped lines, tier rate or registry state; never substitute zero",
+        "known_zero_rate": "positive exposure is already breached",
+        "beneficiary_summary": "minimum of eligible advance frontiers only when complete; unresolved cases yield null, except a validated zero frontier proves the global minimum zero",
+        "empty_summary": "all terminal gives terminal status; otherwise no positive nonterminal exposure gives no-outstanding status",
         "consumer": "capital/refund_frontier.py"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
       "cap_rows": ["CAP-01", "CAP-04"],
-      "rationale": "Each reason a frontier cannot exist gets its own honest label instead of collapsing to 0 or infinity, which a consumer would misread as risk level.",
+      "rationale": "Separate terminal, zero, missing and unsupported cases so absence of a computed frontier cannot be mistaken for coverage.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "shared_claim_and_slice_treatment": {
       "status": "ADOPTED",
       "value": {
-        "line_scoping": "shock applies only to beneficiary B's own mapped lines; other payee lines on the same claim and SHADOW_NOT_APPLIED shadow lines are untouched and are not allocation candidates",
-        "slice_encumbrance": "free_L(s_L) = max(0, eligible_L - s_L - min(outstanding_S(L), eligible_L - s_L)); shocks on encumbered lines lose effect once eligible reaches outstanding_S, because the encumbrance shrinks with the line",
-        "impairment_reporting": "impairment_threshold_krw = min |s| making eligible_L - s_L < outstanding_S(L) on any line (null if none); result carries would_trigger SLICE_IMPAIRMENT_ELIGIBLE; no SLICE_IMPAIR entry and no recommendation is produced",
-        "holder_first": "no distribution event inside a hypothetical shock, so served/holder-first arithmetic does not apply",
-        "invariant": "shock-induced encumbrance shrinkage is impairment exposure per CLAIM_SLICE_REGISTRY section 3.6, never an I-BASE violation",
-        "consumer": "capital/refund_frontier.py; reads the claim-slice registry fold"
+        "shared_claim": "one shock variable per physical line; count once and re-evaluate every linked advance independently",
+        "ownership": "disjoint payee lines may belong to different beneficiaries; overlapping ownership is not computed",
+        "slice_support": "V1 requires complete registry evidence of zero residual encumbrance on relevant claims",
+        "positive_encumbrance": {
+          "status": "NOT_COMPUTED_SLICE_ENCUMBRANCE",
+          "frontier_krw": null,
+          "reason": "pack does not establish integration of slice deductions with existing per-advance margin evaluation",
+          "target": "separate compatibility decision before enabling encumbered claims"
+        },
+        "impairment_threshold_krw": null,
+        "slice_effects": "no inferred loss allocation, impairment entry, priority change or recommendation",
+        "consumer": "capital/refund_frontier.py; claim-slice-registry read fold"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
       "cap_rows": ["CAP-03", "CAP-04", "CAP-08"],
-      "rationale": "Encumbered face is already not the beneficiary's to lose, so a refund shock only eats the free remainder; reporting the impairment threshold beside the frontier closes the shared-collateral question before implementation.",
+      "rationale": "Preserve physical shock identity and explicitly exclude unverified encumbrance semantics instead of introducing a new margin policy.",
       "provisional": true,
-      "basis": "WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW",
-      "review_items": ["position of slice holders and refund obligations in insolvency"]
+      "basis": "PRODUCT_DECISION"
     },
     "rounding_and_boundary_witness": {
       "status": "ADOPTED",
       "value": {
-        "rounding_order": ["per-line free_L integer", "per-line floor(x * rate_bps / 10000)", "sum", "strict compare against outstanding_B"],
-        "frontier_definition": "s* = min over all allocations of total shock such that breach_B(s); the true minimum, not the saturate-highest-rate approximation (floors make that an upper bound only)",
-        "canonical_witness": "fill base-reduction steps of all lines in global ascending per-step shock cost; ties by (claim_id, payee_label) ascending; unique by construction",
-        "witness_fields": ["frontier_krw", "allocation per line", "base_at_frontier", "base_at_frontier_minus_1", "outstanding", "required_reduction"],
-        "boundary_check": "predicate holds (covered) at s*-1 and fails at s*; both sides emitted",
-        "worked_examples": [
-          {"face": 47500000, "rate_bps": 5000, "slice": 0, "outstanding": 20000000, "base0": 23750000, "s_star": 7500001, "base_at_s_star_minus_1": 20000000, "base_at_s_star": 19999999},
-          {"face": 47500000, "rate_bps": 5000, "outstanding_S": 10000000, "outstanding": 8000000, "base0": 18750000, "s_star": 21500001, "impairment_threshold": 37500001}
-        ],
+        "rounding_order": ["integer remaining eligible face per line", "sum within bound claim and beneficiary mapping", "multiply by advance rate", "floor once", "strict comparison"],
+        "positive_frontier": "f_a = E_a - ((10000 * O_a - 1) // r_a), for supported covered positive exposure",
+        "summary_frontier": "f_B = min_a f_a, subject to completeness rules",
+        "canonical_witness": "choose minimum f_a, ties by UTF-8 advance_id; fill its lines in UTF-8 (claim_id, payee_label) order up to E_L",
+        "predecessor": "for positive frontier remove one KRW from the last positive witness line; re-evaluate all relevant advances at both allocations",
+        "minimality": "any breach requires at least one advance-specific f_a; the selected witness attains the minimum",
+        "rejected_method": "global sorting of cumulative or incremental base-reduction steps",
+        "unsupported_shape": "multiple line rates within one advance or incompatible margin inputs",
+        "witness_fields": ["frontier_krw", "selected_advance_id", "allocation", "predecessor_allocation", "advance_evaluations_at_frontier", "advance_evaluations_at_predecessor", "evaluation_complete"],
         "consumer": "capital/refund_frontier.py"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
       "cap_rows": ["CAP-04", "CAP-12"],
-      "rationale": "Pinning the per-line floor order and a unique canonical witness makes the boundary reproducible and lets tests assert both sides of the strict inequality on the exact integer edge.",
+      "rationale": "The exact integer inverse proves minimality; deterministic witness selection needs no invalid step-cost heuristic.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "result_labels_and_consumers": {
       "status": "ADOPTED",
       "value": {
-        "labels": ["BREACH_FRONTIER_KRW", "ALREADY_BREACHED_ZERO_SHOCK", "FRONTIER_UNDEFINED_NO_OUTSTANDING", "NOT_COMPUTED_TERMINAL", "NOT_COMPUTED_MISSING_INPUTS", "NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP"],
-        "constant_flags": {"label": "SIMULATED", "hypothetical": true, "applied": false, "margin_call_recorded": false, "default_eligibility_changed": false, "journal_written": false, "funds_executed": false, "policy_adopted": false},
-        "surface": "capital/refund_frontier.py pure function; additive refund_frontier block inside GET /api/risk on disposable books only; absent key keeps existing responses byte-identical",
-        "no_new": ["typing.Protocol or docs/SEAMS.md row", "journal entry", "COA posting", "golden change", "draw gate change"],
-        "non_claims": ["not a recorded margin call; starts no cure window, acceleration or default-eligibility computation", "not a probability or expected loss; an exact deterministic threshold", "not lending authorization; unrelated to U1-U6 draw gates", "not real collateral valuation or enforcement"],
-        "consumer": "capital/refund_frontier.py; GET /api/risk refund_frontier block"
+        "labels": [
+          "BREACH_FRONTIER_KRW",
+          "ALREADY_BREACHED_ZERO_SHOCK",
+          "FRONTIER_UNDEFINED_NO_OUTSTANDING",
+          "NOT_COMPUTED_TERMINAL",
+          "NOT_COMPUTED_MISSING_INPUTS",
+          "NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP",
+          "NOT_COMPUTED_SLICE_ENCUMBRANCE",
+          "NOT_COMPUTED_UNSUPPORTED_EVALUATION",
+          "NOT_COMPUTED_INCOMPLETE_SCOPE",
+          "NOT_COMPUTED_WORKSPACE_SCOPE"
+        ],
+        "constant_flags": {
+          "label": "SIMULATED",
+          "hypothetical": true,
+          "applied": false,
+          "margin_call_recorded": false,
+          "default_eligibility_changed": false,
+          "journal_written": false,
+          "funds_executed": false,
+          "policy_adopted": false
+        },
+        "flags_meaning": "effects of this calculation only; not assertions that historical records are absent",
+        "surface": "read-only additive refund_frontier block; preserve all existing fixed-shock results and responses where feature is absent",
+        "non_claims": ["recorded margin call", "cure or default eligibility", "loss probability or expected loss", "lending or draw authorization", "real collateral valuation", "upstream adoption"],
+        "consumer": "capital/refund_frontier.py; GET /api/risk"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-02",
       "cap_rows": ["CAP-04", "CAP-09"],
-      "rationale": "Honest labels keep a hypothetical coverage failure visibly distinct from recorded margin calls, default eligibility, loss probability and lending authorization, while an additive read-only block preserves every existing risk surface byte.",
+      "rationale": "Explicit status and effect labels prevent a hypothetical threshold from being consumed as an operational event or authorization.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
@@ -208,22 +310,22 @@
 
 ## 5. 수용 기준 매핑
 
-- **한 개의 `capital-decision-v1` 블록, 여섯 항목 전부** → §4, 모두 ADOPTED.
-- **정수 충격 정의역·환불 기준·엄밀 위반 술어·반올림 순서·정확 경계 예시** → §3.1·§3.2·§3.5(예시 2개, `s*−1`/`s*` 양쪽 수치 포함).
-- **기존 위반·노출 0·매핑 부재·종결 선지급·공유 청구·슬라이스 점유의 명시 처리** → §3.3(원인별 라벨)·§3.4.
-- **가상 커버리지 실패 vs 기록된 마진콜·부도 적격·손실 확률·대출 승인의 구분** → §3.6 비주장과 상수 플래그.
-- **`capital/refund_frontier.py` 소비자 명명·기존 고정 충격 보존** → §1 표·§3.1·§3.6(부재 시 바이트 불변).
-- **`scripts/decision_ledger.py` 통과·소비 대상과 미지원 케이스 명시** → 결정 블록 단일, 소비자 필드와 `not_computed_labels` 기록.
+- 단일 결정 블록·여섯 항목·소비 대상: §4.
+- 정수 정의역·환불 기준·엄밀 위반·내림 순서: §3.1–3.2, §3.5.
+- 기존 위반·노출 0·매핑 부재·종결·공유·슬라이스: §3.3–3.4.
+- 정확한 다중 줄 경계·기존 위반 반례: §3.5. 닫힌식은 합성 **190개 경우의 전수 배분 탐색**과 일치했고 양수 경계 예시의 양측 산술도 확인했다.
+- 기록·확률·승인과의 구분 및 고정 충격 보존: §3.6.
+- `python3 scripts/decision_ledger.py`: **UNVERIFIED**. 이 응답에서는 저장소를 수정하지 않았고, 스크립트는 허용된 읽기 경로 밖이므로 실행하지 않았다. 감독자가 문서를 저장한 뒤 검증해야 하며 통과를 주장하지 않는다.
 
 ## 6. Open risks
 
-- TERMS 원문의 마진 발화 술어(완충 비율 포함 여부)를 직접 읽지 못했다. 다르면 TERMS 술어가 이기고 `s*` 값만 달라지며 구조는 유지된다.
-- `beneficiary_payee_map` 다대일·중첩 소유가 생기면 `AMBIGUOUS_LINE_OWNERSHIP` 경로가 실제로 쓰인다; 맵 스키마가 바뀌면 재검토.
-- 청구→수익자 바인딩 소유권은 데모 북 규칙에 의존한다. 바인딩이 다원화되면 줄 귀속 규칙을 다시 연다.
-- 손상 임계와 경계의 상대 순서(예시 2)가 구현에서 뒤집히는 책이 있을 수 있다 — 슬라이스가 큰 책은 `impairment_threshold < frontier`가 일반적일 것.
+- 마진·TERMS 원문 대신 검토 발췌에 의존했다. 구현의 기존 마진 동등성 검증은 필수다.
+- 양수 슬라이스 점유의 수치 경계는 의도적으로 미지원이다. 이를 0 점유로 대체하면 안 된다.
+- 불완전한 수익자 평가에서 일부 계산값을 전체 최소값으로 표시하면 안 된다.
+- 큰 금액은 중간 곱셈까지 정확한 정수로 계산해야 한다.
 
 ## 7. 후속 작업
 
-- 구현 노드: `capital/refund_frontier.py` + `/api/risk` 추가 블록, 결정론 단위 테스트(예시 1·2, 라벨 전 종류, `s*−1`/`s*` 양측 검증), `docs_surface.py`·`decision_bindings.py` 등록.
-- `test_count` 변동 시 `CAPITAL-CLOSEOUT-REGEN-V1` 절차로 closeout digest·vector pack 재생성.
-- TERMS 마진 술어 확인 라운드에서 §3.2의 `terms_override` 조항 실제 검증.
+구현 노드는 `capital/refund_frontier.py`와 추가 조회 블록을 만들고, 기존 마진 결과와의 동등성·공유 줄의 단일 계수·다중 줄 내림·상태 우선순위·불완전 요약을 검증한다. 고정 충격 결과의 회귀 보존도 확인한다.
+
+감독자는 문서 저장 후 `python3 scripts/decision_ledger.py`를 실행하고 필요한 결정 바인딩을 검증한다. 새 벡터를 추가하는 구현에서는 README와 `scripts/docs_surface.py` 등록 및 `--check`를 수행한다. 양수 슬라이스 지원은 기존 마진 입력과 registry 연결을 확인한 별도 결정 이후 진행한다.
