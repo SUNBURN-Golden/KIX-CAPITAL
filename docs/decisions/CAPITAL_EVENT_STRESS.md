@@ -4,132 +4,130 @@
 >
 > Requested decision lane: **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**.
 >
-> Date: **2026-11-02** · Capital main: **`079dcca`** · kix-protocol: **`5f8e85c`**. These bases are supervisor-supplied, not independently verified.
+> Date: **2026-11-03** · Capital main: **`079dcca`** · kix-protocol: **`15ea27b`**. These bases are supervisor-supplied, not independently verified.
 >
-> Simulation/product design only. **`SIMULATED` · `applied=false` · `funds_executed=false` · production `NOT_AUTHORIZED`.**
+> Simulation/product design only; no real money. **`SIMULATED` · `applied=false` · `funds_executed=false` · production `NOT_AUTHORIZED`.**
 
-**Execution provenance.** Claude CLI attempts for Sonnet 5.5 failed three times; the subsequent Fable 5.1 attempt also failed. Each returned `Not logged in`. Codex authored and made the scope decisions below. The required `decided_by` and `provided_by` strings identify the requested delegation lane; they do **not** attest that those models authored, reviewed, or approved this document.
+**Execution provenance.** The supplied prior revision records three failed Sonnet CLI attempts and one failed Fable attempt, each returning `Not logged in`. Those attempts were not repeated or independently verified in this revision. Codex authored this revision. The required `decided_by` and `provided_by` strings identify the requested delegation lane; they do **not** attest to those models’ authorship, review, or approval.
 
 Decision node: `event-stress-scope-decision`. Dependencies: `risk-whatif-scenarios`, `portfolio-consistent-read`, `financial-terms-decision`. Consumer: **`event-stress-report`**.
 
-The explicit reading allowlist controls. Financial-terms and implementation sources were outside it; truncated documents were used only through supplied excerpts. Existing decided terms remain authoritative. Their omitted contents are not reconstructed or reopened as undecided policy. Exact implementation bindings remain `UNDETERMINED` where identified below.
+The explicit reading allowlist controls. Financial-terms and implementation sources are outside it; truncated sources are used only through supplied excerpts. Existing decided terms remain authoritative. Omitted policy is not reconstructed or reopened. Exact implementation bindings remain `UNDETERMINED` where identified below.
 
 ## 1. 결정 요약
 
-`ADOPTED` here means a provisional local product decision, not upstream adoption or an adopted facade contract.
+`ADOPTED` means a provisional local product decision, not upstream adoption or an adopted facade contract.
 
 | Item | Decision | CAP rows | Consumer |
 |---|---|---|---|
-| `synthetic_event_membership` | Request-local explicit membership; exactly one selected event per scenario; reject duplicates within an event and unknown claims | CAP-04, CAP-08 | `event-stress-report` |
-| `claim_shock_identity` | One common additional open-refund amount; transform each distinct member claim once per scenario | CAP-04, CAP-08 | `event-stress-report` |
-| `shared_claim_counting` | Share the transformed claim view across advances; count claim collateral and advance exposure at their respective unique identities | CAP-04, CAP-08 | `event-stress-report` |
-| `shock_application_order` | Freeze one consistent snapshot; transform claims; recompute existing risk; aggregate and compare | CAP-01, CAP-04 | `event-stress-report` |
+| `synthetic_event_membership` | Explicit request-local membership; one selected event per scenario; reject duplicates and unknown claims | CAP-04, CAP-08 | `event-stress-report` |
+| `claim_shock_identity` | Common additional open-refund amount; transform each distinct member claim once | CAP-04, CAP-08 | `event-stress-report` |
+| `shared_claim_counting` | Share transformed views; count collateral by claim and exposure by advance | CAP-04, CAP-08 | `event-stress-report` |
+| `shock_application_order` | Capture one consistent snapshot, transform claims, recompute existing risk, aggregate and compare | CAP-01, CAP-04 | `event-stress-report` |
 | `unsupported_position_handling` | Reject invalid requests; retain unsupported positions with null affected metrics and explicit coverage | CAP-04, CAP-20 | `event-stress-report` |
-| `scenario_capacity_bounds` | Fixed request and computation limits; atomic rejection above limits; no truncation | CAP-08, CAP-20 | `event-stress-report` |
+| `scenario_capacity_bounds` | Fixed computation limits; atomic rejection above limits; no truncation | CAP-08, CAP-20 | `event-stress-report` |
 
 ## 2. KIX 비전 연결
 
-The [Protocol README](/workspace/capital-run/kixproto-ro/README.md) connects ticket transactions, refunds, settlement, and financial evidence. Event-level scenarios provide a bounded way to inspect their common financial sensitivity: several claims can respond to one assumed disruption without introducing an event probability model.
+Event-level stress makes correlated refund sensitivity visible across claims and advances while keeping financial policy authoritative. It supports a broader financial reporting system through a bounded, buildable extension to existing scenarios.
 
-The [authority decision](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md) separates chain rights authority from offchain execution and financial obligations. Membership here is an operator-authored synthetic grouping. It proves neither ticket ownership nor contractual entitlement, event authenticity, performance, or collection rights.
+The supplied [claim-slice registry excerpt](CAPITAL_CLAIM_SLICE_REGISTRY.md) identifies shared limits and prevention of borrowing-base double use as design concerns. This report preserves that boundary without inventing allocation priorities or asserting ticket ownership, contractual entitlement, event authenticity, performance, or collection rights.
 
-[CAPITAL_DEMO_BOOK.md](CAPITAL_DEMO_BOOK.md) supplies the synthetic-fixture boundary and a secondary description of eligible face and open refunds. The supplied [claim-slice registry excerpt](CAPITAL_CLAIM_SLICE_REGISTRY.md) establishes the need to prevent double use of shared collateral. Neither source authorizes inventing allocation priorities.
-
-The supplied [requirements](../CAPITAL_REQUIREMENTS_KO.md), [seams](../SEAMS.md), and [validation](../VALIDATION.md) excerpts preserve the distinction between local simulation, upstream binding, and demonstrated conformance. This decision adds a reporting scope, without claiming implementation or conformance.
+The supplied [requirements](../CAPITAL_REQUIREMENTS_KO.md), [seams](../SEAMS.md), and [validation](../VALIDATION.md) excerpts distinguish local simulation from upstream binding and demonstrated conformance. Synthetic grouping adds reporting scope only. It creates no production identity adoption, upstream receipt, or conformance claim.
 
 ## 3. 항목별 결정
 
 ### 3.1 `synthetic_event_membership`
 
-**ADOPTED.** Introduce request format `CAPITAL_EVENT_STRESS_V1`. It contains event definitions and independently identified scenarios. Each event has `event_id` and a nonempty `claim_refs` list; each scenario names exactly one event.
+**ADOPTED.** Introduce request format `CAPITAL_EVENT_STRESS_V1`, containing event definitions and independently identified scenarios. Each event has `event_id` and a nonempty `claim_refs` list. Each scenario selects exactly one defined event.
 
-A claim reference is the full existing identity within the captured workspace snapshot. Preserve any scope components required by that identity. Do not resolve claims by display name, organizer, venue, date, ticket identifier, substring, or upstream alias.
+A claim reference is its full existing identity within the captured workspace snapshot, preserving required scope components. Never resolve membership by display name, organizer, venue, date, ticket identifier, substring, or upstream alias.
 
-Event and scenario identifiers are case-sensitive request-local ASCII identifiers, 1–128 bytes, using letters, digits, `.`, `_`, and `-`. Existing claim identities retain their existing validation rules.
+Event and scenario identifiers are case-sensitive request-local ASCII identifiers, 1–128 bytes, using letters, digits, `.`, `_`, and `-`. Existing claim identities retain existing validation rules.
 
-Reject duplicate event identifiers, duplicate scenario identifiers, and repeated claim references within one event. Reject unknown or ambiguous claims anywhere in the submitted definitions, including unselected events. Never create placeholder claims.
+Reject duplicate event identifiers, duplicate scenario identifiers, and repeated claim references within one event. Reject unknown or ambiguous claims anywhere in submitted definitions, including unselected events. Never create placeholder claims.
 
-A known claim may belong to multiple event definitions. This expresses alternative synthetic groupings. Each scenario selects one definition, and scenarios always start from the same baseline. Overlaps therefore neither stack shocks nor establish additional collateral. Multi-event unions and sequential scenario composition are outside V1.
+A known claim may belong to multiple event definitions as alternative synthetic groupings. Every scenario starts independently from the same baseline. Overlap neither stacks shocks nor creates collateral. Multi-event unions and sequential composition are outside V1.
 
-Membership is supplied explicitly with each request. No persistent event registry, real-event import, inferred relationship, ticket verification, or rights verification is introduced.
+Membership is operator-authored and supplied with each request. No persistent event registry, real-event import, inferred relationship, ticket verification, or rights verification is introduced.
 
 ### 3.2 `claim_shock_identity`
 
-**ADOPTED.** V1 supports one shock: `ADDITIONAL_OPEN_REFUND_KRW`, parameterized by nonnegative integer `additional_open_refund_krw`. Booleans, fractional values, negative amounts, and values outside existing monetary constraints are invalid.
+**ADOPTED.** Support one shock: `ADDITIONAL_OPEN_REFUND_KRW`, parameterized by nonnegative integer `additional_open_refund_krw`. Reject booleans, fractional or negative values, and amounts outside existing monetary constraints.
 
-For every distinct member claim, let `R` be its baseline open-refund amount. The scenario requests a hypothetical open-refund amount of `R + additional_open_refund_krw`. All members receive the same increment. This is a deterministic sensitivity input, not a refund entitlement, probability, new policy rate, or prediction.
+For each distinct member claim, baseline open refund `R` becomes the requested hypothetical amount `R + additional_open_refund_krw`. Every member receives the same increment. This is deterministic sensitivity, not refund entitlement, probability, a new policy rate, or prediction.
 
-The existing single-claim refund scenario evaluator must determine validity and resulting risk. Its existing caps, refund treatment, payee treatment, rounding, eligibility, and borrowing-base rules remain authoritative. The wrapper must not implement a second refund waterfall or subtract the shock again from an already transformed result.
+The existing single-claim refund scenario evaluator determines validity and resulting risk. Preserve its caps, refund and payee treatment, rounding, eligibility, and borrowing-base rules. The wrapper must not implement a second refund waterfall or subtract the shock again from transformed results.
 
-Transformation identity is `(baseline identity, scenario_id, full claim identity)`. Event labels and advance identifiers do not create additional transformations. Zero shock is an identity operation for financial values, while still preserving unsupported-state labels.
+Transformation identity is `(baseline identity, scenario_id, full claim identity)`. Event labels and advance identifiers create no additional transformations. Zero shock preserves financial values and unsupported-state labels.
 
-**Binding limitation:** the existing evaluator’s callable, parameter mapping, and monetary domain were not in the pack. Their binding is `UNDETERMINED`, `value: null`, owned by `event-stress-report`. The implementation must establish an equivalent mapping to the existing evaluator before producing affected numeric results. It must not fabricate an approximation.
+**Binding limitation:** the evaluator callable, argument mapping, and monetary domain were omitted from the authorized pack. Binding is `UNDETERMINED`, `value: null`, owned by `event-stress-report`. Establish an equivalent mapping before producing affected numeric results; do not approximate missing arithmetic.
 
 ### 3.3 `shared_claim_counting`
 
-**ADOPTED.** Construct one transformed view for each member claim and let every linked advance consume that same view.
+**ADOPTED.** Construct one transformed view per member claim. Every linked advance consumes that same view.
 
-Count claim-level eligible face and collateral once per full claim identity. Count exposure once per distinct advance identity, subject to the existing exposure-inclusion rules. A repeated relationship edge is invalid; one advance legitimately linked to several claims still contributes its exposure only once.
+Count eligible face and collateral once per full claim identity. Count exposure once per distinct advance identity under existing exposure-inclusion rules. Reject repeated relationship edges. An advance legitimately linked to several claims contributes exposure only once.
 
-Per-advance rows may show a shared claim reference and contextual claim values, but those contextual values are explicitly non-additive. Do not sum standalone advance borrowing bases when they reuse the same claim.
+Per-advance rows may repeat claim references and contextual values, explicitly marked non-additive. Never sum standalone advance borrowing bases that reuse the same claim.
 
-Use existing allocation, reservation, slice, and shared-cap behavior if the current risk evaluator supports the position. This decision creates no equal split, pro rata allocation, priority waterfall, or new borrowing permission. If the evaluator cannot reconcile shared collateral, affected borrowing-base and headroom totals are null, with `UNSUPPORTED_SHARED_ALLOCATION`.
+Use existing allocation, reservation, slice, and shared-cap behavior where supported. This decision creates no equal split, pro rata allocation, priority waterfall, or borrowing permission. If existing arithmetic cannot reconcile shared collateral, affected borrowing-base and headroom totals are null with `UNSUPPORTED_SHARED_ALLOCATION`.
 
-A standalone claim borrowing base is contextual information, not an amount available separately to every linked advance.
+A standalone claim borrowing base is contextual information, not an amount separately available to every linked advance.
 
 ### 3.4 `shock_application_order`
 
-**ADOPTED.** The consumer follows this sequence:
+**ADOPTED.** The consumer must:
 
 1. Validate request structure and capacity without modifying state.
-2. Capture claims, advances, relationships, terms, and logical-time inputs through the existing consistent-read mechanism. Validate all references against that snapshot.
-3. Calculate the baseline through existing risk arithmetic.
-4. For each scenario, independently transform each distinct member claim from the baseline, then recompute affected advance and portfolio metrics.
-5. Aggregate with unique claim and advance identities; emit baseline, stressed values, deltas, reasons, and coverage.
+2. Capture claims, advances, relationships, terms, and logical-time inputs through the existing consistent-read mechanism; validate references against that snapshot.
+3. Calculate baseline metrics through existing risk arithmetic.
+4. Independently transform each scenario’s distinct member claims from the baseline; recompute affected advance and portfolio metrics.
+5. Aggregate by unique claim and advance identities; emit baseline, stressed values, deltas, reasons, and coverage.
 
-Sort event, scenario, claim, and advance output by their canonical identifiers. Array order must not affect financial results. Preserve evaluator-required internal ordering.
+Sort output by canonical event, scenario, claim, and advance identifiers. Input array order must not affect financial results; preserve evaluator-required internal ordering.
 
-Claims outside the event retain their baseline claim views and remain in the portfolio comparison. An advance linked to both inside and outside claims consumes the changed and unchanged views together; its result can therefore change.
+Outside claims retain baseline views and remain in portfolio comparisons. An advance linked to both inside and outside claims consumes changed and unchanged views together, so its result may change.
 
-Use the same terms snapshot for baseline and stress. Read rates, caps, thresholds, and policy values from their existing sources. In particular, preserve `CAPITAL-TERMS-V1` references such as `underwriting_depth.single_advance_cap_krw`, `beneficiary_aggregate_cap_krw`, `portfolio_cap_krw`, and `two_person_threshold_krw`; copy no policy literals into this decision.
+Baseline and stress use the same existing terms snapshot. Read rates, caps, thresholds, and policy values from their authoritative sources. Preserve `CAPITAL-TERMS-V1` references, including `underwriting_depth.single_advance_cap_krw`, `beneficiary_aggregate_cap_krw`, `portfolio_cap_krw`, and `two_person_threshold_krw`; copy no policy literals.
 
-Stress changes no principal, repayment, settlement, maturity, default, write-off, ledger, or clock state. It produces no commands. An eligibility or margin consequence is reported under existing rules.
+Stress changes no principal, repayment, settlement, maturity, default, write-off, ledger, or clock state and emits no commands. Report eligibility and margin consequences only under existing rules.
 
-If a consistent snapshot or required terms binding is unavailable, affected computations are unavailable. Do not substitute several independently timed reads.
+Missing consistent snapshots or required terms bindings make dependent computations unavailable. Independently timed reads are not a substitute.
 
 #### Worked examples
 
-The following are illustrative synthetic integer fixtures, not executed tests. They use the eligible-face relationship quoted by `CAPITAL_DEMO_BOOK.md`: mapped outstanding less open refunds. They do not define general payee allocation or borrowing-base arithmetic.
+These illustrative synthetic integer fixtures are not executed tests. For these fixtures, assume the existing evaluator supports eligible face equal to mapped outstanding less open refunds. This assumption defines no general payee allocation or borrowing-base formula.
 
-**Two claims in one event, with an outside claim.** Event `E1` contains `C1` and `C2`. Scenario `S1` adds 100 synthetic KRW of open refund to each member. Assume each position is supported by the existing evaluator.
+**Two claims in one event and an outside claim.** `E1` contains `C1` and `C2`; `S1` adds 100 synthetic KRW of open refund per member.
 
-| Claim | Event membership | Mapped outstanding | Baseline open refund | Stressed open refund | Baseline eligible face | Stressed eligible face |
+| Claim | Membership | Mapped outstanding | Baseline refund | Stressed refund | Baseline eligible face | Stressed eligible face |
 |---|---|---:|---:|---:|---:|---:|
 | `C1` | `E1` | 1,000 | 100 | 200 | 900 | 800 |
 | `C2` | `E1` | 2,000 | 200 | 300 | 1,800 | 1,700 |
 | `C3` | Outside `E1` | 500 | 50 | 50 | 450 | 450 |
 
-Event eligible face changes from 2,700 to 2,500. Portfolio eligible face changes from 3,150 to 2,950. The common increment is applied once to each of two members, giving a total hypothetical refund increase of 200. `C3` is retained unchanged.
+Event eligible face moves from 2,700 to 2,500; portfolio eligible face moves from 3,150 to 2,950. Total hypothetical refunds increase by 200. `C3` remains unchanged and included.
 
-Borrowing base is recalculated by the existing evaluator using these views and the same terms snapshot. No advance rate or refund eligibility exception is inferred from the example.
+Recalculate borrowing base through the existing evaluator and unchanged terms. Infer no advance rate or eligibility exception from these figures.
 
-**Two advances sharing one claim.** Let distinct advances `A1` and `A2` reference `C1`, with included exposures of 300 and 200. Their combined exposure is 500. Both consume the same stressed `C1` view: open refund 200 and eligible face 800.
+**Two advances sharing one claim.** Distinct advances `A1` and `A2` reference `C1`, with included exposures of 300 and 200: combined exposure 500. Both consume the same stressed view, refund 200 and eligible face 800.
 
-Claim eligible face contributes **800 once**, not 1,600. The shock adds **100 once**, not 200. Any allocation of supported borrowing base between `A1` and `A2` follows existing rules. If that allocation is unsupported, allocated bases and dependent headroom remain null; the consumer does not grant each advance the full claim base.
+Claim eligible face contributes **800 once**, not 1,600. Refund increases **100 once**, not 200. Existing supported rules govern allocation. If allocation is unsupported, allocated bases and dependent headroom are null; neither advance receives a separate full claim base.
 
-**Overlapping alternative.** If `E2` contains `C1` and `C3`, an `E2` scenario starts again from the baseline. It does not inherit the `E1` refund increase. Its portfolio result is an alternative outcome and must not be added to `S1`.
+**Overlapping alternative.** If `E2` contains `C1` and `C3`, its scenario restarts from baseline. It inherits no `E1` increase, and its portfolio outcome cannot be added to `S1`.
 
 ### 3.5 `unsupported_position_handling`
 
-**ADOPTED.** Distinguish malformed input from a valid request containing unsupported positions.
+**ADOPTED.** Distinguish invalid requests from known unsupported positions.
 
-Invalid identifiers, duplicates, unknown references, negative shocks, monetary-domain violations, and exceeded bounds reject the whole request before scenario evaluation. Return reasons and no financial result.
+Invalid identifiers, duplicates, unknown references, negative shocks, monetary-domain violations, and exceeded bounds reject the entire request with reasons and no financial result.
 
-For known positions, preserve existing unsupported reasons. Examples include unavailable refund detail, unresolved payee mapping, unsupported shared allocation, and positions whose holder or slice semantics are not supported. Do not convert these into zero exposure, zero refund, or full eligibility.
+For known positions, preserve existing unsupported reasons, including missing refund detail, unresolved payee mapping, unsupported shared allocation, or unsupported holder/slice semantics. Never substitute zero exposure, zero refund, or full eligibility.
 
-Emit supported rows and explicit unsupported rows. An aggregate depending on an unsupported value is null; its delta is also null. Supported subtotals may be displayed only with their scope and excluded identifiers, never labeled a complete event or portfolio total. Known independent metrics may remain numeric.
+Emit supported and unsupported rows explicitly. Any aggregate depending on an unsupported value, and its delta, is null. Supported subtotals require explicit scope and excluded identifiers; never label them complete event or portfolio totals. Independent known metrics may remain numeric.
 
-Unsupported positions outside the event also affect portfolio coverage when the aggregate depends on them. Reports include unsupported identifiers, reason codes, and counts. `PARTIAL` or `UNAVAILABLE` results cannot carry a complete-portfolio pass or safety conclusion.
+Unsupported outside positions also reduce portfolio coverage when aggregates depend on them. Include unsupported identifiers, reasons, and counts. `PARTIAL` or `UNAVAILABLE` reports cannot carry a complete-portfolio pass or safety conclusion.
 
 ### 3.6 `scenario_capacity_bounds`
 
@@ -137,18 +135,18 @@ Unsupported positions outside the event also affect portfolio coverage when the 
 
 | Dimension | Maximum |
 |---|---:|
-| UTF-8 request payload, before JSON parsing | 1,048,576 bytes |
-| Event definitions per request | 20 |
+| UTF-8 request payload before JSON parsing | 1,048,576 bytes |
+| Event definitions | 20 |
 | Claims per event | 100 |
 | Membership edges across definitions | 1,000 |
-| Independent scenarios per request | 20 |
-| Claims in captured portfolio | 1,000 |
-| Advances in captured portfolio | 1,000 |
+| Independent scenarios | 20 |
+| Captured portfolio claims | 1,000 |
+| Captured portfolio advances | 1,000 |
 | Advance-to-claim relationship edges | 5,000 |
 
-Require at least one event and one scenario. Count overlapping membership once per event edge when enforcing capacity. Existing lower limits prevail. Reject excess atomically with `SCENARIO_CAPACITY_EXCEEDED`; do not sample, truncate, split silently, or evaluate only a convenient portfolio subset.
+Require at least one event and scenario. Count overlap once per event membership edge. Existing lower limits prevail. Reject excess atomically with `SCENARIO_CAPACITY_EXCEEDED`; never sample, truncate, split silently, or evaluate a convenient portfolio subset.
 
-These bounds control local computation, not credit availability. No probability distribution, correlation coefficient, Monte Carlo engine, likelihood ranking, optimization, or new credit policy is introduced.
+These are computation bounds, not credit limits. Exclude probability distributions, correlation coefficients, Monte Carlo models, likelihood rankings, optimization, and new credit policy.
 
 ## 4. 기계 판독 결정 블록
 
@@ -157,19 +155,17 @@ These bounds control local computation, not credit availability. No probability 
   "schema": "capital-decision-v1",
   "decision_id": "event-stress-scope-decision",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-  "date": "2026-11-02",
+  "date": "2026-11-03",
   "provisional": true,
   "execution_provenance": {
-    "actual_author": "Codex",
-    "requested_lane_executed": false,
-    "sonnet_failed_attempts": 3,
-    "fable_failed_attempts": 1,
-    "failure": "Not logged in",
+    "revision_author": "Codex",
+    "requested_lane_executed_this_revision": false,
+    "prior_attempts_source": "SUPPLIED_PRIOR_REVISION_NOT_INDEPENDENTLY_VERIFIED",
     "attribution_semantics": "Requested delegation lane only; not model authorship or approval evidence"
   },
   "bases": {
     "capital_main": "079dcca",
-    "kix_protocol": "5f8e85c",
+    "kix_protocol": "15ea27b",
     "source": "SUPERVISOR_SUPPLIED"
   },
   "consumer": "event-stress-report",
@@ -192,7 +188,7 @@ These bounds control local computation, not credit availability. No probability 
         "real_event_imports": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-11-02",
+      "date": "2026-11-03",
       "cap_rows": ["CAP-04", "CAP-08"],
       "rationale": "Explicit bounded groupings support common-event sensitivity without inventing event or ticket authority.",
       "provisional": true,
@@ -218,9 +214,9 @@ These bounds control local computation, not credit availability. No probability 
         }
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-11-02",
+      "date": "2026-11-03",
       "cap_rows": ["CAP-04", "CAP-08"],
-      "rationale": "One deterministic increment per claim avoids duplicate refunds while preserving existing financial arithmetic.",
+      "rationale": "One increment per claim avoids duplicate refunds and preserves existing arithmetic.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -236,9 +232,9 @@ These bounds control local computation, not credit availability. No probability 
         "per_advance_claim_context": "NON_ADDITIVE"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-11-02",
+      "date": "2026-11-03",
       "cap_rows": ["CAP-04", "CAP-08"],
-      "rationale": "Shared collateral must not multiply with the number of linked advances.",
+      "rationale": "Shared collateral must not multiply with linked advances.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -261,9 +257,9 @@ These bounds control local computation, not credit availability. No probability 
         "missing_snapshot_or_terms": "UNAVAILABLE_DEPENDENT_METRICS"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-11-02",
+      "date": "2026-11-03",
       "cap_rows": ["CAP-01", "CAP-04"],
-      "rationale": "A consistent baseline isolates the scenario effect without changing state or policy.",
+      "rationale": "A consistent baseline isolates scenario effects without changing state or policy.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -278,9 +274,9 @@ These bounds control local computation, not credit availability. No probability 
         "partial_portfolio_pass": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-11-02",
+      "date": "2026-11-03",
       "cap_rows": ["CAP-04", "CAP-20"],
-      "rationale": "Unsupported positions remain visible and cannot silently improve reported coverage or headroom.",
+      "rationale": "Unsupported positions cannot silently improve coverage or headroom.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -302,9 +298,9 @@ These bounds control local computation, not credit availability. No probability 
         "probability_models": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-11-02",
+      "date": "2026-11-03",
       "cap_rows": ["CAP-08", "CAP-20"],
-      "rationale": "Explicit computational limits keep cohort stress buildable without introducing financial limits.",
+      "rationale": "Explicit computation bounds keep cohort stress buildable without introducing credit limits.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
@@ -316,25 +312,25 @@ These bounds control local computation, not credit availability. No probability 
 
 | Acceptance | Specification / implementation evidence required |
 |---|---|
-| Six decisions | Exactly six entries in §4 |
-| Membership and identity | §3.1; duplicate, overlap, ambiguous-reference and unknown-claim cases |
-| Once-per-claim shock | §3.2–3.3; shared-advance and duplicate-edge cases |
-| Existing arithmetic | §3.4; one-member equivalence to existing scenarios, zero-shock identity, unchanged terms |
-| Worked examples | §3.4 covers two members, shared advances, an outside claim, and alternative overlap |
-| Bounded honest reporting | §3.5–3.6; unsupported propagation, limit boundaries, immutable inputs, deterministic output |
+| Valid decision block covering all six items | Exactly one `capital-decision-v1` block with six entries in §4 |
+| Bounded membership, duplicates, overlap, unknown claims, no rights authority | §3.1 and §3.6; rejection and alternative-grouping cases |
+| Once-per-claim shock, multiple advances, existing refund and borrowing-base rules | §3.2–3.4; shared-advance, duplicate-edge, single-member equivalence, and zero-shock cases |
+| Worked examples: two event claims, two advances sharing one claim, outside claim | §3.4 worked examples |
+| `SIMULATED`, `applied=false`, `funds_executed=false`; preserve financial rates, production gates, upstream pins | Opening banner and §4 declare labels; §3.4 preserves terms and state; §6–7 preserve production gates and upstream pins |
+| Unsupported coverage and computation limits | §3.5–3.6; null propagation, limit boundaries, immutable inputs, deterministic output |
 
-These are acceptance requirements, not claims that tests ran.
+These map acceptance requirements; they do not claim tests ran.
 
 ## 6. Open risks
 
-Evaluator and snapshot bindings remain unverified. Their absence blocks dependent numeric output, not these six scope decisions. Existing `ADOPTED` policy must be consumed as decided; existing `UNDETERMINED` or deferred inputs retain their not-bound behavior.
+Evaluator and snapshot bindings remain unverified. Missing bindings block dependent numeric output, not the six scope decisions. Consume existing `ADOPTED` policy as decided; unresolved or deferred inputs retain their not-bound behavior.
 
-Common absolute refund increments demonstrate sensitivity but do not estimate event cancellation losses or likelihood. Shared-position support may remain partial. Any legal, tax, accounting, priority, or recourse interpretation remains a working assumption pending professional review.
+Absolute refund increments demonstrate sensitivity, not cancellation losses or likelihood. Shared-position support may remain partial. Legal, tax, accounting, priority, and recourse interpretations remain working assumptions pending professional review.
 
-All upstream pins remain unchanged: FSM `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`; observation/AI references `e2a029d8ac3af7575888dac22fc4bf173ebec232`; lifecycle `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`. No upstream receipt, production authorization, or semantic conformance is asserted.
+Execution/reference pins remain unchanged: FSM `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`; observation/AI references `e2a029d8ac3af7575888dac22fc4bf173ebec232`; lifecycle `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`. The supervisor’s research base `15ea27b` does not repin those consumers. No upstream adoption, receipt, semantic conformance, or production authorization is asserted.
 
 ## 7. 후속 작업
 
-`event-stress-report` implements this bounded report, resolves the named bindings from its authorized sources, and verifies the acceptance cases. Preserve existing decisions, financial rates, production gates, export construction, vendor bytes, and golden artifacts.
+`event-stress-report` implements the report, resolves bindings from its authorized sources, and verifies mapped cases. Preserve existing decisions, financial rates, production gates, upstream pins, export construction, vendor bytes, and golden artifacts.
 
-If implementation adds vector files, maintain the required documentation inventory and README entries and run `python3 scripts/docs_surface.py --check`. This decision deliverable writes no files and performs no implementation or repository validation.
+If implementation adds vector files, maintain documentation inventory and README entries and run `python3 scripts/docs_surface.py --check`. This revision supplies only the decision document for the supervisor to write; no repository files were modified and no implementation checks were run.
