@@ -12,7 +12,7 @@
 
 `ADOPTED`는 이 문서의 잠정 제품 설계 선택이다. upstream 채택, 구현 완료 또는 운영 승인이 아니다. 회계·세무·법률에 닿는 해석은 전문가 검토 전 작업 가정이다.
 
-읽기 범위는 supervisor pack과 허용 경로로 제한했다. 선행 정산·상환 결정은 supervisor가 병합 사실을 제공했으나, 두 원문은 명시적 허용 목록 밖이고 내용도 제공되지 않았다. 따라서 기존 정책을 재결정하지 않는다. 정확한 소비 필드·정책 연결은 `UNDETERMINED`, `value: null`이며, 후속 구현자가 원문을 읽고 ADOPTED 값을 적용한다. 기존 결정에 다시 `DECISION_REQUIRED`를 붙이지 않는다.
+이번 수정에서는 선행 [CAPITAL_SETTLEMENT_POLICY.md](CAPITAL_SETTLEMENT_POLICY.md)와 [CAPITAL_REPAYMENT_POSTING.md](CAPITAL_REPAYMENT_POSTING.md) 원문을 먼저 읽었다. 아래 연결은 그 ADOPTED 정책을 적용하며 기존 정책을 재결정하지 않는다. 소비자는 정책 원문의 상태·버전·digest와 사용한 snapshot을 기록하고, 금리·기간·충당 순서 등 금융 조건을 이 문서나 코드에 복사하지 않는다. 선행 결정의 UNDETERMINED/DEFERRED 또는 누락된 필수 근거는 `NOT_BOUND` 사유와 함께 전체 보고서를 `UNEVALUATED`로 둔다.
 
 ## 1. 결정 요약
 
@@ -49,6 +49,14 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
 재원은 기존 정산 정책에 따른 제3자 몫·공제 등을 반영한 수익자 귀속액이어야 하며, 본 보고서가 차감할 선택 선지급 상환액을 이미 차감한 값이어서는 안 된다. 이미 상환 차감된 순액만 제공되면 임의로 gross-up하지 않고 `UNEVALUATED`로 둔다.
 
 의무는 선행 상환 정책이 산출한 미지급 금액·기일을 소비한다. 원금·이자·수수료를 새로 배분하거나 계산하지 않는다. 이미 반영된 상환을 다시 차감하지 않는다. 공통 재원의 충족 가능성만 계산하며 특정 선지급이 지급됐다고 판정하지 않는다.
+
+**선행 정책 연결:**
+
+- 정산 노트 `entries.allocation_order.value`의 클래스 배정과 `entries.refund_bearer.value`의 환불 부담을 적용한 수익자 귀속 줄을 근거로 삼는다. `post_allocation_application_of_counterparty_proceeds_ordered`가 정한 선택 선지급 상계 **직전** 금액을 식별해야 한다. `entries.residual_and_late_cash.value`에 따라 보류·반환 대상 또는 배정되지 않은 현금은 재원에 넣지 않는다. `fsm_expressible: false` 계산은 계속 `SHADOW_NOT_APPLIED`이며 실제 FSM 적용으로 표시하지 않는다. 선택되지 않은 의무에 이미 약정된 금액은 자유 재원으로 가져오지 않는다. 제약을 분리할 근거가 없으면 미평가한다.
+- 상환 노트 `entries.interest_payment_entry_schema.value`의 정확한 누적·기납입 차감·whole-KRW 규칙과 기존 공유 preview/fold를 사용한다. 미상환 원금의 권위는 `entries.f04_repay_coupling.value.principal_source`에 따라 F04이고, 기납입 이자·원금은 동일 snapshot의 기록된 allocation으로 확인한다. 충당 순서·금리·기일은 원문이 지시하는 CAPITAL_FINANCIAL_TERMS와 기존 terms 바인딩에서 읽는다. 이 보고서는 새 분할이나 가상 posting을 만들지 않는다.
+- `entries.unapplied_cash_handling.value`의 보류 메모는 다음 명시적 기장 전에는 의무를 소거하지 않으며 공통 기초현금·재원으로 합산하지 않는다. V1에서 선택 advance에 보류 메모가 남아 있으면 그 제한 현금을 자유 재원으로 전환하거나 자동 적용하지 않고 전체를 미평가한다. `entries.close_gate_enforcement.value`의 advisory close는 이자 잔여 면제 증명이 아니다. 잔여 의무·기일 근거가 불완전하면 미평가한다. `entries.margin_cure_interaction.value`의 journal 순서는 snapshot까지의 기존 사실에 적용하고, §3.4의 유입 우선 가정은 미래 가상 일별 비교에만 적용한다.
+
+**forecast 소비 경계:** 기존 `capital/forecast.py`의 `SETTLEMENT_CASH_IN`, `CONTRACT_INTEREST`, `PRINCIPAL` leg와 bucket·`expected_cash_krw`·digest·반올림 계약은 그대로다. `expected_cash_krw`는 재원과 상환 사건을 함께 세는 기존 지표이므로 가용 현금 입력으로 사용할 수 없다. 선지급별 settlement leg의 원금 크기 가정은 고유 정산 권리의 잔여 예산을 증명하지 않으며, 만기까지 전체 기간 이자 leg도 기납입 차감된 미지급 의무를 증명하지 않는다. 따라서 report는 별도 원천 예산·기납입 조정·기일 근거를 요구하고, forecast 합계를 복사하거나 leg를 임의로 반올림해 그 근거를 대체하지 않는다.
 
 출력에는 `SIMULATED`, `HYPOTHETICAL_FUNDING_GAP`, `non_posting: true`, `funds_executed: false`, `production: NOT_AUTHORIZED`를 고정한다. 결과는 선택 집합에 한정되며 수익자의 전체 채무, 지급능력 또는 실제 유동성 평가가 아니다.
 
@@ -145,6 +153,7 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
 - 미확정 환불·분쟁 등으로 수익자 순귀속 재원을 확정할 수 없는 경우.
 - 정산 순액에 선택 상환액이 이미 반영됐거나, 중복 차감 여부를 판별할 수 없는 경우.
 - 기준일 이전 미해결 의무 또는 기초현금과 재원의 중복 가능성이 있는 경우.
+- 선택 advance에 미적용 상환 보류 메모가 남아 있거나, 닫힌 advance의 이자 잔여 일정 근거가 불완전한 경우.
 
 가속 만기를 기존 결정에서 읽을 수 있다는 사실만으로 V1이 가속 후 이자·회수까지 지원한다고 주장하지 않는다. 부도·상각도 의무를 0원으로 만들지 않는다.
 
@@ -193,10 +202,26 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
     "origin": "SUPERVISOR_PROVIDED"
   },
   "dependency_field_binding": {
-    "status": "UNDETERMINED",
-    "value": null,
-    "reason": "Settlement and repayment note contents are absent from the permitted pack.",
-    "target": "Consumer reads and applies existing ADOPTED policies without copying forbidden literals or reopening decided policy."
+    "status": "SPECIFIED",
+    "policy_sources": [
+      "docs/decisions/CAPITAL_SETTLEMENT_POLICY.md",
+      "docs/decisions/CAPITAL_REPAYMENT_POSTING.md"
+    ],
+    "settlement_entries": [
+      "allocation_order",
+      "refund_bearer",
+      "residual_and_late_cash"
+    ],
+    "repayment_entries": [
+      "f04_repay_coupling",
+      "interest_payment_entry_schema",
+      "unapplied_cash_handling",
+      "close_gate_enforcement",
+      "margin_cure_interaction"
+    ],
+    "financial_terms": "READ_ORIGINAL_ADOPTED_TERMS_VIA_EXISTING_BINDING_NO_COPIED_LITERALS",
+    "missing_or_deferred_required_basis": "NOT_BOUND_REASON_AND_UNEVALUATED_REPORT",
+    "consumer_implementation": "PENDING_funding-gap-report"
   },
   "entries": {
     "cashflow_viewpoint": {
@@ -212,12 +237,18 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
         "non_posting": true,
         "funds_executed": false,
         "production": "NOT_AUTHORIZED",
-        "labels": ["SIMULATED", "HYPOTHETICAL_FUNDING_GAP"],
+        "labels": [
+          "SIMULATED",
+          "HYPOTHETICAL_FUNDING_GAP"
+        ],
         "repayment_allocation_policy_created": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-01", "CAP-04"],
+      "cap_rows": [
+        "CAP-01",
+        "CAP-04"
+      ],
       "rationale": "One beneficiary perspective separates available settlement assumptions from contractual repayment obligations.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
@@ -235,7 +266,10 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-01", "CAP-20"],
+      "cap_rows": [
+        "CAP-01",
+        "CAP-20"
+      ],
       "rationale": "An explicit assumption avoids inventing liquidity from exposure, prior disbursement or accounting projections.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
@@ -252,19 +286,28 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
         ],
         "currency": "KRW",
         "budget_basis": "REMAINING_UNRECEIVED_UNUSED_BENEFICIARY_ENTITLEMENT",
-        "release_identity": ["source_key", "release_id"],
+        "release_identity": [
+          "source_key",
+          "release_id"
+        ],
         "release_sum_lte_budget": true,
         "unreleased_budget_is_cash": false,
         "advance_references_multiply_budget": false,
         "identical_repeats": "COUNT_ONCE",
         "conflicting_repeats": "INVALID_INPUT",
         "unresolved_aliases": "UNEVALUATED",
-        "obligation_identity": ["advance_id", "obligation_id"],
+        "obligation_identity": [
+          "advance_id",
+          "obligation_id"
+        ],
         "already_netted_selected_repayment": "UNEVALUATED"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-04", "CAP-08"],
+      "cap_rows": [
+        "CAP-04",
+        "CAP-08"
+      ],
       "rationale": "Each underlying settlement entitlement supplies one budget even when several advances reference it.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
@@ -274,7 +317,10 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
       "value": {
         "snapshot_cut": "END_OF_AS_OF_SIM_DAY",
         "start": "as_of_sim_day + 1",
-        "same_day_order": ["SOURCE_RELEASES", "AGGREGATE_DUE_OBLIGATIONS"],
+        "same_day_order": [
+          "SOURCE_RELEASES",
+          "AGGREGATE_DUE_OBLIGATIONS"
+        ],
         "advance_priority": null,
         "delay_days_min": 0,
         "availability": "base_available_sim_day + delay_days",
@@ -283,7 +329,10 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-01", "CAP-04"],
+      "cap_rows": [
+        "CAP-01",
+        "CAP-04"
+      ],
       "rationale": "Explicit daily ordering makes chronology reproducible without introducing repayment priorities.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
@@ -305,7 +354,10 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-01", "CAP-04"],
+      "cap_rows": [
+        "CAP-01",
+        "CAP-04"
+      ],
       "rationale": "Signed cumulative balance preserves shortages without repeatedly counting the same uncovered obligation.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
@@ -324,11 +376,16 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
         "silent_exclusion": false,
         "partial_success_total": false,
         "malformed_or_conflicting_input": "INVALID_INPUT",
-        "supported_status": "EVALUATED_HYPOTHETICAL"
+        "supported_status": "EVALUATED_HYPOTHETICAL",
+        "unapplied_repayment_cash": "UNEVALUATED_WHILE_HELD"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-04", "CAP-08", "CAP-20"],
+      "cap_rows": [
+        "CAP-04",
+        "CAP-08",
+        "CAP-20"
+      ],
       "rationale": "Unsupported lifecycle and entitlement cases remain visible instead of producing misleading zero amounts or partial coverage.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
@@ -357,12 +414,16 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-03",
-      "cap_rows": ["CAP-01", "CAP-20"],
+      "cap_rows": [
+        "CAP-01",
+        "CAP-20"
+      ],
       "rationale": "Bounded complete inputs support deterministic reporting without implying lending limits or silently hiding later obligations.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
-  }
+  },
+  "status": "PROVISIONAL_PRODUCT_DECISION"
 }
 ```
 
@@ -377,7 +438,7 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
 | 부도·가속·슬라이스 부담 미평가 | §3.6 |
 | forecast 불변·가상·비게시·준비금 및 여신 승인과 무관 | §3.1, §3.2, §6–7 |
 
-다섯 예시의 순잔액·최대 부족 산술을 메모리 내 계산으로 확인했다. 저장소 파일 변경, 구현 시험 또는 적합성 검증을 수행했다는 주장은 하지 않는다.
+다섯 예시는 합성 산술 사례다. 이 결정 노트와 pending binding 등록은 report 구현 완료나 실제 지급 결과를 증명하지 않는다.
 
 ## 6. Open risks
 
@@ -385,7 +446,7 @@ CAP 행은 본 보고서의 설계 추적용 제안 매핑이며 커버리지 �
 
 정산 권리의 고유성, 잔여 순액 및 기존 상환 차감 여부를 원천에서 확인할 수 있어야 한다. 해당 근거가 없으면 계산식을 적용할 수 있어도 보고서는 미평가다.
 
-지정 모델의 실행 검토와 선행 정책의 정확한 필드 연결은 완료되지 않았다. upstream receipt, 실제 유동성, 회계 인식 또는 법적 상계 가능성을 이 문서로 증명하지 않는다.
+지정 모델의 실행 검토는 완료되지 않았다. 선행 정책 연결은 §3.1에 명시했으며 실제 소비 구현은 `funding-gap-report`의 후속 작업이다. upstream receipt, 실제 유동성, 회계 인식 또는 법적 상계 가능성을 이 문서로 증명하지 않는다.
 
 ## 7. 후속 작업
 
