@@ -1,5 +1,36 @@
 # Validation scope
 
+## Residual obligations report — PR fix round 1
+
+2026-11-03, reviewed head `e572af9d1a6aa21acc34fdc68bd6a6bff4100a8c`.
+All checks use local SIMULATED fixtures.
+
+The blocking finding is valid. The builder verification below was written while
+the root `DECISION_REQUIRED.md` deletion existed only as an unstaged worktree
+change, so the reviewed commit still contained the stale portfolio-history
+decision note even though the record said it was deleted. That note described a
+resolved integration-baseline blocker from a different node and is obsolete on
+this baseline.
+
+Fix: the full 45-line deletion is retained and staged in the index, so the
+supervisor's next commit contains it. The file is absent from disk and from the
+index (`git ls-files --error-unmatch` fails); `git diff --cached --numstat`
+reports `45 0 DECISION_REQUIRED.md`. No product decision is open for this node.
+The PR body's claim that the file is deleted is therefore true of the patch this
+round submits; no PR text was posted or edited (the builder posts nothing).
+
+| Fix-round check | Result |
+| --- | --- |
+| `test ! -e DECISION_REQUIRED.md`; `git ls-files --error-unmatch DECISION_REQUIRED.md` | Absent from disk; path unknown to the index |
+| `git diff --cached --numstat -- DECISION_REQUIRED.md` | `45 0 DECISION_REQUIRED.md` (staged deletion) |
+| `python3 -m unittest discover -s tests -p test_residuals.py -v` | Exit 0; 26 passed |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `git diff --check`; `git diff --cached --check` | Exit 0 |
+
+No runtime code, test, CI, fold, service, export, vendor, `.aiops/`, Protocol or
+Commerce file changed in this round.
+
 ## Residual obligations report — builder verification
 
 2026-11-03, node `residual-obligations-report`, baseline HEAD
