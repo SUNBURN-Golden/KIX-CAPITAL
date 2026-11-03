@@ -12,7 +12,7 @@
 
 Decision node: `event-stress-scope-decision`. Dependencies: `risk-whatif-scenarios`, `portfolio-consistent-read`, `financial-terms-decision`. Consumer: **`event-stress-report`**.
 
-The explicit reading allowlist controls. Financial-terms and implementation sources are outside it; truncated sources are used only through supplied excerpts. Existing decided terms remain authoritative. Omitted policy is not reconstructed or reopened. Exact implementation bindings remain `UNDETERMINED` where identified below.
+The adopted [financial terms](CAPITAL_FINANCIAL_TERMS.md) remain authoritative and were read for this fix round. Existing risk, margin, and consistent-read sources were also inspected. No financial policy is reconstructed or reopened. The event-stress consumer adapter remains unimplemented; its exact binding remains `UNDETERMINED` where identified below.
 
 ## 1. 결정 요약
 
@@ -61,7 +61,7 @@ The existing single-claim refund scenario evaluator determines validity and resu
 
 Transformation identity is `(baseline identity, scenario_id, full claim identity)`. Event labels and advance identifiers create no additional transformations. Zero shock preserves financial values and unsupported-state labels.
 
-**Binding limitation:** the evaluator callable, argument mapping, and monetary domain were omitted from the authorized pack. Binding is `UNDETERMINED`, `value: null`, owned by `event-stress-report`. Establish an equivalent mapping before producing affected numeric results; do not approximate missing arithmetic.
+**Binding limitation:** existing `capital/risk_whatif.py` applies a fixed relative shock per assessed advance; it does not implement this request's absolute, once-per-claim transform. Existing `capital/margin.py` supplies eligible-face and borrowing-base measurement, and `capital/portfolio_snapshot.py` supplies detached consistent inputs. The adapter combining these for event stress is unimplemented. Binding is `UNDETERMINED`, `value: null`, owned by `event-stress-report`. Establish an equivalent mapping and validate its monetary domain before producing affected numeric results; do not approximate missing arithmetic.
 
 ### 3.3 `shared_claim_counting`
 
@@ -154,6 +154,7 @@ These are computation bounds, not credit limits. Exclude probability distributio
 {
   "schema": "capital-decision-v1",
   "decision_id": "event-stress-scope-decision",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-03",
   "provisional": true,
@@ -210,7 +211,7 @@ These are computation bounds, not credit limits. Exclude probability distributio
           "value": null,
           "target": "Equivalent existing evaluator mapping",
           "owner": "event-stress-report",
-          "reason": "Callable, argument semantics and monetary domain omitted from authorized pack"
+          "reason": "Existing risk, margin and snapshot anchors inspected; absolute once-per-claim event-stress adapter and monetary-domain mapping remain unimplemented"
         }
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
@@ -323,7 +324,7 @@ These map acceptance requirements; they do not claim tests ran.
 
 ## 6. Open risks
 
-Evaluator and snapshot bindings remain unverified. Missing bindings block dependent numeric output, not the six scope decisions. Consume existing `ADOPTED` policy as decided; unresolved or deferred inputs retain their not-bound behavior.
+Event-stress evaluator and snapshot adapter bindings remain unimplemented. Missing bindings block dependent numeric output, not the six scope decisions. Consume existing `ADOPTED` policy as decided; unresolved or deferred inputs retain their not-bound behavior.
 
 Absolute refund increments demonstrate sensitivity, not cancellation losses or likelihood. Shared-position support may remain partial. Legal, tax, accounting, priority, and recourse interpretations remain working assumptions pending professional review.
 
@@ -333,4 +334,6 @@ Execution/reference pins remain unchanged: FSM `7481b0e16ce9b903abbffa62249bb91c
 
 `event-stress-report` implements the report, resolves bindings from its authorized sources, and verifies mapped cases. Preserve existing decisions, financial rates, production gates, upstream pins, export construction, vendor bytes, and golden artifacts.
 
-If implementation adds vector files, maintain documentation inventory and README entries and run `python3 scripts/docs_surface.py --check`. This revision supplies only the decision document for the supervisor to write; no repository files were modified and no implementation checks were run.
+All six entries are recorded in `tests/decision_bindings.json` as `PENDING_CONSUMER` for `event-stress-report`, pointing to existing integration anchors rather than claiming implementation. The existing simulated evidence-pack fixtures under `tests/vectors/pack/` are regenerated to include this decision.
+
+If implementation adds vector files, maintain documentation inventory and README entries and run `python3 scripts/docs_surface.py --check`. This decision introduces no event-stress runtime implementation; the worked examples remain illustrative. Fix-round verification results are reported separately from the product decision.
