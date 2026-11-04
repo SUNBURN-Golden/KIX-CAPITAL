@@ -4,45 +4,43 @@
 >
 > Requested decision-maker attribution: **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**.
 >
-> Date: **2026-11-04** · Capital main: **`8ab3d95`** · kix-protocol context: **`c641a74`**.
+> Date: **2026-11-04** · Capital main: **`5cfb044`** · kix-protocol context: **`c641a74`**.
 >
-> Simulation/product design only; no real money; production **`NOT_AUTHORIZED`**. Real authentication and execution authority remain **`NOT_BOUND`**. This decision does not adopt an upstream contract.
+> Simulation/product design only; no real money; production **`NOT_AUTHORIZED`**. Real authentication and execution authority remain **`NOT_BOUND`**. No upstream contract is adopted.
 >
-> Execution provenance: the attribution above is the supervisor-prescribed designation. A Sonnet CLI execution, three failed attempts, or Fable takeover was not verified and is not claimed. Repository revisions are supervisor-supplied bases, not independently verified checkouts.
+> Execution provenance: the attribution is supervisor-prescribed. Sonnet CLI execution, three failed attempts and Fable takeover were not verified and are not claimed. Repository revisions are supervisor-supplied bases, not independently verified checkouts.
 
-Node: `agent-case-disclosure-decision`. Dependencies: `agent-lane-tools`, `advance-case-dossier`, `auth-boundary`. This document decides the local disclosure contract; implementation and repository acceptance remain separate.
+Node: `agent-case-disclosure-decision`. Dependencies: `agent-lane-tools`, `advance-case-dossier`, `auth-boundary`. This document decides disclosure policy; implementation remains separate.
 
 ## 1. 결정 요약
 
-`ADOPTED` below means a provisional Capital product choice, not an upstream adoption or implemented capability.
+`ADOPTED` means a provisional Capital product choice, not upstream adoption or an implemented capability.
 
 | Item | Decision | CAP rows | Consumer |
 |---|---|---|---|
-| `case_brief_field_allowlist` | Closed, fixed schema containing one subject and three attributable financial facts | CAP-04, CAP-20 | Proposed case-brief projector |
-| `explicit_subject_scope` | Dedicated synthetic grant for exactly one agent, case and beneficiary; pin its claim and advance | CAP-09, CAP-20 | Local grant registry; auth boundary |
-| `grant_currentness_checks` | Check run, agent, generation, logical period, revocation and subject before access and response release | CAP-09, CAP-20 | `query_case` gate |
+| `case_brief_field_allowlist` | Closed schema: one subject and three attributable financial facts | CAP-04, CAP-20 | Case-brief projector |
+| `explicit_subject_scope` | Dedicated synthetic grant for one agent, case and beneficiary, pinning claim and advance | CAP-09, CAP-20 | Local grant registry |
+| `grant_currentness_checks` | Check run, agent, generation, logical period, revocation and subject before access and release | CAP-09, CAP-20 | `query_case` gate |
 | `denial_disclosure_policy` | Uniform unavailable response for absent, forbidden and unusable cases | CAP-09, CAP-20 | Agent tool response |
-| `brief_provenance_scope` | Hash only the disclosed brief; exclude workspace history and revisions | CAP-20 | Brief provenance |
-| `local_tool_extension_boundary` | Capital-local `query_case`, outside pinned five-tool coverage | CAP-09, CAP-20 | Agent tool dispatcher |
-| `query_non_mutation` | No business, grant, clock, proposal or persistence mutation | CAP-09, CAP-20 | Query implementation and regression checks |
+| `brief_provenance_scope` | Hash only disclosed content; exclude workspace revisions | CAP-20 | Brief provenance |
+| `local_tool_extension_boundary` | Capital-local `query_case`, outside pinned five-tool coverage | CAP-09, CAP-20 | Agent dispatcher |
+| `query_non_mutation` | No business, grant, clock, proposal or persistence mutation | CAP-09, CAP-20 | Query implementation |
 
-CAP associations describe product impact; they do not declare those requirements complete.
+CAP associations describe product impact, not requirement completion.
 
 ## 2. KIX 비전 연결
 
-The [Protocol README](/workspace/capital-run/kixproto-ro/README.md) connects ticket rights, settlement and financing while distinguishing local reference machinery from production authority. A useful agent therefore needs bounded financing evidence without inheriting the workspace or acquiring execution authority.
+The product direction is useful financing evidence for scoped simulated reasoning, with authority kept explicit. Membership alone supplies insufficient evidence; a full dossier exceeds the necessary disclosure.
 
-[AUTHORITY_MODEL_1.md](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md) separates grants, generations, currentness, revocation and replay. This decision applies those distinctions to a **synthetic local** gate. Its generation is not a chain lease generation; its revocation is not chain-confirmed revocation.
+The supplied [requirements excerpt](../CAPITAL_REQUIREMENTS_KO.md) distinguishes the FSM pin from the AI delegation citation pin, `e2a029d8ac3af7575888dac22fc4bf173ebec232`. The research base `c641a74` repins neither. The supplied [seams excerpt](../SEAMS.md) states that local gates do not establish semantic conformance.
 
-The supplied [requirements excerpt](../CAPITAL_REQUIREMENTS_KO.md) distinguishes the FSM pin from the AI delegation citation pin, `e2a029d8ac3af7575888dac22fc4bf173ebec232`. The research base `c641a74` does not repin either. The supplied [seams excerpt](../SEAMS.md) also states that local gates do not establish semantic conformance.
-
-[CAPITAL_DEMO_BOOK.md](CAPITAL_DEMO_BOOK.md) describes several synthetic beneficiaries sharing the `organizer` payee label. Consequently, that label cannot establish ownership or disclosure scope. The supplied [accounts/tax/legal excerpt](CAPITAL_ACCOUNTS_TAX_LEGAL.md) preserves the working-assumption boundary; this note establishes no legal entitlement or retention period. No references linked within these sources were followed.
+The supplied [accounts/tax/legal excerpt](CAPITAL_ACCOUNTS_TAX_LEGAL.md) preserves `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`. This disclosure decision establishes no legal entitlement, accounting treatment or retention period. Only supplied excerpts and the expressly permitted binding registry were used; linked sources were not followed.
 
 ## 3. 항목별 결정
 
 ### 3.1 `case_brief_field_allowlist`
 
-Adopt `CAPITAL_CASE_BRIEF_V1`. A successful response has exactly the following leaves and their containing objects. Additional properties, optional expansion, free text, attachments and arrays are forbidden.
+Adopt `CAPITAL_CASE_BRIEF_V1`. Success contains exactly these fourteen leaves and their containing objects. Additional properties, optional expansion, free text, attachments and arrays are forbidden.
 
 | Field | Exact meaning/type |
 |---|---|
@@ -52,100 +50,98 @@ Adopt `CAPITAL_CASE_BRIEF_V1`. A successful response has exactly the following l
 | `subject.beneficiary_id` | Exact granted synthetic beneficiary ID |
 | `subject.claim_id` | Claim ID pinned in the grant |
 | `subject.advance_id` | Advance ID pinned in the grant |
-| `facts.beneficiary_claim_outstanding_krw` | Outstanding claim face attributable exclusively to this beneficiary within this case |
-| `facts.beneficiary_refund_exposure_krw` | Open refund exposure attributable exclusively to this beneficiary within this case |
-| `facts.advance_principal_outstanding_krw` | Outstanding principal of this case’s pinned advance, exclusively attributable to this beneficiary |
+| `facts.beneficiary_claim_outstanding_krw` | Outstanding claim face exclusively attributable to this beneficiary within this case |
+| `facts.beneficiary_refund_exposure_krw` | Open refund exposure exclusively attributable to this beneficiary within this case |
+| `facts.advance_principal_outstanding_krw` | Outstanding principal of the pinned advance, exclusively attributable to this beneficiary |
 | `provenance.policy_id` | Constant `CAPITAL_AGENT_CASE_DISCLOSURE_V1` |
 | `provenance.brief_sha256` | Digest defined in §3.5 |
 | `authority.real_authentication` | Constant `NOT_BOUND` |
 | `authority.execution_authority` | Constant `NOT_BOUND` |
 | `authority.production` | Constant `NOT_AUTHORIZED` |
 
-IDs are synthetic ASCII strings matching `[A-Za-z0-9_-]{1,64}`. Amounts are nonnegative integers in synthetic KRW units, or `null` when that particular attributable amount is undetermined. Zero means known zero. Null must never become zero, eligibility, or permission.
+IDs are synthetic ASCII strings matching `[A-Za-z0-9_-]{1,64}`. Amounts are nonnegative integers in synthetic KRW units, or `null` when that individual attributable amount is undetermined. Zero means known zero; null never implies zero, eligibility or permission.
 
-These are **new output names**, not claims about existing dossier fields. Source-field mappings are `UNDETERMINED` because implementation sources are outside the pack. The implementation owner must establish exact mappings; it may not substitute similarly named totals.
+These are new output names. Source-field mappings are `UNDETERMINED`: implementation sources are outside the pack. The implementation owner must establish exact mappings without substituting similarly named totals.
 
-The projector reads only the authorized case’s bounded records after authorization. It must not build a full dossier and then redact it. Ambiguous case ownership, multiple incompatible claim/advance bindings, or inability to isolate the subject causes uniform denial. An isolated subject with an unavailable individual amount may receive that amount as null.
+After authorization, project only bounded records for the granted subject. Never build a full dossier and then redact it. Ambiguous ownership, incompatible claim/advance bindings or inability to isolate the subject causes uniform denial. An isolated subject may have an individual amount returned as null.
 
-Exclude workspace-wide receipts, other beneficiaries, other cases of the same beneficiary, portfolio totals, concentration/headroom calculations, aggregate underwriting results, raw journals, event lists, documents, names, bank details, credentials, signatures, grant records and authentication material. Do not include a dossier URL or indirect retrieval handle.
+Exclude workspace-wide receipts, other beneficiaries, sibling cases, portfolio totals, concentration/headroom calculations, aggregate underwriting results, raw journals, event lists, documents, names, bank details, credentials, signatures, grant records and authentication material. Include no dossier URL or indirect retrieval handle.
 
 ### 3.2 `explicit_subject_scope`
 
-Adopt a separate permission, `CAPITAL_LOCAL_QUERY_CASE_V1`, issued explicitly by the local simulation host. Neither QUERY nor PROPOSE lane eligibility, `query_subject` membership, workspace membership, a generic query grant, nor a matching payee label implies this permission.
+Adopt permission `CAPITAL_LOCAL_QUERY_CASE_V1`, explicitly issued by the local simulation host. QUERY/PROPOSE eligibility, `query_subject` membership, workspace membership, generic query grants and matching payee labels never imply this permission.
 
-The grant is an in-memory record containing exactly:
+The in-memory grant contains exactly:
 
 `grant_id`, `run_id`, `agent_id`, `permission`, `subject`, `claim_id`, `advance_id`, `generation`, `not_before_period`, `expires_before_period`, `revoked`.
 
-`subject` contains exactly `case_id` and `beneficiary_id`. One grant permits one such pair and pins one claim and one advance. Wildcards, beneficiary-wide grants, lists, inherited scope, delegation and grant unions are forbidden.
+`subject` contains exactly `case_id` and `beneficiary_id`. One grant permits one pair and pins one claim and advance. Wildcards, beneficiary-wide scope, lists, inherited scope, delegation and grant unions are forbidden.
 
-The host creates a unique opaque 128-bit random grant handle, collision-checks it, and retains the record only in memory. It is a synthetic fixture handle, not a bearer authentication credential. The host supplies the simulated agent context; a request cannot select its own agent identity.
+The host issues a collision-checked, opaque 128-bit random handle and retains the record only in memory. This is a synthetic fixture handle, not a bearer authentication credential. The host supplies agent identity; callers cannot select it.
 
-Issuance is explicit fixture setup, outside `query_case`. There is no implicit issuance, persistence, renewal, restoration or agent-accessible grant-management tool. A second case needs its own grant.
+Issuance is explicit fixture setup outside `query_case`. No implicit issuance, persistence, renewal, restoration or agent-accessible grant management is permitted. Another case requires another grant.
 
 ### 3.3 `grant_currentness_checks`
 
-Use a host-controlled monotonic integer `logical_period`, distinct from financial `sim_day`, wall time, business epochs and chain leases. Issuance at period `p` sets `not_before_period=p` and `expires_before_period=p+1`. Thus a grant lasts exactly the current logical period; repeated reads during that period are permitted.
+Use a host-controlled monotonic integer `logical_period`, distinct from financial `sim_day`, wall time, business epochs and chain leases. Issuance at period `p` sets `not_before_period=p` and `expires_before_period=p+1`. Repeated reads during that single period are permitted.
 
-Maintain a generation counter for each `(agent_id, case_id, beneficiary_id)` slot. Initial issuance uses generation 1. Replacement issuance or revocation advances the counter; old generations never become current again. Revocation also marks the affected record revoked. Restart creates a fresh run identity and discards all grants.
+Maintain a generation counter per `(agent_id, case_id, beneficiary_id)` slot. Initial issuance uses 1. Replacement issuance or revocation advances the counter; old generations never become current again. Revocation also marks the affected record revoked. Restart creates a fresh run identity and discards all grants.
 
-For every request, before protected case access:
+Before protected case access:
 
-1. Validate the closed request shape: `grant_id` and `subject` only.
-2. Resolve the grant from the host’s in-memory registry; reject caller-supplied grant contents.
-3. Require a permitted simulated QUERY/PROPOSE lane, exact current run and host agent, and the dedicated permission.
-4. Require an exact request/grant subject match, current slot generation and `revoked=false`.
+1. Validate a closed request containing only `grant_id` and `subject`.
+2. Resolve the grant from the host registry; reject caller-supplied grant contents.
+3. Require a permitted simulated QUERY/PROPOSE lane, current run, exact host agent and dedicated permission.
+4. Require exact request/grant subject equality, current slot generation and `revoked=false`.
 5. Require `not_before_period <= logical_period < expires_before_period`.
-6. Perform a bounded lookup and verify the case’s beneficiary, claim and advance against the grant.
+6. Perform a bounded lookup and verify beneficiary, claim and advance against the grant.
 
-Missing or inconsistent currentness data, clock rollback, generation overflow, mismatched ownership or changed binding fails closed.
+Missing currentness data, clock rollback, generation overflow, ownership mismatch or changed binding fails closed.
 
-Authorization, bounded projection and response release share one serialized critical section with revocation and period changes. The response linearizes at release: revocation before release denies it; revocation afterward cannot retract already disclosed bytes. Do not stream partial fields or return lazy objects that read protected state later.
+Authorization, projection and response release share one serialized critical section with revocation and period changes. Release is the linearization point: prior revocation denies release; subsequent revocation cannot retract disclosed bytes. No partial streaming or lazy protected-state reads are allowed.
 
 ### 3.4 `denial_disclosure_policy`
 
-All unsuccessful calls return exactly `{"status":"UNAVAILABLE","code":"CASE_BRIEF_UNAVAILABLE"}`. Any HTTP wrapper uses status 200 for this tool result, without case-dependent headers.
+Every unsuccessful call returns exactly `{"status":"UNAVAILABLE","code":"CASE_BRIEF_UNAVAILABLE"}`. An HTTP wrapper uses status 200 for this tool result, without case-dependent headers.
 
-This covers malformed requests, unknown grants, wrong agents, stale generations, expired or revoked grants, subject mismatch, absent cases, ambiguous linkage and unavailable safe projection. Return no echoed identifier, membership flag, reason detail, partial brief, retry hint, count or digest. A valid grant for an absent case receives the same result.
+This includes malformed requests, unknown grants, wrong agents, stale generations, expired/revoked grants, subject mismatch, absent cases, ambiguous linkage and unsafe projection. Return no echoed identifier, membership flag, detailed reason, partial brief, retry hint, count or digest. A valid grant for an absent case receives the same result.
 
-Existing `query_subject` membership semantics remain unchanged. This decision does not conceal facts already exposed by that tool; it prevents membership from becoming a brief entitlement or `query_case` from becoming an additional unrestricted existence oracle.
+Existing `query_subject` membership semantics remain unchanged. This decision does not conceal facts already exposed there; membership confers no brief entitlement.
 
-Worked examples:
-
-| Fixture situation | Result |
+| Worked fixture | Result |
 |---|---|
-| Agent A has a current dedicated grant for case C1 / beneficiary B1, pinned to claim CL1 / advance AD1. The isolated facts are 100,000 claim outstanding, 5,000 refund exposure and 40,000 principal outstanding. | Allow exactly the listed brief, constants and scoped digest. No receipt or ledger accompanies it. |
-| A uses that grant for C2, even where C2 also belongs to B1. | Uniform unavailable. No sibling-case evidence. |
-| A requests C1 / B2; B2 shares the `organizer` label. | Uniform unavailable. No other-beneficiary identity or amount. |
-| `query_subject` reports membership, but A has only a generic QUERY grant. | Uniform unavailable. Membership remains unchanged. |
-| The generation is stale, the period has advanced, or revocation occurred before release. | Uniform unavailable, identical to an unknown case. |
-| A adds `include_receipts`, `portfolio_total`, `raw_journal` or `credentials` to a valid request. | Reject the whole request uniformly; no expanded or partial response. |
+| A has a current dedicated C1/B1 grant pinning CL1/AD1; isolated amounts are 100,000 claim, 5,000 refund and 40,000 principal | Exactly the fourteen-leaf brief, scoped IDs, constants and digest; no receipts, other beneficiaries, portfolio data, journals or authentication material |
+| A uses that grant for C2, also belonging to B1 | Uniform unavailable; no sibling-case evidence |
+| A requests C1/B2, whose payee label also happens to be `organizer` | Uniform unavailable; no B2 evidence |
+| `query_subject` reports membership, but A has only a generic QUERY grant | Uniform unavailable; membership behavior unchanged |
+| Generation is stale, period advances, or revocation precedes release | Uniform unavailable, identical to an absent case |
+| A adds `include_receipts`, `portfolio_total`, `raw_journal` or `credentials` | Reject the whole request uniformly; no expansion or partial response |
 
 ### 3.5 `brief_provenance_scope`
 
-Compute `brief_sha256` over the entire successful allowlisted response **except** the `provenance.brief_sha256` member.
+Compute `brief_sha256` over the entire successful response except the `provenance.brief_sha256` member.
 
-Canonical serialization is UTF-8 JSON with recursively lexicographically sorted object keys, no whitespace, no final newline, decimal integers, JSON nulls and no floats. The closed ASCII schema avoids Unicode normalization ambiguity. Hash those bytes with SHA256 and encode 64 lowercase hexadecimal characters.
+Canonical bytes are UTF-8 JSON with recursively lexicographically sorted object keys, no whitespace or final newline, decimal integers, JSON nulls and no floats. The closed ASCII schema avoids Unicode normalization ambiguity. Encode SHA256 as 64 lowercase hexadecimal characters.
 
-Include no workspace digest, HEAD, global revision, journal position, receipt root, global counter, timestamp, current logical period, grant ID or hidden-field hash. Do not hash excluded material as a substitute for withholding it.
+Exclude workspace digest, HEAD, global revision, journal position, receipt root, global counter, timestamp, logical period, grant ID and hidden-field hashes.
 
-While a grant remains valid, an unrelated workspace change must leave the complete brief bytes unchanged. A change confined to excluded fields also leaves the digest unchanged. A disclosed fact change changes the digest. Authorization changes may stop access, but do not become provenance fields.
+While authorization remains valid, unrelated workspace changes and changes confined to excluded fields must leave complete brief bytes unchanged. A disclosed fact change changes the digest. Authorization changes may stop access but never become provenance fields.
 
-This is deterministic local content identity, not authentication, completeness, freshness or an upstream receipt. Even authorized recipients cannot infer that the brief is a full dossier.
+The digest proves deterministic local content identity only; it proves neither authentication, completeness, freshness nor upstream adoption.
 
 ### 3.6 `local_tool_extension_boundary`
 
-Adopt the proposed tool name `query_case`, classified `CAPITAL_LOCAL_EXTENSION`. It is explicitly outside the pinned five-tool upstream claim coverage. Do not count it as a sixth covered upstream tool, modify upstream delegation contracts, or relabel existing claims.
+Adopt proposed tool `query_case`, classified `CAPITAL_LOCAL_EXTENSION`, explicitly outside pinned five-tool upstream claim coverage. It is not a sixth covered upstream tool. Preserve upstream delegation contracts and existing claims.
 
-The local dispatcher must expose it only through the gate above. Existing dossier routes must not become fallback agent tools. PROPOSE consumers may reason from the returned facts within their existing scope; this grant neither creates proposals nor changes proposal validation.
+Expose it only through the specified gate. Existing dossier routes cannot become fallback agent tools. PROPOSE consumers may reason within their existing scope; this grant creates no proposal and changes no proposal validation.
 
-Real identity, production authorization, model calls, proposal execution and persistent grants are excluded. Execution authority and real authentication remain `NOT_BOUND`; production remains `NOT_AUTHORIZED`. No upstream adoption receipt is available or invented.
+Real identity, production authorization, model calls, proposal execution and persistent grants are excluded. Execution authority and real authentication remain `NOT_BOUND`; production remains `NOT_AUTHORIZED`. No upstream receipt is available or invented.
 
 ### 3.7 `query_non_mutation`
 
-A query changes no financial state, ownership, journal, proposal, grant, revocation flag, generation or logical period. It writes no read receipt, file, cache, session history or durable audit event. It has no “last used” mutation and consumes no grant quota.
+A query changes no financial state, ownership, journal, proposal, grant, revocation flag, generation or logical period. It writes no read receipt, file, cache, session history or durable audit event. No “last used” mutation or quota consumption is permitted.
 
-Transient parsing, locking and projection buffers are permitted. Process and intermediary logging must not capture request handles or response facts. Repeating the same request against unchanged authorized inputs returns identical bytes.
+Transient parsing, locking and projection buffers are permitted. Process and intermediary logging must not capture handles or response facts. Identical requests against unchanged authorized inputs return identical bytes.
 
 ## 4. 기계 판독 결정 블록
 
@@ -153,6 +149,7 @@ Transient parsing, locking and projection buffers are permitted. Process and int
 {
   "schema": "capital-decision-v1",
   "decision_id": "agent-case-disclosure-decision",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-04",
   "provisional": true,
@@ -200,7 +197,7 @@ Transient parsing, locking and projection buffers are permitted. Process and int
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
       "cap_rows": ["CAP-09", "CAP-20"],
-      "rationale": "Membership and QUERY/PROPOSE lane eligibility do not grant case access.",
+      "rationale": "Membership and lane eligibility do not grant case access.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -219,7 +216,7 @@ Transient parsing, locking and projection buffers are permitted. Process and int
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
       "cap_rows": ["CAP-09", "CAP-20"],
-      "rationale": "An issued grant must remain current at response release.",
+      "rationale": "A grant must remain current at response release.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -299,25 +296,27 @@ Transient parsing, locking and projection buffers are permitted. Process and int
 
 ## 5. 수용 기준 매핑
 
-| Acceptance | Evidence and required verification |
+| Acceptance | Evidence and verification |
 |---|---|
-| Provisional block and exact allowlist | §3.1 and §4; JSON round-trip and seven-entry required-field checks passed in memory |
-| Dedicated scope and currentness | §3.2–3.3; test wrong agent/run, replacement, period boundaries, revocation and binding changes |
-| Allowed and denied examples | §3.4; test every excluded category and reject expansion requests |
-| Existence and scoped provenance | §3.4–3.5; compare denial bytes and mutate unrelated workspace data without changing successful response bytes |
-| Local-only extension and non-mutation | §3.6–3.7; preserve upstream coverage and membership behavior; compare state before/after queries |
+| Valid provisional block and exact allowlist | §3.1/§4; in-memory JSON round-trip, top-level status, seven required-field entries and fourteen leaves checked |
+| Dedicated scope and currentness | §3.2–3.3; implementation tests must cover wrong agent/run, replacement, period boundaries, revocation and binding changes |
+| Allowed/denied examples | §3.4; reject every excluded category and expansion request |
+| Existence behavior and scoped provenance | §3.4–3.5; compare denial bytes and unrelated-change invariance |
+| Local-only extension and non-mutation | §3.6–3.7; preserve membership, upstream coverage and state |
 
-Repository decision checks were **NOT_RUN**: their scripts are outside the permitted read scope, and this document was not written to disk. The historical validation excerpt does not prove this note passes. Repository acceptance is therefore pending, not falsely reported as successful.
+Both blocking findings are addressed: §4 adds top-level `status`; seven rows were added to `tests/decision_bindings.json`, one for each entry. Every row uses `kind=module`, `path=capital/agent_lane.py`, `status=PENDING_CONSUMER`, `consumer_node=agent-lane-tools`, this note’s path and an entry-specific implementation reason. These are integration anchors, not implementation claims.
+
+Registry JSON parsing, seven-row coverage, uniqueness and preservation of existing rows passed. Repository decision and documentation checks remain **NOT_RUN** because their execution would read outside the authorized scope. Full repository acceptance is unverified; historical validation results are not evidence for this revision.
 
 ## 6. Open risks
 
-- Exact source mappings and ownership isolation remain unverified; fail closed where attribution cannot be established.
-- Uniform bodies do not prove timing-side-channel resistance. No production confidentiality or authentication guarantee is claimed.
-- Authorized recipients can retain previously disclosed facts; revocation prevents subsequent release.
-- Null facts limit proposal reasoning. They must never trigger broader reads or optimistic approval.
+- Source mappings and ownership isolation remain unverified; ambiguous attribution must deny access.
+- Uniform responses do not establish timing-side-channel resistance or production confidentiality.
+- Recipients can retain disclosed facts; revocation prevents subsequent release.
+- Null facts limit reasoning and must never trigger broader reads or optimistic approval.
 
 ## 7. 후속 작업
 
-The supervisor writes this note to `docs/decisions/CAPITAL_AGENT_CASE_DISCLOSURE.md`. The implementation owner adds the isolated projector, ephemeral grant gate and focused positive/negative vectors, including revocation races and unrelated-change invariance.
+The supervisor writes this complete note to `docs/decisions/CAPITAL_AGENT_CASE_DISCLOSURE.md` and retains the seven binding additions. The implementation owner builds the isolated projector and ephemeral grant gate, then verifies denial equality, revocation races, non-mutation and unrelated-change invariance.
 
-After writing, run the repository decision checks and `python3 scripts/docs_surface.py --check` in an authorized environment. Any new vector files require the hand-maintained surface entries and matching README needles specified by repository instructions. Record actual results before claiming acceptance; preserve upstream pins, legacy export construction and existing claim coverage.
+In an authorized repository-validation environment, run decision binding and decision surface checks, `python3 scripts/docs_surface.py --check`, and applicable pack-vector checks. Regenerate affected pack fixtures if required. New vector files require surface entries and matching README needles. Record actual results before claiming acceptance. Preserve upstream pins, legacy export construction and existing claim coverage.
