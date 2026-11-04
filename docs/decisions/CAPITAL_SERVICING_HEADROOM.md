@@ -30,13 +30,13 @@ Reserve **100 of 500 receipt slots** and **200 of 2,000 overlay slots**. New adm
 
 The supplied [SEAMS](../SEAMS.md) excerpt keeps durable storage and upstream adoption unbound. [CAPITAL_DEMO_BOOK](CAPITAL_DEMO_BOOK.md) retains its separate script target of at most 300 operations. The supplied [accounts/tax/legal](CAPITAL_ACCOUNTS_TAX_LEGAL.md) and [claim-slice registry](CAPITAL_CLAIM_SLICE_REGISTRY.md) excerpts preserve provisional treatment and financial-policy references.
 
-The explicitly named overlay-state prerequisite supplies the adopted absolute bounds. DEVELOPMENT_PLAN §10 is used only through the supervisor’s description of separate admission and completion budgets.
+The supervisor review supplies the overlay-state prerequisite’s adopted absolute bounds and confirms the command inventory; the referenced implementation files were not opened in this revision. DEVELOPMENT_PLAN §10 is used only through the supervisor’s description of separate admission and completion budgets.
 
 ## 3. 항목별 결정
 
 ### 3.1 `command_budget_classes`
 
-The following inventory covers the current contract’s command identifiers, checked against the service dispatch paths.
+The following inventory covers the current contract’s command identifiers, as confirmed by the supplied supervisor review.
 
 | Surface | ADMISSION | SERVICING | MAINTENANCE |
 |---|---|---|---|
@@ -51,7 +51,7 @@ Auxiliary surfaces are classified exhaustively by current route:
 
 - Every current GET route, including previews, underwriting, scenarios, exports, operation lookup and static assets: **READ**, zero receipt/overlay growth.
 - `/api/agent/query_grant` and `/api/agent/query_subject`: **READ**.
-- `/api/agent/propose_action`, `/api/agent/withdraw_proposal` and `/api/agent/propose_grant_change`: **AUXILIARY**, retaining existing agent-lane behavior and limits. They do not persist facade receipts or overlay entries through the inspected service paths.
+- `/api/agent/propose_action`, `/api/agent/withdraw_proposal` and `/api/agent/propose_grant_change`: **AUXILIARY**, retaining existing agent-lane behavior and limits. They do not persist facade receipts or overlay entries under the supplied decision’s current-service inventory.
 - `/api/session`: **AUXILIARY** session handling; it neither resets workspace counts nor grants capacity.
 - `/api/agent/execute`: **DISABLED**; preserve existing refusal and zero writes.
 
@@ -83,7 +83,7 @@ The reserve is shared, with no per-case allocation, scheduler priority or fairne
 
 Plan the complete outcome on bounded disposable state, then validate its projected receipts, journals, overlay entries and serialized size before publication. Commit all effects or none through existing local mechanisms. Refuse a compound operation when those mechanisms cannot provide that behavior.
 
-**Principal-coupled repayment:** the inspected `post_repayment` path appends one overlay entry. When principal is positive, it also generates one F04 `repay` receipt; the returned parent response is reconstructed from the overlay rather than stored as another facade receipt.
+**Principal-coupled repayment:** the supplied decision’s `post_repayment` path appends one overlay entry. When principal is positive, it also generates one F04 `repay` receipt; the returned parent response is reconstructed from the overlay rather than stored as another facade receipt.
 
 Consequently, a valid principal-coupled posting at `(R,O)=(499,1999)` reaches `(500,2000)`, provided per-advance, byte and other bounds pass. At `R=500`, the same posting refuses without an overlay-only payment. A posting with zero principal has footprint `(0,1)` and may fit at `R=500`.
 
@@ -127,7 +127,7 @@ A nonpersisted domain failure retains its existing error. A business rejection t
 | Repayment entries per advance | Exact adopted `repayment-posting-decision.capacity_and_envelope_effect.entries_per_advance_max` |
 | Each repayment entry | Both 4,096 bytes and adopted `capacity_and_envelope_effect.entry_canonical_bytes_max`; the stricter bound wins |
 
-The six uppercase overlay bounds are loaded from `overlay-state-decision.overlay_capacity_bounds`, not independently redefined here. Per-advance repayment ceilings are explicit **source-bound values**, not `null`, unlimited or replacement numbers. Their numeric literals were not supplied by the pack; this decision preserves their authoritative field references. Missing or invalid bound resolution follows the existing not-bound refusal path.
+The six uppercase overlay bounds are loaded from `overlay-state-decision.overlay_capacity_bounds`, not independently redefined here. Per-advance repayment ceilings are explicit **source-bound values**, not `null`, unlimited or replacement numbers. The supervisor review reports 600 entries per advance and 1,024 canonical bytes per repayment entry; consumers resolve the authoritative fields rather than copying those literals. Missing or invalid bound resolution follows the existing not-bound refusal path.
 
 Preserve the existing clock-step bound, repayment amount bound, unapplied-cash bound, slice constraints and all financial limits. Headroom never overrides them.
 
@@ -315,9 +315,15 @@ The finite guarantee is exclusion of new admission from the final 100 receipt sl
 | Four boundary examples | Admission §3.2; principal repayment §3.4; restoration §3.5; full replay §3.6 |
 | Explicit absolute ceilings | §3.7 gives numeric overlay bounds and exact repayment-bound references |
 | Earlier-policy compatibility | §3.7 identifies affected entries and preserved obligations |
-| Consumer registration | All seven entries require `PENDING_CONSUMER`; none is implemented by this note |
+| Consumer registration | All seven entries registered as `PENDING_CONSUMER` in `tests/decision_bindings.json`; none is implemented by this note |
 
-The existing checkout passes `decision_ledger.py`, `decision_bindings.py --check` and `docs_surface.py --check`. Those runs validate the existing file, not this returned revision. The supervisor must add bindings for the two newly ADOPTED entries and rerun checks after installing this document. No revised-artifact pass is claimed.
+The revised note and binding registry pass all required checks (exit 0):
+
+- `python3 scripts/decision_ledger.py`: all seven entries parsed as ADOPTED.
+- `python3 scripts/decision_bindings.py --check`: declared references valid; pending anchors are not implementation.
+- `python3 scripts/docs_surface.py --check`: 36 routes, 273 artifacts, 9 stages.
+
+The two missing binding rows are installed; the five existing registrations are preserved. These checks establish documentation and registration consistency, not runtime headroom enforcement.
 
 ## 6. Open risks
 
@@ -325,6 +331,6 @@ Shared clock traffic, envelope bytes or per-case limits can exhaust capacity bef
 
 ## 7. 후속 작업
 
-The supervisor writes this document and registers `command_budget_classes` against `capital/service.py`, and `remaining_hard_limits` against `capital/overlay.py` and `capital/service.py`, as `PENDING_CONSUMER`, consumer node `servicing-headroom`, reason “Reserved servicing capacity is provisional and not implemented.” Preserve the five existing registrations and required ordering.
+Registration is complete: `command_budget_classes` binds to `capital/service.py`; `remaining_hard_limits` binds to `capital/overlay.py` and `capital/service.py`. Both use `PENDING_CONSUMER`, consumer node `servicing-headroom`, reason “Reserved servicing capacity is provisional and not implemented.” The five existing registrations and required ordering are preserved.
 
-After publication, rerun the three documentation checks. The implementation consumer loads adopted policies and verifies admission boundaries, stored rejections, principal coupling, clock fan-out, replay, restoration and every absolute bound. Preserve simulation labels and all existing financial-policy references.
+The implementation consumer loads adopted policies and verifies admission boundaries, stored rejections, principal coupling, clock fan-out, replay, restoration and every absolute bound. Preserve simulation labels and all existing financial-policy references.
