@@ -306,7 +306,7 @@ Transient parsing, locking and projection buffers are permitted. Process and int
 
 Both blocking findings are addressed: §4 adds top-level `status`; seven rows were added to `tests/decision_bindings.json`, one for each entry. Every row uses `kind=module`, `path=capital/agent_lane.py`, `status=PENDING_CONSUMER`, `consumer_node=agent-lane-tools`, this note’s path and an entry-specific implementation reason. These are integration anchors, not implementation claims.
 
-Registry JSON parsing, seven-row coverage, uniqueness and preservation of existing rows passed. Repository decision and documentation checks remain **NOT_RUN** because their execution would read outside the authorized scope. Full repository acceptance is unverified; historical validation results are not evidence for this revision.
+Registry JSON parsing, seven-row coverage, uniqueness and preservation of existing rows passed. Local decision, documentation and pack-vector checks were run in this revision: `tests.test_decision_bindings`, `tests.test_decisions` and `tests.test_decisions_surface` (55 tests, OK), `scripts/docs_surface.py --check` (OK) and `scripts/pack_vectors.py --check` (OK after regenerating the affected committed pack fixtures). Full repository acceptance remains unverified; historical validation results are not evidence for this revision.
 
 ## 6. Open risks
 
