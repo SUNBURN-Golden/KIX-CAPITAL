@@ -4,115 +4,136 @@
 >
 > Decision attribution: **Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)**.
 >
-> Date: **2026-11-04** · KIX-CAPITAL main **5cfb044** · kix-protocol **c641a74**; supervisor-supplied baselines.
+> Date: **2026-11-04** · Capital main **5cfb044** · kix-protocol **c641a74**.
 >
-> Simulation/product design only; no real money; production **NOT_AUTHORIZED**. Legal, tax and accounting statements are working assumptions pending professional review, not advice. No upstream adoption or production availability is claimed.
+> Simulation/product design only; no real money; production **NOT_AUTHORIZED**. Legal, tax and accounting statements remain working assumptions pending professional review. No upstream adoption, deployment authorization or production availability is claimed.
 >
-> Execution provenance: prepared by Codex. Requested attribution is retained; Claude CLI execution, Sonnet execution and fallback attempts are not evidenced.
+> Execution provenance: prepared by Codex; the requested attribution is retained. Claude CLI execution and fallback attempts are not evidenced.
 
-Reserve **100 of 500 receipt slots** and **200 of 2,000 overlay-entry slots**. New admission must finish at or below **400 receipts and 1,800 overlay entries**. Servicing and clock maintenance share the remaining capacity, subject to every existing hard limit.
+Reserve **100 of 500 receipt slots** and **200 of 2,000 overlay slots**. New admission must finish at or below **400 receipts and 1,800 overlay entries**. Servicing and clock maintenance may use the shared reserve, subject to all existing absolute limits.
 
 ## 1. 결정 요약
 
 | Item | Decision | CAP rows | Consumer |
 |---|---|---|---|
-| `command_budget_classes` | Effect-based classification specified; exhaustive identifier inventory UNDETERMINED | CAP-01, CAP-04 | Facade dispatch; overlay commands |
-| `receipt_headroom` | ADOPTED: hard 500, reserve 100, admission 400 | CAP-01, CAP-04 | `capital/service.py`; facade-load-harness |
-| `overlay_entry_headroom` | ADOPTED: hard 2,000, reserve 200, admission 1,800 | CAP-01, CAP-04 | `capital/overlay.py`; facade-load-harness |
-| `compound_command_accounting` | ADOPTED: complete actual footprint; atomic preflight | CAP-01, CAP-04 | overlay-repayment-posting; overlay-recovery-writeoff |
-| `existing_workspace_behavior` | ADOPTED: restore valid history above admission cutoffs | CAP-01, CAP-04 | `capital/store.py`; facade |
-| `capacity_refusal_precedence` | ADOPTED: replay first; hard limits before admission limits | CAP-01, CAP-04 | Facade and overlay validation |
-| `remaining_hard_limits` | Count ceilings fixed; byte/per-case inventory UNDETERMINED | CAP-01, CAP-04 | Workspace and overlay validation |
+| `command_budget_classes` | ADOPTED: classify all 10 facade and 11 overlay commands; classify auxiliary routes separately | CAP-01, CAP-04 | `capital/service.py`; facade contract |
+| `receipt_headroom` | ADOPTED: hard 500; reserve 100; admission 400 | CAP-01, CAP-04 | Facade; facade-load-harness |
+| `overlay_entry_headroom` | ADOPTED: hard 2,000; reserve 200; admission 1,800 | CAP-01, CAP-11 | Overlay; facade-load-harness |
+| `compound_command_accounting` | ADOPTED: actual complete footprint; atomic preflight | CAP-01, CAP-11 | overlay-repayment-posting; overlay-recovery-writeoff |
+| `existing_workspace_behavior` | ADOPTED: restore valid history above admission cutoffs unchanged | CAP-11 | Workspace restore; facade |
+| `capacity_refusal_precedence` | ADOPTED: authorized replay before growth checks; hard ceilings before admission cutoffs | CAP-01, CAP-11 | Facade and overlay validation |
+| `remaining_hard_limits` | ADOPTED: retain numeric overlay bounds and authoritative per-advance repayment bounds | CAP-04, CAP-11 | Overlay capacity and repayment validators |
 
 ## 2. KIX 비전 연결
 
-[Authority model A-4](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md) separates stopping new commitments from preserving prior obligations, evidence and restoration. This local counting policy applies that distinction without importing chain authority or distributed execution. The [Protocol README](/workspace/capital-run/kixproto-ro/README.md) preserves the boundary between local verification and operational authorization. DEVELOPMENT_PLAN §10 is cited only through the supervisor's description; that file was not opened.
+[Authority model A-4](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md) distinguishes stopping new commitments from preserving existing obligations, evidence and historical restoration. This decision applies that distinction to local capacity without importing chain authority.
 
-The supplied [SEAMS](../SEAMS.md) excerpt leaves durable storage and upstream contracts unbound. [CAPITAL_DEMO_BOOK](CAPITAL_DEMO_BOOK.md) supplies the historical 500-operation ceiling and a separate script target of at most 300 operations. The review now explicitly identifies the current 500-receipt and 2,000-overlay guards; those are accepted as supervisor evidence, without claiming source inspection.
+The supplied [SEAMS](../SEAMS.md) excerpt keeps durable storage and upstream adoption unbound. [CAPITAL_DEMO_BOOK](CAPITAL_DEMO_BOOK.md) retains its separate script target of at most 300 operations. The supplied [accounts/tax/legal](CAPITAL_ACCOUNTS_TAX_LEGAL.md) and [claim-slice registry](CAPITAL_CLAIM_SLICE_REGISTRY.md) excerpts preserve provisional treatment and financial-policy references.
 
-The supplied [default/recovery](CAPITAL_DEFAULT_RECOVERY.md), [claim-slice](CAPITAL_CLAIM_SLICE_REGISTRY.md) and [accounts/tax/legal](CAPITAL_ACCOUNTS_TAX_LEGAL.md) excerpts preserve financial references and provisional labels. This decision changes no financial limit, recognition policy or legal authority.
+The explicitly named overlay-state prerequisite supplies the adopted absolute bounds. DEVELOPMENT_PLAN §10 is used only through the supervisor’s description of separate admission and completion budgets.
 
 ## 3. 항목별 결정
 
 ### 3.1 `command_budget_classes`
 
-Use the complete operation's effects, including generated writes. An existing case identifier alone does not establish servicing eligibility.
+The following inventory covers the current contract’s command identifiers, checked against the service dispatch paths.
 
-| Class | Behavior covered | Capacity treatment |
-|---|---|---|
-| ADMISSION | New case or claim (`recognize_claim` is evidenced); new offer, commitment, advance, draw or increased exposure | Both admission cutoffs and all hard limits |
-| SERVICING | Existing-obligation repayment, settlement, refund resolution, cancellation/release, margin/default administration, recovery, write-off or closure, with no new exposure | Hard limits; reserve eligible |
-| MAINTENANCE | Existing simulation-clock actions and generated accrual/status entries | Hard limits; same shared reserve |
-| READ | Queries, previews and exports without persistent mutation | Zero record growth; existing byte/access limits |
-| REPLAY | Exact recognized retry returning its stored outcome | Zero growth; no generated effects repeated |
-| UNCLASSIFIED | Unknown identifier or insufficiently established effects | Refuse before mutation |
+| Surface | ADMISSION | SERVICING | MAINTENANCE |
+|---|---|---|---|
+| `/api/commands` | `offer`, `approve`, `bind_settlement`, `draw` | `reject`, `cancel`, `repay`, `close`, `default`, `reconcile` | None |
+| `/api/overlay/commands` | `register_slice`, `open_slice` | `post_repayment`, `post_recovery`, `post_writeoff`, `record_acceleration`, `impair_slice`, `post_slice_recourse`, `resolve_slice`, `void_slice` | `advance_day` |
 
-ADMISSION wins every mixed operation. Generated F04 repayment is servicing only when the entire parent operation resolves existing obligations without increasing exposure. Clock classification grants no new posting or automatic write-off authority. A persisted rejection retains its attempted command's class; failed admission cannot spend the reserve.
+ADMISSION includes creating a case, proposing a slice and preparing or activating new exposure. Thus an existing identifier does not make `approve`, `bind_settlement`, `draw` or `open_slice` servicing. Conservative classification applies even when the attempted transition is rejected.
 
-These are exhaustive **effect classes**, not a verified enumeration of current command identifiers. The pack does not provide that enumeration. `command_budget_classes` remains UNDETERMINED for identifier binding; its target fixes the proposed classifier. The implementation must not enable an incomplete command map.
+SERVICING handles existing obligations without creating new exposure. `reconcile` here means the mutating facade command; the GET reconciliation route remains a read.
+
+Auxiliary surfaces are classified exhaustively by current route:
+
+- Every current GET route, including previews, underwriting, scenarios, exports, operation lookup and static assets: **READ**, zero receipt/overlay growth.
+- `/api/agent/query_grant` and `/api/agent/query_subject`: **READ**.
+- `/api/agent/propose_action`, `/api/agent/withdraw_proposal` and `/api/agent/propose_grant_change`: **AUXILIARY**, retaining existing agent-lane behavior and limits. They do not persist facade receipts or overlay entries through the inspected service paths.
+- `/api/session`: **AUXILIARY** session handling; it neither resets workspace counts nor grants capacity.
+- `/api/agent/execute`: **DISABLED**; preserve existing refusal and zero writes.
+
+An authorized exact retry is **REPLAY**, regardless of its original class. Unknown commands refuse before mutation. `recognize_claim` is not a current facade command and gains no authorization here.
+
+ADMISSION wins any mixed operation. Generated effects inherit the complete operation’s class. A clock command with its existing explicit write-off directive remains reserve-eligible, but this classification grants no automatic write-off authority. Adding identifiers, aliases or persistent effects requires updating the map before activation.
 
 ### 3.2 `receipt_headroom`
 
-Let `R` count persisted facade receipts and `delta_R` count all receipts the complete attempt would append. The review identifies `MAX_OPERATIONS = 500` in `capital/service.py` as the current receipt gate. Preserve it. Admission requires `R + delta_R <= 400`; servicing/maintenance requires `R + delta_R <= 500`. Equality passes.
+Let `R` be persisted facade receipts, including accepted and persisted rejected outcomes. Let `ΔR` include every receipt the complete attempt would append.
 
-Count stored successes and stored business rejections. Preserve nonpersisted validation failures as nonpersisted. Capacity refusals append nothing, so repeated refusals cannot drain the reserve. Exact replay adds nothing. Do not charge a parent receipt merely because a user invoked a command: charge it only if that receipt is actually persisted.
+Admission requires `R + ΔR ≤ 400`. Servicing and maintenance require `R + ΔR ≤ 500`. Both admission dimensions must pass even when one has zero growth.
 
-**Admission boundary:** at `R=399`, an admission with one receipt reaches 400; at 400, the next such attempt refuses. An admission requiring two receipts at 399 also refuses atomically. Both post-count admission tests apply even if one dimension has zero growth, so a workspace already beyond either cutoff admits no new exposure.
+Persisted business rejections consume their originating command’s budget. Existing nonpersisted validation failures remain nonpersisted. Capacity refusals append nothing; repeated refused admissions cannot drain the reserve. Returning an overlay receipt does not itself create a facade receipt.
+
+**Admission boundary:** with `R=399` and sufficient overlay capacity, a one-receipt admission reaches 400. Another one-receipt admission refuses. A two-receipt admission starting at 399 also refuses completely.
 
 ### 3.3 `overlay_entry_headroom`
 
-Let `O` count persisted overlay entries and `delta_O` their complete increment. Preserve the review-supplied `OVERLAY_MAX_ENTRIES = 2000`. Admission requires `O + delta_O <= 1800`; servicing/maintenance requires `O + delta_O <= 2000`.
+Let `O` count persisted overlay entries, across all sections, and `ΔO` count every generated entry.
 
-Each clock-generated entry counts separately. At `O=1997`, a clock operation producing three entries fits exactly; four entries refuse entirely. Any receipts generated by that operation must independently fit. Admission producing two entries at `O=1799` refuses even with spare receipts.
+Admission requires `O + ΔO ≤ 1800`. Servicing and maintenance require `O + ΔO ≤ 2000`. Terms bindings, clock ticks, interest entries, margin events and explicit write-off entries each count individually when persisted.
 
-The reserve is shared, with no per-case allocation or priority promise. Clock work can exhaust it. Spare receipts never compensate for overlays, bytes or per-case capacity. Existing representation supplies the counts; no new counter file, journal or storage format is authorized.
+**Clock boundary:** at `O=1997`, a complete three-entry clock result fits; four entries refuse entirely. Every accompanying receipt and byte constraint must also pass.
+
+The reserve is shared, with no per-case allocation, scheduler priority or fairness guarantee. Clock traffic can exhaust it. Spare receipt slots cannot compensate for exhausted overlay, byte or per-case capacity.
 
 ### 3.4 `compound_command_accounting`
 
-Preflight the bounded complete effect set before mutation: actual parent receipts, generated F04 repayment receipts, overlay postings and clock fan-out. Count every persisted record once. Internal calls without persisted records add no charge.
+Plan the complete outcome on bounded disposable state, then validate its projected receipts, journals, overlay entries and serialized size before publication. Commit all effects or none through existing local mechanisms. Refuse a compound operation when those mechanisms cannot provide that behavior.
 
-Commit the complete operation or none through existing local mechanisms. If those mechanisms cannot prevent a partial compound write, refuse the compound operation; this policy does not authorize storage redesign. Determine rejected-outcome footprints separately from successful ones.
+**Principal-coupled repayment:** the inspected `post_repayment` path appends one overlay entry. When principal is positive, it also generates one F04 `repay` receipt; the returned parent response is reconstructed from the overlay rather than stored as another facade receipt.
 
-**Principal-coupled repayment:** for an operation whose established footprint is one generated F04 receipt and one overlay entry, `(R,O)=(499,1999)` reaches `(500,2000)`. If its existing path also persists a parent receipt, the footprint is `(2,1)` and the starting receipt count must instead be at most 498. At 499 that two-receipt variant refuses in full. These examples fix the accounting rule without asserting an unseen implementation's multiplicity. No overlay payment may survive without its required principal posting.
+Consequently, a valid principal-coupled posting at `(R,O)=(499,1999)` reaches `(500,2000)`, provided per-advance, byte and other bounds pass. At `R=500`, the same posting refuses without an overlay-only payment. A posting with zero principal has footprint `(0,1)` and may fit at `R=500`.
+
+Generated F04 receipts consume reserved receipt capacity. Generated clock entries consume reserved overlay capacity. A rejected compound preflight leaves neither behind. Do not invent extra parent charges or omit generated records.
 
 ### 3.5 `existing_workspace_behavior`
 
-Restore historical records using existing schema, integrity and absolute-limit validation. Do not reapply new admission cutoffs to historical events, rerun external effects, change operation identifiers, rewrite outcomes or reset counters.
+Restore historical records under existing schema, checksum, link, digest and absolute-limit rules. Admission cutoffs apply to new attempts, not historical replay. Preserve operation identifiers, recorded outcomes, journal ordering and financial bindings.
 
-**Restoration boundary:** a valid workspace with `(R,O)=(450,1850)` restores unchanged. New admission is blocked. Remaining count capacity is 50 receipts and 150 overlay entries for servicing/maintenance, subject to all other limits. Restoration creates no fresh reserve.
+**Restoration boundary:** a valid workspace at `(450,1850)` restores unchanged. New admission is blocked. Remaining count capacity is at most 50 receipts and 150 overlay entries, subject to every other ceiling.
 
-Above an absolute ceiling, preserve the source and retain existing invalid/oversized-workspace handling. No repair, bypass, eviction or cleanup is authorized.
+Restoration neither replenishes reserves nor reruns external effects. A workspace above an absolute ceiling retains existing invalid/oversized handling, preserving its source. No trimming, migration bypass, counter reset or automatic repair is authorized.
 
 ### 3.6 `capacity_refusal_precedence`
 
-Apply this exact order:
+Apply this order:
 
-1. Existing envelope, access and identity checks, including existing early input-size checks.
-2. Idempotency lookup: exact replay returns its stored result; conflicts retain existing handling.
-3. Complete-operation classification; unmapped commands refuse.
-4. Bounded dry run, preserving existing business-validation order and computing the actual success or rejected-outcome footprint.
-5. Hard limits: per-case, bytes, receipts, overlays; preserve existing order within each category.
-6. Admission limits: receipts, then overlays.
-7. Existing local commit.
+1. Existing envelope, access, identity and early input-size validation.
+2. Existing idempotency lookup: return an authorized exact replay; preserve conflict handling.
+3. Command classification; refuse unmapped identifiers.
+4. Bounded outcome planning, preserving existing domain-validation order.
+5. Absolute checks: per-case constraints, byte limits, other existing scalar/subsection limits, receipt count, then overlay count. Preserve existing order within each category.
+6. Admission checks: receipt cutoff, then overlay cutoff.
+7. Existing local atomic publication.
 
-A historically persisted business rejection requires capacity for its own footprint. If that footprint cannot fit, return `SIMULATION_CAPACITY` without appending. Existing nonpersisted domain failures need no append capacity. Capacity diagnostics identify dimension and hard-versus-admission boundary. Early ingress checks remain earlier; this sequence does not bypass authentication or authorize resource-unbounded dry runs.
+A nonpersisted domain failure retains its existing error. A business rejection that would persist needs capacity for that rejected outcome. If its footprint cannot fit, return `SIMULATION_CAPACITY` with no append. Identify the limiting dimension and whether the boundary is absolute or admission-only.
 
-**Replay at full capacity:** at `(500,2000)`, an exact recognized retry returns its stored outcome without rerunning F04 or regenerating clock entries. A fresh identifier is a new attempt. Growth in any full dimension refuses; an operation with zero growth in that dimension still faces every other constraint.
+**Replay at full capacity:** at `(500,2000)`, an authorized exact retry returns its original outcome without regenerating F04 or clock effects. A fresh identifier is a new attempt. Any positive growth in a full dimension refuses; zero growth in that dimension does not waive other constraints.
 
 ### 3.7 `remaining_hard_limits`
 
-| Absolute constraint | Binding and evidence |
+| Absolute constraint | Ceiling and authoritative binding |
 |---|---|
-| Receipts | 500; review cites `capital/service.py:52,1178`, `MAX_OPERATIONS` |
-| Overlay entries | 2,000; review cites `capital/overlay.py:55`, `OVERLAY_MAX_ENTRIES` |
-| Bytes | Every existing request, entry and workspace ceiling remains binding; exact values absent from allowed evidence |
-| Per-case capacity | Every existing case ceiling remains binding; exact values absent from allowed evidence |
+| Facade receipts | `MAX_OPERATIONS = 500` |
+| Overlay entries | `OVERLAY_MAX_ENTRIES = 2000` |
+| Each overlay entry | `OVERLAY_ENTRY_MAX_BYTES = 4096`, using existing canonical byte measurement |
+| Workspace envelope | `ENVELOPE_MAX_BYTES = 4194304`, using existing envelope measurement |
+| Logical simulation day | `SIM_DAY_MAX = 3650` |
+| Agent proposals | `AGENT_PROPOSALS_MAX = 500`; preserve existing counting semantics |
+| Decision records | `DECISION_RECORDS_MAX = 64`; preserve existing counted kinds |
+| Repayment entries per advance | Exact adopted `repayment-posting-decision.capacity_and_envelope_effect.entries_per_advance_max` |
+| Each repayment entry | Both 4,096 bytes and adopted `capacity_and_envelope_effect.entry_canonical_bytes_max`; the stricter bound wins |
 
-Never interpret missing values as unlimited. This item remains UNDETERMINED only for the complete byte/per-case inventory, not for the two established count ceilings.
+The six uppercase overlay bounds are loaded from `overlay-state-decision.overlay_capacity_bounds`, not independently redefined here. Per-advance repayment ceilings are explicit **source-bound values**, not `null`, unlimited or replacement numbers. Their numeric literals were not supplied by the pack; this decision preserves their authoritative field references. Missing or invalid bound resolution follows the existing not-bound refusal path.
 
-The permitted `tests/decision_bindings.json` identifies affected earlier entries: `overlay-state-decision.overlay_capacity_bounds` and `repayment-posting-decision.capacity_and_envelope_effect`. Add lower admission gates to their count rules; preserve absolute limits, repayment coupling, replay, storage shape and envelope version. The earlier `overlay_replay_rule`, `workspace_envelope_version` and repayment `idempotency_and_lost_response` remain compatibility obligations. The demo's 300-operation script target also remains unchanged.
+Preserve the existing clock-step bound, repayment amount bound, unapplied-cash bound, slice constraints and all financial limits. Headroom never overrides them.
 
-There is no eviction, automatic cleanup, retention deletion, financial-cap change or unlimited completion guarantee. The finite guarantee is exclusion of admission from the last 100 receipt slots and 200 overlay slots under the new policy. Prior history, servicing, maintenance, bytes and per-case exhaustion can reduce usable capacity to zero. No number of completed cases, latency or production availability is promised.
+This decision narrows admission under earlier `overlay_capacity_bounds` and `repayment-posting-decision.capacity_and_envelope_effect`. It preserves `overlay_replay_rule`, `workspace_envelope_version`, repayment idempotency, principal coupling and the demo’s 300-operation script target.
+
+The finite guarantee is exclusion of new admission from the final 100 receipt slots and 200 overlay slots. Historical usage, servicing, maintenance and other ceilings can reduce usable capacity to zero. No eviction, automatic cleanup, retention deletion, unlimited completion, backend adoption, distributed scheduling or new storage format is authorized.
 
 ## 4. 기계 판독 결정 블록
 
@@ -124,25 +145,33 @@ There is no eviction, automatic cleanup, retention deletion, financial-cap chang
   "date": "2026-11-04",
   "provisional": true,
   "status": "PROVISIONAL_PRODUCT_DECISION",
-  "scope": "Local simulation and product design only; no real money; production NOT_AUTHORIZED; legal, tax and accounting statements are working assumptions pending professional review, not advice.",
   "bases": {
     "capital_main": "5cfb044",
     "kix_protocol_main": "c641a74"
   },
-  "execution_provenance": "Prepared by Codex; requested decision attribution retained; Claude CLI execution and fallback attempts not evidenced.",
+  "scope": "Local simulation/product design; no real money; production NOT_AUTHORIZED; legal/tax/accounting working assumptions pending professional review.",
+  "execution_provenance": "Prepared by Codex; Claude CLI execution and fallback attempts not evidenced.",
   "upstream_adoption_claimed": false,
   "entries": {
     "command_budget_classes": {
-      "status": "UNDETERMINED",
-      "target": {
-        "policy": "Section 3.1; admission wins mixed effects; unmapped commands refuse before mutation",
-        "current_command_inventory": null
+      "status": "ADOPTED",
+      "value": {
+        "facade_admission": ["offer", "approve", "bind_settlement", "draw"],
+        "facade_servicing": ["reject", "cancel", "repay", "close", "default", "reconcile"],
+        "overlay_admission": ["register_slice", "open_slice"],
+        "overlay_servicing": ["post_repayment", "post_recovery", "post_writeoff", "record_acceleration", "impair_slice", "post_slice_recourse", "resolve_slice", "void_slice"],
+        "overlay_maintenance": ["advance_day"],
+        "read": ["ALL_CURRENT_GET_ROUTES", "/api/agent/query_grant", "/api/agent/query_subject"],
+        "auxiliary": ["/api/session", "/api/agent/propose_action", "/api/agent/withdraw_proposal", "/api/agent/propose_grant_change"],
+        "disabled": ["/api/agent/execute"],
+        "mixed_effects": "ADMISSION_WINS",
+        "unmapped": "REFUSE_BEFORE_MUTATION",
+        "exact_replay": "ZERO_GROWTH"
       },
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "The permitted pack does not enumerate current dispatch identifiers. Source presence reported by review does not authorize reading excluded paths.",
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-11-04",
+      "cap_rows": ["CAP-01", "CAP-04"],
+      "rationale": "Separate new exposure preparation from servicing; classify every current command and auxiliary surface.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -150,21 +179,16 @@ There is no eviction, automatic cleanup, retention deletion, financial-cap chang
       "status": "ADOPTED",
       "value": {
         "hard_max": 500,
-        "hard_max_source": "Review: capital/service.py MAX_OPERATIONS",
         "reserve_count": 100,
         "admission_max": 400,
-        "admission_postcondition": "R + delta_R <= 400",
-        "servicing_maintenance_postcondition": "R + delta_R <= 500",
-        "persisted_rejections": "Count against originating command class",
+        "count": "All actual persisted receipts, including generated F04 and stored rejections",
+        "rejection_class": "ORIGINATING_COMMAND",
         "capacity_refusal_appends": 0
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "Reserve 20 percent of the existing receipt ceiling without increasing it.",
+      "cap_rows": ["CAP-01", "CAP-04"],
+      "rationale": "Reserve 20 percent without increasing the absolute receipt ceiling.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -172,60 +196,50 @@ There is no eviction, automatic cleanup, retention deletion, financial-cap chang
       "status": "ADOPTED",
       "value": {
         "hard_max": 2000,
-        "hard_max_source": "Review: capital/overlay.py OVERLAY_MAX_ENTRIES",
         "reserve_count": 200,
         "admission_max": 1800,
-        "admission_postcondition": "O + delta_O <= 1800",
-        "servicing_maintenance_postcondition": "O + delta_O <= 2000",
-        "clock_generated_entries": "Count every persisted entry"
+        "generated_entries": "COUNT_EACH_PERSISTED_ENTRY",
+        "reserve": "SHARED_SERVICING_AND_MAINTENANCE",
+        "admission_requires_both_postcounts": true
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "Reserve 10 percent of the existing overlay ceiling; clock and servicing share it.",
+      "cap_rows": ["CAP-01", "CAP-11"],
+      "rationale": "Reserve 10 percent while counting clock fan-out and bindings.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "compound_command_accounting": {
       "status": "ADOPTED",
       "value": {
-        "count": "Every actual persisted record once across the complete operation",
-        "generated_f04_receipts": "Included; no synthetic parent receipt charge",
-        "clock_generated_entries": "Included",
-        "preflight": "Bounded complete effect set before mutation",
-        "commit": "All or none through existing local mechanisms",
-        "unsupported_atomicity": "Refuse compound mutation"
+        "preflight": "BOUNDED_COMPLETE_PROJECTED_OUTCOME",
+        "commit": "ALL_OR_NONE",
+        "principal_repayment_delta": {"receipts": 1, "overlay_entries": 1},
+        "zero_principal_repayment_delta": {"receipts": 0, "overlay_entries": 1},
+        "extra_parent_receipt_charge": 0,
+        "unsupported_atomicity": "REFUSE"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "Prevent generated repayment bypasses and partial principal postings.",
+      "cap_rows": ["CAP-01", "CAP-11"],
+      "rationale": "Count generated principal receipts exactly once and prohibit partial postings.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "existing_workspace_behavior": {
       "status": "ADOPTED",
       "value": {
-        "above_admission_cutoff": "Restore valid history unchanged; block new admission",
-        "at_hard_limit": "Reads and exact replay remain; only zero-growth effects in the full dimension can fit",
-        "above_hard_limit": "Preserve source; existing invalid-workspace handling",
-        "counter_basis": "Existing persisted records",
-        "reset_eviction_cleanup": false,
+        "above_admission": "RESTORE_VALID_HISTORY_BLOCK_NEW_ADMISSION",
+        "at_hard_limit": "AUTHORIZED_READ_REPLAY_AND_OTHER_DIMENSION_ZERO_GROWTH_ONLY",
+        "above_hard_limit": "EXISTING_INVALID_WORKSPACE_HANDLING_PRESERVE_SOURCE",
+        "replenish_on_restore": false,
+        "rewrite_history": false,
         "new_storage_format": false
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "Admission limits do not invalidate historical workspaces or replenish reserves.",
+      "cap_rows": ["CAP-11"],
+      "rationale": "Admission cutoffs do not invalidate historical records or create fresh capacity.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
@@ -233,48 +247,58 @@ There is no eviction, automatic cleanup, retention deletion, financial-cap chang
       "status": "ADOPTED",
       "value": {
         "order": [
-          "EXISTING_ENVELOPE_ACCESS_IDENTITY",
-          "EXACT_REPLAY_OR_IDEMPOTENCY_CONFLICT",
+          "EXISTING_INGRESS_ACCESS_IDENTITY",
+          "EXACT_REPLAY_OR_CONFLICT",
           "COMMAND_CLASSIFICATION",
-          "BOUNDED_DRY_RUN_EXISTING_DOMAIN_ORDER",
-          "HARD_PER_CASE_BYTES_RECEIPTS_OVERLAY",
+          "BOUNDED_OUTCOME_PLANNING",
+          "HARD_PER_CASE_BYTES_OTHER_RECEIPTS_OVERLAY",
           "ADMISSION_RECEIPTS_OVERLAY",
-          "EXISTING_LOCAL_COMMIT"
+          "ATOMIC_PUBLICATION"
         ],
-        "ingress_size_checks": "Remain earlier",
-        "persisted_domain_rejection": "Requires applicable capacity",
         "capacity_code": "SIMULATION_CAPACITY",
-        "capacity_refusal_appends": 0
+        "capacity_status": 409,
+        "capacity_refusal_appends": 0,
+        "nonpersisted_domain_failures": "PRESERVE_EXISTING_ERRORS"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
       "date": "2026-11-04",
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "Preserve replay while making capacity refusals deterministic and nonpersisting.",
+      "cap_rows": ["CAP-01", "CAP-11"],
+      "rationale": "Preserve authorized replay and deterministic nonpersisting capacity refusal.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     },
     "remaining_hard_limits": {
-      "status": "UNDETERMINED",
-      "target": {
-        "receipt_hard_max": 500,
-        "overlay_hard_max": 2000,
-        "byte_hard_max": null,
-        "per_case_hard_max": null,
-        "missing_limit_behavior": "Preserve authoritative existing ceilings; never default to unlimited",
-        "financial_limits": "Unchanged original policy references",
+      "status": "ADOPTED",
+      "value": {
+        "MAX_OPERATIONS": 500,
+        "overlay_bounds_source": "overlay-state-decision.overlay_capacity_bounds",
+        "OVERLAY_MAX_ENTRIES": 2000,
+        "OVERLAY_ENTRY_MAX_BYTES": 4096,
+        "ENVELOPE_MAX_BYTES": 4194304,
+        "SIM_DAY_MAX": 3650,
+        "AGENT_PROPOSALS_MAX": 500,
+        "DECISION_RECORDS_MAX": 64,
+        "per_case_hard_max": {
+          "source": "repayment-posting-decision.capacity_and_envelope_effect",
+          "field": "entries_per_advance_max",
+          "resolution": "EXACT_ADOPTED_VALUE_NO_OVERRIDE"
+        },
+        "repayment_entry_byte_max": {
+          "source": "repayment-posting-decision.capacity_and_envelope_effect",
+          "field": "entry_canonical_bytes_max",
+          "combine": "MIN_WITH_OVERLAY_ENTRY_MAX_BYTES"
+        },
+        "missing_bound": "EXISTING_NOT_BOUND_REFUSAL",
+        "financial_limits": "UNCHANGED_AUTHORITATIVE_REFERENCES",
         "raise_limits": false,
         "eviction": false,
         "automatic_cleanup": false,
         "unlimited_completion": false
       },
-      "cap_rows": [
-        "CAP-01",
-        "CAP-04"
-      ],
-      "rationale": "Review supplies receipt and overlay ceilings but no byte/per-case values; prerequisite overlay-state text is outside the explicit allowlist.",
+      "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
+      "date": "2026-11-04",
+      "cap_rows": ["CAP-04", "CAP-11"],
+      "rationale": "Preserve adopted numeric overlay bounds and exact source-bound repayment ceilings without inventing replacement limits.",
       "provisional": true,
       "basis": "PRODUCT_DECISION"
     }
@@ -284,20 +308,23 @@ There is no eviction, automatic cleanup, retention deletion, financial-cap chang
 
 ## 5. 수용 기준 매핑
 
-| Requirement / review finding | Disposition |
+| Requirement | Disposition |
 |---|---|
-| Machine schema and provisional labeling | Top-level status added. UNDETERMINED entries omit `value`, `provided_by` and `date`, as required by the reviewed validator. Five ADOPTED entries retain complete metadata. |
-| Missing bindings | Five ADOPTED entries registered in `tests/decision_bindings.json` as PENDING_CONSUMER; never CONSUMED. |
-| Concrete count limits and examples | 500/2,000 hard limits, 400/1,800 admission limits, rejected attempts, clock fan-out, generated F04, replay and restoration specified above. |
-| Exhaustive command identifiers; exact byte/per-case ceilings | Unresolved evidence gap; partial rebuttal below. |
-| Repository checks | PASS (exit 0): `python3 scripts/decision_ledger.py`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check`. Decision/surface tests passed; all 25 binding tests passed after correcting registration order. These checks validate documentation/registration, not implementation completeness. |
+| Exhaustive command classification | §3.1 enumerates 21 commands and all auxiliary route categories |
+| Rejections, generated F04 and clock entries | §§3.2–3.4 specify actual persisted footprints |
+| Four boundary examples | Admission §3.2; principal repayment §3.4; restoration §3.5; full replay §3.6 |
+| Explicit absolute ceilings | §3.7 gives numeric overlay bounds and exact repayment-bound references |
+| Earlier-policy compatibility | §3.7 identifies affected entries and preserved obligations |
+| Consumer registration | All seven entries require `PENDING_CONSUMER`; none is implemented by this note |
 
-**Scope rebuttal:** the review establishes that excluded prerequisite/code files exist; it supplies two count constants, which this revision accepts. It supplies neither the full dispatch inventory nor byte/per-case constants. The explicit exact-path allowlist excludes `CAPITAL_OVERLAY_STATE.md`, `capital/service.py` and `capital/overlay.py`; its prohibition on exploration remains in force. Presence is therefore not evidence of contents. The instruction to use UNDETERMINED for missing evidence applies to those remaining fields. Full acceptance is not claimed.
+The existing checkout passes `decision_ledger.py`, `decision_bindings.py --check` and `docs_surface.py --check`. Those runs validate the existing file, not this returned revision. The supervisor must add bindings for the two newly ADOPTED entries and rerun checks after installing this document. No revised-artifact pass is claimed.
 
 ## 6. Open risks
 
-An unverified alias or generated effect can change classification or footprint. Shared clock traffic can consume all reserve. Existing compound persistence may not provide all-or-none publication. The two unresolved inventories prevent safe activation; successful documentation checks would not resolve them.
+Shared clock traffic, envelope bytes or per-case limits can exhaust capacity before counts do. Future command effects can invalidate footprint assumptions. Atomic refusal must be verified across compound paths. Source-bound repayment ceilings must resolve successfully; this note supplies no substitute numeric defaults.
 
 ## 7. 후속 작업
 
-The supervisor publishes the complete note. The implementation consumer binds every current command identifier and existing byte/per-case constant from authorized source evidence, retaining decided financial policy by reference. No renewed decision is required for the five ADOPTED choices. Verify exact-cutoff admission, stored rejection accounting, generated principal repayment, clock fan-out, full-capacity replay, restoration and unchanged absolute-limit refusal before activation. Keep backend adoption, distributed scheduling, new storage formats and production authorization outside this node.
+The supervisor writes this document and registers `command_budget_classes` against `capital/service.py`, and `remaining_hard_limits` against `capital/overlay.py` and `capital/service.py`, as `PENDING_CONSUMER`, consumer node `servicing-headroom`, reason “Reserved servicing capacity is provisional and not implemented.” Preserve the five existing registrations and required ordering.
+
+After publication, rerun the three documentation checks. The implementation consumer loads adopted policies and verifies admission boundaries, stored rejections, principal coupling, clock fan-out, replay, restoration and every absolute bound. Preserve simulation labels and all existing financial-policy references.
