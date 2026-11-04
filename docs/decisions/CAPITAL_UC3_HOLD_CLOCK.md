@@ -40,7 +40,12 @@ The read-only sources used are:
 
 The product ambition is reproducible handling of delayed evidence: the same scenario, cash facts and logical day produce the same eligibility and proposals, while preserving the authority boundary.
 
-**Evidence limitation.** The supervisor names `CAPITAL_SETTLEMENT_POLICY.md` and `CAPITAL_SHADOW_POLICY.md` as binding predecessors, but excludes their paths from the explicit read allowlist and supplies no contents. They were not opened. The existing 180-day duration and unchanged UC partition are accepted from the supervisor’s instruction. Exact predecessor field paths, receipt digests and clock-adapter interfaces are **UNDETERMINED**, with `value: null`, because they are absent from the permitted evidence. This does not reopen their decided policy.
+**Predecessor policy applied.** Both predecessor notes are read as binding provisional product policy:
+
+- `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md` (`settlement-policy-decision`, `CAPITAL-SETTLEMENT-POLICY-V1`, 2026-10-09), entry `residual_and_late_cash` (ADOPTED, `CAPITAL-RESIDUAL-V1`): UC3 late cash is `unapplied for the suspense period, then returned to the provider or applied to recovery_due of the same payee only by operator command`; `suspense_period_days` is 180; `after_suspense` requires an operator decision; late cash never reopens a `CLOSED` or `DEFAULTED` advance.
+- `docs/decisions/CAPITAL_SHADOW_POLICY.md` (`shadow-policy-decision`, `CAPITAL-SHADOW-V1`, 2026-10-14), entry `revshare_claim_purchase_deferral` (ADOPTED): the UC1–UC4 partition is a next-phase pure function, while the `180-day suspense timer`, the D+1 payout intent batch and the provider return command are `SHADOW_DEFERRED`, unblocked by a logical clock. This note resolves only the timer's temporal semantics; it does not change the partition.
+
+The 180-day duration is therefore read from the settlement note at `entries.residual_and_late_cash.value.suspense_period_days`, not re-invented here. The downstream timer adapter and its provenance binding remain **NOT_BOUND** until implemented; this does not reopen the predecessors' decided policy.
 
 ## 3. 항목별 결정
 
@@ -145,7 +150,7 @@ Eligibility alone creates no proposal. An explicit synthetic operator request ma
 - `CONTINUE_HOLD`: record an operator’s proposed continued hold; does not reset the anchor.
 - `REVIEW_ELIGIBLE_HELD_CASH`: request disposition review; every selected tranche must be eligible at that snapshot.
 
-Each request contains `proposal_id`, `operator_label`, `action` and a nonempty selection of distinct tranche IDs. Identifiers follow §3.2. Selections are sorted canonically. Exact repeated requests collapse; a reused proposal ID with different content rejects the snapshot. Invalid selections or premature review requests also reject it.
+Each request contains `proposal_id`, `operator_label`, `action` and a nonempty selection of distinct tranche IDs. Identifiers follow §3.2. Selections are sorted by tranche ID in ASCII lexical order, and deduplicated proposals are emitted by proposal ID in ASCII lexical order. Exact repeated requests collapse; a reused proposal ID with different content rejects the snapshot. Invalid selections or premature review requests also reject it.
 
 The output includes selected identities, their full amounts and eligibility days, the as-of day, policy references, snapshot digest, `status: PROPOSED_ONLY`, `label: SIMULATED` and `executionAuthorized: false`. `operator_label` is attribution within a fixture, not authenticated identity.
 
@@ -184,13 +189,14 @@ These bounds authorize finite disposable evaluation independently of provider-ca
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-04",
   "provisional": true,
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "entries": {
     "hold_start_anchor": {
       "status": "ADOPTED",
       "value": {
         "anchor": "EACH_TRANCHE_ARRIVAL_SIM_DAY",
         "hold_days": 180,
-        "duration_authority": "SUPERVISOR_STATED_EXISTING_SHADOW_POLICY",
+        "duration_authority": "docs/decisions/CAPITAL_SETTLEMENT_POLICY.md residual_and_late_cash.suspense_period_days (CAPITAL-RESIDUAL-V1)",
         "later_arrivals": "INDEPENDENT_ANCHOR",
         "reset_existing_anchor": false
       },
@@ -308,17 +314,19 @@ These bounds authorize finite disposable evaluation independently of provider-ca
 | No automatic release or advance reopening | §§3.3–3.5 |
 | Excluded execution and recording domains | §7 |
 
-The JSON was constructed and round-trip checked in memory with six populated entries and required common fields. **`python3 scripts/decision_ledger.py` was not run**: the script is outside the explicit read allowlist, and the delivered document has not been written into the repository. Repository validation remains a supervisor integration requirement; no passing result is claimed.
+The JSON was round-trip checked with six populated entries and required common fields. `python3 scripts/decision_ledger.py` passes for this note with all six entries `ADOPTED`. All six entries are also registered in `tests/decision_bindings.json` as `PENDING_CONSUMER` integration anchors for the future `uc3-hold-clock-replay` consumer. `tests/vectors/pack/` is regenerated because the evidence pack's decisions section hashes the decision notes, and `python3 scripts/pack_vectors.py --check` passes.
 
 ## 6. Open risks
 
-The permitted pack does not establish the predecessor schema or actual clock interface. Their binding remains `NOT_BOUND` until verified; implementations must not guess field names, classification rules or receipt hashes.
+The predecessor notes establish the duration, unchanged classification and shadow authority boundary. This decision does not implement a timer adapter or bind a clock interface. Those consumers remain `NOT_BOUND`; implementations must load the documented policy fields and compute provenance digests from the actual notes rather than guess receipt hashes.
 
 Synthetic arrival evidence is operator-controlled and unauthenticated. Determinism does not establish that cash exists. The 180-day interval is product policy for this simulation, not a statutory deadline, legal entitlement or retention period.
 
 ## 7. 후속 작업
 
-The supervisor writes this document and runs `python3 scripts/decision_ledger.py`. A downstream implementation must load the adopted predecessor terms, pin their provenance, verify the unchanged UC partition, and bind explicit logical-day inputs. Missing dependencies follow their existing not-bound path; a conflicting duration must fail binding rather than silently override either policy.
+A downstream implementation must load the adopted predecessor terms, pin their provenance, verify the unchanged UC partition, and bind explicit logical-day inputs. In particular, load the duration from `entries.residual_and_late_cash.value.suspense_period_days` in the settlement note instead of copying a numeric runtime constant. Missing dependencies follow their existing not-bound path; a conflicting duration must fail binding rather than silently override either policy.
+
+Preserve `CAPITAL_SHADOW_POLICY.md` entries `shadow_math_stance`, `shadow_module_ownership` and `shadow_label_vocabulary`: a pure disposable evaluation beside the pinned view, mode `SHADOW_NOT_APPLIED`, existing `SHADOW_*` result statuses, `shadow_` amount keys and every inherited constant-false authority flag. The tranche eligibility labels in §3.3 are subordinate temporal states, not replacements for those result statuses. `SIMULATED` and `PROPOSED_ONLY` add disclosure without granting execution or workspace mutation.
 
 Implement the evaluator separately, with regression vectors for boundary days, independent later arrivals, input permutations, aliases, conflicts, stale proposals, capacity rejection and time jumps. Verify unchanged financial terms, terminal advance state and held totals. New vector files require corresponding documentation-surface entries, README needles and `python3 scripts/docs_surface.py --check`.
 
