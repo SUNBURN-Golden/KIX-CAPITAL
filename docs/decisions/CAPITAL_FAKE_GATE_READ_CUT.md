@@ -160,6 +160,7 @@ Exact individual claim IDs and current adapter behavior are **UNDETERMINED from 
 {
   "schema": "capital-decision-v1",
   "decision_id": "fake-gate-read-cut-decision",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-04",
   "provisional": true,
@@ -299,7 +300,7 @@ The seven entries cover atomic payload capture, incarnation binding, Capital ali
 
 Implementation acceptance requires deterministic barrier tests for before/after concurrency; restart rejection; direct state and journal tampering; malformed and oversized responses; timeout; unsupported capability; unavailable policy; and command UNKNOWN with zero retransmissions. Successful replay must reproduce the captured state and frozen portfolio inputs.
 
-Claim-file associations and pins are cited above without new mappings. The document contains exactly one decision block. `python3 scripts/decision_ledger.py` was **not run**: its path is outside the authorized read scope. Passing that check remains an integration acceptance requirement, not a claimed result.
+Claim-file associations and pins are cited above without new mappings. The executable anchors are `capital/read_model_claims.py`, `scripts/read_model_claims_check.py`, `tests/test_read_model_claims.py` for the `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` citation and `capital/lifecycle_claims.py`, `scripts/lifecycle_claims_check.py`, `tests/test_lifecycle_claims.py` for the `e2313ab473ea1b5a7b5b9246a564749188c1c2c8` citation; neither pin moves. The document contains exactly one decision block. The builder ran `python3 scripts/decision_ledger.py` on 2026-11-05; it exited 0 and indexed this note. That local run is verification of the note only, not upstream adoption.
 
 ## 6. Open risks
 
@@ -309,4 +310,4 @@ Every relevant Capital mutation must participate in coordination; an omitted mut
 
 Implement the optional ProducerPort capability, fake atomic capture and Capital alignment coordinator; then add the acceptance vectors and verify existing claim mappings. Preserve vendor bytes, executable pins and legacy export construction. If new vector files are introduced, update the hand-maintained documentation surface and run its check.
 
-The supervisor writes this note and runs the decision ledger. No filesystem changes, upstream changes, new storage engine, distributed snapshot protocol, SDK promotion, real producer binding or production authentication are part of this decision.
+The supervisor supplied this note; review-round verification runs the decision ledger locally. No filesystem changes, upstream changes, new storage engine, distributed snapshot protocol, SDK promotion, real producer binding or production authentication are part of this decision.
