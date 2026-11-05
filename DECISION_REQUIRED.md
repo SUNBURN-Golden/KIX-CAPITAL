@@ -1,45 +1,49 @@
-# Portfolio history comparison: integration baseline required
+# DECISION_REQUIRED: supervisor alignment of the verification baseline
 
-The implementation and narrow tests are complete. Full CI readiness is blocked by
-the existing `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`
-guard against `origin/main`.
+The advance-case-dossier implementation is complete. One verification gate
+cannot pass on the current branch against the moved `origin/main` without a
+supervisor-owned Git integration/baseline decision. No new financial terms,
+provider, credentials, deployment or Protocol/Commerce change is requested.
 
-This node's HEAD is `cde0bc778573ef8d543f2e1bb70a521e06bf4e44`;
-the locally available `origin/main` is
-`aab0a7364c79ef00d34e031e4a827a817f7ae544` (12 newer commits). The guard reports
-`capital/overlay.py`, `capital/ports.py`, and
-`docs/decisions/CAPITAL_UPSTREAM_BINDING.md`. These files are byte-identical to
-the node's HEAD and have no builder edits. The five vendor files and manifest
-are unchanged. No test or CI gate has been weakened.
+## What is needed
 
-Final verification: narrow suite 105/105; full unit suite 864/865 (this single
-guard failure); Chromium browser suite 69/69 with the temporary port override;
-acceptance 7/9 stages (unit guard and default browser port collision fail).
-Storage conformance, vendor tests, all 269 claim checks, package smoke, seeded
-demo and all four SIMULATED journeys pass. The default acceptance ladder remains
-failed and is not reported as a pass.
+Choose the approved integration baseline, then rerun the complete local checks.
+The builder must not commit, change shared refs, weaken tests, or adopt other
+nodes' changes merely to make this test green.
 
-Needed: a supervisor-selected integration baseline that includes the intervening
-main changes, followed by verification of this node on that baseline. The builder
-has left all task edits uncommitted and has performed no git/GitHub mutation.
+- Node HEAD / branch base: `5c2398937e12f5a88a2cbd747f5a1edf2f97d95a`.
+- `origin/main` at diagnosis: `aab0a73` (`fold-fuzz-determinism`, PR #120).
+- `tests/test_coa_candidate.py:144` compares guarded files against
+  `origin/main`. It reports `capital/overlay.py`, `capital/ports.py`, and
+  `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` as different.
+- `git diff --name-only HEAD -- capital/projection.py capital/ports.py
+  capital/overlay.py capital/export.py capital/vendor .aiops docs/decisions
+  tests/golden` has no output: this task did not change any guarded file.
+- An isolated run with
+  `PYTHONPATH=tests python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v`
+  reproduces the same failure. The guard has not been edited or bypassed.
 
-Options:
+## Options
 
-1. Apply the completed task diff to the supervisor's current integration worktree,
-   resolve any integration differences, and rerun the narrow and local CI checks.
-2. Update/rebase this node branch onto the selected main baseline while preserving
-   its uncommitted task edits, then resolve and rerun the same checks.
+1. **Recommended:** the supervisor integrates this node with the approved
+   current main, resolves any interaction with the newer overlay/producer
+   behavior, and reruns the full checks. This preserves the existing guard and
+   tests the actual combined product.
+2. The supervisor explicitly accepts verification against the recorded branch
+   base as a temporary integration exception. The present full-suite and
+   acceptance results must still be reported as failing, not as CI passes.
 
-Recommendation: option 1, so the supervisor can review integration alongside the
-other merged nodes without altering this node's protected baseline files in isolation.
-Decision owner: the KIX Capital program supervisor/repository integrator.
+## Who decides
 
-The default browser ports 8765/8766 also belong to unrelated local services. The
-unchanged browser suite can run with the temporary config documented in
-`docs/VALIDATION.md`, which changes only its four server ports/base URLs to
-18765–18768. No unrelated service was stopped and no committed CI configuration
-was changed. This is a local runner accommodation, not a product-policy decision.
+The KIX Capital program supervisor owns Git integration and the verification
+baseline. JunTae decides if integrating another node exposes a consequential
+product-policy choice. The builder has left refs, guarded source files,
+vendored references, decision notes and CI unchanged.
 
-Results remain SIMULATED. No new financial, legal, accounting, provider, ownership,
-or deployment decision is proposed. See `docs/VALIDATION.md` for executed commands
-and results; full CI readiness is not claimed.
+See `docs/VALIDATION.md` for actual commands, results and environment deviations.
+
+Final full-suite rerun after refreshing the facade-dependent finance vectors:
+855 tests ran; 854 passed and only the guarded moved-main comparison failed.
+All 76 browser specs, seven vendor tests, vector/docs checks, syntax checks,
+reproducible package builds and eight smoke checks passed. No test server
+remains running.

@@ -4377,6 +4377,71 @@ rehearsals; artifacts remain unsigned and unpublished. Optional Protocol citatio
 verification without a supplied checkout remains SKIPPED, not a pass.
 All resolutions are staged; the merge is left uncommitted for the supervisor.
 
+## loss-allowance-decision — conflict-fix round 1 (2026-10-30)
+
+Resolved the merge of incoming main `95815c4` into branch HEAD `9a7adc7`.
+The reviewed allowance note remains byte-identical to branch HEAD, with seven
+provisional ADOPTED entries, professional-review flags and pending
+`loss-allowance-postings` consumers. Main's bundled-note runtime, observation
+decision, provenance fields, documentation and validation histories survive.
+The binding table retains the union of both parents' entry identities, including
+main's reviewed consumption updates. No combination-specific runtime, test or
+CI change was needed.
+
+The unchanged generators rebuilt six dossier files, the finance vector and all
+nine pack files. Dossier and finance bytes match incoming main. The combined
+pack retains every decision and entry status from both parents, with note
+provenance. Existing tamper and truncation cases remain generated negative
+fixtures. No new vector path or docs-surface registration was required.
+The old root `DECISION_REQUIRED.md` concerned advance-case-dossier's moved-main
+baseline; this merge resolves that condition and the unchanged byte guard passes,
+so the obsolete blocker is removed.
+
+Resolved files (21):
+
+- `README.md`
+- `docs/INTEGRATION.md`
+- `docs/OPERATOR_HANDBOOK_KO.md`
+- `docs/VALIDATION.md`
+- `tests/decision_bindings.json`
+- `tests/vectors/dossiers/sim-cancelled.json`
+- `tests/vectors/dossiers/sim-closed.json`
+- `tests/vectors/dossiers/sim-defaulted.json`
+- `tests/vectors/dossiers/sim-pending-settlement.json`
+- `tests/vectors/dossiers/sim-rejected.json`
+- `tests/vectors/dossiers/sim-unbound.json`
+- `tests/vectors/finance_vectors.json`
+- `tests/vectors/pack/clean.json`
+- `tests/vectors/pack/content-digest.json`
+- `tests/vectors/pack/section-auth_matrix.json`
+- `tests/vectors/pack/section-decisions.json`
+- `tests/vectors/pack/section-export_manifest.json`
+- `tests/vectors/pack/section-reconciliation.json`
+- `tests/vectors/pack/section-workspace_audit.json`
+- `tests/vectors/pack/truncated.json`
+- `tests/vectors/pack/volatile.json`
+
+| Check | Local evidence |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | PASS: 1,259 tests in 293.246 s; no failures or errors, including the unchanged COA/V1 byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | PASS: seven tests. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | PASS. |
+| `npm run test:browser -- --config build/loss-allowance-round1/playwright.config.cjs` | PASS: all 76 Chromium tests in 2.0 min. The default invocation stopped before tests because ports 8765/8766 were occupied. An ignored temporary config uses four free loopback ports and an isolated seeded workspace; tests, assertions and committed config are unchanged. |
+| `python3 scripts/docs_surface.py --check` | PASS: 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | PASS: both decision notes indexed; pending consumers remain pending. |
+| `python3 scripts/dossier_vectors.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | PASS: six dossiers, 101,048-byte finance vector, nine pack files. |
+| Direct loopback `GET /api/decisions` | HTTP 200, BOUND; all seven allowance entries ADOPTED/provisional, observation-record decision present. |
+| Build and packaged smoke | PASS: `scripts/build_release.py --out build/loss-allowance-round1/dist`, then `scripts/smoke_release.py build/loss-allowance-round1/dist/capital-0.2.0.pyz`; all eleven smoke checks pass. Outside-checkout archive import independently confirms both decisions as BUNDLED_IN_ARTIFACT and preserves the allowance note's original bytes. |
+| Vendor and boundary integrity | All five SHA256 locks and `capital/vendor/manifest.json` match both merge parents byte-for-byte. Legacy export, V1 projection, demo golden and governing TERMS/COA notes also match both parents. `.aiops/` is unchanged. |
+| Merge hygiene | No conflict-marker lines or unmerged index entries. Whitespace checks against both parents pass. Resolutions are staged and the merge remains uncommitted; no abort, commit, push, rebase or reset was performed. |
+
+Logs and the temporary browser config are local ignored files under
+`build/loss-allowance-round1/`. The local zipapp SHA256 is
+`bea5187fe6f3710f8ec4ab3242f03c29fb46cf06594691b197e05ebe2b340881`.
+All results are SIMULATED/provisional; the artifact is unsigned and unpublished.
+Accounting remains SYNTHETIC_UNADOPTED and tax remains NOT_BOUND. Optional
+Protocol citation checks without a supplied checkout remain SKIPPED, not passes.
+
 ## readiness-runtime-claims — supervised conflict-fix round 2 (2026-10-30)
 
 Resolved the supervisor-started merge of incoming main
@@ -4414,3 +4479,170 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## loss-allowance-decision — round 2 inherited blocker history
+
+The two records below describe earlier integration states, not new product
+decisions. Both are preserved from the conflicting root `DECISION_REQUIRED.md`
+versions. Current merge verification and their disposition are recorded in the
+round 2 evidence section below.
+
+### Historical advance-case-dossier baseline record (branch parent)
+
+```text
+# DECISION_REQUIRED: supervisor alignment of the verification baseline
+
+The advance-case-dossier implementation is complete. One verification gate
+cannot pass on the current branch against the moved `origin/main` without a
+supervisor-owned Git integration/baseline decision. No new financial terms,
+provider, credentials, deployment or Protocol/Commerce change is requested.
+
+## What is needed
+
+Choose the approved integration baseline, then rerun the complete local checks.
+The builder must not commit, change shared refs, weaken tests, or adopt other
+nodes' changes merely to make this test green.
+
+- Node HEAD / branch base: `5c2398937e12f5a88a2cbd747f5a1edf2f97d95a`.
+- `origin/main` at diagnosis: `aab0a73` (`fold-fuzz-determinism`, PR #120).
+- `tests/test_coa_candidate.py:144` compares guarded files against
+  `origin/main`. It reports `capital/overlay.py`, `capital/ports.py`, and
+  `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` as different.
+- `git diff --name-only HEAD -- capital/projection.py capital/ports.py
+  capital/overlay.py capital/export.py capital/vendor .aiops docs/decisions
+  tests/golden` has no output: this task did not change any guarded file.
+- An isolated run with
+  `PYTHONPATH=tests python3 -m unittest test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v`
+  reproduces the same failure. The guard has not been edited or bypassed.
+
+## Options
+
+1. **Recommended:** the supervisor integrates this node with the approved
+   current main, resolves any interaction with the newer overlay/producer
+   behavior, and reruns the full checks. This preserves the existing guard and
+   tests the actual combined product.
+2. The supervisor explicitly accepts verification against the recorded branch
+   base as a temporary integration exception. The present full-suite and
+   acceptance results must still be reported as failing, not as CI passes.
+
+## Who decides
+
+The KIX Capital program supervisor owns Git integration and the verification
+baseline. JunTae decides if integrating another node exposes a consequential
+product-policy choice. The builder has left refs, guarded source files,
+vendored references, decision notes and CI unchanged.
+
+See `docs/VALIDATION.md` for actual commands, results and environment deviations.
+
+Final full-suite rerun after refreshing the facade-dependent finance vectors:
+855 tests ran; 854 passed and only the guarded moved-main comparison failed.
+All 76 browser specs, seven vendor tests, vector/docs checks, syntax checks,
+reproducible package builds and eight smoke checks passed. No test server
+remains running.
+```
+
+### Historical portfolio-history comparison baseline record (incoming main)
+
+```text
+# Portfolio history comparison: integration baseline required
+
+The implementation and narrow tests are complete. Full CI readiness is blocked by
+the existing `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`
+guard against `origin/main`.
+
+This node's HEAD is `cde0bc778573ef8d543f2e1bb70a521e06bf4e44`;
+the locally available `origin/main` is
+`aab0a7364c79ef00d34e031e4a827a817f7ae544` (12 newer commits). The guard reports
+`capital/overlay.py`, `capital/ports.py`, and
+`docs/decisions/CAPITAL_UPSTREAM_BINDING.md`. These files are byte-identical to
+the node's HEAD and have no builder edits. The five vendor files and manifest
+are unchanged. No test or CI gate has been weakened.
+
+Final verification: narrow suite 105/105; full unit suite 864/865 (this single
+guard failure); Chromium browser suite 69/69 with the temporary port override;
+acceptance 7/9 stages (unit guard and default browser port collision fail).
+Storage conformance, vendor tests, all 269 claim checks, package smoke, seeded
+demo and all four SIMULATED journeys pass. The default acceptance ladder remains
+failed and is not reported as a pass.
+
+Needed: a supervisor-selected integration baseline that includes the intervening
+main changes, followed by verification of this node on that baseline. The builder
+has left all task edits uncommitted and has performed no git/GitHub mutation.
+
+Options:
+
+1. Apply the completed task diff to the supervisor's current integration worktree,
+   resolve any integration differences, and rerun the narrow and local CI checks.
+2. Update/rebase this node branch onto the selected main baseline while preserving
+   its uncommitted task edits, then resolve and rerun the same checks.
+
+Recommendation: option 1, so the supervisor can review integration alongside the
+other merged nodes without altering this node's protected baseline files in isolation.
+Decision owner: the KIX Capital program supervisor/repository integrator.
+
+The default browser ports 8765/8766 also belong to unrelated local services. The
+unchanged browser suite can run with the temporary config documented in
+`docs/VALIDATION.md`, which changes only its four server ports/base URLs to
+18765–18768. No unrelated service was stopped and no committed CI configuration
+was changed. This is a local runner accommodation, not a product-policy decision.
+
+Results remain SIMULATED. No new financial, legal, accounting, provider, ownership,
+or deployment decision is proposed. See `docs/VALIDATION.md` for executed commands
+and results; full CI readiness is not claimed.
+```
+
+## loss-allowance-decision — conflict-fix round 2 (2026-11-02)
+
+Resolved the supervisor-started merge of incoming main
+`c4114c751ea149865493bd3c734bc5d3c423ae2e` into branch parent
+`1795387b3dc1f3eb8c4dbdaf03b40a6f08f20523`. Both complete parent
+validation histories survive in their original order. Both former root blocker
+records are archived above. They requested integration with current main and a
+verification rerun; this merge supplies that integration and the unchanged
+COA/V1 guard passes. The obsolete root `DECISION_REQUIRED.md` is removed.
+No new financial, accounting, legal, provider or deployment decision is needed.
+
+The reviewed allowance note remains byte-identical to branch HEAD: seven
+provisional ADOPTED entries, owners, professional-review flags, accounting
+`SYNTHETIC_UNADOPTED`, tax `NOT_BOUND`, and pending `loss-allowance-postings`
+consumers. All 113 branch-parent and 106 incoming-main binding entries are
+preserved exactly in their 113-entry union. Main's portfolio-history comparison,
+readiness-claims implementation, CLI, tests and other automatically merged
+runtime/test changes retain incoming-main bytes.
+
+An additional integration check found the nine pack fixtures still carrying an
+older allowance-note provenance hash. The unchanged generator
+`python3 scripts/pack_vectors.py --write` refreshed them. Relative to branch
+HEAD, the clean pack changes only the allowance note's `note_sha256`, the
+containing decisions-section hash and the pack content digest. All other clean
+pack content is identical. Existing negative tamper/truncation cases were
+regenerated by the same generator. No new vector path, CI change, test weakening
+or runtime-code adjustment was required. Incoming finance and historical
+closeout fixtures are preserved and their unchanged generators pass.
+
+Resolved conflict paths: `DECISION_REQUIRED.md` (removed, both records archived)
+and `docs/VALIDATION.md` (combined). Additional refreshed paths: the nine
+existing files under `tests/vectors/pack/`.
+
+| Check | Measured local evidence |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0: 1,302 tests in 344.450 s; OK, including the unchanged COA/V1 guard, portfolio comparison, readiness claims, and pack regeneration tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0: seven tests; OK. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0: all 76 Chromium tests passed in 2.5 min. Unchanged committed configuration and assertions, isolated loopback namespace. Playwright dependencies were installed from the local npm cache with `npm ci --offline --ignore-scripts`; existing Chromium headless-shell build 1208 was used. No dependency or lockfile changes. |
+| `python3 scripts/decision_ledger.py`; `python3 scripts/decision_bindings.py --check` | Both exit 0. Allowance note parsed; all seven consumer bindings remain pending. |
+| Direct loopback `GET /api/decisions` | HTTP 200, BOUND; seven provisional ADOPTED allowance entries; owners, professional-review flags, accounting/tax labels and consumer checked against the note. Server closed after verification. |
+| `python3 scripts/docs_surface.py --check` | Exit 0: 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/dossier_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | All exit 0: nine pack files, 101102-byte finance fixture, six SIMULATED dossiers, 4572-byte closeout fixture and its embedded copy match. |
+| `python3 scripts/build_release.py --out build/loss-allowance-round2/dist`; `python3 scripts/smoke_release.py build/loss-allowance-round2/dist/capital-0.2.0.pyz` | Both exit 0; all eleven packaged smoke checks pass. Local artifact remains unsigned and unpublished. |
+| Preservation | Five vendor SHA256 locks and manifest match both merge parents byte-for-byte. Legacy export, V1 projection and governing TERMS/COA notes match both parents. Allowance note matches branch HEAD. `.aiops/` and CI match both parents. |
+| Merge hygiene | No tracked conflict-marker lines or unmerged index entries. Whitespace checks against both parents pass. Resolutions and refreshed fixtures are staged; the merge remains uncommitted for the supervisor. |
+
+Logs, preservation checks, generated comparison fixtures and local build outputs
+are ignored files under `build/loss-allowance-round2/`. Results describe local
+SIMULATED/provisional verification. Allowance postings remain a future consumer;
+this decision node does not claim their implementation or professional policy
+adoption. Optional Protocol citation checks without a supplied reference checkout
+remain SKIPPED, not passes. No external post, Protocol/Commerce edit, real funds,
+provider call, credentials or deployment was used. No merge abort, commit, push,
+rebase or reset was performed.
