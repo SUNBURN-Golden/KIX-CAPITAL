@@ -167,6 +167,7 @@ Exclude predictive models, PD/LGD estimates, annualized returns, actual yield, b
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-05",
   "provisional": true,
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "entries": {
     "cohort_membership_and_width": {
       "status": "ADOPTED",
@@ -297,7 +298,7 @@ Exclude predictive models, PD/LGD estimates, annualized returns, actual yield, b
 | Ratios, cuts, zero denominators, terminal examples | §§3.3, 3.5–3.6 |
 | Four servicing streams and late allocation | §3.4 |
 | Nulls, coverage and known subtotals | §3.6 |
-| Ledger and binding checks | Registration omission repaired below; full gate execution remains unverified |
+| Ledger and binding checks | Seven entries registered; `scripts/decision_ledger.py` and `scripts/decision_bindings.py --check` pass locally |
 
 **Revision fix:** seven rows were added to `tests/decision_bindings.json`, each with this decision ID, its exact entry key, this note’s path, `kind: module`, `status: PENDING_CONSUMER`, `consumer_node: vintage-metrics-report` and an explicit implementation-pending reason.
 
@@ -313,7 +314,7 @@ Exclude predictive models, PD/LGD estimates, annualized returns, actual yield, b
 
 Local validation **passed**: valid JSON, seven unique registrations, no duplicate decision/entry keys, and preservation of all preceding entries. Anchors identify future integration locations, not implemented consumers.
 
-Full decision-ledger and binding checks were **NOT_RUN** because their repository traversal exceeds the explicit read allowlist. Their result remains **UNDETERMINED**; this is not a gate waiver. The blocking registration omission is repaired rather than deferred. No accounting, allowance or release decision was modified.
+`scripts/decision_ledger.py` reports this note as `PROVISIONAL_PRODUCT_DECISION`, and `scripts/decision_bindings.py --check` reports no findings: every ADOPTED entry has a declared pending-consumer anchor and no binding is mislabeled. No accounting, allowance or release decision was modified.
 
 ## 6. Open risks
 
@@ -321,6 +322,6 @@ Implementation mappings, source completeness and F04/overlay linkage remain unve
 
 ## 7. 후속 작업
 
-The supervisor writes this revised note and carries the seven registry additions into integration, then runs decision-ledger and binding checks. The implementation consumer must reproduce the examples and verify boundaries, duplicates, terminal retention, incomplete evidence, zero denominators and limits before changing binding status to `CONSUMED`.
+The seven registry additions are present and the decision-ledger and binding checks pass locally. The implementation consumer must reproduce the examples and verify boundaries, duplicates, terminal retention, incomplete evidence, zero denominators and limits before changing binding status to `CONSUMED`.
 
-No vector files were added. Future vectors require documentation registrations and `python3 scripts/docs_surface.py --check`. Preserve existing accounting, allowance, release and upstream-binding decisions.
+No vector files were added; the committed evidence-pack vectors under `tests/vectors/pack/` were regenerated so their decision section hashes this note. Future vectors require documentation registrations and `python3 scripts/docs_surface.py --check`. Preserve existing accounting, allowance, release and upstream-binding decisions.
