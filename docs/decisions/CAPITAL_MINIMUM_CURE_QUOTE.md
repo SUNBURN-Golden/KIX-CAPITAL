@@ -37,7 +37,7 @@ The permitted [Protocol README](/workspace/capital-run/kixproto-ro/README.md) di
 
 The supplied excerpts of [CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md), [SEAMS.md](../SEAMS.md) and [CAPITAL_AGENT_CASE_DISCLOSURE.md](CAPITAL_AGENT_CASE_DISCLOSURE.md) support separate binding states, local simulation labels and nonmutating queries.
 
-**Evidence limit:** the financial-terms and repayment-posting dependency notes were named but excluded from the explicit read allowlist. Their contents were not opened. Exact field mappings, pre-default waterfall details and producer guards are therefore **UNDETERMINED**, with binding value `null`, pending implementation inspection by the supervisor-authorized consumer. This does not reopen their adopted policies: the consumer must load them and reuse their implementation, without substituting literals from this document.
+**Evidence limit:** this revision consulted `CAPITAL_FINANCIAL_TERMS.md`, `CAPITAL_REPAYMENT_POSTING.md` and `CAPITAL_DEFAULT_RECOVERY.md` for the adopted policies they state. Exact implementation field mappings, pre-default waterfall details and producer guards are not restated here and remain **UNDETERMINED**, pending implementation inspection by the supervisor-authorized consumer. This does not reopen their adopted policies: the consumer must load them and reuse their implementation, without substituting literals from this document.
 
 ## 3. 항목별 결정
 
@@ -75,7 +75,7 @@ For the supported interest-before-principal waterfall, when `R > 0`:
 
 Here `H` is eligible held cash at the same snapshot. When `R = 0`, `G = A = N = 0`; outstanding interest remains disclosed and payable under existing rules.
 
-Held cash counts only when recorded evidence establishes that it is attributable to the same advance, remains unconsumed, and may already be applied through the existing repayment rules. Already-applied cash is reflected in principal or dues and cannot be deducted again. Unknown ownership, consumption or applicability makes `H` unknown, not zero.
+Held cash counts only when recorded evidence establishes that it is attributable to the same advance, remains unconsumed, and may already be applied through the existing repayment rules. Already-applied cash is reflected in principal or dues and cannot be deducted again. Held cash that remains merely unapplied does not reduce exposure or establish cure; only the projected application through the existing posting path counts, and the adopted unapplied-cash rule remains authoritative. Unknown ownership, consumption or applicability makes `H` unknown, not zero.
 
 Observed beneficiary distributions, proposed set-off, expected receipts, wallet balances, another advance’s funds, refund reserves and hypothetical collateral deposits do not qualify merely because they exist. This decision creates no transfer, set-off or cash-release mechanism.
 
@@ -166,6 +166,7 @@ Collateral substitution, cash-margin deposits, collateral top-ups, new repayment
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-05",
   "provisional": true,
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "entries": {
     "cure_target_predicate": {
       "status": "ADOPTED",
@@ -291,13 +292,13 @@ Collateral substitution, cash-margin deposits, collateral top-ups, new repayment
 
 ## 6. Open risks
 
-Exact dependency field mappings and producer ordering remain unverified because the allowed pack omits their authoritative contents. The future consumer must resolve these bindings from existing policy, not invent replacements. Legal effect of held-cash application remains a working assumption pending professional review.
+Exact dependency field mappings and producer ordering remain unverified from the dependency notes alone. The future consumer must resolve these bindings from existing policy and implementation, not invent replacements. Legal effect of held-cash application remains a working assumption pending professional review.
 
-No files were changed and no repository validation was executed. Decision-ledger, binding and documentation-surface checks are **NOT_RUN**, not passed.
+This decision PR changes only the decision note, the binding registry and the generated evidence-pack vectors. Registration is not implementation, and the consumer remains **`PENDING`**. Decision-ledger, binding, documentation-surface and pack-vector checks pass locally for this PR; they do not establish implemented capability or upstream adoption.
 
 ## 7. 후속 작업
 
-The supervisor writes this note and registers `cure-quote-scope-decision`, its six item identifiers, CAP associations and consumer `minimum-cure-quote` in the existing decision index and binding registry. The consumer remains **`PENDING`**; implementation and upstream adoption remain false.
+This decision PR registers `cure-quote-scope-decision`, its six item identifiers, CAP associations and consumer `minimum-cure-quote` in the existing decision index and binding registry as `PENDING_CONSUMER`. The consumer remains **`PENDING`**; implementation and upstream adoption remain false.
 
 The consumer then binds inherited policies, implements the pure calculation and existing-command preflight, and verifies minimality, held-cash conservation, deadline ordering, acceleration precedence and nonmutation. Run the repository’s decision-ledger and binding checks. If vectors are added, update their hand-maintained documentation registrations and run `python3 scripts/docs_surface.py --check`.
 
