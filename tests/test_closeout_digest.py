@@ -61,7 +61,7 @@ STAGES = (
     ('packaged-smoke', ['python3 scripts/build_release.py --out build/acceptance-dist',
                         'python3 scripts/smoke_release.py <built-zipapp>']),
     ('seeded-demo', ['python3 scripts/seed_demo.py']),
-    ('integrated-journeys', ['python3 scripts/sim_journeys.py']),
+    ('integrated-journeys', ['python3 scripts/sim_journeys.py --check']),
 )
 STRIP_KEYS = [
     'head_sha', 'instance_id', 'created_at', 'saved_at', 'timestamp', 'timestamps', 'recorded_at',

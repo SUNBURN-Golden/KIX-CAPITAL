@@ -450,6 +450,42 @@
     {
       "code": "SCENARIO_UNKNOWN",
       "status": 400
+    },
+    {
+      "code": "FACT_AGENT_FORBIDDEN",
+      "status": 403
+    },
+    {
+      "code": "FACT_ROLE_FORBIDDEN",
+      "status": 403
+    },
+    {
+      "code": "FACT_CLASS_NOT_ADOPTED",
+      "status": 400
+    },
+    {
+      "code": "FACT_CLAIM_UNKNOWN",
+      "status": 409
+    },
+    {
+      "code": "FACT_FUTURE_DAY",
+      "status": 409
+    },
+    {
+      "code": "FACT_IDEMPOTENCY_CONFLICT",
+      "status": 409
+    },
+    {
+      "code": "FACT_SUPERSEDE_DEPTH",
+      "status": 409
+    },
+    {
+      "code": "FACT_SUPERSEDE_INVALID",
+      "status": 409
+    },
+    {
+      "code": "FACT_VERIFICATION_NOT_BOUND",
+      "status": 409
     }
   ],
   "commands": {
@@ -1732,7 +1768,16 @@
         "SLICE_U1_REFUSED",
         "SLICE_WOULD_BREACH_ADVANCE_BASE",
         "UNKNOWN_SETTLEMENT",
-        "UNKNOWN_SLICE"
+        "UNKNOWN_SLICE",
+        "FACT_AGENT_FORBIDDEN",
+        "FACT_ROLE_FORBIDDEN",
+        "FACT_CLASS_NOT_ADOPTED",
+        "FACT_CLAIM_UNKNOWN",
+        "FACT_FUTURE_DAY",
+        "FACT_IDEMPOTENCY_CONFLICT",
+        "FACT_SUPERSEDE_DEPTH",
+        "FACT_SUPERSEDE_INVALID",
+        "FACT_VERIFICATION_NOT_BOUND"
       ],
       "permission": "overlay:command",
       "request": {
@@ -6974,7 +7019,14 @@
         "checks": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/recon_check"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/recon_check"
+              },
+              {
+                "$ref": "#/definitions/observation_capture_check"
+              }
+            ]
           }
         },
         "not_bound": {
@@ -11868,6 +11920,9 @@
         },
         {
           "$ref": "#/definitions/overlay_void_slice_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_record_fact_request"
         }
       ]
     },
@@ -12505,6 +12560,9 @@
             },
             {
               "$ref": "#/definitions/overlay_unknown_operation"
+            },
+            {
+              "$ref": "#/definitions/observation_recorded_operation"
             }
           ]
         },
@@ -12529,6 +12587,12 @@
         "recovery": {
           "type": "object",
           "additionalProperties": true
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/observation_folded_fact"
+          }
         }
       }
     },
@@ -12545,6 +12609,9 @@
         },
         {
           "$ref": "#/definitions/overlay_slice_receipt"
+        },
+        {
+          "$ref": "#/definitions/overlay_record_fact_receipt"
         }
       ]
     },
@@ -17471,6 +17538,780 @@
         },
         "matched": {
           "type": "boolean"
+        }
+      }
+    },
+    "observation_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "verification",
+        "funds_executed",
+        "provider_call_made",
+        "legal_effect",
+        "fact_class",
+        "claim_id",
+        "order_ref",
+        "claimed_provider_ref",
+        "amount_krw",
+        "sim_day",
+        "effective_sim_day",
+        "captured_sim_day",
+        "authority"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "provider_call_made": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "fact_class": {
+          "const": "PROVIDER_PAYMENT_CAPTURE"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "order_ref": {
+          "type": "string",
+          "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+        },
+        "claimed_provider_ref": {
+          "type": "string",
+          "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "effective_sim_day": {
+          "type": "integer"
+        },
+        "captured_sim_day": {
+          "type": "integer"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "approvals"
+          ],
+          "properties": {
+            "role": {
+              "const": "organizer"
+            },
+            "approvals": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "approver_label"
+                ],
+                "properties": {
+                  "approver_label": {
+                    "type": "string",
+                    "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+            }
+          }
+        },
+        "supersedes_fact_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        }
+      }
+    },
+    "observation_stored_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "verification",
+        "funds_executed",
+        "provider_call_made",
+        "legal_effect",
+        "fact_class",
+        "claim_id",
+        "order_ref",
+        "claimed_provider_ref",
+        "amount_krw",
+        "sim_day",
+        "effective_sim_day",
+        "captured_sim_day",
+        "authority",
+        "recorded_by_role"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "provider_call_made": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "fact_class": {
+          "const": "PROVIDER_PAYMENT_CAPTURE"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "order_ref": {
+          "type": "string",
+          "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+        },
+        "claimed_provider_ref": {
+          "type": "string",
+          "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "effective_sim_day": {
+          "type": "integer"
+        },
+        "captured_sim_day": {
+          "type": "integer"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "approvals"
+          ],
+          "properties": {
+            "role": {
+              "const": "organizer"
+            },
+            "approvals": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "approver_label"
+                ],
+                "properties": {
+                  "approver_label": {
+                    "type": "string",
+                    "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+            }
+          }
+        },
+        "supersedes_fact_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "recorded_by_role": {
+          "const": "organizer"
+        }
+      }
+    },
+    "observation_folded_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "verification",
+        "funds_executed",
+        "provider_call_made",
+        "legal_effect",
+        "fact_class",
+        "claim_id",
+        "order_ref",
+        "claimed_provider_ref",
+        "amount_krw",
+        "sim_day",
+        "effective_sim_day",
+        "captured_sim_day",
+        "authority",
+        "recorded_by_role",
+        "status"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "provider_call_made": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "fact_class": {
+          "const": "PROVIDER_PAYMENT_CAPTURE"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "order_ref": {
+          "type": "string",
+          "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+        },
+        "claimed_provider_ref": {
+          "type": "string",
+          "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "effective_sim_day": {
+          "type": "integer"
+        },
+        "captured_sim_day": {
+          "type": "integer"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "approvals"
+          ],
+          "properties": {
+            "role": {
+              "const": "organizer"
+            },
+            "approvals": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "approver_label"
+                ],
+                "properties": {
+                  "approver_label": {
+                    "type": "string",
+                    "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+            }
+          }
+        },
+        "supersedes_fact_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "recorded_by_role": {
+          "const": "organizer"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUPERSEDED"
+          ]
+        }
+      }
+    },
+    "overlay_record_fact_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "payload"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "op": {
+          "const": "record_external_fact"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "payload": {
+          "$ref": "#/definitions/observation_payload"
+        }
+      }
+    },
+    "observation_recorded_operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "at_sim_day",
+        "sim_day",
+        "entry"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "op": {
+          "const": "record_external_fact"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "entry": {
+          "$ref": "#/definitions/observation_stored_payload"
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "label": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "overlay_record_fact_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "at_sim_day",
+        "sim_day",
+        "entry",
+        "f04_journal_written",
+        "label",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "op": {
+          "const": "record_external_fact"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "entry": {
+          "$ref": "#/definitions/observation_stored_payload"
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "label": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observation_capture_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "derived",
+        "derivation",
+        "provenance",
+        "label",
+        "verification",
+        "source_fact_ids",
+        "diagnostics",
+        "coverage",
+        "claims"
+      ],
+      "properties": {
+        "id": {
+          "const": "recorded_captures_vs_claim_face"
+        },
+        "status": {
+          "enum": [
+            "MATCH",
+            "ASSERTED_MISMATCH",
+            "NO_FACTS"
+          ]
+        },
+        "derived": {
+          "const": true
+        },
+        "derivation": {
+          "const": "recorded_captures_vs_claim_face"
+        },
+        "provenance": {
+          "const": "DERIVED_FROM_UNVERIFIED_ASSERTED"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "source_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "const": "OBSERVED_FACT_MISMATCH"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed_claims",
+            "total_claims",
+            "completeness"
+          ],
+          "properties": {
+            "observed_claims": {
+              "type": "integer"
+            },
+            "total_claims": {
+              "type": "integer"
+            },
+            "completeness": {
+              "const": "NOT_BOUND"
+            }
+          }
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "claim_id",
+              "status",
+              "source_fact_ids",
+              "active_facts",
+              "capture_sum_krw",
+              "expected_claim_gross_krw",
+              "draw_diagnostics",
+              "settlement_diagnostics"
+            ],
+            "properties": {
+              "claim_id": {
+                "type": "string",
+                "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+              },
+              "status": {
+                "enum": [
+                  "MATCH",
+                  "ASSERTED_MISMATCH",
+                  "NO_FACTS"
+                ]
+              },
+              "source_fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                }
+              },
+              "active_facts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "label",
+                    "verification",
+                    "funds_executed",
+                    "provider_call_made",
+                    "legal_effect",
+                    "fact_class",
+                    "claim_id",
+                    "order_ref",
+                    "claimed_provider_ref",
+                    "amount_krw",
+                    "sim_day",
+                    "effective_sim_day",
+                    "captured_sim_day",
+                    "authority",
+                    "recorded_by_role",
+                    "status",
+                    "fact_id"
+                  ],
+                  "properties": {
+                    "label": {
+                      "const": "SIMULATED"
+                    },
+                    "verification": {
+                      "const": "UNVERIFIED_ASSERTED"
+                    },
+                    "funds_executed": {
+                      "const": false
+                    },
+                    "provider_call_made": {
+                      "const": false
+                    },
+                    "legal_effect": {
+                      "const": "NOT_ASSESSED"
+                    },
+                    "fact_class": {
+                      "const": "PROVIDER_PAYMENT_CAPTURE"
+                    },
+                    "claim_id": {
+                      "type": "string",
+                      "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                    },
+                    "order_ref": {
+                      "type": "string",
+                      "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+                    },
+                    "claimed_provider_ref": {
+                      "type": "string",
+                      "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+                    },
+                    "amount_krw": {
+                      "type": "integer"
+                    },
+                    "sim_day": {
+                      "type": "integer"
+                    },
+                    "effective_sim_day": {
+                      "type": "integer"
+                    },
+                    "captured_sim_day": {
+                      "type": "integer"
+                    },
+                    "authority": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "role",
+                        "approvals"
+                      ],
+                      "properties": {
+                        "role": {
+                          "const": "organizer"
+                        },
+                        "approvals": {
+                          "type": "array",
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "approver_label"
+                            ],
+                            "properties": {
+                              "approver_label": {
+                                "type": "string",
+                                "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                              }
+                            }
+                          }
+                        },
+                        "proposal_id": {
+                          "type": "string",
+                          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                        }
+                      }
+                    },
+                    "supersedes_fact_id": {
+                      "type": "string",
+                      "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                    },
+                    "recorded_by_role": {
+                      "const": "organizer"
+                    },
+                    "status": {
+                      "enum": [
+                        "ACTIVE",
+                        "SUPERSEDED"
+                      ]
+                    },
+                    "fact_id": {
+                      "type": "string",
+                      "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                    }
+                  }
+                }
+              },
+              "capture_sum_krw": {
+                "type": "integer"
+              },
+              "expected_claim_gross_krw": {
+                "type": "integer"
+              },
+              "draw_diagnostics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "operation_id",
+                    "advance_id",
+                    "amount_krw",
+                    "label"
+                  ],
+                  "properties": {
+                    "operation_id": {
+                      "type": "string"
+                    },
+                    "advance_id": {
+                      "type": "string"
+                    },
+                    "amount_krw": {
+                      "type": "integer"
+                    },
+                    "label": {
+                      "const": "SIMULATED_F04_ACCEPTED_DRAW"
+                    }
+                  }
+                }
+              },
+              "settlement_diagnostics": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "confirmed_cash_krw",
+                  "distributed_krw"
+                ],
+                "properties": {
+                  "label": {
+                    "const": "READ_ONLY_FIXTURE"
+                  },
+                  "confirmed_cash_krw": {
+                    "type": "integer"
+                  },
+                  "distributed_krw": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

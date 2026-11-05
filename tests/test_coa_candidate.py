@@ -31,6 +31,23 @@ _SPEC.loader.exec_module(facade_schema)
 USD = {'namespace': 'fiat', 'reference': 'USD', 'decimals': 2, 'max_atoms': 1_000_000_000_000}
 
 
+# Only the provider-capture dispatch bytes may be removed before legacy hashing.
+OBSERVATION_DISPATCH = (
+    (b"    from capital import observation_record\n    if entry['kind'] == observation_record.KIND:\n        observation_record.validate_entry(entry)\n        return\n", b""),
+    (b"        from capital import observation_record\n        from capital import recovery, slices\n        if entry['kind'] == observation_record.KIND:\n            observation_record.fold_entry(state, entry)\n        elif entry['kind'] in slices.KINDS:\n",
+     b"        from capital import recovery, slices\n        if entry['kind'] in slices.KINDS:\n"),
+    (b"    from capital import observation_record\n    for entry in entries:\n        if entry['overlay_id'] == operation_id and entry['kind'] == observation_record.KIND:\n            return observation_record.receipt(entry)\n", b""),
+)
+
+
+def without_observation_dispatch(source):
+    for extension, original in OBSERVATION_DISPATCH:
+        if source.count(extension) != 1:
+            raise AssertionError('observation dispatch must occur exactly once')
+        source = source.replace(extension, original)
+    return source
+
+
 def note_value():
     return read_decision_block(NOTE)['entries']['chart_of_accounts_mapping']['value']
 
@@ -225,7 +242,7 @@ class V1UnchangedTests(unittest.TestCase):
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
         # Preserve the exact reviewed overlay bytes from a5b2e2d5b5ecfa820462298cf075cbc223ee60f0,
         # rather than main's earlier overlay. Export, V1 projection and vendor remain pinned to main.
-        overlay_bytes = (ROOT / 'capital/overlay.py').read_bytes()
+        overlay_bytes = without_observation_dispatch((ROOT / 'capital/overlay.py').read_bytes())
         self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
                          '96542b38a60d00a2454038f496e5654efff05c7e80be92592070c15323eb5780')
         # Claim slices add only these three exact dispatch extensions. Keep the

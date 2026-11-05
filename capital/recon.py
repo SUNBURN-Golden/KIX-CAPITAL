@@ -164,6 +164,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         _check('fixtures_digest', fixtures_ok, 'fixture_face'),
     ]
     overlay_digest = None
+    observation_check = None
     if overlay_entries:
         # Conditional on a non-empty overlay (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
         overlay_ok, overlay_digest, overlay_detail = overlay_fold_check(
@@ -180,12 +181,20 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
                 validate_slice_links(overlay_entries, journal, settlement_source)
         except ValueError:
             overlay_ok, overlay_detail = False, 'claim_slice_link'
+        if overlay_ok:
+            try:
+                from capital.observation_record import capture_check
+                observation_check = capture_check(overlay_entries, journal, settlement_source)
+            except ValueError:
+                overlay_ok, overlay_detail = False, 'observation_link'
         checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
     if coa_port is not None:
         checks.extend(_coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
                                   overlay_entries or []))
     unknown = _unknowns(receipts, journal, probe_operation_id)
     status = 'MATCHED' if all(row['status'] == 'MATCHED' for row in checks) else 'RECON_MISMATCH'
+    if observation_check is not None:
+        checks.append(observation_check)
     report = _envelope(
         instance_id=instance_id, status=status, replay_matched=replay_ok, entry_count=len(journal),
         cut=state_digest, fixtures_digest=fixtures_digest, operation_capacity=operation_capacity,
