@@ -17,6 +17,29 @@ DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement �
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
 
+## portfolio-aging-migrations
+
+`capital/portfolio_migrations.py` / `tests/test_portfolio_migrations.py`:
+`python3 -m capital.portfolio_migrations --before SNAPSHOT_A --after SNAPSHOT_B`는
+기존 `portfolio_compare.compare_workspaces()`를 유일한 호환성 게이트로 한 번
+호출한다. 기존 비교 출력은 변경하지 않고 별도 결정적
+`KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1` 보고서를 추가한다. 포트폴리오 및 합성
+beneficiary_role별 연체/워치 상태 전이 행렬에 인출 건수, 전후 원금, 양수 원금
+건수를 담는다. 행·열·전체 합계는 양 끝점 및 수익자별 합계와 대사한다.
+
+전체 인출을 포함하므로 종결·원금 0도 존재하는 행이다. `ABSENT_BEFORE`와
+`ABSENT_AFTER`는 끝점 부재이며 상환을 의미하지 않는다. 시계만 변경한 연체,
+부분 원금 감소, default, 종결, 신규 인출을 수기 기대값으로 검증한다.
+손상·비호환 입력은 집계하지 않고 `NON_COMPARABLE`, `matrices: null`을 반환한다.
+대사 실패도 행렬을 숨긴다. 테스트는 입력 바이트·모드·이름 불변, 쓰기·잠금 없음,
+호환성 위임, 결정성, 종료 코드 및 수익자별 합산을 검증한다.
+
+결과는 `SIMULATED` 관측 전이이며 historical_policy_provenance/authentication/
+common_ownership/actual_payments는 계속 `NOT_BOUND`다. 전이 확률·신용 점수·인과
+추론·이력 DB·예측 변경·portfolio-cashflow-desk·HTTP/UI는 범위 밖이다.
+운영 준비도 주장은 변경하지 않는다. 계약은 `docs/INTEGRATION.md`, 실제 실행
+결과는 `docs/VALIDATION.md`를 참조한다.
+
 ## portfolio-history-comparison
 
 `capital/portfolio_compare.py` / `tests/test_portfolio_compare.py`:
