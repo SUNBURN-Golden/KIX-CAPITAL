@@ -1,5 +1,113 @@
 # Validation scope
 
+## Fake port composition — conflict-fix round 1
+
+2026-11-06, branch `agent/capital-fake-port-composition`, merging main
+`5c15a52c28327b067781177fd201047aed11831f` into node head
+`eae0b90b062d7d5e172533d20c71814bf141428f`. All evidence uses local
+SIMULATED / READ_ONLY_FIXTURE inputs; identity, authentication and adoption
+remain NOT_BOUND. This is CLAIM_CONFORMANCE only.
+
+Resolved `docs/INTEGRATION.md` by retaining both the fake port composition and
+residual obligations report sections. Resolved this validation file by retaining
+both parents' complete records, including main's residual report fix rounds.
+An ordered-line comparison verifies that every line of each parent document
+survives. Main's code, tests, decision notes and regenerated vectors remain in
+the merge alongside the six composition tests. No runtime or test change was
+needed. The historical root `DECISION_REQUIRED.md` remains present and unchanged;
+earlier validation records below describe their own rounds only.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,345 passed in 352.954s, including 6 composition, 26 residual report and 11 portfolio migration tests |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, semantic HOLD, adoption NOT_BOUND |
+| `python3 scripts/gate_faults.py --check` | Exit 0; all 7 pinned cases match |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0 |
+| `npm run test:browser -- --config /tmp/capital-fake-port-merge-playwright.config.cjs` | Final fresh serial run: exit 0; 76 passed in 1.8m with Chromium |
+| Vendor integrity and protected paths | All 5 SHA256 pins match; those files and manifest are byte-identical to both parents; vendor, `.aiops/` and root historical decision diffs empty |
+| Merge hygiene | Both parent documents preserved; no conflict markers or unmerged index entries; staged and unstaged whitespace checks pass |
+
+Browser setup: `npm ci --ignore-scripts --no-audit --no-fund` installed the
+lockfile-pinned runner after the global `playwright` lacked the test command.
+The default browser command then failed because ports 8765–8767 were occupied.
+The temporary config loads the tracked config, maps its four server ports to
+39765–39768, uses absolute test paths and temporary artifact/demo workspace
+paths, and sets the repository as the server working directory. Projects,
+assertions, workers, timeouts and retries are unchanged.
+
+The first remapped run had 56 passes and 20 failures: missing screenshot-target
+directories plus lifecycle UI assertions. The tracked browser output symlinks
+were restored after the default runner replaced them, and their existing target
+directories were created. After unit discovery finished, a fresh serial browser
+run passed all 76 tests without code or assertion changes. The cause of the
+earlier lifecycle UI failures was not established. Logs are under
+`/tmp/capital-fake-port-merge-{unittest,browser,browser-remapped,browser-remapped-final}.log`.
+No unrelated server was stopped. No CI, executable pin, upstream reference or
+financial term was changed; no external post, commit, push, abort, rebase or
+reset was performed. The resolved merge is left for the supervisor to commit.
+
+## Fake port composition — builder verification
+
+2026-11-01, baseline HEAD `c4114c751ea149865493bd3c734bc5d3c423ae2e`,
+branch `agent/capital-fake-port-composition`.
+
+Added `tests/test_port_composition.py` and documented its boundaries in README
+and INTEGRATION. Six discovery tests cover the preflighted gate and fake IdP
+through the actual loopback facade, including the eight-command lifecycle,
+role-based reads, rejected credentials, both preflight drift cases, all seven
+pinned fault-corpus scenarios, accepted/rejected first-result replays, conflicts
+and unsupported producer operations. Business snapshots exclude observability
+counters and include canonical state, journal, receipts, mappings, overlay and
+saved memory storage. All servers use loopback; composition servers use ephemeral
+ports and are shut down and joined by context cleanup, including failure paths.
+
+No runtime defect was demonstrated, so no runtime implementation, port contract,
+executable pin or corpus was changed. No new vector files were added. Evidence
+is local `CLAIM_CONFORMANCE` with `LOCAL_FAKE_IDP`, `LOCAL_FAKE_GATE`, SIMULATED
+commands and READ_ONLY_FIXTURE inputs. Identity, authentication and adoption
+remain NOT_BOUND; this does not establish SEMANTIC_CONFORMANCE, upstream
+integration, real funds movement or distributed durability. Neither upstream
+checkout was supplied or required.
+
+Commands actually executed (all results use local synthetic inputs). The
+independent verification round on 2026-11-01 reran every listed command after
+implementation; earlier implementation-iteration results are noted inline:
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_port_composition.py -v` | Implementation iteration: one test initially omitted required `instance_id` on the facts request; corrected only the test request. Verification round: exit 0, 6 passed in 6.674s |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, semantic HOLD, adoption NOT_BOUND |
+| `python3 scripts/gate_faults.py --check` | Exit 0; all 7 pinned cases match |
+| `python3 scripts/auth_matrix.py --check` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages (repeated after documentation changes) |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1308 passed in 315.717s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm run test:browser` | Exit 1 before tests: default loopback port 8765 occupied by an unrelated local service (`Errno 98`); rerun through the temporary port-remap config below |
+| `npx playwright test --config /tmp/fake-port-composition-playwright.config.cjs` | Exit 0; 76 passed in 1.9m (Chromium); all four spawned web servers exited with the run |
+| Inline Python vendor integrity check (`hashlib.sha256` against `capital/vendor/manifest.json`, plus `git diff` on the vendor tree) | Exit 0; all five SHA256 pins match; `capital/vendor/` and `.aiops/` diffs empty |
+| `git diff --check` | Exit 0 |
+
+Deviations from the supplied plan: no conditional runtime fix was necessary.
+Chromium was already available. Default port 8765 is held by an unrelated local
+service, so the browser suite ran through
+`/tmp/fake-port-composition-playwright.config.cjs`, which requires the tracked
+config and remaps only ports 8765–8768 to 39765–39768 (adding the missing
+`--port` on the default server command), with absolute test/output paths and
+repository server working directory. Projects, assertions, timeouts, retries
+and tracked browser config are unchanged. Orphaned `capital.server` processes
+from an earlier browser run of this node were stopped first; no unrelated
+server was stopped. Existing root `DECISION_REQUIRED.md` is preserved as
+historical material. No financial terms, provider choices or other
+consequential decisions were needed. No commit, push, PR, issue, external post,
+`.aiops/` edit or upstream change was made.
+
 ## Residual obligations report — PR fix round 2
 
 2026-11-04, reviewed head `bbe1b48b51e86744d65158af754e33dc3d640fc4`.
