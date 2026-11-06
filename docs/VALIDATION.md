@@ -4249,3 +4249,89 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## shared-cap-utilization
+
+Local SIMULATED builder verification on 2026-11-01; no real funds, provider,
+Protocol/Commerce changes, deployment, external posts or git publication. The
+projection follows the adopted claim-slice shared-cap decision and preserves
+advance-only risk totals and existing enforcement. New test limits are explicitly
+synthetic temporary inputs; no decision-note terms changed.
+
+Implementation: `capital/shared_caps.py`, locked `CapitalService.shared_caps()`,
+exact `GET /api/risk/shared-caps`, projection authorization and strict facade
+alternatives. Tests exercise all five slice states, partial service/recourse,
+late-distribution saturation, defaults, beneficiary/portfolio exact-cap and
+one-won-over boundaries, U4 candidate increments, deterministic hashes, both
+reader/writer orders, unsupported adapters, unusable policies, damaged storage,
+required labels and repeated reads preserving workspace bytes, receipts,
+reservations and both journals. Operator surfaces and auth matrix are synchronized.
+
+Commands actually run (all results below are local simulation evidence):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_shared_caps -v` | First run: 11 tests, one failure and six errors in synthetic fixture setup. Corrected pending-settlement use, synthetic IDs, stamped-policy setup and same-cut risk comparison. Rerun: 11 passed. |
+| `python3 scripts/auth_matrix.py --write` | Exit 0; regenerated table and both generated documentation blocks. |
+| `python3 -m unittest tests.test_shared_caps tests.test_claim_slices tests.test_underwriting tests.test_risk tests.test_portfolio_snapshot tests.test_facade_contract tests.test_auth_matrix tests.test_handbook tests.test_docs_surface -v` | Both runs exit 0: 168 passed each. |
+| `python3 -m unittest tests.test_shared_caps tests.test_handbook -v` | Final extended-case verification: 24 passed. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0: 37 routes, 273 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check` | Initially reported facade digest/route drift; passed after generator update. |
+| `python3 scripts/pack_vectors.py --check` | Initially reported nine affected existing pack files; passed after generator update. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated the facade contract projection. |
+| `python3 scripts/pack_vectors.py --write` | Exit 0; regenerated nine affected existing files. No new vector paths. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0 on the existing pair before fresh closeout regeneration. |
+| `npm ci` | Exit 0; installed three packages, zero reported vulnerabilities; lockfile unchanged. |
+| `npm run test:browser` | Initial run exit 1: unrelated crawler owns host-loopback port 8765. No other service was stopped. |
+| `unshare -Urn bash -c 'ip link set lo up && npm run test:browser'` | Exit 0: 76 passed with installed Chromium headless shell. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0: seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/build_release.py --out build/shared-cap-utilization/dist1` and the same command with `dist2` | Both exit 0; SHA256 `4f66b96d187402b5267ba889d707ecf335602676fdf1df148fe7c25ef26f5ba8`. |
+| `cmp build/shared-cap-utilization/dist1/capital-*.pyz build/shared-cap-utilization/dist2/capital-*.pyz` | Exit 0: byte-identical. |
+| `python3 scripts/smoke_release.py build/shared-cap-utilization/dist1/capital-*.pyz` | Exit 0: all 11 smoke checks passed. |
+| `git diff --check` | Exit 0. |
+
+Environment deviation: run the unchanged browser/acceptance commands in a private
+user/network namespace, bringing up only its loopback interface, because an
+unrelated pre-existing crawler occupies port 8765. This changes no repository
+configuration, test, CI stage or acceptance command recorded inside the ladder.
+Chromium is available; no browser skip is claimed. Nine pack vectors needed
+regeneration because the new auth route changes existing pack sections. No new
+consequential product decision was needed. The five vendor files and manifest
+remain byte-identical to HEAD; SHA256 checks against the manifest pass.
+
+Additional verification and correction evidence:
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Initial run: 1,314 tests, two failures from stale hand-pinned facade route counts (36/48). Updated the explicit catalogue and exact pins to 37/49. Fresh full rerun: exit 0, all 1,314 passed in 358.835s. |
+| `python3 -m unittest tests.test_finance_vectors tests.test_shared_caps tests.test_handbook -v` | Exit 0: 78 passed, including the corrected explicit facade catalogue. |
+| `unshare -Urn bash -c 'ip link set lo up && python3 scripts/acceptance.py'` (initial attempt) | Exit 1, `ok:false`: unit stage retained the two stale count assertions, plus a concurrent standalone suite changed `tests/__pycache__/test_observation_port.cpython-313.pyc` during the fold-fuzz byte guard. The other eight stages passed: storage 19, vendor 7, upstream claims 322 plus two documented divergences, browser 76, smoke 11, seed 1 and journeys 6. This failed evidence was archived and was NOT used for closeout regeneration. Subsequent acceptance runs execute sequentially with no overlapping test job. |
+
+The explicit finance facade catalogue test extension is an additional file beyond
+the design list (`tests/test_finance_vectors.py`); it preserves strict coverage
+rather than deriving away the independent route-count pins. The initial
+concurrent verification cache race was corrected by sequential execution, with
+no relaxation of the read-only byte guard.
+
+Closeout regeneration and final ladder evidence (2026-11-01, sequential runs only):
+
+| Command | Result |
+| --- | --- |
+| `unshare -Urn bash -c 'ip link set lo up && python3 scripts/acceptance.py'` | Exit 0, `ok:true`: unit 1,314; storage 19; vendor 7; upstream claims 322 plus two documented divergences; node-check; browser 76; packaged smoke 11; seeded demo 1; journeys 6 — all nine stages passed. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0: 4,582 bytes written from the genuine `ok:true` evidence; no field hand-edited. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0: 101,574 bytes; embedded copy refreshed. |
+| Second `python3 scripts/acceptance.py` (same namespace wrapper) | Exit 1: unit stage 1,313/1,314 — one failure, `test_closeout_digest` hand pin `python3 scripts/sim_journeys.py` vs the real ladder `python3 scripts/sim_journeys.py --check`. Pre-existing drift: `scripts/acceptance.py` has run `--check` since commit 863de6b; the stale artifact had never been honestly regenerated. Corrected the hand-maintained pin in `tests/test_closeout_digest.py` to the genuine command (matching the `test_acceptance.py` argv pin). No test weakened; the pin still asserts the exact recorded command. |
+| `python3 -m unittest tests.test_closeout_digest tests.test_acceptance tests.test_finance_vectors -v` | Exit 0: 123 passed. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0: 4,582 bytes, embedded copy matches. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0: 101,574 bytes match. |
+| Third `python3 scripts/acceptance.py` (same namespace wrapper) | Exit 0, `ok:true`: all nine stages passed again — unit 1,314; storage 19; vendor 7; upstream claims 322 plus two documented divergences; node-check; browser 76; packaged smoke 11; seeded demo 1; journeys 6. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0: committed artifact byte-matches the fresh `ok:true` evidence. |
+| `python3 scripts/pack_vectors.py --check` / `python3 scripts/docs_surface.py --check` / `python3 scripts/auth_matrix.py --check` | Exit 0 each: nine pack files match; 37 routes, 273 artifacts, nine stages; auth matrix clean. |
+
+The `tests/test_closeout_digest.py` pin update is the only additional file beyond
+the prior list; it aligns a hand-maintained expectation with the unchanged real
+acceptance command. The committed closeout digest is an honest projection of two
+independent clean ladder passes.

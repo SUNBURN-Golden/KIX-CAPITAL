@@ -284,6 +284,7 @@ Each cell is the HTTP result for that caller and route. A bare `200` means the g
 | GET | `/api/overlay/slices` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/portfolio/snapshot` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/risk` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
+| GET | `/api/risk/shared-caps` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/risk/covenants` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/risk/scenarios[/…]` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
 | GET | `/api/policy[/…]` | `projection:read` | 200 | 200 | 403 ROLE_FORBIDDEN | 403 ROLE_FORBIDDEN | 200 |
@@ -490,3 +491,52 @@ Empty overlays omit both overlay cut keys under the adopted
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
+
+- `GET /api/risk/shared-caps`: exact route, no query parameters (unexpected
+  parameters: `400 INVALID_ARGUMENTS`). `projection:read` permits organizer,
+  auditor and the existing default-organizer GET behavior; observer / agent
+  receive `403 ROLE_FORBIDDEN` before query validation. Response format is
+  `KIX_CAPITAL_SHARED_CAPS_V1`, with strict `BOUND` / `NOT_BOUND` alternatives
+  in `capital/contract/facade-v1.json`. No session query is required.
+
+Shared-cap rows are sorted by `beneficiary_role` across advances and all registry
+states, including terminal slices. Portfolio totals reconcile with those rows.
+`advance_principal_krw` sums F04 `outstanding_exposure`, including defaults;
+`counted_slice_face_krw` uses `slices.observation()` and `slices.exposures()`:
+OPEN and IMPAIRED count outstanding face after service and recourse, floored at
+zero; PROPOSED, RESOLVED and VOID count zero. Borrowing-base encumbrance is a
+separate measure and does not replace slice exposure. The sum is
+`combined_policy_exposure_krw`, explicitly labeled
+`CONSERVATIVE_SLICE_FACE_POLICY_MEASURE`: a conservative policy measure, distinct
+from purchase price, accounting exposure and cash. `/api/risk` stays advance-only.
+`cap_ref` names the existing `beneficiary_aggregate_cap_krw` or
+`portfolio_cap_krw`; `remaining_capacity_krw = cap_krw - combined_policy_exposure_krw`
+is signed, `utilization_permille = combined_policy_exposure_krw * 1000 // cap_krw`,
+and `cap_check` passes at equality and fails above the cap. A bound empty book has
+no beneficiary rows and a zero-exposure portfolio row. Headroom grants no draw
+authority; admission, U4 and other enforcement remain unchanged.
+
+Every response and aggregate row retains `slices.labels()`, including `SIMULATED`,
+`SHADOW_NOT_APPLIED` mode/application, `SIMULATION_ONLY_NOT_OFFERED_V1`,
+`title_transferred:false`, `legal_effect:NOT_ASSESSED`, `policy_adopted:false` and
+`funds_executed:false`. The envelope has `read_only:true`, `workspace_mutated`,
+`write_authorized`, `applied`, `enforced` all false and
+`authenticated_source_cut:NOT_BOUND`. This is an in-process diagnostic cut.
+Only the pinned producer, immutable FixtureViews and captured decision-note terms
+are supported. Storage damage, unavailable or inconsistent policy, or unsupported
+adapters produce `NOT_BOUND`, ordered reason codes and null `beneficiaries` /
+`portfolio`; available cut digests remain diagnostic. No capacity is fabricated.
+
+The `cut` includes `sim_day`, producer `state_digest`, existing
+`overlay_state_digest`, `fixtures_digest` (fixture rows), `policy_inputs_digest`
+and `inputs_digest`. SHA256 recipes use canonical JSON (sorted keys, compact
+separators, ASCII). Policy inputs hash `{format:KIX_CAPITAL_SHARED_CAPS_V1,
+version:1, underwriting:<FrozenInputs.policy>, slice_policy:<effective cached policy>}`;
+underwriting includes adopted terms, version, status, bounds and frozen assumptions.
+Inputs hash `{format, version:1, cut:<all cut fields except inputs_digest>,
+fixtures:<captured rows/profiles/beneficiaries/projection_ids>, case_fixtures,
+overlay_entries}`. Captured policy includes the registry policy digest and effective
+caps/mappings. Paths, tokens, session identity, receipt telemetry and timestamps
+are excluded. Changing any effective input changes the cut digests. Repeated
+reads write no workspace file, receipt or journal. No historical migration, new
+limit, reserve posting or lifecycle UI is provided.
