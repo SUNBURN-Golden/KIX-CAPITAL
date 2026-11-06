@@ -1,5 +1,69 @@
 # Capital local API and future integration
 
+## Offline portfolio migration contract
+
+`python3 -m capital.portfolio_migrations --before DIR_A --after DIR_B` requires two
+explicit directories containing `workspace.json`. The stdlib entry point
+`report_workspaces(before_dir, after_dir)` invokes `portfolio_compare.compare_workspaces`
+exactly once as its sole compatibility gate. Pure `compose(comparison)` consumes
+that report without mutation. The existing comparison output is unchanged.
+All audit, policy, input, prefix, draw-gate and view checks below apply unchanged.
+Neither snapshot is written or locked; held workspace locks do not prevent reporting.
+
+Canonical JSON plus a newline uses format `KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1`.
+It retains comparator `inputs`, ordered `comparability.checks` and provenance.
+Success has `status: COMPARABLE`, `matrices.portfolio.{aging,watch_status}` and
+`matrices.beneficiaries`, sorted by `beneficiary_role`, each with the same two
+matrices. `reconciliation` contains `matched` and named `{id,scope,dimension,matched}`
+checks. Comparator failures skip aggregation and retain `NON_COMPARABLE` with
+`matrices: null`. Matrix reconciliation failures also suppress all matrices and
+set `reason: MATRIX_RECONCILIATION_FAILED`, retaining the successful comparator
+checks separately. Exit codes are 0 success, 1 non-comparable, 2 argument misuse.
+
+Each matrix has `before_categories`, `after_categories`, dense row-major `cells`,
+`row_totals`, `column_totals` and `grand_totals`. Aging uses `risk.AGING_IDS`
+(`NOT_DUE`, `1-30`, `31-60`, `61-90`, `>90`, `DEFAULTED`); watch status uses
+`portfolio_compare.WATCH_STATUSES` (`CLEAR`, `WATCH`, `BREACH`). The row axis appends
+`ABSENT_BEFORE`; the column axis appends `ABSENT_AFTER`. Zero cells are included.
+Cells identify `before_category` and `after_category`; marginals identify their
+respective category. All cells, marginals and grand totals contain integer measures:
+
+- `advance_count`: the union population of drawn IDs in that cell, including closed
+  and zero-principal advances. Ordinary row/column counts match the respective
+  endpoint population; the grand count includes entries and exits once each.
+- `before_principal_krw`, `after_principal_krw`: separate outstanding principal
+  sums read directly from audited endpoints, with zero for a missing endpoint.
+- `before_open_advance_count`, `after_open_advance_count`: positive-principal
+  endpoint counts, with zero for absence. These correspond to risk aging counts;
+  covenant watch counts instead use the full drawn population.
+
+Classifications and beneficiary roles come directly from comparator rows; no aging,
+watch or financial terms are recomputed here. For every ordinary before row and
+after column, counts, principal and open counts match endpoint rows. Aging principal
+and watch counts additionally match comparator endpoint totals already reconciled to
+risk/covenant views. Absence categories are excluded from endpoint populations.
+Cells sum componentwise to both marginals and grand totals. Per-beneficiary cells,
+marginals and grand totals sum componentwise to the portfolio; both dimensions have
+identical grand totals. Empty snapshots have dense zero matrices and no beneficiaries.
+
+Absence describes only a missing endpoint. It never establishes repayment. Closed
+or fully reduced draws remain present, retain their existing aging/watch classification
+and contribute zero principal. Prefix-compatible snapshots normally cannot lose old
+draws; exit arithmetic is covered only by an explicitly synthetic helper test.
+For example, four day-zero draws of 10,000 each at day 60, followed by a 4,000
+principal reduction, one default, one full reduction and closure, a day-61 tick and
+a new 10,000 draw produce `NOT_DUE -> 1-30` count 3, principal 30,000 -> 16,000;
+`NOT_DUE -> DEFAULTED` count 1, 10,000 -> 10,000; and
+`ABSENT_BEFORE -> NOT_DUE` count 1, 0 -> 10,000. Total principal is 40,000 -> 36,000.
+These are observed transitions, not transition probabilities, scoring, forecasts,
+causal explanations or evidence of actual payments.
+
+The label remains `SIMULATED`; `historical_policy_provenance`, `authentication`,
+`common_ownership` and `actual_payments` remain `NOT_BOUND`. `funds_executed` and
+`workspace_mutated` are false. Local comparison-time policy hashes do not bind
+historical policy or authenticate a snapshot. No storage/history collection, HTTP/UI,
+forecast or portfolio-cashflow-desk behavior is added.
+
 ## Offline portfolio comparison contract
 
 `python3 -m capital.portfolio_compare --before DIR_A --after DIR_B` reads each explicit

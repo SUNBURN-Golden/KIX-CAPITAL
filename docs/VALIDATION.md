@@ -4249,3 +4249,54 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## portfolio-aging-migrations — builder verification (2026-11-01)
+
+Implemented the additive offline `capital.portfolio_migrations` CLI and pure
+report composition. The existing comparator is called once and remains the sole
+compatibility gate. Dense aging/watch matrices include all drawn IDs, explicit
+absence axes, separate endpoint principal and positive-principal counts, endpoint
+and componentwise beneficiary reconciliation. Failure suppresses matrices.
+Historical-policy provenance, authentication, common ownership and actual payments
+remain `NOT_BOUND`; all results are local `SIMULATED` observations with no funds
+executed. There are no policy/rate, HTTP/UI, forecast or upstream changes.
+
+The 11 focused tests cover hand-derived clock aging, partial reduction, default,
+closure, new draws, aging boundaries, zero-principal retention, synthetic exit
+arithmetic, endpoint/beneficiary sums, comparator delegation, composition purity,
+reconciliation fault injection, corrupt/incompatible inputs, byte/mode/tree
+preservation, forbidden writes/locks, CLI determinism and held locks.
+
+| Command actually run | Measured local result |
+| --- | --- |
+| `python3 -m unittest tests.test_portfolio_migrations tests.test_portfolio_compare tests.test_risk tests.test_covenant_watch -v` (first run) | Exit 1; 70 tests, one failure in 14.349 s. The new test used incorrect beneficiary names. Existing fixtures use `demo-org-alpha` / `demo-org-beta`; corrected those expected names, without changing fixtures or existing tests. |
+| Same narrow command (rerun, stdout/stderr redirected to `/tmp/portfolio-migrations-narrow.log`) | Exit 0; **70 passed** in 16.105 s. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. No new vector files. |
+| `python3 -m unittest discover -s tests -v` (stdout/stderr redirected to `/tmp/portfolio-migrations-unit.log`) | Exit 0; **1,313 passed** in 319.830 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **seven passed** in 0.001 s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three packages installed from the local cache; no lockfile change. Initial module availability probe had reported missing `@playwright/test`. |
+| Local Playwright `chromium.launch()` / `browser.close()` probe | Exit 0; Chromium 145.0.7632.6 available. The full-browser executable-path probe returned false, but the installed headless shell launches successfully. |
+| `npm run test:browser` (stdout/stderr redirected to `/tmp/portfolio-migrations-browser.log`) | Exit 1 before tests: port 8765 already in use. Existing listener left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` (stdout/stderr redirected to `/tmp/portfolio-migrations-browser-isolated.log`) | Exit 0; **76 passed** in 2.9 min using the installed Chromium headless shell, unchanged assertions/configuration and isolated loopback networking. |
+| `python3 -m capital.portfolio_migrations --help` | Exit 0; required explicit snapshot arguments and observed-transition / NOT_BOUND description present. |
+| Inline Python SHA256 / HEAD preservation check | Exit 0; all five manifest SHA256 pins match; all five vendor files, manifest, `capital/export.py` and `capital/portfolio_compare.py` byte-identical to HEAD. No `.aiops/`, CI or vendor changes. |
+| `python3 scripts/docs_surface.py --check` (after validation documentation); `git diff --check` | Both exit 0. |
+
+The preservation check used `hashlib.sha256(Path(...).read_bytes()).hexdigest()`
+for every `capital/vendor/manifest.json` entry, asserted exactly five entries,
+compared each file and the manifest to `git show HEAD:<path>`, compared export and
+comparator bytes the same way, and checked `git diff --name-only HEAD` for protected
+paths. No hash pin, manifest, compatibility rule, existing test or CI setting changed.
+
+Plan deviations: no implementation-scope deviation. Browser verification requires
+an isolated loopback namespace because the shared port is occupied; the unmodified
+test command and configuration are retained. No consequential product decision,
+credential, paid service, real provider call or deployment was required. No git
+commit/push, PR, issue, external comment or Protocol/Commerce edit was performed.
+Completed-run logs are retained under ignored `build/portfolio-migrations/`
+(`narrow.log`, `unit.log`, `browser.log`, `browser-isolated.log`). Final process
+inspection found no `python3 -m capital.server` or `playwright test` process;
+the test-managed servers exited. Only the six planned source/test/documentation
+files are changed; no work is staged or committed.

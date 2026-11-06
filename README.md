@@ -1,5 +1,33 @@
 # KIX Capital
 
+## Offline portfolio aging and watch migrations
+
+```sh
+python3 -m capital.portfolio_migrations --before SNAPSHOT_A --after SNAPSHOT_B
+```
+
+Both directories explicitly supply `workspace.json`. This stdlib CLI calls the
+existing portfolio comparison checks once and emits additive, deterministic
+`KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1` JSON. It leaves the comparison report and both
+snapshot trees unchanged, taking no workspace locks. Exit codes: 0 comparable,
+1 non-comparable/input or reconciliation failure, 2 argument misuse. Failures
+retain diagnostics and return `NON_COMPARABLE` with `matrices: null`.
+
+Portfolio and sorted synthetic-beneficiary matrices show observed aging and
+watch-status endpoint transitions. Every cell carries advance count, separate
+before/after principal KRW and positive-principal endpoint counts. Row/column
+totals reconcile to endpoint views; beneficiary matrices sum to the portfolio.
+The population includes all draws, even closed or zero-principal advances.
+`ABSENT_BEFORE` / `ABSENT_AFTER` mean missing endpoints, never repayment; closure
+remains present. Compatible journal prefixes normally retain all historical draws.
+
+All results are `SIMULATED`. Clock aging, principal reductions, defaults and new
+draws are observations, with no actual-payment, causal or transition-probability
+inference. Historical policy provenance, authentication, common ownership and
+actual payments remain `NOT_BOUND`; no funds execute. No scoring, history database,
+forecast, HTTP/UI or portfolio-cashflow-desk changes are included. See
+`tests/test_portfolio_migrations.py`, `docs/INTEGRATION.md` and `docs/VALIDATION.md`.
+
 ## Offline portfolio history comparison
 
 ```sh
