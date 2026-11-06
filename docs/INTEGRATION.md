@@ -490,3 +490,30 @@ Empty overlays omit both overlay cut keys under the adopted
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
+
+
+## N5-sim disposable shared-source journey
+
+`python3 scripts/sim_journeys.py --journey N5-sim --check` checks the deterministic
+`tests/golden/journey_n5_sim.json` pin; the full `--check` includes it in the existing
+nine-stage ladder's `integrated-journeys` stage (seven Capital-local journeys).
+Two separate `ScenarioReplaySource` / `PinnedFsmProducer` / loopback server books
+exercise slice recourse before advance recovery and the reverse. Existing HTTP
+commands open slices, record refund-driven impairment, default the synthetic
+advance and post against same-beneficiary settlement cash. A holder is served and
+resolved first; its deduction remains in both lanes. Conservation is calculated
+from settlement observations, opening baselines and accepted journal entries,
+independently of production availability helpers. GET original receipts and
+manifest overlay entries correlate every accepted command. Stale quotes, active
+slice reuse, source overruns and seven agent command refusals preserve both
+journals, receipt collections, reservations, fixture digest and state digests.
+
+Only settlement events run out of band, explicitly labelled
+`SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` / `DISPOSABLE_BOOK_ONLY`. This changing
+source is discarded after each ordering; workspace fixtures remain immutable
+`READ_ONLY_FIXTURE`. There is no persistence claim for changing sources. Slice
+entries are `SIMULATED` / `SHADOW_NOT_APPLIED`; recovery entries are simulated
+recorded postings with `funds_executed: false`. Synthetic approver labels provide
+no authentication. `integrated: false`, `qualification_claimed: false`, reserve
+`NOT_BOUND`, and all applicable false execution flags remain in the evidence.
+No provider, new allocation policy, multi-payee model or upstream change is added.

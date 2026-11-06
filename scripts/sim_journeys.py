@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim, N1-sim and N2-sim.
+"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim, N1-sim, N2-sim and N5-sim.
 
-All six journeys are scripts of fixed operation ids against a real ``capital.server`` on
+All seven journeys are scripts of fixed operation ids against a real ``capital.server`` on
 127.0.0.1. They are Capital-local simulations. They are not the T03-T06 rungs of the
 acceptance ladder, claim no qualification, move no funds, and call no provider.
 
@@ -41,9 +41,14 @@ DEFAULT_ELIGIBLE proposal, with no F04 default. N2-sim: agent proposal, human ci
 into a simulated repayment, and auditor offline evidence-chain verification. N names
 are Capital-local, not upstream T-rung semantics.
 
+N5-sim: two disposable changing ScenarioReplaySource books exercise slice recourse
+before advance recovery and the reverse, retaining holder service after resolution.
+HTTP receipts, entries, stale quotes, source overruns and agent refusals prove
+shared-source conservation. No persistence is claimed for changing fixture sources.
+
 Each journey's step list is pinned by digest in tests/golden/journey_t03_sim.json,
-journey_t04_sim.json, journey_t05_sim.json, journey_t06_sim.json, journey_n1_sim.json
-and journey_n2_sim.json. A mismatch or a
+journey_t04_sim.json, journey_t05_sim.json, journey_t06_sim.json, journey_n1_sim.json,
+journey_n2_sim.json and journey_n5_sim.json. A mismatch or a
 missing golden exits 1 unless --update-golden is passed. The golden carries no
 instance id, token, port, path, or timestamp.
 
@@ -82,6 +87,7 @@ GOLDEN_FILES = {
     'T03-sim': 'journey_t03_sim.json', 'T04-sim': 'journey_t04_sim.json',
     'T05-sim': 'journey_t05_sim.json', 'T06-sim': 'journey_t06_sim.json',
     'N1-sim': 'journey_n1_sim.json', 'N2-sim': 'journey_n2_sim.json',
+    'N5-sim': 'journey_n5_sim.json',
 }
 JOURNEY_IDS = tuple(GOLDEN_FILES)
 OUT_OF_BAND = 'SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT'
@@ -1062,8 +1068,266 @@ def run_n2():
     return journey.result()
 
 
+# ------------------------------------------------------------------------ N5-sim
+
+def _n5_get(session, path):
+    status, body = session.get(path)
+    if status != 200:
+        raise JourneyError(f'N5 read {path}: {status} {body}')
+    return body
+
+
+def _n5_manifest(session):
+    return {k: v['body'] for k, v in _n5_get(session, '/api/export/manifest')['sections'].items()}
+
+
+def _n5_snapshot(session):
+    """HTTP evidence only; exclude process identity when pinning the snapshot digest."""
+    manifest = _n5_manifest(session)
+    state = session.refresh()
+    ov = session.overlay()
+    return {'journal': manifest['journal']['entries'],
+            'receipts': manifest['receipts']['receipts'],
+            'overlay': manifest.get('overlay', {}).get('journal', []),
+            'reservations': _reserved_by_claim(manifest['statement']),
+            'fixtures_digest': manifest['fixtures']['fixtures_digest'],
+            'state_digest': state['state_digest'], 'operation_count': state['operation_count'],
+            'overlay_state_digest': ov['overlay_state_digest']}
+
+
+def _n5_digest(value):
+    def stable(v):
+        if type(v) is dict:
+            return {k: stable(x) for k, x in v.items() if k not in VOLATILE_KEYS}
+        if type(v) is list:
+            return [stable(x) for x in v]
+        return v
+    return hashlib.sha256(json.dumps(stable(value), sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def _n5_post(session, op, key, token=None, **fields):
+    return session.client.request('POST', '/api/overlay/commands', {
+        'instance_id': session.instance_id, 'operation_id': key, 'op': op,
+        'at_sim_day': 0, 'approvals': [{'approver_label': 'sim-human-a'},
+                                    {'approver_label': 'sim-human-b'}], **fields}, token or session.token)
+
+
+def _n5_applied(journey, session, op, key, **fields):
+    status, receipt = _n5_post(session, op, key, **fields)
+    journey.step(key + ' applied', 'HTTP', (status, receipt.get('outcome')), (200, 'APPLIED'), op=op)
+    original = _n5_get(session, '/api/overlay?operation_id=' + key)['operation']
+    entries = _n5_manifest(session)['overlay']['journal']
+    entry = next(e for e in entries if e['overlay_id'] == key)
+    command = entry['payload']['command']
+    from capital.shadow import FALSE_FLAGS
+    # Recovery lookup keeps its SIMULATED label; the POST adds the common overlay label.
+    journey.step(key + ' original receipt and entry correlate', 'AUDIT',
+                 ({k: v for k, v in original.items() if k != 'label'}
+                  == {k: v for k, v in receipt.items() if k in original and k != 'label'}, original['entry'] == entry['payload'],
+                  all(command[k] == v for k, v in fields.items()),
+                  all(receipt[k] is False for k in FALSE_FLAGS if k in receipt)
+                  and receipt['funds_executed'] is False and receipt['f04_journal_written'] is False,
+                  receipt.get('application', 'RECORDED_POSTING'), receipt['transport_duplicate']),
+                 (True, True, True, True,
+                  'RECORDED_POSTING' if op == 'post_recovery' else 'SHADOW_NOT_APPLIED', False),
+                 entry_id=entry['overlay_id'], entry_kind=entry['kind'],
+                 entry_digest=_n5_digest(entry), funds_executed=receipt['funds_executed'],
+                 false_flags={k: receipt[k] for k in (*FALSE_FLAGS, 'economic_finality_claimed',
+                                                     'executionAuthorized') if k in receipt})
+    return receipt
+
+
+def _n5_refused(journey, session, op, key, code, status=409, token=None, **fields):
+    before = _n5_snapshot(session)
+    http, body = _n5_post(session, op, key, token=token, **fields)
+    after = _n5_snapshot(session)
+    original = _n5_get(session, '/api/overlay?operation_id=' + key)['operation']
+    f04_status, f04_receipt = session.operation(key)
+    journey.step(key + ' refused without mutation', 'HTTP',
+                 (http, body.get('error'), after == before, original['outcome'],
+                  f04_status, f04_receipt['outcome'],
+                  any(e['overlay_id'] == key for e in after['overlay'])),
+                 (status, code, True, 'UNKNOWN', 200, 'UNKNOWN', False),
+                 unchanged_digest=_n5_digest(after), checked=list(before), op=op,
+                 attempted_amount_krw=fields.get('amount_krw'))
+
+
+def _n5_slices(session):
+    return _n5_get(session, '/api/overlay/slices')
+
+
+def _n5_register(journey, session, sid, face, claim):
+    listing = _n5_get(session, '/api/overlay/slices?quote_claim_id=' + claim
+                       + '&quote_payee_label=organizer&expected_days=60')
+    q = listing['quote']
+    journey.step(sid + ' sizing and cap prerequisites', 'HTTP',
+                 (q['status'], q['registry_check']['status'],
+                  0 < face <= q['registry_check']['admissible_face_max_krw']),
+                 ('SHADOW_COMPUTED', 'ADMISSIBLE', True), face_krw=face,
+                 sizing_max_krw=q['shadow_slice_face_max'])
+    fields = dict(claim_id=claim, payee_label='organizer', slice_face_krw=face,
+                  holder_role='KIX_CAPITAL_LENDER', expected_days=60, quote_ref=q['result_digest'])
+    _n5_applied(journey, session, 'register_slice', sid, **fields)
+    _n5_applied(journey, session, 'open_slice', sid + '-open', slice_id=sid,
+                expected_after_journal_index=_n5_slices(session)['after_journal_index'])
+    return fields
+
+
+def _n5_replay(journey, source, claim, key, op, **args):
+    result = source.replay(claim, key, steps=[{'op': op, 'args': args, 'expected_error': None}])
+    journey.step(key, 'SETTLEMENT_EVENT', [(r['op'], r['error'], r['matched']) for r in result],
+                 [(op, None, True)], label=OUT_OF_BAND, scope='DISPOSABLE_BOOK_ONLY')
+
+
+def _n5_quotes(session, sid, advance):
+    recourse = next(r for r in _n5_slices(session)['slices'] if r['slice_id'] == sid)['quotes']
+    recovery = next(r for r in session.overlay()['recovery']['advances'] if r['advance_id'] == advance)['quotes']
+    def select(rows):
+        return next((q for q in rows if q['source_ref']['claim_id'] == 'demo-delta-mid'
+                     and q['source_ref']['payee_label'] == 'organizer'), None)
+    return {'recourse': select(recourse), 'recovery': select(recovery)}
+
+
+def _n5_lane_fields(lane, q, sid, advance, amount):
+    return {('slice_id' if lane == 'recourse' else 'advance_ref'): sid if lane == 'recourse' else advance,
+            'source_ref': q['source_ref'], 'quote_ref': q['quote_ref'], 'amount_krw': amount}
+
+
+def _n5_conservation(journey, session, prefix, sid, holder, advance, stage):
+    """Calculate cash use from observations/baselines/entries, never availability helpers."""
+    manifest = _n5_manifest(session)
+    entries = manifest['overlay']['journal']
+    claim = manifest['fixtures']['rows']['demo-delta-mid']['claim']
+    line = next(l for l in claim['obligations'] if l['payee'] == 'organizer')
+    opened = next(e['payload'] for e in entries if e['overlay_id'] == holder + '-open')
+    face = next(e['payload']['slice_face_krw'] for e in entries if e['overlay_id'] == holder)
+    served = min(face, max(0, line['distributed'] - opened['baseline_distributed_krw']))
+    totals = {kind: sum(e['payload']['amount_krw'] for e in entries if e['kind'] == kind
+                       and e['payload']['source_ref']['claim_id'] == 'demo-delta-mid'
+                       and e['payload']['source_ref']['payee_label'] == 'organizer')
+              for kind in ('SLICE_RECOURSE', 'RECOVERY')}
+    cash = max(0, line['distributed'] - line['recovery_due'])
+    used = served + sum(totals.values())
+    available = max(0, cash - used)
+    quotes = _n5_quotes(session, sid, advance)
+    journey.step(prefix + ' conservation ' + stage, 'AUDIT',
+                 (used <= cash, quotes['recourse']['available_krw'] == available,
+                  (quotes['recovery']['available_krw'] == available) if available else quotes['recovery'] is None,
+                  quotes['recourse']['observed_eligible_krw'] - available == used,
+                  (quotes['recovery']['slice_held_krw'] == served) if available else True),
+                 (True, True, True, True, True),
+                 cash_krw=cash, holder_service_krw=served, accepted_recourse_krw=totals['SLICE_RECOURSE'],
+                 accepted_recovery_krw=totals['RECOVERY'], available_krw=available,
+                 distributed_krw=line['distributed'], recovery_due_krw=line['recovery_due'])
+    return available
+
+
+def run_n5():
+    """Two disposable books prove both consumers share holder-first settlement cash."""
+    from capital.slices import COMMANDS, load_policy
+    from capital.terms import DecisionNoteTermsPolicy
+    threshold = load_policy(DecisionNoteTermsPolicy())['threshold']
+    cash, posted = threshold // 5, []
+    holder_face = cash // 4
+    journey = Journey('N5-sim')
+    for first, second in (('recourse', 'recovery'), ('recovery', 'recourse')):
+        prefix = 'n5-' + first + '-first'
+        sid, holder, advance = prefix + '-slice', prefix + '-holder', 'sim-' + prefix + '-advance'
+        source = margin.ScenarioReplaySource()
+        with _InProcessServer(PinnedFsmProducer(source)) as port:
+            session = Session(port)
+            initial = _n5_snapshot(session)
+            journey.step(prefix + ' isolated empty book', 'PROCESS',
+                         (initial['journal'], initial['overlay'], initial['receipts'],
+                          initial['reservations'], session.state['workspace']['kind']),
+                         ([], [], {}, {}, 'MEMORY'), label=LABEL, scope='DISPOSABLE_BOOK_ONLY',
+                         threshold_krw=threshold, cash_krw=cash, holder_face_krw=holder_face,
+                         approvals='UNAUTHENTICATED_SYNTHETIC_LABELS')
+            for op in ('offer', 'approve', 'bind_settlement', 'draw'):
+                _drive(journey, session, prefix + ' ' + op, op, advance, prefix + '-' + op.replace('_', '-'),
+                       **({'fixture_id': 'demo-delta-small', 'amount': cash} if op == 'offer' else {}))
+            fields = _n5_register(journey, session, sid, cash, 'demo-delta-small')
+            _n5_refused(journey, session, 'register_slice', prefix + '-double-use', 'SLICE_OPEN_EXISTS', **fields)
+            claim = 'demo-delta-mid'
+            gross = source.view(claim)['claim']['gross']
+            _n5_replay(journey, source, claim, prefix + '-held-cash', 'commit_settlement',
+                       movement_id=prefix + '-movement', gross=gross, amount=cash, fee=0, tax=0,
+                       held=gross-cash, adjustment=0)
+            _n5_register(journey, session, holder, holder_face, claim)
+            _n5_replay(journey, source, claim, prefix + '-holder-distribution', 'apply_distribution',
+                       order=['organizer', 'platform'])
+            row = next(r for r in _n5_slices(session)['slices'] if r['slice_id'] == holder)
+            journey.step(prefix + ' holder served first', 'HTTP',
+                         (row['served_krw'], row['holder_first']), (holder_face, True))
+            _n5_applied(journey, session, 'resolve_slice', holder + '-resolve', slice_id=holder,
+                        resolution='SERVED_IN_FULL')
+            target_gross = source.view('demo-delta-small')['claim']['gross']
+            _n5_replay(journey, source, 'demo-delta-small', prefix + '-refund', 'bind_refund',
+                       refund_id=prefix + '-refund-event', amount=target_gross,
+                       beneficiary_role='demo-buyer', reason='SIMULATED_REFUND')
+            row = next(r for r in _n5_slices(session)['slices'] if r['slice_id'] == sid)
+            journey.step(prefix + ' refund impairment eligibility', 'HTTP',
+                         (row['SLICE_IMPAIRMENT_ELIGIBLE'], row['shortfall_krw']), (True, cash))
+            _n5_applied(journey, session, 'impair_slice', prefix + '-impair', slice_id=sid,
+                        reason='REFUND_REDUCED_LINE')
+            default_key = prefix + '-default'
+            default = _drive(journey, session, prefix + ' organizer default', 'default', advance, default_key)
+            status, original = session.operation(default_key)
+            anchor = next(e for e in _n5_manifest(session)['overlay']['journal'] if e['overlay_id'] == default_key + ':default')
+            journey.step(prefix + ' F04 default receipt anchors overlay', 'AUDIT',
+                         (status, original == default, anchor['payload']['f04_operation_id']),
+                         (200, True, default_key), anchor_id=anchor['overlay_id'])
+            # All six slice commands and recovery remain forbidden to the agent.
+            status, agent = session.client.request('POST', '/api/session', {'role': 'agent'}, session.token)
+            journey.step(prefix + ' agent session', 'HTTP', status, 200)
+            for op in (*COMMANDS, 'post_recovery'):
+                _n5_refused(journey, session, op, prefix + '-agent-' + op.replace('_', '-'),
+                            'RECOVERY_AGENT_FORBIDDEN' if op == 'post_recovery' else 'SLICE_AGENT_FORBIDDEN',
+                            status=403, token=agent['local_token'])
+            _n5_conservation(journey, session, prefix, sid, holder, advance, 'before postings')
+            quotes = _n5_quotes(session, sid, advance)
+            def op(lane):
+                return 'post_slice_recourse' if lane == 'recourse' else 'post_recovery'
+            _n5_applied(journey, session, op(first), prefix + '-first',
+                        **_n5_lane_fields(first, quotes[first], sid, advance, holder_face))
+            _n5_conservation(journey, session, prefix, sid, holder, advance, 'after first')
+            _n5_refused(journey, session, op(second), prefix + '-stale', 'RECOVERY_QUOTE_STALE',
+                        **_n5_lane_fields(second, quotes[second], sid, advance, holder_face))
+            q = _n5_quotes(session, sid, advance)[second]
+            _n5_applied(journey, session, op(second), prefix + '-second',
+                        **_n5_lane_fields(second, q, sid, advance, holder_face))
+            available = _n5_conservation(journey, session, prefix, sid, holder, advance, 'after second')
+            for lane in (first, second):
+                q = _n5_quotes(session, sid, advance)[lane]
+                journey.step(prefix + '-' + lane + ' overrun below outstanding claim', 'AUDIT',
+                             available + 1 < q['claim_due_krw'] if lane == 'recovery'
+                             else available + 1 < next(r for r in _n5_slices(session)['slices']
+                                                       if r['slice_id'] == sid)['outstanding_krw'], True)
+                _n5_refused(journey, session, op(lane), prefix + '-overrun-' + lane, 'RECOVERY_SOURCE_EXCEEDED',
+                            **_n5_lane_fields(lane, q, sid, advance, available + 1))
+            q = _n5_quotes(session, sid, advance)[first]
+            _n5_applied(journey, session, op(first), prefix + '-drain',
+                        **_n5_lane_fields(first, q, sid, advance, available))
+            _n5_conservation(journey, session, prefix, sid, holder, advance, 'exhausted')
+            q = _n5_quotes(session, sid, advance)['recourse']
+            _n5_refused(journey, session, 'post_slice_recourse', prefix + '-exhausted', 'RECOVERY_SOURCE_EXCEEDED',
+                        **_n5_lane_fields('recourse', q, sid, advance, 1))
+            final = _n5_snapshot(session)
+            resolved = next(r for r in _n5_slices(session)['slices'] if r['slice_id'] == holder)
+            journey.step(prefix + ' final evidence and retained holder deduction', 'AUDIT',
+                         (resolved['status'], resolved['served_krw'], session.state['funds_executed']),
+                         ('RESOLVED', holder_face, False),
+                         state_digest=final['state_digest'], overlay_state_digest=final['overlay_state_digest'],
+                         operation_count=final['operation_count'], application='SHADOW_NOT_APPLIED',
+                         source='DISPOSABLE_CHANGING_SCENARIO', persistence_claimed=False,
+                         reserve_binding=session.overlay()['recovery']['reserve_binding'])
+            posted.extend(session.client.posted_operation_ids())
+    _audit_no_replay(journey, posted)
+    return journey.result()
+
+
 RUNNERS = {'T03-sim': run_t03, 'T04-sim': run_t04, 'T05-sim': run_t05, 'T06-sim': run_t06,
-           'N1-sim': run_n1, 'N2-sim': run_n2}
+           'N1-sim': run_n1, 'N2-sim': run_n2, 'N5-sim': run_n5}
 
 
 # ------------------------------------------------------------------------ golden
@@ -1102,7 +1366,7 @@ def summary(results):
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--journey', choices=JOURNEY_IDS, default=None, help='Run one journey. Default all six.')
+    parser.add_argument('--journey', choices=JOURNEY_IDS, default=None, help='Run one journey. Default all seven.')
     parser.add_argument('--golden-dir', type=Path, default=GOLDEN_DIR, help='Default tests/golden')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='Check pins without writing (the default)')
