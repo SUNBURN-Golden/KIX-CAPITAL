@@ -780,11 +780,13 @@ The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Foll
 
 `GET /api/export/facts?instance_id=<현재 세션>&limit=100`은 `export:read`가
 필요하다. 각 응답의 원본 바이트를 `page-0000.json`, `page-0001.json` 순으로
-저장하고 `next_cursor`를 다음 요청의 `after`로 보낸다. null이면 완료다.
+저장하고 `next_cursor`를 다음 요청의 `after`로 보낸다. null은 수집 종료일 뿐이며,
+오프라인 검증 성공이 완료를 확정한다.
 `GET /api/export/facts/schema`는 고정 열·폭·KRW 정수 단위 스키마다.
 `python3 -m capital.verify --facts DIR`로 페이지 연결·행 해시·F04 재생·오버레이
 fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
-`CUT_MOVED`는 처음부터 다시 조회해야 하며, 저장소 오류 503이면 페이지가 없다.
+`CUT_MOVED`와 `SESSION_CHANGED`는 수집을 중단한다. 저장소 오류 503이면 페이지가 없다.
+원인을 확인한 뒤 새 디렉터리를 지정한 명시적 실행으로만 다시 시작한다.
 빈 오버레이는 cut의 오버레이 키 자체가 없다. 동일 overlay_id의 원본 중복은
 `duplicate: 1`로 남는다. `SIMULATED`, source_cut과 authentication은 `NOT_BOUND`이며
 `k-stage7-authenticated-export`가 아니다. 해시를 모두 다시 만든 일관된 대체 장부는
@@ -799,6 +801,53 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+
+### 제한된 loopback facts 수집기 · SIMULATED
+
+서버가 이미 로컬에서 실행 중일 때 다음을 실행한다. 출력은 체크아웃 및 원본
+workspace 밖의 **새 디렉터리**여야 하고 부모 디렉터리는 미리 존재해야 한다.
+기존 빈 디렉터리·파일·심볼릭 링크도 덮어쓰지 않는다.
+
+```sh
+python3 scripts/collect_facts.py --endpoint http://127.0.0.1:8765 \
+  --out /tmp/capital-facts-run-001 --limit 100 --max-pages 1000 \
+  --max-response-bytes 4194304 --max-total-bytes 67108864 --timeout 10
+python3 -m capital.verify --facts /tmp/capital-facts-run-001
+```
+
+`--endpoint`와 `--out`은 필수다. endpoint는 정확히 `http://127.0.0.1:PORT`이고
+끝 `/`만 선택 가능하다. 프록시 환경변수는 사용하지 않고, 같은 origin을 포함한
+모든 redirect와 비loopback 목적지를 거절한다. GET만 사용하고 원본 workspace,
+저널과 receipt는 변경하지 않는다. 한 번 받은 세션·합성 토큰만 사용하며 토큰,
+bootstrap 본문·HTTP 헤더·요청 URL은 파일이나 수집기 진단에 남기지 않는다.
+토큰을 포함한 페이지도 쓰기 전에 거절한다.
+
+`--limit`은 1..500(기본 100)이고 수집 중 고정이다. 페이지 수 기본 상한은 1000,
+응답 본문 바이트 상한은 4194304, bootstrap·오류 응답을 포함한 누적 본문 상한은
+67108864다. 모두 양의 정수인 기술적 자원 제한이다. `--timeout`은 요청별 유한한
+양수 초(기본 10)이며 느린 헤더·본문 수신도 전체 deadline 안에 끝나야 한다.
+Content-Length 하나와 정확한 길이 뒤 연결 종료를 요구한다. 압축·chunked·모호한
+framing은 거절한다.
+
+원본 응답 바이트는 `page-00000000.json`, `page-00000001.json` 순서로 저장한다.
+`next_cursor: null`은 다음 요청이 없다는 뜻이다. 기존 오프라인 검증기로 페이지,
+F04 replay·overlay fold·링크·내장 fixture를 검증한 뒤에만 `COMPLETE.json`을
+원자적으로 게시한다. 종료 코드 0과 `status: VERIFIED_COMPLETE`가 수집 완료다.
+마커에는 순서·바이트 수·SHA256·검증 보고서가 있다. 나중에 사용할 때도 반드시
+`python3 -m capital.verify --facts DIR`로 다시 검증한다. 마커는 이후 파일 변조를
+막지 못한다. 로컬 디렉터리 권한은 0700, 파일은 0600이다.
+
+`CUT_MOVED`, `SESSION_CHANGED`, 저장소 거절, timeout, 잘못된 페이지, 파일 쓰기나
+검증 실패는 종료 코드 1로 끝나고 완료 마커를 남기지 않는다. HTTP 오류는 본문
+대신 `HTTP_409` / `HTTP_503` 같은 상태만 진단한다. 인자 오류는 2다. 부분 파일이나
+`.COMPLETE.tmp`가 남아도 완료가 아니며 resume하지 않는다. 게시 후 임시 링크
+삭제만 실패하면 완료 마커와 임시 링크가 함께 남을 수 있다. 원인을 확인한 뒤
+다른 새 디렉터리를 선택해 명시적으로 다시 실행한다. 자동 재시작·cursor reset·
+명령 제출·polling·서버 snapshot 보관·workspace import는 없다.
+`SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, `funds_executed: false`가 유지된다.
+새 서명 체계·stage-7 인증·stage-5 내구성을 주장하지 않는다.
 
 <!-- handbook-section:residual-obligations-report -->
 

@@ -555,6 +555,79 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+
+### Bounded facts collector CLI
+
+`scripts/collect_facts.py` is a Python-stdlib GET client for an already-running
+loopback server. Example (the parent `/tmp` already exists):
+
+```sh
+python3 scripts/collect_facts.py --endpoint http://127.0.0.1:8765 \
+  --out /tmp/capital-facts-run-001 --limit 100 --max-pages 1000 \
+  --max-response-bytes 4194304 --max-total-bytes 67108864 --timeout 10
+python3 -m capital.verify --facts /tmp/capital-facts-run-001
+```
+
+| Argument | Requirement / default |
+|---|---|
+| `--endpoint` | Required exact `http://127.0.0.1:PORT`, port 1..65535, optional trailing `/`; no credentials, query, fragment, alternate address spelling or path. |
+| `--out` | Required new artifact directory, existing parent, outside the checkout and detectable workspace ancestry (`workspace.json` / `workspace.json.lock`). Existing files, directories and symlinks are refused. |
+| `--limit` | Page rows, integer 1..500; default 100. Fixed for the entire collection. |
+| `--max-pages` | Positive page count bound; default 1000. Checked before another facts request. |
+| `--max-response-bytes` | Positive response body byte bound; default 4194304, including bootstrap/error bodies. |
+| `--max-total-bytes` | Positive aggregate response body byte bound; default 67108864, including bootstrap/error bodies. |
+| `--timeout` | Finite positive seconds per request; default 10. Monotonic deadline covers connecting, headers and body, including slow delivery. |
+
+These are technical resource controls. Direct `http.client` connections ignore
+proxy environment variables. The client sends the exact loopback Host and
+`Connection: close`; every redirect is refused, including same-origin redirects.
+Responses require one unsigned Content-Length, no Transfer-Encoding or
+Content-Encoding, and a closed connection after exactly the declared bytes.
+Only HTTP 200 with JSON content type is accepted. Header parsing also retains
+stdlib line/count bounds. Non-200 diagnostics expose only the status (for example
+`HTTP_409` or `HTTP_503`), never the bootstrap or server error body.
+
+One `GET /api/state` supplies a fixed instance and synthetic token held in memory;
+subsequent `GET /api/export/facts` requests carry that session, limit and exactly
+the preceding `next_cursor` as `after`. The client checks strict JSON, canonical
+bytes, labels, schema, cut identity, hashes, chaining and contiguous progress
+before saving each page or following a cursor. Token-bearing pages are refused.
+`next_cursor: null` ends fetching; `capital.facts.verify_dir(out)` then gates
+completion, including replay/link checks and built-in-only fixture validation
+(`FIXTURES_MISMATCH` remains a refusal).
+
+Artifacts use a private directory (0700) and exclusive private files (0600):
+
+```text
+capital-facts-run-001/
+  page-00000000.json    # exact response bytes, no added newline
+  page-00000001.json
+  COMPLETE.json        # only after offline verification succeeds
+```
+
+`COMPLETE.json` has format `KIX_CAPITAL_FACTS_COLLECTION_V1`, status
+`VERIFIED_COMPLETE`, ordered `pages: [{name, bytes, sha256}]`, `page_bytes_total`,
+and the existing `verification` report. It also carries `label: SIMULATED`,
+`source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, and `funds_executed: false`.
+A flushed/fsynced `.COMPLETE.tmp` is atomically linked to the completion name
+without replacement. Successful publication is the commit point; a cleanup
+failure may leave the temporary link. This is local bookkeeping, without a
+stage-5 crash durability guarantee. Later use requires offline re-verification;
+the marker alone cannot detect subsequent corruption or consistent replacement.
+
+Exit codes: **0** verified completion published; **1** collection, transport,
+storage or verification failure; **2** invalid arguments. A failure before
+publication leaves no completion marker, though accepted or partially written
+pages and a temporary marker may remain. Never interpret that directory as a
+completed collector export, even if its pages happen to pass a separate verifier.
+There is no resume, retry, session refresh, cursor reset, background polling,
+command submission, snapshot retention, signing change or authentication claim.
+On `CUT_MOVED`, `SESSION_CHANGED`, storage-health refusal, timeout, malformed
+response or any other failure, investigate and explicitly invoke collection with
+a different new directory. The source service, journals and workspace files are
+read-only inputs. No workspace import is provided.
+
 ## residual-obligations-report
 
 Offline stdlib API: `capital.residuals.report_workspace(directory) -> dict`;
