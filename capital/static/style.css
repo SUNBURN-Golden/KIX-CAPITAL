@@ -23,3 +23,10 @@ body.desk-open main>:not(#desk):not(#notice):not(#recovery):not(footer){display:
 #desk-forbidden{border:1px solid #d9b08c;background:#fbf3ea;border-radius:8px;padding:12px 14px;color:#874c29}
 #desk :focus-visible,#desk-refresh:focus-visible,nav a:focus-visible,#role:focus-visible{outline:3px solid #1f6fd1;outline-offset:2px}
 @media(max-width:480px){.desk-tiles{grid-template-columns:1fr}.desk-bar{align-items:stretch}.desk-bar input,.desk-bar select{max-width:100%;width:100%}}
+
+#desk-slices{border-top:1px solid var(--line);margin-top:24px;padding-top:12px;min-width:0;max-width:100%;overflow-wrap:anywhere}
+#desk-slices .slices-query{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}
+#desk-slices pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:26rem}#desk-slices dl{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}#desk-slices dd{text-align:left;overflow-wrap:anywhere}
+#desk-slices th,#desk-slices td{min-width:7rem;max-width:22rem;overflow-wrap:anywhere}#desk-slices .table-wrap{max-height:26rem}#slice-links{display:flex;gap:12px;flex-wrap:wrap;font-size:12px}#slice-links a{overflow-wrap:anywhere}
+#slice-detail-title:focus,[id^="claim-evidence-"]:focus{outline:3px solid #1f6fd1;outline-offset:2px}
+@media(max-width:680px){#desk-slices .slices-query{grid-template-columns:minmax(0,1fr)}#desk-slices dl{grid-template-columns:minmax(0,1fr)}#desk-slices dd{margin-bottom:8px}}

@@ -358,7 +358,7 @@ class Ce1ClaimsTests(unittest.TestCase):
             code = acceptance.execute_plan(
                 plan, root=ROOT, evidence_path=evidence, required=('upstream-claims',))
             data = json.loads(evidence.read_text(encoding='utf-8'))
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 0, json.dumps(data['stages'], indent=2))
         self.assertTrue(data['ok'])
         stage = data['stages'][0]
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
