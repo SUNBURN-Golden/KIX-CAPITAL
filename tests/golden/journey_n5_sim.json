@@ -1,0 +1,2775 @@
+{
+  "digest": "15990d10d208e4c7929074a8793f14ffbac922a84051545e8a3e8533e3c5d90a",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "N5-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 105,
+  "steps": [
+    {
+      "expect": [
+        [],
+        [],
+        {},
+        {},
+        "MEMORY"
+      ],
+      "facts": {
+        "approvals": "UNAUTHENTICATED_SYNTHETIC_LABELS",
+        "cash_krw": 10000000,
+        "holder_face_krw": 2500000,
+        "label": "SIMULATED",
+        "scope": "DISPOSABLE_BOOK_ONLY",
+        "threshold_krw": 50000000
+      },
+      "kind": "PROCESS",
+      "n": 1,
+      "name": "n5-recourse-first isolated empty book",
+      "status": [
+        [],
+        [],
+        {},
+        {},
+        "MEMORY"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recourse-first-advance",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "n5-recourse-first offer",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recourse-first-advance",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "n5-recourse-first approve",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recourse-first-advance",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "n5-recourse-first bind_settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recourse-first-advance",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "n5-recourse-first draw",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ],
+      "facts": {
+        "face_krw": 10000000,
+        "sizing_max_krw": 40375000
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "n5-recourse-first-slice sizing and cap prerequisites",
+      "status": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "register_slice"
+      },
+      "kind": "HTTP",
+      "n": 7,
+      "name": "n5-recourse-first-slice applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "0aae888e650ccb426fb6f42b22eabf79d45d22cfe599ecff0e798c85246e93ac",
+        "entry_id": "n5-recourse-first-slice",
+        "entry_kind": "SLICE_PROPOSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 8,
+      "name": "n5-recourse-first-slice original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "open_slice"
+      },
+      "kind": "HTTP",
+      "n": 9,
+      "name": "n5-recourse-first-slice-open applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "0c56c04db6f767acb4af9898d75ae12d3837d12f50177c334e590cab4f389b60",
+        "entry_id": "n5-recourse-first-slice-open",
+        "entry_kind": "SLICE_OPEN",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 10,
+      "name": "n5-recourse-first-slice-open original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "SLICE_OPEN_EXISTS",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "register_slice",
+        "unchanged_digest": "907ab52f6b262b6511022049316408d56e556d834e015d542cfd2c6d836e6da2"
+      },
+      "kind": "HTTP",
+      "n": 11,
+      "name": "n5-recourse-first-double-use refused without mutation",
+      "status": [
+        409,
+        "SLICE_OPEN_EXISTS",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        [
+          "commit_settlement",
+          null,
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 12,
+      "name": "n5-recourse-first-held-cash",
+      "status": [
+        [
+          "commit_settlement",
+          null,
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ],
+      "facts": {
+        "face_krw": 2500000,
+        "sizing_max_krw": 807500000
+      },
+      "kind": "HTTP",
+      "n": 13,
+      "name": "n5-recourse-first-holder sizing and cap prerequisites",
+      "status": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "register_slice"
+      },
+      "kind": "HTTP",
+      "n": 14,
+      "name": "n5-recourse-first-holder applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "e9fd689d893042b18a718c2918a8131b4a9324951b34ba843b973da3d6bef2af",
+        "entry_id": "n5-recourse-first-holder",
+        "entry_kind": "SLICE_PROPOSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 15,
+      "name": "n5-recourse-first-holder original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "open_slice"
+      },
+      "kind": "HTTP",
+      "n": 16,
+      "name": "n5-recourse-first-holder-open applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "461dfb0f2d79ec37ab00587ff099a260efc92d01b1f14ab2742d1736851fdbe5",
+        "entry_id": "n5-recourse-first-holder-open",
+        "entry_kind": "SLICE_OPEN",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 17,
+      "name": "n5-recourse-first-holder-open original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        [
+          "apply_distribution",
+          null,
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 18,
+      "name": "n5-recourse-first-holder-distribution",
+      "status": [
+        [
+          "apply_distribution",
+          null,
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        2500000,
+        true
+      ],
+      "kind": "HTTP",
+      "n": 19,
+      "name": "n5-recourse-first holder served first",
+      "status": [
+        2500000,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "resolve_slice"
+      },
+      "kind": "HTTP",
+      "n": 20,
+      "name": "n5-recourse-first-holder-resolve applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "0ca4768c6c77dd44ada69d1ba4abb1bb1c0cf7b4c11dbbc54fa93eb188e3f8d9",
+        "entry_id": "n5-recourse-first-holder-resolve",
+        "entry_kind": "SLICE_RESOLVE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 21,
+      "name": "n5-recourse-first-holder-resolve original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        [
+          "bind_refund",
+          null,
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 22,
+      "name": "n5-recourse-first-refund",
+      "status": [
+        [
+          "bind_refund",
+          null,
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        true,
+        10000000
+      ],
+      "kind": "HTTP",
+      "n": 23,
+      "name": "n5-recourse-first refund impairment eligibility",
+      "status": [
+        true,
+        10000000
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "impair_slice"
+      },
+      "kind": "HTTP",
+      "n": 24,
+      "name": "n5-recourse-first-impair applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "1a200e876a7d3d89808c590d9134f4db54e60d2ad0c8c8b34b22ca9ac0623e02",
+        "entry_id": "n5-recourse-first-impair",
+        "entry_kind": "SLICE_IMPAIR",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 25,
+      "name": "n5-recourse-first-impair original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recourse-first-advance",
+        "op": "default"
+      },
+      "kind": "HTTP",
+      "n": 26,
+      "name": "n5-recourse-first organizer default",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        "n5-recourse-first-default"
+      ],
+      "facts": {
+        "anchor_id": "n5-recourse-first-default:default"
+      },
+      "kind": "AUDIT",
+      "n": 27,
+      "name": "n5-recourse-first F04 default receipt anchors overlay",
+      "status": [
+        200,
+        true,
+        "n5-recourse-first-default"
+      ]
+    },
+    {
+      "expect": 200,
+      "kind": "HTTP",
+      "n": 28,
+      "name": "n5-recourse-first agent session",
+      "status": 200
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "register_slice",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 29,
+      "name": "n5-recourse-first-agent-register-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "open_slice",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 30,
+      "name": "n5-recourse-first-agent-open-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "impair_slice",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 31,
+      "name": "n5-recourse-first-agent-impair-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 32,
+      "name": "n5-recourse-first-agent-post-slice-recourse refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "resolve_slice",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 33,
+      "name": "n5-recourse-first-agent-resolve-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "void_slice",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 34,
+      "name": "n5-recourse-first-agent-void-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "RECOVERY_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_recovery",
+        "unchanged_digest": "aa380a32439fef4a26c84f3f2957b9f61813bb98a32ca70df72ec656cd7f83f5"
+      },
+      "kind": "HTTP",
+      "n": 35,
+      "name": "n5-recourse-first-agent-post-recovery refused without mutation",
+      "status": [
+        403,
+        "RECOVERY_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 0,
+        "accepted_recovery_krw": 0,
+        "available_krw": 7500000,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 36,
+      "name": "n5-recourse-first conservation before postings",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "post_slice_recourse"
+      },
+      "kind": "HTTP",
+      "n": 37,
+      "name": "n5-recourse-first-first applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "320502a67d80a33b8170c248b5e7784983c2db120e7057c476fd5045d724b86a",
+        "entry_id": "n5-recourse-first-first",
+        "entry_kind": "SLICE_RECOURSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 38,
+      "name": "n5-recourse-first-first original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 2500000,
+        "accepted_recovery_krw": 0,
+        "available_krw": 5000000,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 39,
+      "name": "n5-recourse-first conservation after first",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_QUOTE_STALE",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 2500000,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_recovery",
+        "unchanged_digest": "a31029bb57ed69025452deedde6cf09435238aad7fb85c5e6f4208bcb6a9ce9e"
+      },
+      "kind": "HTTP",
+      "n": 40,
+      "name": "n5-recourse-first-stale refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_QUOTE_STALE",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "post_recovery"
+      },
+      "kind": "HTTP",
+      "n": 41,
+      "name": "n5-recourse-first-second applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "RECORDED_POSTING",
+        false
+      ],
+      "facts": {
+        "entry_digest": "65cfb460300ecf94aa7cf1d789e9851d9020286f8caac763f862cf63ed8ab72b",
+        "entry_id": "n5-recourse-first-second",
+        "entry_kind": "RECOVERY",
+        "false_flags": {
+          "economic_finality_claimed": false,
+          "funds_executed": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 42,
+      "name": "n5-recourse-first-second original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "RECORDED_POSTING",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 2500000,
+        "accepted_recovery_krw": 2500000,
+        "available_krw": 2500000,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 43,
+      "name": "n5-recourse-first conservation after second",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": true,
+      "kind": "AUDIT",
+      "n": 44,
+      "name": "n5-recourse-first-recourse overrun below outstanding claim",
+      "status": true
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 2500001,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "a343471fae0186f49c22e8ac0e0f623bdfe6b88b0bd51fcdee457e8b9c19c4ce"
+      },
+      "kind": "HTTP",
+      "n": 45,
+      "name": "n5-recourse-first-overrun-recourse refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": true,
+      "kind": "AUDIT",
+      "n": 46,
+      "name": "n5-recourse-first-recovery overrun below outstanding claim",
+      "status": true
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 2500001,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_recovery",
+        "unchanged_digest": "a343471fae0186f49c22e8ac0e0f623bdfe6b88b0bd51fcdee457e8b9c19c4ce"
+      },
+      "kind": "HTTP",
+      "n": 47,
+      "name": "n5-recourse-first-overrun-recovery refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "post_slice_recourse"
+      },
+      "kind": "HTTP",
+      "n": 48,
+      "name": "n5-recourse-first-drain applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "526c45f0d439e68e053def837ad56736c57a1666adcfd57e090b3cd933577925",
+        "entry_id": "n5-recourse-first-drain",
+        "entry_kind": "SLICE_RECOURSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 49,
+      "name": "n5-recourse-first-drain original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 5000000,
+        "accepted_recovery_krw": 2500000,
+        "available_krw": 0,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 50,
+      "name": "n5-recourse-first conservation exhausted",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 1,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "60b193f59c0b242b89488c9201b8a9b6d4acff704a8e8925984681a41bf0daa5"
+      },
+      "kind": "HTTP",
+      "n": 51,
+      "name": "n5-recourse-first-exhausted refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        "RESOLVED",
+        2500000,
+        false
+      ],
+      "facts": {
+        "application": "SHADOW_NOT_APPLIED",
+        "operation_count": 5,
+        "overlay_state_digest": "ebbb71214506179abaadf506662463201528c841f5bc9cc5a4dc1ca4f62a70d5",
+        "persistence_claimed": false,
+        "reserve_binding": "NOT_BOUND",
+        "source": "DISPOSABLE_CHANGING_SCENARIO",
+        "state_digest": "30b1664cc772c3430463c527b0259e79522535ce7a75d83b36223294183d662f"
+      },
+      "kind": "AUDIT",
+      "n": 52,
+      "name": "n5-recourse-first final evidence and retained holder deduction",
+      "status": [
+        "RESOLVED",
+        2500000,
+        false
+      ]
+    },
+    {
+      "expect": [
+        [],
+        [],
+        {},
+        {},
+        "MEMORY"
+      ],
+      "facts": {
+        "approvals": "UNAUTHENTICATED_SYNTHETIC_LABELS",
+        "cash_krw": 10000000,
+        "holder_face_krw": 2500000,
+        "label": "SIMULATED",
+        "scope": "DISPOSABLE_BOOK_ONLY",
+        "threshold_krw": 50000000
+      },
+      "kind": "PROCESS",
+      "n": 53,
+      "name": "n5-recovery-first isolated empty book",
+      "status": [
+        [],
+        [],
+        {},
+        {},
+        "MEMORY"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recovery-first-advance",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 54,
+      "name": "n5-recovery-first offer",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recovery-first-advance",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 55,
+      "name": "n5-recovery-first approve",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recovery-first-advance",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 56,
+      "name": "n5-recovery-first bind_settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recovery-first-advance",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 57,
+      "name": "n5-recovery-first draw",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ],
+      "facts": {
+        "face_krw": 10000000,
+        "sizing_max_krw": 40375000
+      },
+      "kind": "HTTP",
+      "n": 58,
+      "name": "n5-recovery-first-slice sizing and cap prerequisites",
+      "status": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "register_slice"
+      },
+      "kind": "HTTP",
+      "n": 59,
+      "name": "n5-recovery-first-slice applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "fbf86f9b20f521e0125c9832e06ff817e50c55924e6d7d0597e9fb0f0a91158f",
+        "entry_id": "n5-recovery-first-slice",
+        "entry_kind": "SLICE_PROPOSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 60,
+      "name": "n5-recovery-first-slice original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "open_slice"
+      },
+      "kind": "HTTP",
+      "n": 61,
+      "name": "n5-recovery-first-slice-open applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "c9770037a4d8bec740e6e734c2554d8f298d03ac8243ca7edc3bdb94c4df8dd7",
+        "entry_id": "n5-recovery-first-slice-open",
+        "entry_kind": "SLICE_OPEN",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 62,
+      "name": "n5-recovery-first-slice-open original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "SLICE_OPEN_EXISTS",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "register_slice",
+        "unchanged_digest": "08d692d070e9424eb5f7bde2c7a0b9dd33874bc8b0879853a7bae692e5352867"
+      },
+      "kind": "HTTP",
+      "n": 63,
+      "name": "n5-recovery-first-double-use refused without mutation",
+      "status": [
+        409,
+        "SLICE_OPEN_EXISTS",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        [
+          "commit_settlement",
+          null,
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 64,
+      "name": "n5-recovery-first-held-cash",
+      "status": [
+        [
+          "commit_settlement",
+          null,
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ],
+      "facts": {
+        "face_krw": 2500000,
+        "sizing_max_krw": 807500000
+      },
+      "kind": "HTTP",
+      "n": 65,
+      "name": "n5-recovery-first-holder sizing and cap prerequisites",
+      "status": [
+        "SHADOW_COMPUTED",
+        "ADMISSIBLE",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "register_slice"
+      },
+      "kind": "HTTP",
+      "n": 66,
+      "name": "n5-recovery-first-holder applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "a2951a3a54271f723d74f9adf63b83cd592c0b796b24ad3ded8edc756bc4d4b1",
+        "entry_id": "n5-recovery-first-holder",
+        "entry_kind": "SLICE_PROPOSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 67,
+      "name": "n5-recovery-first-holder original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "open_slice"
+      },
+      "kind": "HTTP",
+      "n": 68,
+      "name": "n5-recovery-first-holder-open applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "b5846c2c695e373bf6a2fab72511dd7be9d9ddc1aa7bd398b953a39e128b9774",
+        "entry_id": "n5-recovery-first-holder-open",
+        "entry_kind": "SLICE_OPEN",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 69,
+      "name": "n5-recovery-first-holder-open original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        [
+          "apply_distribution",
+          null,
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 70,
+      "name": "n5-recovery-first-holder-distribution",
+      "status": [
+        [
+          "apply_distribution",
+          null,
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        2500000,
+        true
+      ],
+      "kind": "HTTP",
+      "n": 71,
+      "name": "n5-recovery-first holder served first",
+      "status": [
+        2500000,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "resolve_slice"
+      },
+      "kind": "HTTP",
+      "n": 72,
+      "name": "n5-recovery-first-holder-resolve applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "b4ecc89eacdeb9679166e93d88d5f9b72d92dc481b48f574d7ae6da8fc978660",
+        "entry_id": "n5-recovery-first-holder-resolve",
+        "entry_kind": "SLICE_RESOLVE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 73,
+      "name": "n5-recovery-first-holder-resolve original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        [
+          "bind_refund",
+          null,
+          true
+        ]
+      ],
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 74,
+      "name": "n5-recovery-first-refund",
+      "status": [
+        [
+          "bind_refund",
+          null,
+          true
+        ]
+      ]
+    },
+    {
+      "expect": [
+        true,
+        10000000
+      ],
+      "kind": "HTTP",
+      "n": 75,
+      "name": "n5-recovery-first refund impairment eligibility",
+      "status": [
+        true,
+        10000000
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "impair_slice"
+      },
+      "kind": "HTTP",
+      "n": 76,
+      "name": "n5-recovery-first-impair applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "c56e67d87bbefb431dace27fa13d5164dbc3821ffad2a9e47d950b98eef03806",
+        "entry_id": "n5-recovery-first-impair",
+        "entry_kind": "SLICE_IMPAIR",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 77,
+      "name": "n5-recovery-first-impair original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n5-recovery-first-advance",
+        "op": "default"
+      },
+      "kind": "HTTP",
+      "n": 78,
+      "name": "n5-recovery-first organizer default",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        "n5-recovery-first-default"
+      ],
+      "facts": {
+        "anchor_id": "n5-recovery-first-default:default"
+      },
+      "kind": "AUDIT",
+      "n": 79,
+      "name": "n5-recovery-first F04 default receipt anchors overlay",
+      "status": [
+        200,
+        true,
+        "n5-recovery-first-default"
+      ]
+    },
+    {
+      "expect": 200,
+      "kind": "HTTP",
+      "n": 80,
+      "name": "n5-recovery-first agent session",
+      "status": 200
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "register_slice",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 81,
+      "name": "n5-recovery-first-agent-register-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "open_slice",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 82,
+      "name": "n5-recovery-first-agent-open-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "impair_slice",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 83,
+      "name": "n5-recovery-first-agent-impair-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 84,
+      "name": "n5-recovery-first-agent-post-slice-recourse refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "resolve_slice",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 85,
+      "name": "n5-recovery-first-agent-resolve-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "void_slice",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 86,
+      "name": "n5-recovery-first-agent-void-slice refused without mutation",
+      "status": [
+        403,
+        "SLICE_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        403,
+        "RECOVERY_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": null,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_recovery",
+        "unchanged_digest": "2d93e21bc04616db03173162fc1335e83c9a021669d06580cc7ca07132e2f90f"
+      },
+      "kind": "HTTP",
+      "n": 87,
+      "name": "n5-recovery-first-agent-post-recovery refused without mutation",
+      "status": [
+        403,
+        "RECOVERY_AGENT_FORBIDDEN",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 0,
+        "accepted_recovery_krw": 0,
+        "available_krw": 7500000,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 88,
+      "name": "n5-recovery-first conservation before postings",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "post_recovery"
+      },
+      "kind": "HTTP",
+      "n": 89,
+      "name": "n5-recovery-first-first applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "RECORDED_POSTING",
+        false
+      ],
+      "facts": {
+        "entry_digest": "35661caf83b5138cc303f3351a9bb10776e8ebad7e3feb9bf5c6225ec040e8fd",
+        "entry_id": "n5-recovery-first-first",
+        "entry_kind": "RECOVERY",
+        "false_flags": {
+          "economic_finality_claimed": false,
+          "funds_executed": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 90,
+      "name": "n5-recovery-first-first original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "RECORDED_POSTING",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 0,
+        "accepted_recovery_krw": 2500000,
+        "available_krw": 5000000,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 91,
+      "name": "n5-recovery-first conservation after first",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_QUOTE_STALE",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 2500000,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "0d3693b63442473ad9e3b99285a7e2a95f4c34893eb239ae957fdb7753e87417"
+      },
+      "kind": "HTTP",
+      "n": 92,
+      "name": "n5-recovery-first-stale refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_QUOTE_STALE",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "post_slice_recourse"
+      },
+      "kind": "HTTP",
+      "n": 93,
+      "name": "n5-recovery-first-second applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ],
+      "facts": {
+        "entry_digest": "9495092cd01a3bfab37b6159d4d6f3765e9abaea126b005c6a7a28c66dd7ebd5",
+        "entry_id": "n5-recovery-first-second",
+        "entry_kind": "SLICE_RECOURSE",
+        "false_flags": {
+          "admission_granted": false,
+          "applied_to_fsm": false,
+          "bank_debit_observed": false,
+          "economic_finality_claimed": false,
+          "executionAuthorized": false,
+          "external_return_closed": false,
+          "funds_executed": false,
+          "legal_debtor_bound": false,
+          "policy_adopted": false,
+          "right_cancelled": false,
+          "workspace_mutated": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 94,
+      "name": "n5-recovery-first-second original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "SHADOW_NOT_APPLIED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 2500000,
+        "accepted_recovery_krw": 2500000,
+        "available_krw": 2500000,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 95,
+      "name": "n5-recovery-first conservation after second",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": true,
+      "kind": "AUDIT",
+      "n": 96,
+      "name": "n5-recovery-first-recovery overrun below outstanding claim",
+      "status": true
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 2500001,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_recovery",
+        "unchanged_digest": "07e1c661971a32f77c32756337e134b5425f1a0c8a45e32c0a86d639805e5b37"
+      },
+      "kind": "HTTP",
+      "n": 97,
+      "name": "n5-recovery-first-overrun-recovery refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": true,
+      "kind": "AUDIT",
+      "n": 98,
+      "name": "n5-recovery-first-recourse overrun below outstanding claim",
+      "status": true
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 2500001,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "07e1c661971a32f77c32756337e134b5425f1a0c8a45e32c0a86d639805e5b37"
+      },
+      "kind": "HTTP",
+      "n": 99,
+      "name": "n5-recovery-first-overrun-recourse refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "op": "post_recovery"
+      },
+      "kind": "HTTP",
+      "n": 100,
+      "name": "n5-recovery-first-drain applied",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        "RECORDED_POSTING",
+        false
+      ],
+      "facts": {
+        "entry_digest": "7647b8733aab3c89834c574103c85b59f68781d9099a89eb0b595eedccb3c527",
+        "entry_id": "n5-recovery-first-drain",
+        "entry_kind": "RECOVERY",
+        "false_flags": {
+          "economic_finality_claimed": false,
+          "funds_executed": false
+        },
+        "funds_executed": false
+      },
+      "kind": "AUDIT",
+      "n": 101,
+      "name": "n5-recovery-first-drain original receipt and entry correlate",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        "RECORDED_POSTING",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "accepted_recourse_krw": 2500000,
+        "accepted_recovery_krw": 5000000,
+        "available_krw": 0,
+        "cash_krw": 10000000,
+        "distributed_krw": 10000000,
+        "holder_service_krw": 2500000,
+        "recovery_due_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 102,
+      "name": "n5-recovery-first conservation exhausted",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ],
+      "facts": {
+        "attempted_amount_krw": 1,
+        "checked": [
+          "journal",
+          "receipts",
+          "overlay",
+          "reservations",
+          "fixtures_digest",
+          "state_digest",
+          "operation_count",
+          "overlay_state_digest"
+        ],
+        "op": "post_slice_recourse",
+        "unchanged_digest": "951c2b8f7b0d3cb955bb32c0a5c3f29b6dbfc957d9510737bc7e2add3eeaabce"
+      },
+      "kind": "HTTP",
+      "n": 103,
+      "name": "n5-recovery-first-exhausted refused without mutation",
+      "status": [
+        409,
+        "RECOVERY_SOURCE_EXCEEDED",
+        true,
+        "UNKNOWN",
+        200,
+        "UNKNOWN",
+        false
+      ]
+    },
+    {
+      "expect": [
+        "RESOLVED",
+        2500000,
+        false
+      ],
+      "facts": {
+        "application": "SHADOW_NOT_APPLIED",
+        "operation_count": 5,
+        "overlay_state_digest": "11e970d17eece9c93739d3df01aa1634ae71c707577eeed8c3b14390195adf50",
+        "persistence_claimed": false,
+        "reserve_binding": "NOT_BOUND",
+        "source": "DISPOSABLE_CHANGING_SCENARIO",
+        "state_digest": "9b008789c555efedd60dadd606bfd2ef9410dbd79c1c8e37d20e52d658066d69"
+      },
+      "kind": "AUDIT",
+      "n": 104,
+      "name": "n5-recovery-first final evidence and retained holder deduction",
+      "status": [
+        "RESOLVED",
+        2500000,
+        false
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "posted": 52
+      },
+      "kind": "AUDIT",
+      "n": 105,
+      "name": "no operation id was posted twice",
+      "status": true
+    }
+  ]
+}
