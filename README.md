@@ -282,3 +282,38 @@ with `stage7_authenticated_export: false` and a non-claim of
 with all hashes rebuilt cannot be detected. No source authority, signing, import,
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
+
+### Read-only claim-slice desk · SIMULATED
+
+Open `/#desk` and **Claim-slice registry · 읽기 전용 검사** as an organizer or
+an auditor (`projection:read`). The registry shows PROPOSED, OPEN, IMPAIRED,
+RESOLVED and VOID rows from `GET /api/overlay/slices`. Use each row's inspection
+button to read server-reported encumbrance, outstanding, holder service,
+shortfall, recourse receipts, lifecycle flags and recourse source/quote evidence.
+Claim links focus the existing settlement evidence row; related advance links
+use exact claim/settlement identifiers and open the existing desk timeline and
+dossier. These associations establish neither ownership nor authentication.
+
+Choose a fixture claim/payee and explicitly enter a non-negative integer
+`expected_days` assumption to inspect a quote. All three query parameters travel
+together; server amounts and ordered registry guard reasons are displayed
+literally. Missing values stay unavailable. The browser does no financial
+arithmetic and the panel sends no command POSTs. Capacity counts/bounds are
+server values, not newly calculated limits. There are no slice command forms.
+
+`EMPTY`, `NOT_BOUND`, capacity, invalid-response and `STALE_SESSION` states are
+explicit. Input edits, refresh start, role changes and desk exit clear the old
+quote immediately, including when `/api/state` fails. After a session error, use **세션 다시 조회 · 페이지 다시 열기** to reload the
+page with the selected role, then explicitly inspect again. Overlay reads bracket each registry
+read to reject observed changes in instance, F04 digest, overlay digest or day;
+this is a local consistency check, not an atomic snapshot or a freshness lease.
+`SIMULATED`, `SHADOW_NOT_APPLIED`, `SIMULATION_ONLY_NOT_OFFERED_V1` and false
+execution flags remain visible. No title transfer, money movement or production
+readiness is claimed; the parked shadow-policy workbench is unchanged.
+
+See [operator guidance](docs/OPERATOR_HANDBOOK_KO.md#slice-registry-desk),
+[listing/quote contract](docs/INTEGRATION.md#slice-registry-desk), and
+`tests/browser/slice-registry-desk.spec.cjs`. Its stdlib launcher
+`tests/browser/helpers/slice_registry_server.py` seeds all five states into a
+disposable memory book using the existing registry helpers and
+`ScenarioReplaySource`; it binds only to loopback and the tests stop it.

@@ -62,7 +62,7 @@ function renderProjection(result){
  $('projection-advances').replaceChildren(...advances.map(row=>{const tr=document.createElement('tr');for(const value of [row.advance_id,row.beneficiary_role,number(row.amount),number(row.drawn),number(row.repaid),number(row.outstanding)])tr.append(textElement('td',value));return tr;}));
  $('projection-checks').textContent=projection.conservation.map(row=>`${row.predicate} · ${row.matched?'일치':'불일치'}`).join('\n');
 }
-function paintEvidence(evidence){$('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));$('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 + CAPITAL-DEMO-BOOK-V1 합성 북 10건(SYNTHETIC_FIXTURE_PROFILE) · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';$('evidence-json').textContent=JSON.stringify(evidence,null,2);}
+function paintEvidence(evidence){$('evidence-rows').replaceChildren(...evidence.rows.map(row=>{const tr=document.createElement('tr');tr.id=`claim-evidence-${row.claim_id}`;tr.tabIndex=-1;for(const value of [`${row.claim_id} / ${row.phase}`,number(row.gross_face),number(row.confirmed_cash),number(row.distributed_cash),number(row.refund_face),number(row.recovery_due)])tr.append(textElement('td',value));return tr;}));$('evidence-scope').textContent='근거: fixture-v1 고정 스냅샷 3건 + CAPITAL-DEMO-BOOK-V1 합성 북 10건(SYNTHETIC_FIXTURE_PROFILE) · 실제 source cut/자료 전체성: NOT_BOUND · 조회 시각을 은행 관측 시각으로 사용하지 않습니다.';$('evidence-json').textContent=JSON.stringify(evidence,null,2);}
 function reconValid(data,next){
  if(!data||data.mode!=='READ_ONLY_RECONCILIATION'||data.funds_executed!==false||data.durable!==false||data.bank_reconciliation!=='NOT_BOUND'||data.workspace_mutated!==false)return false;
  if(data.label!=='SIMULATED'||data.diagnostic!=='LOCAL_ONLY'||data.provider_authenticated_completeness!=='NOT_BOUND'||data.source_cut!=='NOT_BOUND')return false;
@@ -141,8 +141,9 @@ async function loadDiagnostics(next){
 }
 let refreshInFlight=false,refreshDone=Promise.resolve();
 function refresh(){
+ invalidateSlices('STALE_REFRESH · 상태 재조회 중; 이전 견적 없음');
  refreshInFlight=true;
- const task=(async()=>{try{await refreshCore();}finally{refreshInFlight=false;}})();
+ const task=(async()=>{try{await refreshCore();}catch(error){invalidateSlices(sliceReadError(error));throw error;}finally{refreshInFlight=false;}})();
  refreshDone=task.catch(()=>{});
  return task;
 }
@@ -170,7 +171,8 @@ async function refreshCore(){
  const portfolio=await loadPortfolio(next);
  const riskView=await loadRisk(next);
  const deskView=deskOpen()?await loadDesk(next,riskView,evidence,diagnostics.recon):null;
- state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ state=next;deskData=deskView;sliceChoices(evidence);renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ if(deskOpen())await loadSlices();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
@@ -831,10 +833,142 @@ $('desk-advance').onclick=()=>{void deskAdvance();};
 $('desk-refresh').onclick=async()=>{if(busy)return;busy=true;fence();try{await refresh();notice('운영 데스크를 다시 조회했습니다. 조회만으로 UNKNOWN을 해소하지 않습니다.');}catch{notice('운영 데스크 조회에 실패했습니다.',true);}finally{busy=false;fence();}};
 $('desk-case').onchange=()=>{selected=$('desk-case').value;syncCaseUrl(selected);render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();};
 window.addEventListener('hashchange',()=>{
+ invalidateSlices('STALE_NAVIGATION · 데스크 이동; 이전 견적 없음');
  const open=applyDeskVisibility();
  if(open&&state&&!busy){busy=true;fence();refresh().catch(()=>notice('운영 데스크를 조회하지 못했습니다.',true)).finally(()=>{busy=false;fence();});}
 });
 applyDeskVisibility();
+// SLICE INSPECTION BEGIN: GET-only, server amounts are literal text.
+let slicesEpoch=0,slicesRows=[],slicesEvidence=[],selectedSlice=null;
+const sliceAmounts=['slice_face_krw','outstanding_krw','encumbered_face_krw','served_krw','eligible_line_krw','exposure_krw','shortfall_krw','recourse_received_krw','shadow_discount','shadow_price'];
+const sliceFalseFlags=['executionAuthorized','applied_to_fsm','funds_executed','policy_adopted','bank_debit_observed','right_cancelled','external_return_closed','legal_debtor_bound','admission_granted','workspace_mutated','title_transferred'];
+function clearSliceQuote(message){
+ ++slicesEpoch;
+ $('slices-quote').hidden=true;
+ for(const id of ['slices-quote-facts','slices-guard','slices-quote-source','slices-quote-assumptions'])$(id).replaceChildren();
+ $('slices-quote-status').textContent=message;
+}
+function invalidateSlices(message){
+ clearSliceQuote(message);slicesRows=[];selectedSlice=null;
+ $('slices-rows').replaceChildren();$('slice-detail').hidden=true;
+ for(const id of ['slice-links','slice-facts','slice-recourse','slice-source','slices-capacity','slices-freshness'])$(id).replaceChildren();
+ $('slices-status').textContent=message;
+ $('slices-reload-session').hidden=!message.startsWith('STALE_SESSION');
+}
+function slicesAllowed(){return deskOpen()&&can('projection:read')&&['organizer','auditor'].includes(currentRole())&&state?.auth.role===currentRole();}
+function sliceLabelsOk(body){return body?.label==='SIMULATED'&&body.mode==='SHADOW_NOT_APPLIED'&&body.application==='SHADOW_NOT_APPLIED'&&body.offering==='SIMULATION_ONLY_NOT_OFFERED_V1'&&body.provisional===true&&sliceFalseFlags.every(key=>body[key]===false);}
+function sliceAmountOk(value){return Number.isSafeInteger(value)&&value>=0;}
+function sliceCapacityOk(value){return value?.scope==='claim_slice_registry'&&['entries','slices','non_terminal'].every(key=>sliceAmountOk(value[key]))&&value.bounds&&Object.keys(value.bounds).length>0&&Object.values(value.bounds).every(sliceAmountOk);}
+function slicesValid(body){
+ if(!sliceLabelsOk(body)||!Array.isArray(body.slices))return false;
+ if(body.status==='NOT_BOUND')return body.slices.length===0;
+ return body.status==='BOUND'&&body.read_only===true&&body.holder_first===true&&sliceAmountOk(body.sim_day)&&sliceAmountOk(body.after_journal_index)&&sliceCapacityOk(body.capacity)&&body.slices.every(row=>
+  sliceLabelsOk(row)&&['slice_id','claim_id','payee_label','beneficiary_role','holder_role','tier'].every(key=>typeof row[key]==='string'&&row[key].length>0)&&
+  ['PROPOSED','OPEN','IMPAIRED','RESOLVED','VOID'].includes(row.status)&&sliceAmounts.every(key=>sliceAmountOk(row[key]))&&row.holder_first===true&&typeof row.SLICE_IMPAIRMENT_ELIGIBLE==='boolean'&&typeof row.SLICE_RESOLVABLE==='boolean'&&Array.isArray(row.quotes)&&row.quotes.every(q=>sliceLabelsOk(q)&&typeof q.source_ref?.claim_id==='string'&&typeof q.source_ref?.payee_label==='string'&&typeof q.source_ref?.source_cut==='string'&&sliceAmountOk(q.available_krw)&&sliceAmountOk(q.amount_krw)&&typeof q.waterfall_step==='string'&&typeof q.quote_ref==='string'));
+}
+function sliceQuoteValid(q){
+ if(!q||q.mode!=='SHADOW_NOT_APPLIED'||!sliceFalseFlags.filter(key=>!['executionAuthorized','title_transferred'].includes(key)).every(key=>q[key]===false)||!['SHADOW_COMPUTED','SHADOW_DEFERRED','SHADOW_NOT_BOUND','SHADOW_INPUT_UNKNOWN','SHADOW_INCONSISTENT'].includes(q.status)||!(q.detail===null||typeof q.detail==='string')||typeof q.result_digest!=='string')return false;
+ // The genuine NOT_BOUND envelope omits input metadata; absence stays unavailable.
+ const unbound=q.status==='SHADOW_NOT_BOUND';
+ if(!(unbound&&q.missing_inputs===undefined)&&(!Array.isArray(q.missing_inputs)||!q.missing_inputs.every(value=>typeof value==='string')))return false;
+ if(!(unbound&&q.input_source===undefined)&&typeof q.input_source!=='string')return false;
+ if(!['shadow_slice_face_max','shadow_discount','shadow_price'].every(key=>q[key]===undefined||q[key]===null||sliceAmountOk(q[key])))return false;
+ if(q.status!=='SHADOW_COMPUTED')return true;
+ if(!['shadow_slice_face_max','shadow_discount','shadow_price'].every(key=>sliceAmountOk(q[key])))return false;
+ const check=q.registry_check;
+ return !!check&&typeof check.status==='string'&&Array.isArray(check.codes)&&check.codes.every(code=>typeof code==='string')&&sliceAmountOk(check.free_face_krw)&&sliceAmountOk(check.admissible_face_max_krw)&&sliceCapacityOk(check.capacity);
+}
+function sliceFacts(target,source,keys){
+ $(target).replaceChildren(...keys.flatMap(key=>[textElement('dt',key),textElement('dd',source[key]===undefined?'—':typeof source[key]==='object'?JSON.stringify(source[key]):String(source[key]))]));
+}
+function slicePayees(){
+ const row=slicesEvidence.find(item=>item.claim_id===$('slices-claim').value);
+ const old=$('slices-payee').value;
+ $('slices-payee').replaceChildren(...(row?.obligations||[]).map(item=>{const option=textElement('option',item.payee);option.value=item.payee;return option;}));
+ if([...$('slices-payee').options].some(option=>option.value===old))$('slices-payee').value=old;
+}
+function sliceChoices(evidence){
+ slicesEvidence=evidence?.rows||[];
+ const old=$('slices-claim').value;
+ $('slices-claim').replaceChildren(...slicesEvidence.map(row=>{const option=textElement('option',row.claim_id);option.value=row.claim_id;return option;}));
+ if(slicesEvidence.some(row=>row.claim_id===old))$('slices-claim').value=old;
+ slicePayees();
+}
+function paintSliceDetail(id,focus=false){
+ const row=slicesRows.find(item=>item.slice_id===id);selectedSlice=row?.slice_id??null;
+ $('slice-detail').hidden=!row;if(!row)return;
+ $('slice-detail-title').textContent=`slice_id: ${row.slice_id} · ${row.status}`;
+ sliceFacts('slice-facts',row,['claim_id','payee_label','status','beneficiary_role','holder_role','tier',...sliceAmounts,'holder_first','recourse','SLICE_IMPAIRMENT_ELIGIBLE','SLICE_RESOLVABLE','resolution','quote_ref']);
+ $('slice-links').replaceChildren();
+ const evidence=slicesEvidence.find(item=>item.claim_id===row.claim_id);
+ if(evidence){
+  const link=textElement('a',`청구 근거: ${row.claim_id}`);link.href='#evidence';
+  link.onclick=event=>{event.preventDefault();invalidateSlices('STALE · desk exit');location.hash='#evidence';applyDeskVisibility();const target=$(`claim-evidence-${row.claim_id}`);target?.focus();target?.scrollIntoView();};
+  $('slice-links').append(link);
+ }else $('slice-links').append(textElement('span',`청구 근거 연결 없음: ${row.claim_id}`));
+ const cases=state.cases.filter(item=>item.claim_id===row.claim_id||item.settlement_id===row.claim_id);
+ for(const c of cases){const link=textElement('a',`advance evidence: ${c.advance_id}`);link.href=`?case=${encodeURIComponent(c.advance_id)}#desk`;$('slice-links').append(link);}
+ if(!cases.length)$('slice-links').append(textElement('span','no linked advance'));
+ $('slice-recourse-status').textContent=row.quotes.length?'서버 recourse quotes · 실행 아님':'서버 recourse quotes 없음';
+ $('slice-recourse').textContent=JSON.stringify(row.quotes,null,2);
+ $('slice-source').textContent=JSON.stringify(row,null,2);
+ if(focus)$('slice-detail-title').focus();
+}
+function paintSlices(body){
+ slicesRows=body.slices;
+ $('slices-status').textContent=body.status==='NOT_BOUND'?'NOT_BOUND · 등록부 정책이 연결되지 않았습니다.':body.slices.length?'CURRENT_READ · 서버 등록부 조회 완료':'EMPTY · 등록된 슬라이스 없음';
+ $('slices-capacity').textContent=body.capacity?JSON.stringify(body.capacity,null,2):'NOT_BOUND';
+ $('slices-rows').replaceChildren(...body.slices.map(row=>{
+  const tr=document.createElement('tr');
+  for(const value of [row.slice_id,`${row.claim_id} · ${row.payee_label}`,row.status,row.outstanding_krw,row.served_krw,row.shortfall_krw])tr.append(textElement('td',String(value)));
+  const cell=document.createElement('td'),button=textElement('button',`검사 ${row.slice_id}`);button.type='button';button.onclick=()=>paintSliceDetail(row.slice_id,true);cell.append(button);tr.append(cell);return tr;
+ }));
+ if(selectedSlice)paintSliceDetail(selectedSlice);
+}
+function sliceReadError(error){
+ const code=error.message||'UNAVAILABLE';
+ const detail=error.detail?.detail?` · ${JSON.stringify(error.detail.detail)}`:'';
+ if(/SESSION|TOKEN|ROLE|INSTANCE/.test(code))return `STALE_SESSION · ${code} · 역할을 확인하고 페이지를 다시 열어 로컬 세션을 조회하세요.`;
+ if(/CAPACITY/.test(code))return `CAPACITY · ${code}${detail} · 서버 용량 응답; 새 한도를 추정하지 않습니다.`;
+ return `UNAVAILABLE · ${code} · 이전 견적은 current가 아닙니다. 새로고침 후 다시 검사하세요.`;
+}
+async function loadSlices(inspect=false){
+ if(!slicesAllowed()){invalidateSlices(`FORBIDDEN · ${permissionReason('projection:read')}`);return;}
+ clearSliceQuote('NO_CURRENT_QUOTE · 조회 중');
+ const epoch=slicesEpoch,captured=state,token=sessionToken,role=currentRole();
+ const current=()=>epoch===slicesEpoch&&state===captured&&sessionToken===token&&currentRole()===role&&slicesAllowed();
+ let query='';
+ if(inspect){
+  const days=$('slices-days').value;
+  if(!/^\d+$/.test(days)||!Number.isSafeInteger(Number(days))||!$('slices-claim').value||!$('slices-payee').value){$('slices-quote-status').textContent='INPUT_REQUIRED · expected_days에 0 이상의 정수 가정을 직접 입력하세요.';return;}
+  query='?'+new URLSearchParams({quote_claim_id:$('slices-claim').value,quote_payee_label:$('slices-payee').value,expected_days:days});
+ }
+ slicesRows=[];$('slices-rows').replaceChildren();$('slice-detail').hidden=true;$('slices-capacity').textContent='';$('slices-freshness').textContent='';
+ $('slices-status').textContent='READING · 등록부 조회 중';$('slices-reload-session').hidden=true;
+ try{
+  const before=await request('/api/overlay');if(!current())return;
+  if(!overlayOk(before,captured)||typeof before.overlay_state_digest!=='string')throw Error('STALE_SNAPSHOT');
+  const body=await request('/api/overlay/slices'+query);if(!current())return;
+  const after=await request('/api/overlay');if(!current())return;
+  if(!overlayOk(after,captured)||before.overlay_state_digest!==after.overlay_state_digest||before.sim_day!==after.sim_day||body.status==='BOUND'&&body.sim_day!==after.sim_day)throw Error('STALE_SNAPSHOT');
+  if(!slicesValid(body)||inspect&&body.status==='BOUND'&&!sliceQuoteValid(body.quote))throw Error('INVALID_SLICE_RESPONSE');
+  paintSlices(body);
+  $('slices-freshness').textContent=`GET bracket · instance=${captured.instance_id} · F04=${captured.state_digest} · overlay=${after.overlay_state_digest} · sim_day=${after.sim_day}. 로컬 변화 검사이며 atomic snapshot·소유권 인증 아님.`;
+  if(inspect&&body.status==='BOUND'){
+   const q=body.quote;
+   $('slices-quote-status').textContent=`CURRENT_READ · ${q.status}${q.detail===null||q.detail===undefined?'':` · ${q.detail}`}`;
+   $('slices-quote-assumptions').textContent=query;
+   sliceFacts('slices-quote-facts',q,['status','detail','missing_inputs','shadow_slice_face_max','shadow_discount','shadow_price','input_source','result_digest']);
+   $('slices-guard').textContent=q.registry_check?JSON.stringify(q.registry_check,null,2):'NOT_BOUND · registry_check 없음';
+   $('slices-quote-source').textContent=JSON.stringify(q,null,2);$('slices-quote').hidden=false;
+  }else $('slices-quote-status').textContent=body.status==='NOT_BOUND'?'NOT_BOUND · 견적을 사용할 수 없습니다.':'NO_CURRENT_QUOTE · 가정 입력 후 검사';
+ }catch(error){if(current())invalidateSlices(sliceReadError(error));}
+}
+$('slices-reload-session').onclick=()=>location.reload();
+$('slices-refresh').onclick=()=>{if(!busy)void loadSlices();};
+$('slices-inspect').onclick=()=>{if(!busy)void loadSlices(true);};
+for(const id of ['slices-claim','slices-payee','slices-days'])$(id).addEventListener('input',()=>{clearSliceQuote('STALE_INPUT · 입력이 바뀌었습니다. 다시 검사하세요.');if($('slices-status').textContent.startsWith('READING'))$('slices-status').textContent='STALE_INPUT · 조회가 취소되었습니다. 다시 검사하거나 새로고침하세요.';if(id==='slices-claim')slicePayees();});
+// SLICE INSPECTION END
 // DESK END
 $('offer-form').onsubmit=event=>{event.preventDefault();const amount=Number($('amount').value);if(!Number.isSafeInteger(amount)||amount<1||amount>1e12){notice('금액은 1부터 10¹² 사이의 정수여야 합니다.',true);return;}command('offer','sim-'+crypto.randomUUID().slice(0,12),{fixture_id:$('fixture').value,amount});};
 $('repay').onclick=()=>{const c=state.cases.find(item=>item.advance_id===selected);const amount=Number($('repay-amount').value);if(!Number.isSafeInteger(amount)||amount<1){notice('상환 메모 금액은 양의 정수여야 합니다.',true);return;}command('repay',selected,{amount,sequence:c.next_repayment_sequence});};
@@ -932,7 +1066,7 @@ $('preview-draw').onclick=async()=>{
  }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
  finally{$('preview-draw').disabled=busy||!can('projection:read');}
 };
-$('role').addEventListener('change',async()=>{const role=currentRole();rememberRole(role);if(busy)return;busy=true;fence();try{await refresh();notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
+$('role').addEventListener('change',async()=>{invalidateSlices('STALE_SESSION · 역할 변경 중; 이전 견적 없음');const role=currentRole();rememberRole(role);if(busy)return;busy=true;fence();try{await refresh();notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
 $('export-journal').onclick=async()=>{
  if(busy)return;
  if(!can('export:read')){notice(`역할 경계: ${permissionReason('export:read')}`,true);return;}

@@ -799,3 +799,54 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:slice-registry-desk -->
+
+### slice-registry-desk
+
+`/#desk`의 **Claim-slice registry · 읽기 전용 검사**는 organizer와 auditor의
+`projection:read` 조회 화면이다. observer 또는 권한 거절 세션은 등록부 GET을
+보내지 않는다. 이 패널에는 명령 폼이 없고 command POST를 보내지 않는다.
+`GET /api/overlay/slices`의 PROPOSED, OPEN, IMPAIRED, RESOLVED, VOID 행에서
+검사 버튼을 누르면 서버의 `outstanding_krw`, `encumbered_face_krw`,
+`served_krw`, `eligible_line_krw`, `exposure_krw`, `shortfall_krw`,
+`recourse_received_krw`, `shadow_discount`, `shadow_price`, holder-first 및
+lifecycle 플래그를 읽는다. recourse quotes 원본에는 `source_ref`,
+`available_krw`, `amount_krw`, `waterfall_step`, `quote_ref`와 provenance가 있다.
+은행 회수 실적·채권 소유권·실명 인증으로 해석하지 않는다.
+
+청구 링크는 기존 정산 근거 행에 키보드 초점을 옮긴다. advance 연결은
+현재 서버 사례의 claim_id 또는 settlement_id가 정확히 같은 경우에만
+`?case=…#desk`의 타임라인·dossier로 이동한다. 일치 사례가 없으면
+`no linked advance`다. beneficiary나 holder_role만으로 연결하지 않는다.
+좁은 화면에서는 등록부 영역에 Tab으로 초점을 두고 가로 스크롤할 수 있으며,
+검사 버튼은 Enter로 열고 상세 제목으로 초점을 옮긴다.
+
+견적은 fixture의 청구·수취인을 선택하고 `expected_days`에 0 이상 정수 가정을
+직접 입력한 다음 **견적 검사 (GET)**를 누른다. 자동 채택되는 금융 조건은 없다.
+`quote_claim_id`, `quote_payee_label`, `expected_days`를 함께 보내며
+`instance_id`를 이 경로에 추가하지 않는다. 서버 `quote.status`, `detail`,
+`missing_inputs`, 크기·가격, `input_source`, `result_digest` 및
+`registry_check`의 상태·순서 있는 codes·가용액·capacity를 그대로 표시한다.
+SHADOW_NOT_BOUND, SHADOW_INPUT_UNKNOWN, SHADOW_INCONSISTENT는 사용할 수
+없는 근거를 설명하며 없는 금액을 0으로 바꾸지 않는다. 액면·매입가·advance
+노출을 브라우저에서 합산하지 않는다. capacity counts/bounds도 서버 보고값이다.
+
+빈 등록부는 EMPTY, 정책 미연결은 NOT_BOUND, 용량 거절은 CAPACITY,
+세션/역할/서버 인스턴스 오류는 STALE_SESSION이다. 입력 변경, 새로고침 시작,
+역할 변경, 데스크 이탈은 기존 견적을 즉시 지운다. 상태 GET 실패·잘못된 JSON·
+응답 shape 불일치·겹친 늦은 응답도 이전 견적을 현재값으로 복구하지 않는다.
+일반 조회 실패는 데스크 새로고침 뒤 가정을 다시 검사한다. STALE_SESSION은
+역할을 확인하고 **세션 다시 조회 · 페이지 다시 열기**로 명시적으로 페이지를
+다시 열어 새 로컬 세션을 조회한다. 기존 세션 토큰을 조용히 재발급하지 않는다.
+등록부 전후 overlay GET에서 instance·F04 digest·overlay digest·sim_day를
+검사하지만 atomic snapshot이나 계속 유효한 견적을 보장하지 않는다.
+
+모든 예시는 SIMULATED / SHADOW_NOT_APPLIED /
+SIMULATION_ONLY_NOT_OFFERED_V1이다. 실제 집행·명의 이전·multi-payee 배분·새
+금융 합계는 없다. 기존 parked shadow-policy workbench는 바뀌지 않는다.
+테스트 `tests/browser/slice-registry-desk.spec.cjs`는 disposable memory registry와
+명시적으로 표시한 합성 오류 응답으로 검증한다. 실제 PG·은행·KYC·제공자를
+호출하지 않는다.
+
+<!-- /handbook-section -->
