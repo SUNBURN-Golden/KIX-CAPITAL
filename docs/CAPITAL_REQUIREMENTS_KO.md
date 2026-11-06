@@ -129,3 +129,19 @@ READ_ONLY_FIXTURE는 불변이다. SIMULATED / SHADOW_NOT_APPLIED,
 funds_executed false, integrated false, qualification_claimed false를 유지한다.
 준비금 NOT_BOUND, 변경 소스 영속성·인증된 두 번째 승인·다중 수취인·실제 실행·upstream
 적합성·사람 수용은 주장하지 않는다.
+
+## residual-obligations-report — 로컬 기록 잔존 의무 조회
+
+`capital/residuals.py`의 오프라인 stdlib CLI는 감사된 workspace의 기존 상환·회수·
+슬라이스 fold를 메모리에서 읽어 종결 후 미지급 이자, 미배정 현금, 상각 전 부도
+청구권, 상각 후 잔존 청구권, IMPAIRED 슬라이스 잔액을 각각 표시한다. FSM의
+CLOSED/DEFAULTED는 모든 의무 소멸의 근거가 아니다. 각 금액은 독립 대사하고
+F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산을 하지 않는다.
+금액 증거 누락은 `NOT_BOUND`/null이며 COMPLETE는 선언된 기록 모집단의 감사·대사
+완료만 뜻한다. 최신 기록 slice witness 이후의 정산 이력은 보장하지 않는다.
+
+이 기능은 `SIMULATED` / `READ_ONLY_RESIDUAL_REGISTER` 로컬 보고 확장이다. 면제,
+환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식 또는 실제 지급을
+결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
+Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
+검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
