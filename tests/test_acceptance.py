@@ -152,9 +152,9 @@ class AcceptanceTests(unittest.TestCase):
         claims = acceptance.parse_test_count('CLAIM_CONFORMANCE passed=87 total=87 failed=0\n')
         self.assertEqual(claims, {'ran': 87, 'passed': 87, 'failed': 0})
 
-    def test_journey_line_counts_as_two_checks_and_the_summary_is_parsed(self):
-        line = 'sim journeys ok SIMULATED T03-sim steps=25 T04-sim steps=30 T05-sim steps=35 T06-sim steps=33 N1-sim steps=16 N2-sim steps=19\n'
-        self.assertEqual(acceptance.parse_test_count(line), {'ran': 6, 'passed': 6, 'failed': 0})
+    def test_journey_line_counts_as_eight_checks_and_the_summary_is_parsed(self):
+        line = 'sim journeys ok SIMULATED T03-sim steps=25 T04-sim steps=30 T05-sim steps=35 T06-sim steps=33 N1-sim steps=16 N2-sim steps=19 N3-sim steps=33 N4-sim steps=42\n'
+        self.assertEqual(acceptance.parse_test_count(line), {'ran': 8, 'passed': 8, 'failed': 0})
         summary = {'label': 'SIMULATED', 'journeys': [{'id': 'T05-sim', 'steps': 35}]}
         text = 'noise\nSIM_JOURNEYS ' + json.dumps(summary) + '\n' + line
         self.assertEqual(acceptance.parse_journeys(text), summary)

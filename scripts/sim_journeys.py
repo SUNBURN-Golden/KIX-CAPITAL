@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim, N1-sim and N2-sim.
+"""Seeded, deterministic SIMULATED journeys T03-sim through T06-sim, N1-sim through N4-sim.
 
-All six journeys are scripts of fixed operation ids against a real ``capital.server`` on
+All eight journeys are scripts of fixed operation ids against a real ``capital.server`` on
 127.0.0.1. They are Capital-local simulations. They are not the T03-T06 rungs of the
 acceptance ladder, claim no qualification, move no funds, and call no provider.
 
@@ -41,9 +41,16 @@ DEFAULT_ELIGIBLE proposal, with no F04 default. N2-sim: agent proposal, human ci
 into a simulated repayment, and auditor offline evidence-chain verification. N names
 are Capital-local, not upstream T-rung semantics.
 
+N3-sim: interest-only payment, final principal-bearing payment, advisory CLEAR, explicit
+close, file-workspace restart and complete offline evidence chain. N4-sim: human default,
+bounded recovery, write-off at the adopted boundary and late recovery without F04 revival
+or interest beyond the stop day. N4's disposable settlement book is not persisted; its
+exported cut describes the reopened immutable READ_ONLY_FIXTURE context. Both use
+independent integer/Fraction arithmetic and bounded duplicate/conflict probes.
+
 Each journey's step list is pinned by digest in tests/golden/journey_t03_sim.json,
 journey_t04_sim.json, journey_t05_sim.json, journey_t06_sim.json, journey_n1_sim.json
-and journey_n2_sim.json. A mismatch or a
+journey_n2_sim.json, journey_n3_sim.json and journey_n4_sim.json. A mismatch or a
 missing golden exits 1 unless --update-golden is passed. The golden carries no
 instance id, token, port, path, or timestamp.
 
@@ -82,6 +89,7 @@ GOLDEN_FILES = {
     'T03-sim': 'journey_t03_sim.json', 'T04-sim': 'journey_t04_sim.json',
     'T05-sim': 'journey_t05_sim.json', 'T06-sim': 'journey_t06_sim.json',
     'N1-sim': 'journey_n1_sim.json', 'N2-sim': 'journey_n2_sim.json',
+    'N3-sim': 'journey_n3_sim.json', 'N4-sim': 'journey_n4_sim.json',
 }
 JOURNEY_IDS = tuple(GOLDEN_FILES)
 OUT_OF_BAND = 'SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT'
@@ -405,8 +413,8 @@ def run_t03():
 # ----------------------------------------------------------------------- T05-sim
 
 class _InProcessServer:
-    def __init__(self, producer):
-        self.server = make_server(0, producer=producer)
+    def __init__(self, producer, workspace=None):
+        self.server = make_server(0, producer=producer, workspace=workspace)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
     def __enter__(self):
@@ -1062,8 +1070,343 @@ def run_n2():
     return journey.result()
 
 
+# ---------------------------------------------------------------- N3/N4 servicing
+
+def _adopted(note, name):
+    from capital.terms import read_decision_block
+    entry = read_decision_block(ROOT / 'docs' / 'decisions' / note)['entries'][name]
+    if entry['status'] != 'ADOPTED':
+        raise JourneyError(f'decision not adopted: {note}:{name}')
+    return entry['value']
+
+
+def _servicing_terms():
+    rate = _adopted('CAPITAL_FINANCIAL_TERMS.md', 'interest_rate')
+    term = _adopted('CAPITAL_FINANCIAL_TERMS.md', 'term')
+    loss = _adopted('CAPITAL_FINANCIAL_TERMS.md', 'default_loss_treatment')
+    if rate['repayment_allocation_order'] != ['DEFAULT_INTEREST', 'INTEREST', 'PRINCIPAL']:
+        raise JourneyError('adopted allocation order changed')
+    bps = next(t['all_in_bps_annual'] for t in rate['tiers'] if t['id'] == 'T1_COMMIT_OBSERVED')
+    return bps, bps + rate['default_interest_add_bps_annual'], term, loss
+
+
+def _exact(principal_days, bps):
+    # Independent oracle: no production accrual, allocation, or recovery fold helpers.
+    from fractions import Fraction
+    return Fraction(principal_days * bps, 10000 * 365)
+
+
+def _seed_servicing(journey, session, advance, prefix):
+    for op, args in (('offer', {'fixture_id': 'sim-committed', 'amount': T03_AMOUNT}),
+                     ('approve', {}), ('bind_settlement', {}), ('draw', {})):
+        _drive(journey, session, op, op, advance, f'{prefix}-{op.replace("_", "-")}', **args)
+
+
+def _posting(session, op, key, advance, day, **args):
+    return {'operation_id': key, 'op': op, 'advance_ref': advance, 'at_sim_day': day, **args}
+
+
+def _send_posting(session, body):
+    return session.client.request('POST', '/api/overlay/commands',
+                                  {'instance_id': session.instance_id, **body}, session.token)
+
+
+def _post(journey, session, body, **expected):
+    status, receipt = _send_posting(session, body)
+    journey.step(body['operation_id'], 'HTTP', (status, receipt.get('outcome')), (200, 'APPLIED'))
+    for field, value in expected.items():
+        journey.step(f'{body["operation_id"]} {field}', 'AUDIT', receipt[field], value)
+    return receipt
+
+
+def _economic_snapshot(session):
+    status, manifest = session.get('/api/export/manifest')
+    if status != 200:
+        raise JourneyError('manifest unavailable')
+    sections = manifest['sections']
+    return {'state_digest': session.refresh()['state_digest'],
+            'overlay_state_digest': session.overlay()['overlay_state_digest'],
+            'journal': sections['journal']['body']['entries'],
+            'overlay_journal': sections['overlay']['body']['journal']}
+
+
+def _snapshot_facts(snapshot):
+    return {k: snapshot[k] for k in ('state_digest', 'overlay_state_digest')} | {
+        'journal_count': len(snapshot['journal']), 'overlay_entry_count': len(snapshot['overlay_journal'])}
+
+
+def _receipt_core(receipt):
+    # Lookup omits transport-only fields; replay reports the current overlay digest.
+    return {k: v for k, v in receipt.items() if k not in
+            ('transport_duplicate', 'overlay_state_digest', 'retry_authorized', 'instance_id')}
+
+
+def _restart_postings(journey, session, server, postings):
+    before = _economic_snapshot(session)
+    recorded = {b['operation_id']: session.get('/api/overlay?operation_id=' + b['operation_id'])[1]['operation']
+                for b, _ in postings}
+    linked = {r['f04']['operation_id']: _lookup(session, r['f04']['operation_id'])
+              for _, r in postings if r.get('f04')}
+    server.kill()
+    session = Session(server.start())
+    journey.step('restart preserves both digests and original journals', 'AUDIT',
+                 _economic_snapshot(session) == before, True, **_snapshot_facts(before))
+    for body, original in postings:
+        status, found = session.get('/api/overlay?operation_id=' + body['operation_id'])
+        found = found['operation']
+        # Compare the complete recorded projection; transport envelopes use the new session.
+        journey.step(body['operation_id'] + ' original receipt survives', 'AUDIT',
+                     (status, found == recorded[body['operation_id']]), (200, True),
+                     operation_id=body['operation_id'], entry_no=found.get('entry_no'), entry_id=found.get('entry', {}).get('entry_id'))
+        status, duplicate = _send_posting(session, body)
+        journey.step(body['operation_id'] + ' bounded duplicate receipt', 'AUDIT',
+                     (status, duplicate['transport_duplicate'], _receipt_core(duplicate)),
+                     (200, True, _receipt_core(original)))
+        changed = dict(body)
+        if 'amount_krw' in changed:
+            changed['amount_krw'] += 1
+        else:
+            changed['setoff_declined_reason'] = 'SIMULATED_CONFLICTING_IDENTITY'
+        status, refused = _send_posting(session, changed)
+        journey.step(body['operation_id'] + ' conflicting identity refused', 'HTTP',
+                     (status, refused.get('error')), (409, 'IDEMPOTENCY_CONFLICT'))
+    for key, receipt in linked.items():
+        journey.step('linked F04 receipt survives ' + key, 'AUDIT', _lookup(session, key) == receipt, True)
+    journey.step('duplicate and conflict probes have no second economic effect', 'AUDIT',
+                 _economic_snapshot(session) == before, True, **_snapshot_facts(before),
+                 duplicate_probes=len(postings), conflict_probes=len(postings))
+    return session
+
+
+def _servicing_evidence(journey, session, workspace):
+    from capital.store import canonical_bytes
+    status, manifest = session.get('/api/export/manifest')
+    recovery_view = session.overlay()['recovery']
+    reserve_absorbed = sum(row['absorbed_krw'] for entry in recovery_view['entries']
+                           for row in entry.get('waterfall_trace', []) if row['step'] == 'LOSS_RESERVE')
+    journey.step('reserve remains zero and NOT_BOUND', 'AUDIT',
+                 (recovery_view['reserve_binding'], reserve_absorbed), ('NOT_BOUND', 0))
+    journey.step('V3 export in reopened READ_ONLY_FIXTURE context', 'AUDIT',
+                 (status, manifest['format'], session.overlay()['margin']['source']),
+                 (200, 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'READ_ONLY_FIXTURE'),
+                 settlement_book_persisted=False, source_cut='NOT_BOUND', reserve_binding='NOT_BOUND',
+                 loss_reserve_absorbed_krw=0)
+    with tempfile.TemporaryDirectory(prefix='capital-servicing-evidence-') as tmp:
+        root = Path(tmp)
+        manifest_path = root / 'manifest.json'
+        manifest_path.write_bytes(canonical_bytes(manifest))
+        code, report = _verify_report([str(manifest_path)])
+        journey.step('offline V3 manifest verification', 'VERIFY',
+                     (code, report['ok'], report['signature']), (0, True, 'NOT_BOUND'))
+        code, report = _verify_report(['--workspace', str(workspace)])
+        journey.step('offline workspace audit', 'VERIFY',
+                     (code, report['ok'], report['recon_status'], report['writes']),
+                     (0, True, 'MATCHED', False))
+        pages_dir = root / 'pages'
+        pages_dir.mkdir()
+        pages, rows, cursor = [], [], None
+        # Bounded traversal must reach the terminal page, never a selected-page sample.
+        for index in range(100):
+            query = f'/api/export/facts?instance_id={session.instance_id}&limit=3'
+            if cursor is not None:
+                query += '&after=' + cursor
+            status, page = session.get(query)
+            if status != 200:
+                raise JourneyError(f'facts: {status} {page}')
+            pages.append(page)
+            rows.extend(page['rows'])
+            (pages_dir / f'page-{index:04d}.json').write_bytes(canonical_bytes(page))
+            cursor = page['next_cursor']
+            if cursor is None:
+                break
+        else:
+            raise JourneyError('facts page bound exceeded')
+        cut = pages[0]['cut']
+        sections = manifest['sections']
+        journey.step('complete facts chain equals manifest journals and both digests', 'AUDIT',
+                     (all(p['cut'] == cut for p in pages),
+                      [r['seq'] for r in rows] == list(range(len(rows))),
+                      [r['entry'] for r in rows if r['source'] == 'JOURNAL'] == sections['journal']['body']['entries'],
+                      [r['entry'] for r in rows if r['source'] == 'OVERLAY'] == sections['overlay']['body']['journal'],
+                      cut['state_digest'] == session.refresh()['state_digest'],
+                      cut['overlay_state_digest'] == session.overlay()['overlay_state_digest']),
+                     (True, True, True, True, True, True), pages=len(pages), rows=len(rows),
+                     cut_id=cut['cut_id'], state_digest=cut['state_digest'],
+                     overlay_state_digest=cut['overlay_state_digest'])
+        code, report = _verify_report(['--facts', str(pages_dir)])
+        journey.step('offline complete facts verification', 'VERIFY', (code, report['ok']), (0, True))
+        last = pages_dir / f'page-{len(pages)-1:04d}.json'
+        saved = last.read_bytes()
+        last.unlink()
+        code, report = _verify_report(['--facts', str(pages_dir)])
+        journey.step('truncated facts chain fails', 'VERIFY', (code != 0, report['ok']), (True, False))
+        last.write_bytes(saved)
+        first = pages_dir / 'page-0000.json'
+        tampered = json.loads(first.read_bytes())
+        tampered['rows'][0]['entry']['op'] = 'tampered'
+        first.write_bytes(canonical_bytes(tampered))
+        code, report = _verify_report(['--facts', str(pages_dir)])
+        journey.step('tampered facts chain fails', 'VERIFY', (code != 0, report['ok']), (True, False))
+        manifest['sections']['overlay']['body']['journal'][0]['sim_day'] += 1
+        manifest_path.write_bytes(canonical_bytes(manifest))
+        code, report = _verify_report([str(manifest_path)])
+        journey.step('tampered manifest fails', 'VERIFY', (code != 0, report['ok']), (True, False))
+
+
+def run_n3():
+    journey = Journey('N3-sim')
+    advance = 'sim-n3-a'
+    bps, _, _, _ = _servicing_terms()
+    due15, due30 = int(_exact(T03_AMOUNT * 15, bps)), int(_exact(T03_AMOUNT * 30, bps))
+    with tempfile.TemporaryDirectory(prefix='capital-sim-n3-') as tmp:
+        server = ServerProcess(Path(tmp))
+        try:
+            session = Session(server.start())
+            _seed_servicing(journey, session, advance, 'n3')
+            _tick(journey, session, 'n3-day15', 0, 15)
+            before = _economic_snapshot(session)
+            first = _posting(session, 'post_repayment', 'n3-interest', advance, 15, amount_krw=due15)
+            r1 = _post(journey, session, first, allocation={
+                'default_interest_krw': 0, 'interest_krw': due15, 'principal_krw': 0, 'unapplied_after_krw': 0})
+            after = _economic_snapshot(session)
+            journey.step('interest-only payment leaves F04 unchanged', 'AUDIT',
+                         (after['state_digest'], after['journal'], r1['f04']),
+                         (before['state_digest'], before['journal'], None))
+            _tick(journey, session, 'n3-day30', 15, 30)
+            row = session.advance_row(advance)
+            journey.step('independent cumulative interest and carry', 'AUDIT',
+                         (row['interest_due_krw'], row['cumulative_exact_contract'], row['carried_remainder_contract']),
+                         (due30 - due15, str(_exact(T03_AMOUNT * 30, bps)),
+                          str(_exact(T03_AMOUNT * 30, bps) - due30)))
+            final = _posting(session, 'post_repayment', 'n3-final', advance, 30,
+                             amount_krw=T03_AMOUNT + due30 - due15)
+            r2 = _post(journey, session, final, allocation={
+                'default_interest_krw': 0, 'interest_krw': due30-due15,
+                'principal_krw': T03_AMOUNT, 'unapplied_after_krw': 0})
+            row = session.advance_row(advance)
+            journey.step('advisory CLEAR precedes explicit close', 'AUDIT',
+                         (r2['close_gate']['status'], row['phase'], row['close_ready'],
+                          row['principal_outstanding_krw'], row['interest_due_krw'], row['default_interest_due_krw'],
+                          len(_economic_snapshot(session)['journal']) - len(before['journal'])),
+                         ('CLEAR', 'DRAWN', True, 0, 0, 0, 1))
+            _drive(journey, session, 'explicit close', 'close', advance, 'n3-close')
+            tick = _tick(journey, session, 'n3-after-close', 30, 45)
+            journey.step('closed advance accrues nothing', 'AUDIT',
+                         (session.advance_row(advance)['phase'], tick['postings']), ('CLOSED', []))
+            session = _restart_postings(journey, session, server, [(first, r1), (final, r2)])
+            _servicing_evidence(journey, session, Path(tmp))
+        finally:
+            server.kill()
+    return journey.result()
+
+
+def run_n4():
+    journey = Journey('N4-sim')
+    advance = 'sim-n4-a'
+    bps, default_bps, term, loss = _servicing_terms()
+    maturity = term['standard_term_days']
+    default_day = maturity + term['grace_days_after_maturity'] + 1
+    recover_day = default_day + 10
+    stop = default_day + loss['writeoff_days_after_default']
+    interest = int(_exact(T03_AMOUNT * maturity, bps))
+    default_exact = _exact(T03_AMOUNT * (recover_day - maturity), default_bps)
+    default_due = int(default_exact)
+    recovered, late_cash = 5000, 1000  # Synthetic fixture cash, never financial terms.
+    principal = T03_AMOUNT - (recovered - interest - default_due)
+    stopped_exact = default_exact + _exact(principal * (stop - recover_day), default_bps)
+    unpaid = int(stopped_exact) - default_due
+    source = margin.ScenarioReplaySource()
+    with tempfile.TemporaryDirectory(prefix='capital-sim-n4-') as tmp:
+        # The disposable settlement book is deliberately not persisted or used for facts export.
+        local = _InProcessServer(PinnedFsmProducer(fixtures=source), workspace=Path(tmp))
+        postings = []
+        with local as port:
+            session = Session(port)
+            _seed_servicing(journey, session, advance, 'n4')
+            _tick(journey, session, 'n4-default-day', 0, default_day)
+            _drive(journey, session, 'human records default', 'default', advance, 'n4-default')
+            terminal = _economic_snapshot(session)
+            outcomes = _load('seed_overlay_recovery').distribute(source, 'sim-committed')
+            journey.step('synthetic distribution on disposable settlement book', 'SETTLEMENT_EVENT',
+                         all(x['matched'] for x in outcomes), True, label=OUT_OF_BAND,
+                         scope='DISPOSABLE_BOOK_ONLY')
+            _tick(journey, session, 'n4-recovery-day', default_day, recover_day)
+
+            def recovery_body(key, day, amount):
+                row = next(r for r in session.overlay()['recovery']['advances'] if r['advance_id'] == advance)
+                q = next(q for q in row['quotes'] if q['source_ref']['claim_id'] == 'sim-committed')
+                return _posting(session, 'post_recovery', key, advance, day, amount_krw=amount,
+                                source_ref=q['source_ref'], quote_ref=q['quote_ref'])
+
+            before = _economic_snapshot(session)
+            status, refused = _send_posting(session, recovery_body('n4-oversized', recover_day,
+                                            T03_AMOUNT + interest + default_due + 1))
+            journey.step('oversized recovery refused with no effect', 'HTTP',
+                         (status, refused.get('error'), _economic_snapshot(session) == before),
+                         (409, 'RECOVERY_EXCEEDS_CLAIM', True))
+            body = recovery_body('n4-recovery', recover_day, recovered)
+            receipt = _post(journey, session, body)
+            journey.step('independent bounded recovery allocation', 'AUDIT', receipt['entry']['allocation'],
+                         {'default_interest_krw': default_due, 'interest_krw': interest,
+                          'principal_krw': T03_AMOUNT - principal})
+            postings.append((body, receipt))
+            _tick(journey, session, 'n4-before-boundary', recover_day, stop - 1)
+            before = _economic_snapshot(session)
+            status, refused = _send_posting(session, _posting(session, 'post_writeoff', 'n4-early', advance, stop-1))
+            journey.step('writeoff one day early refused with no effect', 'HTTP',
+                         (status, refused.get('error'), _economic_snapshot(session) == before),
+                         (409, 'WRITEOFF_NOT_ELIGIBLE', True))
+            _tick(journey, session, 'n4-boundary', stop - 1, stop)
+            row = session.advance_row(advance)
+            journey.step('independent interest at decided stop day', 'AUDIT',
+                         (row['cumulative_exact_default'], row['default_interest_due_krw']),
+                         (str(stopped_exact), unpaid), default_sim_day=default_day, stop_day=stop,
+                         remaining_principal_krw=principal)
+            body = _posting(session, 'post_writeoff', 'n4-writeoff', advance, stop,
+                            setoff_declined_reason='SIMULATED_OPERATOR_DECLINES_REMAINING_SETOFF')
+            receipt = _post(journey, session, body)
+            entry = receipt['entry']
+            journey.step('explicit writeoff at eligibility boundary; reserve NOT_BOUND', 'AUDIT',
+                         (entry['writeoff_effective_sim_day'], entry['writeoff_principal_krw'],
+                          entry['accrued_interest_reversed_krw'], entry['suspended_interest_released_krw'],
+                          entry['residual_claim_krw'], entry['reserve_binding'], entry['waterfall_trace'][2]),
+                         (stop, principal, 0, unpaid, principal + unpaid, 'NOT_BOUND',
+                          {'step': 'LOSS_RESERVE', 'status': 'NOT_BOUND', 'absorbed_krw': 0}))
+            postings.append((body, receipt))
+            _tick(journey, session, 'n4-late-day', stop, stop + 1)
+            body = recovery_body('n4-late', stop+1, late_cash)
+            receipt = _post(journey, session, body)
+            journey.step('late recovery reduces residual without allocation', 'AUDIT',
+                         (receipt['entry']['phase'], receipt['entry']['residual_claim_krw'],
+                          'allocation' in receipt['entry']),
+                         ('POST_WRITEOFF', principal + unpaid - late_cash, False))
+            postings.append((body, receipt))
+            tick = _tick(journey, session, 'n4-after-stop', stop+1, stop+10)
+            row = session.advance_row(advance)
+            state = session.refresh()
+            case = next(c for c in state['cases'] if c['advance_id'] == advance)
+            journey.step('no F04 revival or interest beyond stop day', 'AUDIT',
+                         (case['phase'], case['note_status'], row['accrued_through_sim_day'],
+                          row['cumulative_exact_default'], tick['postings'], state['state_digest'],
+                          _economic_snapshot(session)['journal'] == terminal['journal']),
+                         ('DEFAULTED', 'NOTED', stop, str(stopped_exact), [],
+                          terminal['state_digest'], True))
+            before_handoff = _economic_snapshot(session)
+        server = ServerProcess(Path(tmp))
+        try:
+            session = Session(server.start())
+            journey.step('immutable fixture handoff preserves economic witnesses', 'AUDIT',
+                         _economic_snapshot(session) == before_handoff, True,
+                         **_snapshot_facts(before_handoff), settlement_book_persisted=False)
+            session = _restart_postings(journey, session, server, postings)
+            _servicing_evidence(journey, session, Path(tmp))
+        finally:
+            server.kill()
+    return journey.result()
+
+
 RUNNERS = {'T03-sim': run_t03, 'T04-sim': run_t04, 'T05-sim': run_t05, 'T06-sim': run_t06,
-           'N1-sim': run_n1, 'N2-sim': run_n2}
+           'N1-sim': run_n1, 'N2-sim': run_n2, 'N3-sim': run_n3, 'N4-sim': run_n4}
 
 
 # ------------------------------------------------------------------------ golden
@@ -1102,7 +1445,7 @@ def summary(results):
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--journey', choices=JOURNEY_IDS, default=None, help='Run one journey. Default all six.')
+    parser.add_argument('--journey', choices=JOURNEY_IDS, default=None, help='Run one journey. Default all eight.')
     parser.add_argument('--golden-dir', type=Path, default=GOLDEN_DIR, help='Default tests/golden')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='Check pins without writing (the default)')

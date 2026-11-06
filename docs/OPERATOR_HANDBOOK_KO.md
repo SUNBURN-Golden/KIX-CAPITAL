@@ -602,7 +602,7 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 
 `T04-sim`(38단계)은 `python3 -m capital.server --workspace TMP` 하위 프로세스 위의 감사인 경로다. 데모 장부(`scripts/seed_demo.py`의 고정 operation id 스물한 건, `SETTLEMENT_NOT_COMMITTED`로 거절되는 draw 포함)를 HTTP로 다시 넣고 `state_digest`가 `tests/golden/demo.json` 핀과 같은지 본다. organizer가 `POST /api/session`으로 `auditor`를 결합하면, auditor 토큰으로 `/api/overlay`·`/api/risk`·`/api/terms/portfolio`·`/api/reconciliation`을 읽고 `/api/export/manifest`로 `KIX_CAPITAL_EXPORT_MANIFEST_V3`(status `COMPLETE`, signature `UNSIGNED`/`NOT_BOUND`)를 받아 파일로 쓴다. 그 파일을 `python3 -m capital.verify FILE`가 하위 프로세스로 다시 검사하고, `python3 -m capital.verify --workspace DIR`가 살아 있는 작업공간을 잠금 없이 읽기 전용으로 감사한다(`OFFLINE_WORKSPACE_AUDIT`, 열 개 검사 `MATCHED`, `writes` false, `stage5_durable_transactions` `NOT_BOUND`). auditor 토큰의 `advance_day`와 `POST /api/commands`는 `403 ROLE_FORBIDDEN`이고 observer 토큰은 manifest를 받지 못한다.
 
-둘 다 `label`은 `SIMULATED`, `funds_executed`와 `integrated`는 false이며 T01–T06 자격 주장이 아니다. 실제 증적 주장도 아니다. 핀은 `tests/golden/journey_t03_sim.json`과 `tests/golden/journey_t04_sim.json`이고 어긋나거나 없으면 1로 끝난다. 의도한 변경일 때만 `python3 scripts/sim_journeys.py --update-golden`으로 다시 쓴다. `scripts/acceptance.py`의 `integrated-journeys` 단계는 네 여정을 돌리고 evidence의 `stages[*].journeys.items`에 넷의 단계 수·`SIMULATED` 라벨·digest를 싣는다.
+둘 다 `label`은 `SIMULATED`, `funds_executed`와 `integrated`는 false이며 T01–T06 자격 주장이 아니다. 실제 증적 주장도 아니다. 핀은 `tests/golden/journey_t03_sim.json`과 `tests/golden/journey_t04_sim.json`이고 어긋나거나 없으면 1로 끝난다. 의도한 변경일 때만 `python3 scripts/sim_journeys.py --update-golden`으로 다시 쓴다. `scripts/acceptance.py`의 `integrated-journeys` 단계는 여덟 여정을 돌리고 evidence의 `stages[*].journeys.items`에 각 여정의 단계 수·`SIMULATED` 라벨·digest를 싣는다.
 
 <!-- /handbook-section -->
 
@@ -799,3 +799,29 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+
+## repayment-recovery-journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs eight Capital-local journeys in the
+existing `integrated-journeys` stage: T03-sim–T06-sim and N1-sim–N4-sim.
+N3-sim adds day-15 interest-only payment, day-30 remaining interest plus principal,
+advisory CLEAR and a separate explicit close. N4-sim records human default at the
+adopted eligibility day, bounded recovery, write-off at default day plus the adopted
+90-day delay (one-day-early refusal), and late recovery. Independent integer/Fraction
+oracles check allocations, carry, residual claim and the interest stop day. Reserve
+absorption is zero with `NOT_BOUND`; F04 stays DEFAULTED/NOTED after default.
+
+Pins: `tests/golden/journey_n3_sim.json`, `tests/golden/journey_n4_sim.json`.
+Both file-workspace restarts preserve recorded posting receipts, N3's linked F04
+receipt, original journals and both digests. Explicit bounded duplicate and conflicting
+identity probes produce no second economic effect; older no-retry assertions remain.
+Both verify V3 manifests, read-only workspace audits and complete facts chains with
+page limit 3, plus truncation/tamper refusal using existing offline verifiers.
+N4's `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` uses ScenarioReplaySource and the
+existing recovery distribution helper. The disposable settlement book is closed before
+the ordinary server reopens immutable `READ_ONLY_FIXTURE` inputs for audit/export.
+That cut describes the reopened fixture context; it does not attest persistence of the
+disposable settlement book or authenticated recovery cash. `funds_executed`,
+`integrated` and `qualification_claimed` remain false. COA payment postings and
+allowance mechanics are outside these journeys. Human acceptance boxes remain pending.

@@ -1,4 +1,4 @@
-"""Named SIMULATED journeys T03-sim through T06-sim: steps, pinned goldens, and the acceptance stage.
+"""Named SIMULATED journeys T03-sim through T06-sim and N1-sim through N4-sim: steps, pinned goldens, and the acceptance stage.
 
 The journeys run a real loopback server (T04-sim and T06-sim on --workspace subprocesses,
 T06-sim killed with SIGKILL). Nothing here claims T01-T06 qualification, integration, or
@@ -64,7 +64,9 @@ class JourneyBase(unittest.TestCase):
         cls.t06 = _result('T06-sim')
         cls.n1 = _result('N1-sim')
         cls.n2 = _result('N2-sim')
-        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06, cls.n1, cls.n2)
+        cls.n3 = _result('N3-sim')
+        cls.n4 = _result('N4-sim')
+        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06, cls.n1, cls.n2, cls.n3, cls.n4)
 
 
 class CommonTests(JourneyBase):
@@ -102,7 +104,7 @@ class CommonTests(JourneyBase):
                 self.assertNotIn(needle, text, needle)
 
     def test_no_operation_id_is_posted_twice(self):
-        for result in self.all:
+        for result in (self.t03, self.t04, self.t05, self.t06, self.n1, self.n2):
             step = _step(result, 'no operation id was posted twice')
             self.assertIs(step['status'], True)
             if result['journey'] == 'N2-sim':
@@ -371,7 +373,7 @@ class NamedJourneyTests(JourneyBase):
         self.assertEqual(_step(self.n2, 'tampered citation')['status'], [True, False])
 
     def test_new_pins_missing_and_tampered_fail_without_writing(self):
-        for result in (self.n1, self.n2):
+        for result in (self.n1, self.n2, self.n3, self.n4):
             with tempfile.TemporaryDirectory() as tmp:
                 path = journeys.golden_path(tmp, result['journey'])
                 with self.assertRaises(journeys.JourneyError):
@@ -389,6 +391,112 @@ class NamedJourneyTests(JourneyBase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
             journeys.main(['--check', '--update-golden'])
         self.assertEqual(raised.exception.code, 2)
+
+
+class ServicingJourneyTests(JourneyBase):
+    def test_n3_independent_interest_allocations_and_carry(self):
+        from fractions import Fraction
+        # Independent numeric oracle from adopted T1 700 bps ACT/365; no runtime fold/quote.
+        fifteen = Fraction(30_000 * 15 * 700, 10000 * 365)
+        thirty = fifteen * 2
+        self.assertEqual(_step(self.n3, 'n3-interest allocation')['status'], {
+            'default_interest_krw': 0, 'interest_krw': int(fifteen),
+            'principal_krw': 0, 'unapplied_after_krw': 0})
+        self.assertEqual(_step(self.n3, 'n3-final allocation')['status'], {
+            'default_interest_krw': 0, 'interest_krw': int(thirty) - int(fifteen),
+            'principal_krw': 30_000, 'unapplied_after_krw': 0})
+        self.assertEqual(_step(self.n3, 'cumulative interest and carry')['status'],
+                         [86, str(thirty), str(thirty - int(thirty))])
+        self.assertIsNone(_step(self.n3, 'interest-only payment leaves F04')['status'][2])
+        clear = _step(self.n3, 'advisory CLEAR')
+        self.assertEqual(clear['status'], ['CLEAR', 'DRAWN', True, 0, 0, 0, 1])
+        self.assertLess(clear['n'], next(s for s in self.n3['steps'] if s['name'] == 'explicit close')['n'])
+        self.assertEqual(_step(self.n3, 'closed advance accrues')['status'], ['CLOSED', []])
+
+    def test_n4_independent_principal_day_segments_and_residual(self):
+        from fractions import Fraction
+        # Contract period [0,60); overdue bucket [60,81); recovery reduces principal
+        # on day 81; default day 71 + adopted 90-day delay stops accrual on day 161.
+        interest = (30_000 * 60 * 700) // (10000 * 365)
+        default = (30_000 * 21 * 1000) // (10000 * 365)
+        principal = 30_000 - (5000 - interest - default)
+        exact = Fraction((30_000 * 21 + principal * 80) * 1000, 10000 * 365)
+        unpaid = int(exact) - default
+        self.assertEqual((interest, default, principal, unpaid), (345, 172, 25517, 559))
+        self.assertEqual(_step(self.n4, 'bounded recovery allocation')['status'],
+                         {'default_interest_krw': default, 'interest_krw': interest,
+                          'principal_krw': 30_000 - principal})
+        self.assertEqual(_step(self.n4, 'interest at decided stop')['status'], [str(exact), unpaid])
+        writeoff = _step(self.n4, 'eligibility boundary; reserve')['status']
+        self.assertEqual(writeoff, [161, principal, 0, unpaid, principal + unpaid, 'NOT_BOUND',
+                                   {'step': 'LOSS_RESERVE', 'status': 'NOT_BOUND', 'absorbed_krw': 0}])
+        self.assertEqual(_step(self.n4, 'late recovery reduces residual')['status'],
+                         ['POST_WRITEOFF', principal + unpaid - 1000, False])
+        no_revival = _step(self.n4, 'no F04 revival')['status']
+        self.assertEqual(no_revival[:5], ['DEFAULTED', 'NOTED', 161, str(exact), []])
+        self.assertIs(no_revival[-1], True)
+
+    def test_n4_boundary_and_caps_reject_without_mutation(self):
+        self.assertEqual(_step(self.n4, 'oversized recovery')['status'],
+                         [409, 'RECOVERY_EXCEEDS_CLAIM', True])
+        self.assertEqual(_step(self.n4, 'one day early')['status'],
+                         [409, 'WRITEOFF_NOT_ELIGIBLE', True])
+        handoff = _step(self.n4, 'immutable fixture handoff')
+        self.assertIs(handoff['status'], True)
+        self.assertIs(handoff['facts']['settlement_book_persisted'], False)
+
+    def test_restart_preserves_receipts_both_digests_and_economic_counts(self):
+        for result, count, f04_count in ((self.n3, 2, 6), (self.n4, 3, 5)):
+            restart = _step(result, 'restart preserves')
+            probes = _step(result, 'no second economic effect')
+            self.assertIs(restart['status'], True)
+            self.assertIs(probes['status'], True)
+            for key in ('state_digest', 'overlay_state_digest', 'journal_count', 'overlay_entry_count'):
+                self.assertEqual(restart['facts'][key], probes['facts'][key])
+            self.assertEqual(probes['facts']['journal_count'], f04_count)
+            self.assertEqual((probes['facts']['duplicate_probes'], probes['facts']['conflict_probes']), (count, count))
+            self.assertEqual(len([s for s in result['steps'] if 'original receipt survives' in s['name']]), count)
+            for step in result['steps']:
+                if 'conflicting identity refused' in step['name']:
+                    self.assertEqual(step['status'], [409, 'IDEMPOTENCY_CONFLICT'])
+                if 'bounded duplicate receipt' in step['name']:
+                    self.assertEqual(step['status'][:2], [200, True])
+            self.assertEqual(len([s for s in result['steps'] if 'linked F04 receipt survives' in s['name']]),
+                             1 if result['journey'] == 'N3-sim' else 0)
+
+    def test_each_complete_chain_and_corruption_refusals(self):
+        for result in (self.n3, self.n4):
+            context = _step(result, 'V3 export in reopened')
+            self.assertEqual(context['status'], [200, 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'READ_ONLY_FIXTURE'])
+            self.assertEqual(context['facts']['reserve_binding'], 'NOT_BOUND')
+            self.assertEqual(context['facts']['loss_reserve_absorbed_krw'], 0)
+            self.assertEqual(_step(result, 'offline V3 manifest')['status'], [0, True, 'NOT_BOUND'])
+            self.assertEqual(_step(result, 'offline workspace audit')['status'], [0, True, 'MATCHED', False])
+            chain = _step(result, 'complete facts chain equals')
+            self.assertEqual(chain['status'], [True] * 6)
+            self.assertGreater(chain['facts']['pages'], 1)
+            self.assertEqual(chain['facts']['pages'], (chain['facts']['rows'] + 2) // 3)
+            self.assertEqual(_step(result, 'offline complete facts')['status'], [0, True])
+            for fragment in ('truncated facts', 'tampered facts', 'tampered manifest'):
+                self.assertEqual(_step(result, fragment)['status'], [True, False])
+
+    def test_early_terminal_page_cannot_hide_missing_facts(self):
+        original = journeys.Session.get
+
+        def truncated(session, path):
+            status, body = original(session, path)
+            if path.startswith('/api/export/facts?'):
+                body['next_cursor'] = None
+            return status, body
+
+        with patch.object(journeys.Session, 'get', truncated):
+            with self.assertRaisesRegex(journeys.JourneyError, 'complete facts chain equals'):
+                journeys.run_n3()
+
+    def test_verifier_failure_is_not_reported_as_success(self):
+        with patch.object(journeys, '_verify_report', return_value=(1, {'ok': False, 'signature': 'NOT_BOUND'})):
+            with self.assertRaisesRegex(journeys.JourneyError, 'offline V3 manifest'):
+                journeys.run_n3()
 
 
 class GoldenTests(JourneyBase):
@@ -460,7 +568,7 @@ def _summary_script(mutate=None, exit_code=0):
     }
     summary['journeys'].extend(
         {'id': name, 'label': 'SIMULATED', 'steps': 16, 'digest': 'e' * 64,
-         'funds_executed': False, 'integrated': False} for name in ('N1-sim', 'N2-sim'))
+         'funds_executed': False, 'integrated': False} for name in ('N1-sim', 'N2-sim', 'N3-sim', 'N4-sim'))
     if mutate:
         mutate(summary)
     return ('import sys\nprint("SIM_JOURNEYS " + ' + repr(json.dumps(summary)) + ')\n'
@@ -489,7 +597,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(code, 0, evidence['stages'][-1])
         body = next(item for item in evidence['stages'] if item['id'] == 'integrated-journeys')
         self.assertEqual(body['status'], 'passed')
-        self.assertEqual(body['test_count'], {'ran': 6, 'passed': 6, 'failed': 0})
+        self.assertEqual(body['test_count'], {'ran': 8, 'passed': 8, 'failed': 0})
         items = {item['id']: item for item in body['journeys']['items']}
         self.assertEqual(sorted(items), sorted(journeys.JOURNEY_IDS))
         for journey_id, item in items.items():

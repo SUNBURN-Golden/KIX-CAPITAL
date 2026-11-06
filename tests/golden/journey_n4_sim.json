@@ -1,0 +1,1435 @@
+{
+  "digest": "1a64726029bfac61a293347d7be62e834b1458e3afef896ad19e20fb232a0f80",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "N4-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 43,
+  "steps": [
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n4-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 1,
+      "name": "offer",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n4-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "approve",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n4-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "bind_settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n4-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "draw",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 71
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "advance_day 0->71",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n4-a",
+        "op": "default"
+      },
+      "kind": "HTTP",
+      "n": 6,
+      "name": "human records default",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
+        "scope": "DISPOSABLE_BOOK_ONLY"
+      },
+      "kind": "SETTLEMENT_EVENT",
+      "n": 7,
+      "name": "synthetic distribution on disposable settlement book",
+      "status": true
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 81
+      },
+      "kind": "HTTP",
+      "n": 8,
+      "name": "advance_day 71->81",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "RECOVERY_EXCEEDS_CLAIM",
+        true
+      ],
+      "kind": "HTTP",
+      "n": 9,
+      "name": "oversized recovery refused with no effect",
+      "status": [
+        409,
+        "RECOVERY_EXCEEDS_CLAIM",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "kind": "HTTP",
+      "n": 10,
+      "name": "n4-recovery",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": {
+        "default_interest_krw": 172,
+        "interest_krw": 345,
+        "principal_krw": 4483
+      },
+      "kind": "AUDIT",
+      "n": 11,
+      "name": "independent bounded recovery allocation",
+      "status": {
+        "default_interest_krw": 172,
+        "interest_krw": 345,
+        "principal_krw": 4483
+      }
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 160
+      },
+      "kind": "HTTP",
+      "n": 12,
+      "name": "advance_day 81->160",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "WRITEOFF_NOT_ELIGIBLE",
+        true
+      ],
+      "kind": "HTTP",
+      "n": 13,
+      "name": "writeoff one day early refused with no effect",
+      "status": [
+        409,
+        "WRITEOFF_NOT_ELIGIBLE",
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 161
+      },
+      "kind": "HTTP",
+      "n": 14,
+      "name": "advance_day 160->161",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "267136/365",
+        559
+      ],
+      "facts": {
+        "default_sim_day": 71,
+        "remaining_principal_krw": 25517,
+        "stop_day": 161
+      },
+      "kind": "AUDIT",
+      "n": 15,
+      "name": "independent interest at decided stop day",
+      "status": [
+        "267136/365",
+        559
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "kind": "HTTP",
+      "n": 16,
+      "name": "n4-writeoff",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        161,
+        25517,
+        0,
+        559,
+        26076,
+        "NOT_BOUND",
+        {
+          "absorbed_krw": 0,
+          "status": "NOT_BOUND",
+          "step": "LOSS_RESERVE"
+        }
+      ],
+      "kind": "AUDIT",
+      "n": 17,
+      "name": "explicit writeoff at eligibility boundary; reserve NOT_BOUND",
+      "status": [
+        161,
+        25517,
+        0,
+        559,
+        26076,
+        "NOT_BOUND",
+        {
+          "absorbed_krw": 0,
+          "status": "NOT_BOUND",
+          "step": "LOSS_RESERVE"
+        }
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 162
+      },
+      "kind": "HTTP",
+      "n": 18,
+      "name": "advance_day 161->162",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "kind": "HTTP",
+      "n": 19,
+      "name": "n4-late",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "POST_WRITEOFF",
+        25076,
+        false
+      ],
+      "kind": "AUDIT",
+      "n": 20,
+      "name": "late recovery reduces residual without allocation",
+      "status": [
+        "POST_WRITEOFF",
+        25076,
+        false
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 171
+      },
+      "kind": "HTTP",
+      "n": 21,
+      "name": "advance_day 162->171",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "DEFAULTED",
+        "NOTED",
+        161,
+        "267136/365",
+        [],
+        "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5",
+        true
+      ],
+      "kind": "AUDIT",
+      "n": 22,
+      "name": "no F04 revival or interest beyond stop day",
+      "status": [
+        "DEFAULTED",
+        "NOTED",
+        161,
+        "267136/365",
+        [],
+        "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5",
+        true
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "journal_count": 5,
+        "overlay_entry_count": 15,
+        "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
+        "settlement_book_persisted": false,
+        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+      },
+      "kind": "AUDIT",
+      "n": 23,
+      "name": "immutable fixture handoff preserves economic witnesses",
+      "status": true
+    },
+    {
+      "expect": true,
+      "facts": {
+        "journal_count": 5,
+        "overlay_entry_count": 15,
+        "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
+        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+      },
+      "kind": "AUDIT",
+      "n": 24,
+      "name": "restart preserves both digests and original journals",
+      "status": true
+    },
+    {
+      "expect": [
+        200,
+        true
+      ],
+      "facts": {
+        "entry_id": "n4-recovery",
+        "entry_no": null,
+        "operation_id": "n4-recovery"
+      },
+      "kind": "AUDIT",
+      "n": 25,
+      "name": "n4-recovery original receipt survives",
+      "status": [
+        200,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "economic_finality_claimed": false,
+          "entry": {
+            "advance_id": "sim-n4-a",
+            "after_journal_index": 5,
+            "allocation": {
+              "default_interest_krw": 172,
+              "interest_krw": 345,
+              "principal_krw": 4483
+            },
+            "amount_krw": 5000,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "beneficiary_role": "fixture-organizer",
+            "claim_id": "sim-committed",
+            "command": {
+              "advance_ref": "sim-n4-a",
+              "amount_krw": 5000,
+              "approvals": [],
+              "at_sim_day": 81,
+              "op": "post_recovery",
+              "quote_ref": "ee05b6d0383eb62894b7635e377153f8cad33e99542a652ea90d81c00def0feb",
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              }
+            },
+            "entry_id": "n4-recovery",
+            "entry_kind": "RECOVERY",
+            "label": "SIMULATED",
+            "phase": "POST_DEFAULT",
+            "policy": {
+              "decision_date": "2026-10-17",
+              "decision_entries": "22892ae112fc6bd8c0728ccc9e29cc918803d755aeba8c8e979498c26c77bbfc",
+              "decision_id": "default-recovery-decision",
+              "default_command_overdue_days": 30,
+              "grace_days": 10,
+              "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+              "policy_digest": "e567ae96af4154760be71b386a8cdf379a7f81067e0a48905e1c79e510abd370",
+              "terms_version": "CAPITAL-TERMS-V1",
+              "two_person_threshold_krw": 50000000,
+              "values": {
+                "acceleration_interest_rebase": {
+                  "applies_to_events": [
+                    "MARGIN_CALL_UNCURED",
+                    "BENEFICIARY_INSOLVENCY_NOTICE",
+                    "EVIDENCE_FRAUD_FINDING"
+                  ]
+                },
+                "reserve_step_when_unbuilt": {
+                  "entry_marker": {
+                    "reserve_binding": "NOT_BOUND",
+                    "reserve_step_version": "UNBUILT_V1"
+                  },
+                  "trace_row": {
+                    "absorbed_krw": 0,
+                    "status": "NOT_BOUND",
+                    "step": "LOSS_RESERVE"
+                  }
+                },
+                "waterfall_steps_in_scope": {
+                  "order": [
+                    "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION",
+                    "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY",
+                    "LOSS_RESERVE",
+                    "PLATFORM_WRITEOFF"
+                  ]
+                }
+              },
+              "writeoff_days_after_default": 90
+            },
+            "quote_ref": "ee05b6d0383eb62894b7635e377153f8cad33e99542a652ea90d81c00def0feb",
+            "quote_witness": {
+              "advance_id": "sim-n4-a",
+              "claim_due_krw": 30517,
+              "consumed_krw": 0,
+              "distributed_krw": 92000,
+              "observed_eligible_krw": 92000,
+              "recovery_due_krw": 0,
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              },
+              "state_digest": "ac6eaec6a44e49561966d041a35112329a184129f2aa29480d8c84a258bf69e3"
+            },
+            "sim_day": 81,
+            "source_quotes": [
+              {
+                "available_krw": 92000,
+                "quote_ref": "ee05b6d0383eb62894b7635e377153f8cad33e99542a652ea90d81c00def0feb",
+                "source_ref": {
+                  "claim_id": "sim-committed",
+                  "payee_label": "organizer",
+                  "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+                },
+                "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              }
+            ],
+            "source_ref": {
+              "claim_id": "sim-committed",
+              "payee_label": "organizer",
+              "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+            },
+            "tier": "T1",
+            "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+          },
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_recovery",
+          "operation_id": "n4-recovery",
+          "outcome": "APPLIED",
+          "recorded_posting": true,
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 81
+        }
+      ],
+      "kind": "AUDIT",
+      "n": 26,
+      "name": "n4-recovery bounded duplicate receipt",
+      "status": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "economic_finality_claimed": false,
+          "entry": {
+            "advance_id": "sim-n4-a",
+            "after_journal_index": 5,
+            "allocation": {
+              "default_interest_krw": 172,
+              "interest_krw": 345,
+              "principal_krw": 4483
+            },
+            "amount_krw": 5000,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "beneficiary_role": "fixture-organizer",
+            "claim_id": "sim-committed",
+            "command": {
+              "advance_ref": "sim-n4-a",
+              "amount_krw": 5000,
+              "approvals": [],
+              "at_sim_day": 81,
+              "op": "post_recovery",
+              "quote_ref": "ee05b6d0383eb62894b7635e377153f8cad33e99542a652ea90d81c00def0feb",
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              }
+            },
+            "entry_id": "n4-recovery",
+            "entry_kind": "RECOVERY",
+            "label": "SIMULATED",
+            "phase": "POST_DEFAULT",
+            "policy": {
+              "decision_date": "2026-10-17",
+              "decision_entries": "22892ae112fc6bd8c0728ccc9e29cc918803d755aeba8c8e979498c26c77bbfc",
+              "decision_id": "default-recovery-decision",
+              "default_command_overdue_days": 30,
+              "grace_days": 10,
+              "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+              "policy_digest": "e567ae96af4154760be71b386a8cdf379a7f81067e0a48905e1c79e510abd370",
+              "terms_version": "CAPITAL-TERMS-V1",
+              "two_person_threshold_krw": 50000000,
+              "values": {
+                "acceleration_interest_rebase": {
+                  "applies_to_events": [
+                    "MARGIN_CALL_UNCURED",
+                    "BENEFICIARY_INSOLVENCY_NOTICE",
+                    "EVIDENCE_FRAUD_FINDING"
+                  ]
+                },
+                "reserve_step_when_unbuilt": {
+                  "entry_marker": {
+                    "reserve_binding": "NOT_BOUND",
+                    "reserve_step_version": "UNBUILT_V1"
+                  },
+                  "trace_row": {
+                    "absorbed_krw": 0,
+                    "status": "NOT_BOUND",
+                    "step": "LOSS_RESERVE"
+                  }
+                },
+                "waterfall_steps_in_scope": {
+                  "order": [
+                    "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION",
+                    "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY",
+                    "LOSS_RESERVE",
+                    "PLATFORM_WRITEOFF"
+                  ]
+                }
+              },
+              "writeoff_days_after_default": 90
+            },
+            "quote_ref": "ee05b6d0383eb62894b7635e377153f8cad33e99542a652ea90d81c00def0feb",
+            "quote_witness": {
+              "advance_id": "sim-n4-a",
+              "claim_due_krw": 30517,
+              "consumed_krw": 0,
+              "distributed_krw": 92000,
+              "observed_eligible_krw": 92000,
+              "recovery_due_krw": 0,
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              },
+              "state_digest": "ac6eaec6a44e49561966d041a35112329a184129f2aa29480d8c84a258bf69e3"
+            },
+            "sim_day": 81,
+            "source_quotes": [
+              {
+                "available_krw": 92000,
+                "quote_ref": "ee05b6d0383eb62894b7635e377153f8cad33e99542a652ea90d81c00def0feb",
+                "source_ref": {
+                  "claim_id": "sim-committed",
+                  "payee_label": "organizer",
+                  "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+                },
+                "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              }
+            ],
+            "source_ref": {
+              "claim_id": "sim-committed",
+              "payee_label": "organizer",
+              "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+            },
+            "tier": "T1",
+            "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+          },
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_recovery",
+          "operation_id": "n4-recovery",
+          "outcome": "APPLIED",
+          "recorded_posting": true,
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 81
+        }
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ],
+      "kind": "HTTP",
+      "n": 27,
+      "name": "n4-recovery conflicting identity refused",
+      "status": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true
+      ],
+      "facts": {
+        "entry_id": "n4-writeoff",
+        "entry_no": null,
+        "operation_id": "n4-writeoff"
+      },
+      "kind": "AUDIT",
+      "n": 28,
+      "name": "n4-writeoff original receipt survives",
+      "status": [
+        200,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "economic_finality_claimed": false,
+          "entry": {
+            "accrued_interest_reversed_krw": 0,
+            "advance_id": "sim-n4-a",
+            "after_journal_index": 5,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "beneficiary_role": "fixture-organizer",
+            "claim_id": "sim-committed",
+            "claim_status": "RESIDUAL_CLAIM_RETAINED",
+            "command": {
+              "advance_ref": "sim-n4-a",
+              "approvals": [],
+              "at_sim_day": 161,
+              "op": "post_writeoff",
+              "setoff_declined_reason": "SIMULATED_OPERATOR_DECLINES_REMAINING_SETOFF"
+            },
+            "default_sim_day": 71,
+            "entry_id": "n4-writeoff",
+            "entry_kind": "WRITEOFF",
+            "label": "SIMULATED",
+            "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+            "loss_krw": 25517,
+            "phase": "POST_DEFAULT",
+            "policy": {
+              "decision_date": "2026-10-17",
+              "decision_entries": "22892ae112fc6bd8c0728ccc9e29cc918803d755aeba8c8e979498c26c77bbfc",
+              "decision_id": "default-recovery-decision",
+              "default_command_overdue_days": 30,
+              "grace_days": 10,
+              "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+              "policy_digest": "e567ae96af4154760be71b386a8cdf379a7f81067e0a48905e1c79e510abd370",
+              "terms_version": "CAPITAL-TERMS-V1",
+              "two_person_threshold_krw": 50000000,
+              "values": {
+                "acceleration_interest_rebase": {
+                  "applies_to_events": [
+                    "MARGIN_CALL_UNCURED",
+                    "BENEFICIARY_INSOLVENCY_NOTICE",
+                    "EVIDENCE_FRAUD_FINDING"
+                  ]
+                },
+                "reserve_step_when_unbuilt": {
+                  "entry_marker": {
+                    "reserve_binding": "NOT_BOUND",
+                    "reserve_step_version": "UNBUILT_V1"
+                  },
+                  "trace_row": {
+                    "absorbed_krw": 0,
+                    "status": "NOT_BOUND",
+                    "step": "LOSS_RESERVE"
+                  }
+                },
+                "waterfall_steps_in_scope": {
+                  "order": [
+                    "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION",
+                    "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY",
+                    "LOSS_RESERVE",
+                    "PLATFORM_WRITEOFF"
+                  ]
+                }
+              },
+              "writeoff_days_after_default": 90
+            },
+            "reserve_binding": "NOT_BOUND",
+            "reserve_step_version": "UNBUILT_V1",
+            "residual_claim_krw": 26076,
+            "sim_day": 161,
+            "source_quotes": [
+              {
+                "available_krw": 87000,
+                "quote_ref": "e94af1d52ca015dedd2d0d647a162ab85e8b9994b469afcde5070a9047b7f876",
+                "source_ref": {
+                  "claim_id": "sim-committed",
+                  "payee_label": "organizer",
+                  "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+                },
+                "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              }
+            ],
+            "suspended_interest_released_krw": 559,
+            "tier": "T1",
+            "waterfall_trace": [
+              {
+                "absorbed_krw": 5000,
+                "status": "DECLINED",
+                "step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              },
+              {
+                "absorbed_krw": 0,
+                "status": "EXHAUSTED",
+                "step": "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY"
+              },
+              {
+                "absorbed_krw": 0,
+                "status": "NOT_BOUND",
+                "step": "LOSS_RESERVE"
+              },
+              {
+                "absorbed_krw": 25517,
+                "status": "POSTED",
+                "step": "PLATFORM_WRITEOFF"
+              }
+            ],
+            "writeoff_effective_sim_day": 161,
+            "writeoff_principal_krw": 25517
+          },
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_writeoff",
+          "operation_id": "n4-writeoff",
+          "outcome": "APPLIED",
+          "recorded_posting": true,
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 161
+        }
+      ],
+      "kind": "AUDIT",
+      "n": 29,
+      "name": "n4-writeoff bounded duplicate receipt",
+      "status": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "economic_finality_claimed": false,
+          "entry": {
+            "accrued_interest_reversed_krw": 0,
+            "advance_id": "sim-n4-a",
+            "after_journal_index": 5,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "beneficiary_role": "fixture-organizer",
+            "claim_id": "sim-committed",
+            "claim_status": "RESIDUAL_CLAIM_RETAINED",
+            "command": {
+              "advance_ref": "sim-n4-a",
+              "approvals": [],
+              "at_sim_day": 161,
+              "op": "post_writeoff",
+              "setoff_declined_reason": "SIMULATED_OPERATOR_DECLINES_REMAINING_SETOFF"
+            },
+            "default_sim_day": 71,
+            "entry_id": "n4-writeoff",
+            "entry_kind": "WRITEOFF",
+            "label": "SIMULATED",
+            "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+            "loss_krw": 25517,
+            "phase": "POST_DEFAULT",
+            "policy": {
+              "decision_date": "2026-10-17",
+              "decision_entries": "22892ae112fc6bd8c0728ccc9e29cc918803d755aeba8c8e979498c26c77bbfc",
+              "decision_id": "default-recovery-decision",
+              "default_command_overdue_days": 30,
+              "grace_days": 10,
+              "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+              "policy_digest": "e567ae96af4154760be71b386a8cdf379a7f81067e0a48905e1c79e510abd370",
+              "terms_version": "CAPITAL-TERMS-V1",
+              "two_person_threshold_krw": 50000000,
+              "values": {
+                "acceleration_interest_rebase": {
+                  "applies_to_events": [
+                    "MARGIN_CALL_UNCURED",
+                    "BENEFICIARY_INSOLVENCY_NOTICE",
+                    "EVIDENCE_FRAUD_FINDING"
+                  ]
+                },
+                "reserve_step_when_unbuilt": {
+                  "entry_marker": {
+                    "reserve_binding": "NOT_BOUND",
+                    "reserve_step_version": "UNBUILT_V1"
+                  },
+                  "trace_row": {
+                    "absorbed_krw": 0,
+                    "status": "NOT_BOUND",
+                    "step": "LOSS_RESERVE"
+                  }
+                },
+                "waterfall_steps_in_scope": {
+                  "order": [
+                    "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION",
+                    "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY",
+                    "LOSS_RESERVE",
+                    "PLATFORM_WRITEOFF"
+                  ]
+                }
+              },
+              "writeoff_days_after_default": 90
+            },
+            "reserve_binding": "NOT_BOUND",
+            "reserve_step_version": "UNBUILT_V1",
+            "residual_claim_krw": 26076,
+            "sim_day": 161,
+            "source_quotes": [
+              {
+                "available_krw": 87000,
+                "quote_ref": "e94af1d52ca015dedd2d0d647a162ab85e8b9994b469afcde5070a9047b7f876",
+                "source_ref": {
+                  "claim_id": "sim-committed",
+                  "payee_label": "organizer",
+                  "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+                },
+                "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              }
+            ],
+            "suspended_interest_released_krw": 559,
+            "tier": "T1",
+            "waterfall_trace": [
+              {
+                "absorbed_krw": 5000,
+                "status": "DECLINED",
+                "step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              },
+              {
+                "absorbed_krw": 0,
+                "status": "EXHAUSTED",
+                "step": "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY"
+              },
+              {
+                "absorbed_krw": 0,
+                "status": "NOT_BOUND",
+                "step": "LOSS_RESERVE"
+              },
+              {
+                "absorbed_krw": 25517,
+                "status": "POSTED",
+                "step": "PLATFORM_WRITEOFF"
+              }
+            ],
+            "writeoff_effective_sim_day": 161,
+            "writeoff_principal_krw": 25517
+          },
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_writeoff",
+          "operation_id": "n4-writeoff",
+          "outcome": "APPLIED",
+          "recorded_posting": true,
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 161
+        }
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ],
+      "kind": "HTTP",
+      "n": 30,
+      "name": "n4-writeoff conflicting identity refused",
+      "status": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true
+      ],
+      "facts": {
+        "entry_id": "n4-late",
+        "entry_no": null,
+        "operation_id": "n4-late"
+      },
+      "kind": "AUDIT",
+      "n": 31,
+      "name": "n4-late original receipt survives",
+      "status": [
+        200,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "economic_finality_claimed": false,
+          "entry": {
+            "advance_id": "sim-n4-a",
+            "after_journal_index": 5,
+            "amount_krw": 1000,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "beneficiary_role": "fixture-organizer",
+            "claim_id": "sim-committed",
+            "command": {
+              "advance_ref": "sim-n4-a",
+              "amount_krw": 1000,
+              "approvals": [],
+              "at_sim_day": 162,
+              "op": "post_recovery",
+              "quote_ref": "56f7f151fa2cd22a67374438f6f4d9c499870bb8816cf3199db870de6fff0a22",
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              }
+            },
+            "entry_id": "n4-late",
+            "entry_kind": "RECOVERY",
+            "label": "SIMULATED",
+            "phase": "POST_WRITEOFF",
+            "policy": {
+              "decision_date": "2026-10-17",
+              "decision_entries": "22892ae112fc6bd8c0728ccc9e29cc918803d755aeba8c8e979498c26c77bbfc",
+              "decision_id": "default-recovery-decision",
+              "default_command_overdue_days": 30,
+              "grace_days": 10,
+              "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+              "policy_digest": "e567ae96af4154760be71b386a8cdf379a7f81067e0a48905e1c79e510abd370",
+              "terms_version": "CAPITAL-TERMS-V1",
+              "two_person_threshold_krw": 50000000,
+              "values": {
+                "acceleration_interest_rebase": {
+                  "applies_to_events": [
+                    "MARGIN_CALL_UNCURED",
+                    "BENEFICIARY_INSOLVENCY_NOTICE",
+                    "EVIDENCE_FRAUD_FINDING"
+                  ]
+                },
+                "reserve_step_when_unbuilt": {
+                  "entry_marker": {
+                    "reserve_binding": "NOT_BOUND",
+                    "reserve_step_version": "UNBUILT_V1"
+                  },
+                  "trace_row": {
+                    "absorbed_krw": 0,
+                    "status": "NOT_BOUND",
+                    "step": "LOSS_RESERVE"
+                  }
+                },
+                "waterfall_steps_in_scope": {
+                  "order": [
+                    "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION",
+                    "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY",
+                    "LOSS_RESERVE",
+                    "PLATFORM_WRITEOFF"
+                  ]
+                }
+              },
+              "writeoff_days_after_default": 90
+            },
+            "quote_ref": "56f7f151fa2cd22a67374438f6f4d9c499870bb8816cf3199db870de6fff0a22",
+            "quote_witness": {
+              "advance_id": "sim-n4-a",
+              "claim_due_krw": 26076,
+              "consumed_krw": 5000,
+              "distributed_krw": 92000,
+              "observed_eligible_krw": 92000,
+              "recovery_due_krw": 0,
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              },
+              "state_digest": "72cf985634f8a4a8a894b16d5579359a528d0df30fde9b8caeda420e9fc98ea5"
+            },
+            "residual_claim_krw": 25076,
+            "sim_day": 162,
+            "source_quotes": [
+              {
+                "available_krw": 87000,
+                "quote_ref": "56f7f151fa2cd22a67374438f6f4d9c499870bb8816cf3199db870de6fff0a22",
+                "source_ref": {
+                  "claim_id": "sim-committed",
+                  "payee_label": "organizer",
+                  "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+                },
+                "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              }
+            ],
+            "source_ref": {
+              "claim_id": "sim-committed",
+              "payee_label": "organizer",
+              "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+            },
+            "tier": "T1",
+            "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+          },
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_recovery",
+          "operation_id": "n4-late",
+          "outcome": "APPLIED",
+          "recorded_posting": true,
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 162
+        }
+      ],
+      "kind": "AUDIT",
+      "n": 32,
+      "name": "n4-late bounded duplicate receipt",
+      "status": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "economic_finality_claimed": false,
+          "entry": {
+            "advance_id": "sim-n4-a",
+            "after_journal_index": 5,
+            "amount_krw": 1000,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "beneficiary_role": "fixture-organizer",
+            "claim_id": "sim-committed",
+            "command": {
+              "advance_ref": "sim-n4-a",
+              "amount_krw": 1000,
+              "approvals": [],
+              "at_sim_day": 162,
+              "op": "post_recovery",
+              "quote_ref": "56f7f151fa2cd22a67374438f6f4d9c499870bb8816cf3199db870de6fff0a22",
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              }
+            },
+            "entry_id": "n4-late",
+            "entry_kind": "RECOVERY",
+            "label": "SIMULATED",
+            "phase": "POST_WRITEOFF",
+            "policy": {
+              "decision_date": "2026-10-17",
+              "decision_entries": "22892ae112fc6bd8c0728ccc9e29cc918803d755aeba8c8e979498c26c77bbfc",
+              "decision_id": "default-recovery-decision",
+              "default_command_overdue_days": 30,
+              "grace_days": 10,
+              "loss_bearer": "KIX_CAPITAL_PLATFORM_100_PERCENT",
+              "policy_digest": "e567ae96af4154760be71b386a8cdf379a7f81067e0a48905e1c79e510abd370",
+              "terms_version": "CAPITAL-TERMS-V1",
+              "two_person_threshold_krw": 50000000,
+              "values": {
+                "acceleration_interest_rebase": {
+                  "applies_to_events": [
+                    "MARGIN_CALL_UNCURED",
+                    "BENEFICIARY_INSOLVENCY_NOTICE",
+                    "EVIDENCE_FRAUD_FINDING"
+                  ]
+                },
+                "reserve_step_when_unbuilt": {
+                  "entry_marker": {
+                    "reserve_binding": "NOT_BOUND",
+                    "reserve_step_version": "UNBUILT_V1"
+                  },
+                  "trace_row": {
+                    "absorbed_krw": 0,
+                    "status": "NOT_BOUND",
+                    "step": "LOSS_RESERVE"
+                  }
+                },
+                "waterfall_steps_in_scope": {
+                  "order": [
+                    "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION",
+                    "SETOFF_OTHER_CLAIMS_SAME_BENEFICIARY",
+                    "LOSS_RESERVE",
+                    "PLATFORM_WRITEOFF"
+                  ]
+                }
+              },
+              "writeoff_days_after_default": 90
+            },
+            "quote_ref": "56f7f151fa2cd22a67374438f6f4d9c499870bb8816cf3199db870de6fff0a22",
+            "quote_witness": {
+              "advance_id": "sim-n4-a",
+              "claim_due_krw": 26076,
+              "consumed_krw": 5000,
+              "distributed_krw": 92000,
+              "observed_eligible_krw": 92000,
+              "recovery_due_krw": 0,
+              "source_ref": {
+                "claim_id": "sim-committed",
+                "payee_label": "organizer",
+                "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+              },
+              "state_digest": "72cf985634f8a4a8a894b16d5579359a528d0df30fde9b8caeda420e9fc98ea5"
+            },
+            "residual_claim_krw": 25076,
+            "sim_day": 162,
+            "source_quotes": [
+              {
+                "available_krw": 87000,
+                "quote_ref": "56f7f151fa2cd22a67374438f6f4d9c499870bb8816cf3199db870de6fff0a22",
+                "source_ref": {
+                  "claim_id": "sim-committed",
+                  "payee_label": "organizer",
+                  "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+                },
+                "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+              }
+            ],
+            "source_ref": {
+              "claim_id": "sim-committed",
+              "payee_label": "organizer",
+              "source_cut": "1db9839b4a459e299ce4e8e41c1329de2410f63be38d940a501cb6f959d0916d"
+            },
+            "tier": "T1",
+            "waterfall_step": "SETOFF_BOUND_CLAIM_BENEFICIARY_DISTRIBUTION"
+          },
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_recovery",
+          "operation_id": "n4-late",
+          "outcome": "APPLIED",
+          "recorded_posting": true,
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 162
+        }
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ],
+      "kind": "HTTP",
+      "n": 33,
+      "name": "n4-late conflicting identity refused",
+      "status": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "conflict_probes": 3,
+        "duplicate_probes": 3,
+        "journal_count": 5,
+        "overlay_entry_count": 15,
+        "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
+        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+      },
+      "kind": "AUDIT",
+      "n": 34,
+      "name": "duplicate and conflict probes have no second economic effect",
+      "status": true
+    },
+    {
+      "expect": [
+        "NOT_BOUND",
+        0
+      ],
+      "kind": "AUDIT",
+      "n": 35,
+      "name": "reserve remains zero and NOT_BOUND",
+      "status": [
+        "NOT_BOUND",
+        0
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "READ_ONLY_FIXTURE"
+      ],
+      "facts": {
+        "loss_reserve_absorbed_krw": 0,
+        "reserve_binding": "NOT_BOUND",
+        "settlement_book_persisted": false,
+        "source_cut": "NOT_BOUND"
+      },
+      "kind": "AUDIT",
+      "n": 36,
+      "name": "V3 export in reopened READ_ONLY_FIXTURE context",
+      "status": [
+        200,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "READ_ONLY_FIXTURE"
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "NOT_BOUND"
+      ],
+      "kind": "VERIFY",
+      "n": 37,
+      "name": "offline V3 manifest verification",
+      "status": [
+        0,
+        true,
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "MATCHED",
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 38,
+      "name": "offline workspace audit",
+      "status": [
+        0,
+        true,
+        "MATCHED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "cut_id": "2e9ad15a35d0f0ad0d6bb088fd320961c7b22d7cec9a4739d1544b9c157ec679",
+        "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
+        "pages": 7,
+        "rows": 20,
+        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+      },
+      "kind": "AUDIT",
+      "n": 39,
+      "name": "complete facts chain equals manifest journals and both digests",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true
+      ],
+      "kind": "VERIFY",
+      "n": 40,
+      "name": "offline complete facts verification",
+      "status": [
+        0,
+        true
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 41,
+      "name": "truncated facts chain fails",
+      "status": [
+        true,
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 42,
+      "name": "tampered facts chain fails",
+      "status": [
+        true,
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 43,
+      "name": "tampered manifest fails",
+      "status": [
+        true,
+        false
+      ]
+    }
+  ]
+}
