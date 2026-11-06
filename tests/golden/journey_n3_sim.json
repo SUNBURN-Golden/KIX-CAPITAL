@@ -1,0 +1,866 @@
+{
+  "digest": "fcba411e7ec6aae9bd5d605f8f551ae12a7426effa125e9ec90aafa3a02a9767",
+  "funds_executed": false,
+  "integrated": false,
+  "journey": "N3-sim",
+  "label": "SIMULATED",
+  "qualification_claimed": false,
+  "seed": "CAPITAL-SIM-JOURNEYS-V1",
+  "step_count": 34,
+  "steps": [
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n3-a",
+        "op": "offer"
+      },
+      "kind": "HTTP",
+      "n": 1,
+      "name": "offer",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n3-a",
+        "op": "approve"
+      },
+      "kind": "HTTP",
+      "n": 2,
+      "name": "approve",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n3-a",
+        "op": "bind_settlement"
+      },
+      "kind": "HTTP",
+      "n": 3,
+      "name": "bind_settlement",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n3-a",
+        "op": "draw"
+      },
+      "kind": "HTTP",
+      "n": 4,
+      "name": "draw",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 15
+      },
+      "kind": "HTTP",
+      "n": 5,
+      "name": "advance_day 0->15",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "kind": "HTTP",
+      "n": 6,
+      "name": "n3-interest",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": {
+        "default_interest_krw": 0,
+        "interest_krw": 86,
+        "principal_krw": 0,
+        "unapplied_after_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 7,
+      "name": "n3-interest allocation",
+      "status": {
+        "default_interest_krw": 0,
+        "interest_krw": 86,
+        "principal_krw": 0,
+        "unapplied_after_krw": 0
+      }
+    },
+    {
+      "expect": [
+        "0459200f8aa5fbcf09cddd977a7ad97ed8871fbb32406dc0d879d87b2789d604",
+        [
+          {
+            "advance_id": "sim-n3-a",
+            "body": {
+              "amount": 30000,
+              "beneficiary_role": "fixture-organizer",
+              "face": {
+                "admission_granted": false,
+                "bank_debit_observed": false,
+                "claim_id": "sim-committed",
+                "confirmed_cash": 97000,
+                "currency": "KRW",
+                "debtor_role": "fixture-merchant",
+                "distributed_cash": 0,
+                "distribution_blocked": false,
+                "distribution_order": null,
+                "external_return_closed": false,
+                "fixture_reclassified": false,
+                "funds_executed": false,
+                "gross": 100000,
+                "legal_debtor_bound": false,
+                "non_cash_accounted": 3000,
+                "obligations": [
+                  {
+                    "cancelled_unpaid": 0,
+                    "distributed": 0,
+                    "face": 95000,
+                    "outstanding": 95000,
+                    "payee": "organizer",
+                    "recovery_due": 0
+                  },
+                  {
+                    "cancelled_unpaid": 0,
+                    "distributed": 0,
+                    "face": 5000,
+                    "outstanding": 5000,
+                    "payee": "platform",
+                    "recovery_due": 0
+                  }
+                ],
+                "pg_adjustment_outstanding": 0,
+                "policy": {
+                  "fee_bps": 500,
+                  "fee_payee": "platform",
+                  "kind": "PRIMARY_FEE_BPS",
+                  "residual_payee": "organizer"
+                },
+                "provenance": "MOCK_SETTLEMENT_ONLY",
+                "receivable_open": 0,
+                "recovery_due": 0,
+                "refund_accepted": 0,
+                "refund_bearer_policy": "NONE",
+                "refund_beneficiary": null,
+                "refund_face": 0,
+                "refund_outstanding": 0,
+                "right_cancelled": false,
+                "trade_id": "sim-trade-sim-committed",
+                "undistributed_cash": 97000
+              }
+            },
+            "idempotency_key": "n3-offer",
+            "op": "offer"
+          },
+          {
+            "advance_id": "sim-n3-a",
+            "body": {},
+            "idempotency_key": "n3-approve",
+            "op": "approve"
+          },
+          {
+            "advance_id": "sim-n3-a",
+            "body": {
+              "settlement_id": "sim-committed"
+            },
+            "idempotency_key": "n3-bind-settlement",
+            "op": "bind_settlement"
+          },
+          {
+            "advance_id": "sim-n3-a",
+            "body": {
+              "draw_id": "draw-n3-draw"
+            },
+            "idempotency_key": "n3-draw",
+            "op": "draw"
+          }
+        ],
+        null
+      ],
+      "kind": "AUDIT",
+      "n": 8,
+      "name": "interest-only payment leaves F04 unchanged",
+      "status": [
+        "0459200f8aa5fbcf09cddd977a7ad97ed8871fbb32406dc0d879d87b2789d604",
+        [
+          {
+            "advance_id": "sim-n3-a",
+            "body": {
+              "amount": 30000,
+              "beneficiary_role": "fixture-organizer",
+              "face": {
+                "admission_granted": false,
+                "bank_debit_observed": false,
+                "claim_id": "sim-committed",
+                "confirmed_cash": 97000,
+                "currency": "KRW",
+                "debtor_role": "fixture-merchant",
+                "distributed_cash": 0,
+                "distribution_blocked": false,
+                "distribution_order": null,
+                "external_return_closed": false,
+                "fixture_reclassified": false,
+                "funds_executed": false,
+                "gross": 100000,
+                "legal_debtor_bound": false,
+                "non_cash_accounted": 3000,
+                "obligations": [
+                  {
+                    "cancelled_unpaid": 0,
+                    "distributed": 0,
+                    "face": 95000,
+                    "outstanding": 95000,
+                    "payee": "organizer",
+                    "recovery_due": 0
+                  },
+                  {
+                    "cancelled_unpaid": 0,
+                    "distributed": 0,
+                    "face": 5000,
+                    "outstanding": 5000,
+                    "payee": "platform",
+                    "recovery_due": 0
+                  }
+                ],
+                "pg_adjustment_outstanding": 0,
+                "policy": {
+                  "fee_bps": 500,
+                  "fee_payee": "platform",
+                  "kind": "PRIMARY_FEE_BPS",
+                  "residual_payee": "organizer"
+                },
+                "provenance": "MOCK_SETTLEMENT_ONLY",
+                "receivable_open": 0,
+                "recovery_due": 0,
+                "refund_accepted": 0,
+                "refund_bearer_policy": "NONE",
+                "refund_beneficiary": null,
+                "refund_face": 0,
+                "refund_outstanding": 0,
+                "right_cancelled": false,
+                "trade_id": "sim-trade-sim-committed",
+                "undistributed_cash": 97000
+              }
+            },
+            "idempotency_key": "n3-offer",
+            "op": "offer"
+          },
+          {
+            "advance_id": "sim-n3-a",
+            "body": {},
+            "idempotency_key": "n3-approve",
+            "op": "approve"
+          },
+          {
+            "advance_id": "sim-n3-a",
+            "body": {
+              "settlement_id": "sim-committed"
+            },
+            "idempotency_key": "n3-bind-settlement",
+            "op": "bind_settlement"
+          },
+          {
+            "advance_id": "sim-n3-a",
+            "body": {
+              "draw_id": "draw-n3-draw"
+            },
+            "idempotency_key": "n3-draw",
+            "op": "draw"
+          }
+        ],
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 30
+      },
+      "kind": "HTTP",
+      "n": 9,
+      "name": "advance_day 15->30",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        86,
+        "12600/73",
+        "44/73"
+      ],
+      "kind": "AUDIT",
+      "n": 10,
+      "name": "independent cumulative interest and carry",
+      "status": [
+        86,
+        "12600/73",
+        "44/73"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "kind": "HTTP",
+      "n": 11,
+      "name": "n3-final",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": {
+        "default_interest_krw": 0,
+        "interest_krw": 86,
+        "principal_krw": 30000,
+        "unapplied_after_krw": 0
+      },
+      "kind": "AUDIT",
+      "n": 12,
+      "name": "n3-final allocation",
+      "status": {
+        "default_interest_krw": 0,
+        "interest_krw": 86,
+        "principal_krw": 30000,
+        "unapplied_after_krw": 0
+      }
+    },
+    {
+      "expect": [
+        "CLEAR",
+        "DRAWN",
+        true,
+        0,
+        0,
+        0,
+        1
+      ],
+      "kind": "AUDIT",
+      "n": 13,
+      "name": "advisory CLEAR precedes explicit close",
+      "status": [
+        "CLEAR",
+        "DRAWN",
+        true,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "ACCEPTED",
+        null
+      ],
+      "facts": {
+        "advance_id": "sim-n3-a",
+        "op": "close"
+      },
+      "kind": "HTTP",
+      "n": 14,
+      "name": "explicit close",
+      "status": [
+        200,
+        "ACCEPTED",
+        null
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "APPLIED"
+      ],
+      "facts": {
+        "sim_day": 45
+      },
+      "kind": "HTTP",
+      "n": 15,
+      "name": "advance_day 30->45",
+      "status": [
+        200,
+        "APPLIED"
+      ]
+    },
+    {
+      "expect": [
+        "CLOSED",
+        []
+      ],
+      "kind": "AUDIT",
+      "n": 16,
+      "name": "closed advance accrues nothing",
+      "status": [
+        "CLOSED",
+        []
+      ]
+    },
+    {
+      "expect": true,
+      "facts": {
+        "journal_count": 6,
+        "overlay_entry_count": 8,
+        "overlay_state_digest": "45e4717766a0875b711b291a9af458724be2f2f53eabedc9c8465f53689227ea",
+        "state_digest": "4d3c521dfb435c706b3d8ade92a33618d47bce49a03b1b9aed5ae713e9dbbb6d"
+      },
+      "kind": "AUDIT",
+      "n": 17,
+      "name": "restart preserves both digests and original journals",
+      "status": true
+    },
+    {
+      "expect": [
+        200,
+        true
+      ],
+      "facts": {
+        "entry_id": null,
+        "entry_no": 4,
+        "operation_id": "n3-interest"
+      },
+      "kind": "AUDIT",
+      "n": 18,
+      "name": "n3-interest original receipt survives",
+      "status": [
+        200,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "advance_ref": "sim-n3-a",
+          "allocation": {
+            "default_interest_krw": 0,
+            "interest_krw": 86,
+            "principal_krw": 0,
+            "unapplied_after_krw": 0
+          },
+          "amount_krw": 86,
+          "at_sim_day": 15,
+          "basis": "SIM_REPAY_MEMO",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "close_gate": {
+            "default_interest_due_krw": 0,
+            "interest_due_krw": 0,
+            "status": "CLEAR",
+            "unapplied_cash_krw": 0
+          },
+          "economic_finality_claimed": false,
+          "entry_no": 4,
+          "f04": null,
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_repayment",
+          "operation_id": "n3-interest",
+          "outcome": "APPLIED",
+          "payment_basis": "UNVERIFIED_ASSERTED",
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 15,
+          "unapplied_after_krw": 0,
+          "unapplied_before_krw": 0
+        }
+      ],
+      "kind": "AUDIT",
+      "n": 19,
+      "name": "n3-interest bounded duplicate receipt",
+      "status": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "advance_ref": "sim-n3-a",
+          "allocation": {
+            "default_interest_krw": 0,
+            "interest_krw": 86,
+            "principal_krw": 0,
+            "unapplied_after_krw": 0
+          },
+          "amount_krw": 86,
+          "at_sim_day": 15,
+          "basis": "SIM_REPAY_MEMO",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "close_gate": {
+            "default_interest_due_krw": 0,
+            "interest_due_krw": 0,
+            "status": "CLEAR",
+            "unapplied_cash_krw": 0
+          },
+          "economic_finality_claimed": false,
+          "entry_no": 4,
+          "f04": null,
+          "f04_journal_written": false,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_repayment",
+          "operation_id": "n3-interest",
+          "outcome": "APPLIED",
+          "payment_basis": "UNVERIFIED_ASSERTED",
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 15,
+          "unapplied_after_krw": 0,
+          "unapplied_before_krw": 0
+        }
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ],
+      "kind": "HTTP",
+      "n": 20,
+      "name": "n3-interest conflicting identity refused",
+      "status": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true
+      ],
+      "facts": {
+        "entry_id": null,
+        "entry_no": 7,
+        "operation_id": "n3-final"
+      },
+      "kind": "AUDIT",
+      "n": 21,
+      "name": "n3-final original receipt survives",
+      "status": [
+        200,
+        true
+      ]
+    },
+    {
+      "expect": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "advance_ref": "sim-n3-a",
+          "allocation": {
+            "default_interest_krw": 0,
+            "interest_krw": 86,
+            "principal_krw": 30000,
+            "unapplied_after_krw": 0
+          },
+          "amount_krw": 30086,
+          "at_sim_day": 30,
+          "basis": "SIM_REPAY_MEMO",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "close_gate": {
+            "default_interest_due_krw": 0,
+            "interest_due_krw": 0,
+            "status": "CLEAR",
+            "unapplied_cash_krw": 0
+          },
+          "economic_finality_claimed": false,
+          "entry_no": 7,
+          "f04": {
+            "operation_id": "rp-822d4831eb7093326d453e82fa283b4b",
+            "receipt_ref": "repay-rp-822d4831eb7093326d453e82fa283b4b"
+          },
+          "f04_journal_written": true,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_repayment",
+          "operation_id": "n3-final",
+          "outcome": "APPLIED",
+          "payment_basis": "UNVERIFIED_ASSERTED",
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 30,
+          "unapplied_after_krw": 0,
+          "unapplied_before_krw": 0
+        }
+      ],
+      "kind": "AUDIT",
+      "n": 22,
+      "name": "n3-final bounded duplicate receipt",
+      "status": [
+        200,
+        true,
+        {
+          "actor": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED",
+          "advance_ref": "sim-n3-a",
+          "allocation": {
+            "default_interest_krw": 0,
+            "interest_krw": 86,
+            "principal_krw": 30000,
+            "unapplied_after_krw": 0
+          },
+          "amount_krw": 30086,
+          "at_sim_day": 30,
+          "basis": "SIM_REPAY_MEMO",
+          "clock_source": "SIM_LOGICAL_CLOCK",
+          "close_gate": {
+            "default_interest_due_krw": 0,
+            "interest_due_krw": 0,
+            "status": "CLEAR",
+            "unapplied_cash_krw": 0
+          },
+          "economic_finality_claimed": false,
+          "entry_no": 7,
+          "f04": {
+            "operation_id": "rp-822d4831eb7093326d453e82fa283b4b",
+            "receipt_ref": "repay-rp-822d4831eb7093326d453e82fa283b4b"
+          },
+          "f04_journal_written": true,
+          "funds_executed": false,
+          "label": "SIMULATED memo ledger \u2014 not a payment, not a receivable, not an F04 journal entry",
+          "op": "post_repayment",
+          "operation_id": "n3-final",
+          "outcome": "APPLIED",
+          "payment_basis": "UNVERIFIED_ASSERTED",
+          "role": "organizer",
+          "role_provenance": "SYNTHETIC_LOCAL_ROLE",
+          "sim_day": 30,
+          "unapplied_after_krw": 0,
+          "unapplied_before_krw": 0
+        }
+      ]
+    },
+    {
+      "expect": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ],
+      "kind": "HTTP",
+      "n": 23,
+      "name": "n3-final conflicting identity refused",
+      "status": [
+        409,
+        "IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    {
+      "expect": true,
+      "kind": "AUDIT",
+      "n": 24,
+      "name": "linked F04 receipt survives rp-822d4831eb7093326d453e82fa283b4b",
+      "status": true
+    },
+    {
+      "expect": true,
+      "facts": {
+        "conflict_probes": 2,
+        "duplicate_probes": 2,
+        "journal_count": 6,
+        "overlay_entry_count": 8,
+        "overlay_state_digest": "45e4717766a0875b711b291a9af458724be2f2f53eabedc9c8465f53689227ea",
+        "state_digest": "4d3c521dfb435c706b3d8ade92a33618d47bce49a03b1b9aed5ae713e9dbbb6d"
+      },
+      "kind": "AUDIT",
+      "n": 25,
+      "name": "duplicate and conflict probes have no second economic effect",
+      "status": true
+    },
+    {
+      "expect": [
+        "NOT_BOUND",
+        0
+      ],
+      "kind": "AUDIT",
+      "n": 26,
+      "name": "reserve remains zero and NOT_BOUND",
+      "status": [
+        "NOT_BOUND",
+        0
+      ]
+    },
+    {
+      "expect": [
+        200,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "READ_ONLY_FIXTURE"
+      ],
+      "facts": {
+        "loss_reserve_absorbed_krw": 0,
+        "reserve_binding": "NOT_BOUND",
+        "settlement_book_persisted": false,
+        "source_cut": "NOT_BOUND"
+      },
+      "kind": "AUDIT",
+      "n": 27,
+      "name": "V3 export in reopened READ_ONLY_FIXTURE context",
+      "status": [
+        200,
+        "KIX_CAPITAL_EXPORT_MANIFEST_V3",
+        "READ_ONLY_FIXTURE"
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "NOT_BOUND"
+      ],
+      "kind": "VERIFY",
+      "n": 28,
+      "name": "offline V3 manifest verification",
+      "status": [
+        0,
+        true,
+        "NOT_BOUND"
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true,
+        "MATCHED",
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 29,
+      "name": "offline workspace audit",
+      "status": [
+        0,
+        true,
+        "MATCHED",
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "facts": {
+        "cut_id": "77bc8495833e9faf2955fe238f76beea9f4e93110a186ed8b4f39ed26928c916",
+        "overlay_state_digest": "45e4717766a0875b711b291a9af458724be2f2f53eabedc9c8465f53689227ea",
+        "pages": 5,
+        "rows": 14,
+        "state_digest": "4d3c521dfb435c706b3d8ade92a33618d47bce49a03b1b9aed5ae713e9dbbb6d"
+      },
+      "kind": "AUDIT",
+      "n": 30,
+      "name": "complete facts chain equals manifest journals and both digests",
+      "status": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "expect": [
+        0,
+        true
+      ],
+      "kind": "VERIFY",
+      "n": 31,
+      "name": "offline complete facts verification",
+      "status": [
+        0,
+        true
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 32,
+      "name": "truncated facts chain fails",
+      "status": [
+        true,
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 33,
+      "name": "tampered facts chain fails",
+      "status": [
+        true,
+        false
+      ]
+    },
+    {
+      "expect": [
+        true,
+        false
+      ],
+      "kind": "VERIFY",
+      "n": 34,
+      "name": "tampered manifest fails",
+      "status": [
+        true,
+        false
+      ]
+    }
+  ]
+}

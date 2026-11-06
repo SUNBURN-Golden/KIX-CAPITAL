@@ -42,8 +42,8 @@ this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
 ## Capital-local named journeys (SIMULATED)
 
-`python3 scripts/sim_journeys.py --check` runs all six named synthetic journeys in
-acceptance's `integrated-journeys` stage. N1-sim and N2-sim are Capital-local names,
+`python3 scripts/sim_journeys.py --check` runs all eight named synthetic journeys in
+acceptance's `integrated-journeys` stage. N1-sim through N4-sim are Capital-local names,
 not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
 `integrated: false`, and `qualification_claimed: false`.
 
@@ -54,6 +54,24 @@ not upstream T-rung semantics or qualification. All retain `funds_executed: fals
   citation-bearing receipt (`effects_executed: false` for the agent), and auditor
   receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
   Pin: `tests/golden/journey_n2_sim.json`.
+
+- N3-sim: interest-only payment on day 15, final principal-bearing payment on day 30,
+  advisory CLEAR, then explicit close. Expected allocations and fractional carry are
+  calculated independently from adopted terms. Pin: `tests/golden/journey_n3_sim.json`.
+- N4-sim: human default on the adopted eligibility day, bounded recovery, refusal one
+  day before write-off eligibility, explicit write-off at the boundary, then late
+  recovery. No F04 revival or interest beyond the stop day; loss-reserve absorption
+  is zero and `NOT_BOUND`. Pin: `tests/golden/journey_n4_sim.json`.
+
+Both new journeys restart file workspaces, preserve original posting receipt cores
+and both digests, and probe duplicates/conflicting identities without a second economic
+effect. Each verifies a V3 manifest, read-only workspace audit and every facts page
+(limit 3, through the terminal cursor), including truncated/tampered evidence refusal.
+N4 uses a `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` on a disposable settlement book.
+After closing it, the ordinary workspace server reopens immutable `READ_ONLY_FIXTURE`
+inputs; the exported cut describes that reopened context, not a persisted settlement
+book. Existing principal-only journeys and their six goldens remain unchanged.
+No COA payment postings, allowance mechanics or upstream qualification are added.
 
 No real funds, providers or authentication; proposals remain process-memory memos.
 

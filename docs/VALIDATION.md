@@ -4414,3 +4414,161 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## repayment-recovery-journeys — local builder validation (2026-10-31)
+
+Implemented on `agent/capital-repayment-recovery-journeys`, starting at
+`c4114c751ea149865493bd3c734bc5d3c423ae2e`. All observations below are local
+**SIMULATED** evidence. No funds, providers, production deployment, upstream
+qualification or human acceptance are claimed. No commit, push, PR, issue or
+external comment was made.
+
+N3-sim adds 34 deterministic steps: a 30,000-KRW synthetic fixture advance,
+day-15 interest-only allocation of 86, day-30 remaining interest of 86 plus
+30,000 principal, advisory CLEAR while DRAWN, then explicit close. Exact
+ACT/365 accrual is `12600/73` at day 30, with `44/73` carried. Interest-only
+posting leaves F04 unchanged; the principal-bearing posting creates exactly
+one linked F04 repayment. The closed case accrues nothing. Restart preserves
+the original two overlay receipt cores, linked F04 receipt, both digests and
+six F04/eight overlay entries; two duplicate and two conflict probes have no
+second economic effect. Its facts chain has 14 rows across five pages.
+
+N4-sim adds 43 steps: standard maturity day 60, adopted default eligibility
+day 71, human default, synthetic beneficiary distribution, day-81 recovery
+of 5,000 allocated as default interest 172, interest 345 and principal 4,483.
+Remaining principal is 25,517. One-day-early write-off is refused on day 160;
+explicit write-off occurs at default day plus the adopted 90-day delay, day
+161. Suspended interest released is 559, reserve absorption is zero with
+`NOT_BOUND`, and the residual claim is 26,076. Late recovery of 1,000 reduces
+it to 25,076 without allocation, F04 revival or interest beyond day 161.
+Restart and three duplicate/conflict probes preserve five F04/fifteen overlay
+entries and both digests. Its facts chain has 20 rows across seven pages.
+Both journeys verify V3 manifests, read-only workspace audits, every facts
+page through the terminal cursor, and rejection of truncated/tampered evidence.
+
+Plan deviations: N4 uses the standard adopted maturity/default eligibility
+path instead of replaying the older refund/acceleration prelude; the existing
+seed's distribution helper and ScenarioReplaySource are reused. This keeps
+recovery arithmetic independent and leaves N1/T05 acceleration coverage and
+all old goldens intact. The full suite also required adding the three newly
+consumed financial-term inputs to `tests/decision_bindings.json`, with a
+focused registry test. Regeneration also exposed a stale hand-written stage
+command in `tests/test_closeout_digest.py`; its expected literal now includes
+the existing acceptance stage's `--check`, preserving strict command equality.
+No decision values or runtime contracts changed.
+The planned disposable-to-immutable handoff works: the exported cut describes
+the reopened `READ_ONLY_FIXTURE` context, not persistence of the disposable
+settlement book or authentication of recovery cash.
+
+Initial verification failures were corrected, not accepted as passes: the
+first 43-test narrow run had two failures (N3/N4 absent from the step-count
+regex and an ambiguous test step selector); acceptance's eight-test run also
+caught the parser omission. A subsequent narrow run and the initial full run
+hit the existing 20-second verifier subprocess timeout. The initial full run
+also found three missing decision-binding declarations (1,310 tests,
+392.279 s, four failures). Timeout limits, CI, assertions and verifiers remain
+unchanged. Retained logs are under ignored `build/repayment-recovery-journeys/`.
+
+| Actual command | Result |
+|---|---|
+| `python3 scripts/sim_journeys.py --journey N3-sim --update-golden` | Exit 0; only the new N3 pin generated, 34 steps, digest `fcba411e7ec6aae9bd5d605f8f551ae12a7426effa125e9ec90aafa3a02a9767`. |
+| `python3 scripts/sim_journeys.py --journey N4-sim --update-golden` | Exit 0; only the new N4 pin generated, 43 steps, digest `1a64726029bfac61a293347d7be62e834b1458e3afef896ad19e20fb232a0f80`. |
+| `python3 -m unittest discover -s tests -p test_sim_journeys.py -v` | Final narrow rerun exit 0; 43 passed in 26.944 s (`narrow-final.log`). Earlier successful isolated rerun: 43 passed in 51.565 s. |
+| `python3 -m unittest discover -s tests -p test_acceptance.py -v` | Exit 0; eight passed in 1.269 s. |
+| `python3 -m unittest discover -s tests -p test_docs_surface.py -v` | Exit 0; 15 passed in 2.151 s, including missing new-name/path needles. |
+| `python3 -m unittest discover -s tests -p test_decision_bindings.py -v` | Exit 0; 26 passed in 22.107 s. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared-reference fence passes with all three new oracle inputs registered. |
+| `python3 scripts/sim_journeys.py --check` | Exit 0; all eight journeys match, including the unchanged six old pins. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 build/repayment-recovery-journeys/preservation.py` | Exit 0; five SHA256 locks, vendor manifest, legacy export and six previous journey golden bytes match HEAD; no `.aiops/` or vendor diff. |
+| `python3 -m unittest discover -s tests -v` | Final standalone rerun exit 0; **1,311 passed** in 341.065 s (`unit.log`), including the unchanged legacy-export byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed in 0.002 s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; installed the three locked dev packages from the local cache, Playwright 1.58.2; no network download or package/lockfile change. The initial local module lookup had reported MODULE_NOT_FOUND. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 Chromium tests passed** in 2.4 min with unchanged assertions/configuration. The namespace isolates the existing four loopback servers; Playwright stops them on completion. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (pass 1) | Exit 0; all nine stages passed, `ok:true`. Retained as `acceptance-pass1.json` and `.log`. Counts: unit 1,311; storage 19; vendor seven; claims 322 passed plus two named DOCUMENTED_DIVERGENCE rows / 324 evaluated; browser 76; packaged smoke 11; seed one; journeys eight; node syntax exit 0. Optional upstream citation verification remains SKIPPED without a supplied Protocol checkout. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0 after successful pass 1; regenerated 4,582-byte closeout digest. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated 101,112-byte finance vector pack with the matching embedded digest. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (initial pass-2 attempt) | Exit 1; unit had one failure among 1,311 tests in 332.240 s: the stale closeout-test command literal omitted `--check`. The other eight stages passed. Retained as `acceptance-pass2-failed.json` and `.log`; no artifact was generated from this failing evidence. |
+| `python3 -m unittest discover -s tests -p test_closeout_digest.py -v` | After correcting that expected literal, exit 0; 61 passed in 0.469 s. Strict stage order/command assertions remain intact. |
+| `python3 scripts/acceptance.py` (pass 2, after the literal fix) | Exit 0; all nine stages passed, `ok:true` — unit 1,311; storage 19; vendor 7; claims 322/324; browser 76; smoke 11; seed 1; journeys 8. Retained as `acceptance-pass2.log`; evidence in `build/acceptance-evidence.json`. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0; committed 4,582-byte digest matches the pass-2 evidence. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; committed artifact bytes verified. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101,112-byte pack matches, embedded closeout digest agrees. |
+
+Re-verification continuation (same node, same HEAD `c4114c7`): the narrow
+journey suite (43 passed in ~26 s), `sim_journeys.py --check`,
+`docs_surface.py --check` (36 routes, 273 artifacts, nine stages), the full
+unit suite (1,311 passed in 316.616 s), the pinned vendor suite (7 passed),
+`compileall`, `node --check`, the preservation check (five SHA256 locks,
+manifest, legacy export, six old goldens byte-identical to HEAD, no
+`.aiops/` or vendor diff) and the two check commands above were all re-run
+independently and passed. `npm run test:browser` initially failed to spawn
+its loopback web servers because ports 8765/8766 were held by two unrelated
+processes from other workspaces on this shared host (a `hanset-collector`
+crawler and a `pitchboard` receiver — not `capital.server`); after those
+squatting processes were stopped, all 76 Chromium tests passed in 2.0 min
+and Playwright stopped all four servers it started. No CI, test, verifier,
+timeout or assertion was weakened; no server remains running.
+
+
+## repayment-recovery-journeys — conflict-fix round 1 (2026-11-06)
+
+Resolved the supervisor-started merge of `origin/main`
+`13b85364d934cb557c8992039be0bc0590181d46` into node HEAD
+`00eb9ea348426175a6554888f307177b7a403ff6`. The merge remains uncommitted;
+acceptance evidence's `head_sha` identifies that pre-merge HEAD, while its
+commands exercise the combined working tree. All results are local
+**SIMULATED** evidence, `funds_executed:false`; no upstream qualification,
+human acceptance, actual payment or production deployment is claimed.
+
+The conflicts in `docs/INTEGRATION.md` and `docs/OPERATOR_HANDBOOK_KO.md`
+retain both the N3/N4 journey documentation and main's complete
+`residual-obligations-report` documentation. Main's residual reader, its 26
+tests, decision notes, binding additions and refreshed pack fixtures survive.
+The node's journey runner, independent arithmetic checks, restart/receipt
+checks, complete facts chains and acceptance consumers survive. All eight
+journey golden files are byte-identical to node HEAD; the six older pins also
+match main.
+
+The conflicts in `tests/vectors/closeout_digest.json` and
+`tests/vectors/finance_vectors.json` were resolved through the adopted
+`CAPITAL-CLOSEOUT-REGEN-V1` generators after a successful acceptance run.
+Every finance vector field outside the embedded closeout group matches both
+parents. Covered updates are the merged unit count, eight-journey count,
+the node's existing explicit `sim_journeys.py --check` command, and package
+SHA256 `f86fcd551d900c7e9ec37fe468055e9545dfcc8d4c3f186f1295a4bf14ec9631`.
+No historical evidence counts were combined by hand.
+
+The locked three-package browser dependency set was installed with
+`npm ci --offline --ignore-scripts --no-audit --no-fund`; Chromium's existing
+headless shell revision 1208 was used without downloads. Acceptance runs use
+`unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'`
+so all servers are confined to an isolated loopback network and fixed browser
+ports do not conflict with other workspaces. CI, assertions, timeouts and
+verification guards remain unchanged.
+
+Logs and per-run evidence are retained under ignored
+`build/repayment-recovery-merge-round1/`. The canonical per-run evidence is
+`build/acceptance-evidence.json`.
+
+| Check / command | Fresh result |
+|---|---|
+| Acceptance pass 1 (`acceptance-pass1.log`, `acceptance-pass1.json`) | Exit 0; all nine stages passed, `ok:true`. Unit 1,337; storage 19; vendor 7; claims 322 passed plus 2 named documented divergences / 324 evaluated; Chromium 76; packaged smoke 11; seeded demo 1; integrated journeys 8; node syntax exit 0. |
+| `python3 scripts/closeout_digest.py --write` then `python3 scripts/finance_vectors.py --write` | Exit 0 after the successful first pass; generated 4,582-byte closeout and 101,112-byte finance vector pack with identical embedded closeout. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| Preservation (`preservation.log`) | Five vendor SHA256 locks verified; manifest byte-identical to both parents; all eight journey goldens unchanged; six previous goldens also match main. Legacy export, `.aiops/` and historical root `DECISION_REQUIRED.md` untouched. |
+| Acceptance pass 2 (`acceptance-pass2.log`, `acceptance-pass2.json`) | Exit 0 after regeneration; all nine stages passed again, `ok:true`, with the same counts as pass 1. The full 1,337-test suite and all 76 Chromium tests pass against the merged, regenerated tree. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0; the regenerated 4,582-byte artifact matches the second acceptance run byte for byte. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | Both exit 0; structural gate, embedded-copy equality and deterministic finance-vector regeneration pass. |
+| Final merge hygiene | No conflict markers or unmerged index entries; `git diff --check` and `git diff --cached --check` pass. All resolved changes staged; merge left uncommitted for the supervisor. |
+
+N3-sim remains 34 steps with digest
+`fcba411e7ec6aae9bd5d605f8f551ae12a7426effa125e9ec90aafa3a02a9767`;
+N4-sim remains 43 steps with digest
+`1a64726029bfac61a293347d7be62e834b1458e3afef896ad19e20fb232a0f80`.
+Reserve absorption remains zero and `NOT_BOUND`. No code fix, policy change,
+CI/test weakening, external post, merge abort, commit, push, rebase or reset
+was needed or performed. **STATUS: READY**.
