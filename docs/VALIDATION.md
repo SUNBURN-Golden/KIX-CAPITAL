@@ -1,5 +1,63 @@
 # Validation scope
 
+## Fake port composition — builder verification
+
+2026-11-01, baseline HEAD `c4114c751ea149865493bd3c734bc5d3c423ae2e`,
+branch `agent/capital-fake-port-composition`.
+
+Added `tests/test_port_composition.py` and documented its boundaries in README
+and INTEGRATION. Six discovery tests cover the preflighted gate and fake IdP
+through the actual loopback facade, including the eight-command lifecycle,
+role-based reads, rejected credentials, both preflight drift cases, all seven
+pinned fault-corpus scenarios, accepted/rejected first-result replays, conflicts
+and unsupported producer operations. Business snapshots exclude observability
+counters and include canonical state, journal, receipts, mappings, overlay and
+saved memory storage. All servers use loopback; composition servers use ephemeral
+ports and are shut down and joined by context cleanup, including failure paths.
+
+No runtime defect was demonstrated, so no runtime implementation, port contract,
+executable pin or corpus was changed. No new vector files were added. Evidence
+is local `CLAIM_CONFORMANCE` with `LOCAL_FAKE_IDP`, `LOCAL_FAKE_GATE`, SIMULATED
+commands and READ_ONLY_FIXTURE inputs. Identity, authentication and adoption
+remain NOT_BOUND; this does not establish SEMANTIC_CONFORMANCE, upstream
+integration, real funds movement or distributed durability. Neither upstream
+checkout was supplied or required.
+
+Commands actually executed (all results use local synthetic inputs). The
+independent verification round on 2026-11-01 reran every listed command after
+implementation; earlier implementation-iteration results are noted inline:
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_port_composition.py -v` | Implementation iteration: one test initially omitted required `instance_id` on the facts request; corrected only the test request. Verification round: exit 0, 6 passed in 6.674s |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, semantic HOLD, adoption NOT_BOUND |
+| `python3 scripts/gate_faults.py --check` | Exit 0; all 7 pinned cases match |
+| `python3 scripts/auth_matrix.py --check` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages (repeated after documentation changes) |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1308 passed in 315.717s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm run test:browser` | Exit 1 before tests: default loopback port 8765 occupied by an unrelated local service (`Errno 98`); rerun through the temporary port-remap config below |
+| `npx playwright test --config /tmp/fake-port-composition-playwright.config.cjs` | Exit 0; 76 passed in 1.9m (Chromium); all four spawned web servers exited with the run |
+| Inline Python vendor integrity check (`hashlib.sha256` against `capital/vendor/manifest.json`, plus `git diff` on the vendor tree) | Exit 0; all five SHA256 pins match; `capital/vendor/` and `.aiops/` diffs empty |
+| `git diff --check` | Exit 0 |
+
+Deviations from the supplied plan: no conditional runtime fix was necessary.
+Chromium was already available. Default port 8765 is held by an unrelated local
+service, so the browser suite ran through
+`/tmp/fake-port-composition-playwright.config.cjs`, which requires the tracked
+config and remaps only ports 8765–8768 to 39765–39768 (adding the missing
+`--port` on the default server command), with absolute test/output paths and
+repository server working directory. Projects, assertions, timeouts, retries
+and tracked browser config are unchanged. Orphaned `capital.server` processes
+from an earlier browser run of this node were stopped first; no unrelated
+server was stopped. Existing root `DECISION_REQUIRED.md` is preserved as
+historical material. No financial terms, provider choices or other
+consequential decisions were needed. No commit, push, PR, issue, external post,
+`.aiops/` edit or upstream change was made.
+
 ## Portfolio history comparison — supervisor conflict-fix round 2
 
 2026-10-30. Resolved the supervisor-started merge of incoming main
