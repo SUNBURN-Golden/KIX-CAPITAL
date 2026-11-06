@@ -490,3 +490,129 @@ Empty overlays omit both overlay cut keys under the adopted
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
+
+## Local upstream re-pin evidence
+
+`scripts/upstream_repin_check.py` is a stdlib, read-only local checker. All
+reports are SIMULATED / provisional and set `repin_performed:false`. Standalone
+`--check --root ROOT` consumes that root's adopted re-pin policy and checks its
+HOLD inventory. Comparison requires explicit `--baseline`, `--candidate` and
+`--evidence`; baseline policy is authoritative. The checkout running the checker
+supplies trusted parsers, AST inspection and the technical registry. Candidate
+code and evidence commands are never executed, nor is anything fetched.
+
+Candidate policy may retain the historical inventory or change only declared
+inventory SHAs to match movement records. Other edits to the eight entries
+(including status, scope, classes, cardinality and evidence obligations) fail.
+Separate governance review is needed for unsupported inventory/policy changes.
+No hash equality expands binding to unrelated tables. Contract-invariants
+registration remains the separate `upstream-repin-inventory-contract-invariants`
+follow-up, `PENDING_NOTE_REGISTRATION`.
+
+Inputs are directories, not Git refs. Caller-selected `baseline_id` and
+`candidate_id` identify snapshots; neither is authenticated. Content digests
+bind those labels to bytes: SHA256 of UTF-8 compact, sorted-key JSON mapping
+normalized relative paths to file SHA256, with JSON ASCII escaping (`ensure_ascii=True`). The inventory includes every regular
+file recursively under `capital/`, `scripts/`, `tests/`, `docs/`, and optional
+`source_material/`, plus existing root `README.md`, `AGENTS.md`, `package.json`,
+`package-lock.json`, `pyproject.toml`, `playwright.config.cjs`. Excluded components
+are `__pycache__`, `.pytest_cache`, `node_modules`, `test-results`,
+`playwright-report`, and `.pyc`/`.pyo` files. Build outputs, Git metadata and
+external evidence/logs are outside the inventory. Symlinks, escaping paths,
+duplicate JSON keys and non-normalized paths are rejected. Evidence and logs
+must be outside both source snapshots to avoid self-referential hashes.
+
+Evidence schema (`capital-upstream-repin-evidence-v1`):
+
+```json
+{
+  "schema": "capital-upstream-repin-evidence-v1",
+  "baseline_id": "SIMULATED caller-selected baseline",
+  "candidate_id": "SIMULATED caller-selected candidate",
+  "baseline_digest": "<content SHA256>",
+  "candidate_digest": "<content SHA256>",
+  "policy_digests": {"baseline": "<note SHA256>", "candidate": "<note SHA256>"},
+  "changes": [{
+    "surface": "vendor_pin or ai_draft_pin",
+    "old_sha": "<full baseline SHA>", "new_sha": "<full proposed SHA>",
+    "trigger": "<one of baseline policy triggers>",
+    "acceptance_basis": "<specific review basis>", "decision_maker": "<attribution>",
+    "consumer_impact": "<affected consumers>",
+    "compatibility_authority_analysis": "<compatibility and authority effects>",
+    "rollback": "<atomic verified rollback procedure>",
+    "artifacts": [{
+      "path": "<candidate-relative file>", "role": "<required_evidence role>",
+      "digest": "<file SHA256>", "method": "generator",
+      "procedure": "<regeneration procedure>", "result": "UNCHANGED_REGENERATED"
+    }],
+    "validation": [{
+      "check_id": "<registered command ID>", "argv": ["python3", "<script>", "<args>"],
+      "candidate_id": "SIMULATED caller-selected candidate",
+      "candidate_digest": "<content SHA256>", "exit_code": 0, "result": "PASS",
+      "logs": [{"path": "<relative to evidence directory>", "digest": "<log SHA256>"}]
+    }]
+  }],
+  "research_corrections": []
+}
+```
+
+This template uses placeholders and is not valid completed evidence. Use the
+Python API `load_policy`, `inspect_snapshot`, `required_evidence`,
+`compare_snapshots` to enumerate the required paths/roles and exact argv. Only
+`python3` is accepted as the normalized Python executable in records. Packaged
+smoke argv uses `build/acceptance-dist/capital-<candidate version>.pyz`, derived
+statically from candidate `capital/__init__.py`. Logs are UTF-8 and hash checked.
+Failed/skipped or contradictory records do not satisfy validation. Citation logs
+must show `CLAIM_DRIFT verified=N total=N` for the affected table, and local
+source headings/needles are inspected without running the candidate checker.
+
+Artifacts use `REGENERATED`, `UNCHANGED_REGENERATED`, or `SOURCE_INSPECTED`.
+Unchanged outputs still require procedure/result evidence. `method:manual`
+requires `claim_evidence` rows (`claim_id`, `source_path`, `source_digest`,
+`explanation`) and `independent_expectations` rows (`claim_id`, `expected`,
+`rationale`); for hand-maintained tables, producer checks and their test vectors, both lists must cover every claim of the corresponding table, without duplicate IDs. Source paths must match that claim and independent expectations must agree with the table. These surfaces require manual reconstruction evidence because they have no registered generator. Evidence claims
+are review material; their execution, independence and authority cannot be
+authenticated by this checker.
+
+| Movement | Required artifact closure |
+|---|---|
+| Either | Each policy-bound table with embedded check vectors (including CE1 input/expected), its implementation/checker and focused tests; all existing manifest/pack vectors and goldens; receipt/export/pack producers; README, handbook, integration, validation, requirements, seams/releases, decision bindings and docs-surface registry |
+| Vendor | All four vendor-bound tables, manifest and five vendor files, original source copies, finance vectors |
+| Citation | Agent table/implementation/test vectors, agent-bearing demo/journey goldens, receipt/export/pack evidence |
+
+The conservative shared golden set covers all existing goldens. Minimum
+artifact membership is the union of baseline and candidate paths, so deleting
+a required output cannot remove an obligation. Evidence may add artifacts but
+cannot remove the registered minimum. Original source files are copied to
+`source_material/<surface>/<source_doc>`; vendor sources also use manifest
+`source_prefix` and file paths. These are read-only inputs, honestly labelled if
+synthetic. Source/vendor bytes must match. No upstream checkout is modified.
+
+| Movement | Required command results (cumulative) |
+|---|---|
+| Either | Decision ledger/bindings, focused binding tests, full unittest discovery, docs-surface, focused re-pin tests, manifest/pack vectors; affected citation checks against explicit local sources |
+| Vendor | upstream/FSM/read-model/CE1 scripts with `--execute`, their focused tests, finance vectors; all nine acceptance stages |
+| Citation | agent script with `--execute`, focused tests; acceptance unit, upstream-claims, browser, packaged-smoke, seeded-demo, integrated-journeys; storage/vendor/node stages when those inputs change |
+
+Every command in each required acceptance stage is required, including seven
+upstream-claims commands, two unit commands, two storage commands when required,
+and both build and smoke results. Stage summaries alone do not satisfy this
+contract. Registry agreement is tested against trusted `scripts/acceptance.py`.
+These are completeness obligations, not commands run by the checker.
+
+Research provenance is reported separately with original note path/digest and
+`bases`/`기준:` source lines and SHA-bearing 기준 table rows. A correction requires a `research_corrections` row
+with `path`, ISO `date`, `reason`, `replacement_basis`, `original_digest`,
+`original_provenance`; deletion of historical notes is not accepted as a
+correction. The original provenance is retained in the comparison report.
+Ordinary note validation and the whole candidate binding fence still apply.
+
+Reports contain sorted findings, classifications, inspected hashes, separate
+research changes, missing artifact paths and missing validation IDs. Exit 0
+means `HOLD` or `EVIDENCE_COMPLETE` (completeness for review only); exit 1 means
+findings/invalid input; exit 2 means argument misuse. Approval, adoption and
+receipt authentication stay `NOT_BOUND`: the checker does not authenticate an
+adoption receipt or prove same-PR membership, regeneration execution, actual
+upstream source identity, or professional legal/tax review. Historical results
+are never substituted for candidate-bound evidence. Failed validation never
+causes an automatic pin switch; current pins remain unchanged by this node.
