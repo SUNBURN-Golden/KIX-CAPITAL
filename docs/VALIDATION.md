@@ -4249,3 +4249,44 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## participation-window-shadow — builder verification (2026-11-02)
+
+Built `capital/participation.py` (bounded disposable multi-claim participation
+replay behind `ShadowPolicyPort.participation_replay` plus the
+`python3 -m capital.participation` CLI), the pinned vector file
+`tests/vectors/participation_window.json`, the read-only checker
+`scripts/participation_vectors.py --check`, and `tests/test_participation.py`.
+The worktree already held an uncommitted first draft of the module, the vector
+file and the checker; this round reviewed them against the adopted decision
+note, normalized echoed input for full reorder invariance, and completed the
+missing tests, bindings, needles and docs. All outputs are `SIMULATED` /
+`SHADOW_NOT_APPLIED` / `UNSUPPORTED_BY_PINNED_FSM` with every execution flag
+false; nothing is stored, posted or executed. The eight
+`participation-window-decision` bindings are now `CONSUMED` by
+`capital/participation.py` and `tests/test_participation.py`; the settlement
+`revenue_participation` entry additionally lists both. No legacy single-claim
+vector, golden, vendor file, manifest, `.aiops/` or CI file changed.
+
+| Check | Measured result |
+|---|---|
+| `python3 -m unittest tests.test_participation tests.test_shadow tests.test_shadow_slice_uc tests.test_seams -v` | Exit 0; 96 passed. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,335 passed** in 361.539 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/participation_vectors.py --check` | Exit 0; 13 independent scenarios match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 274 artifacts / 9 stages after adding the `participation_window.json` needle entry and README prose. |
+| `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101102 bytes match. |
+| `python3 scripts/fsm_contract_claims_check.py --execute` | Exit 0; 35/35 CLAIM_CONFORMANCE passed. |
+| `npm ci` + `npm run test:browser` | `npm ci` installed @playwright/test 1.58.2 (dev dependency, unchanged lockfile); browser suite exit 0, **76 passed** in 2.2 m on default ports 8765–8768 (all free; no remapped config needed). |
+| Vendor SHA-256 re-verification (all five files + manifest) | All `OK` against `capital/vendor/manifest.json` (pin `7481b0e`). |
+
+Boundary and arithmetic coverage: independent 89/90/91-day cases, duplicate
+identical/conflicting events, fractional carry isolation across statements,
+irreversible cap latch with statement-limited clawback, term-day `T`
+inclusiveness, post-term negative-only adjustments, empty-day observation
+closure, every capacity bound, classification/source-substitution atomic
+rejects, number-free `SHADOW_NOT_BOUND` on missing or runtime-mutated notes.
+The single `python3 scripts/acceptance.py` ladder was not rerun as one command;
+its stage-equivalent checks above each passed.
