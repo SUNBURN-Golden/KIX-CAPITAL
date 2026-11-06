@@ -266,9 +266,10 @@ otherwise empty directory; pass its `next_cursor` as `after` until it is null.
 `GET /api/export/facts/schema` serves `KIX_CAPITAL_FACTS_SCHEMA_V1`. Rows contain
 accepted F04 journal entries and the overlay journal in commit order, with KRW
 integer atoms, declared widths and a duplicate marker. The technical limit is
-1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; restart from
-the first page. Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage
-returns 503, including for continuing cursors; no empty substitute book is exported.
+1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; collection
+stops. A new collection requires an explicit invocation with a new directory.
+Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage returns 503,
+including for continuing cursors; no empty substitute book is exported.
 
 `python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
 cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
@@ -282,3 +283,46 @@ with `stage7_authenticated_export: false` and a non-claim of
 with all hashes rebuilt cannot be detected. No source authority, signing, import,
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
+
+### Bounded loopback facts collection
+
+With a local Capital server already running, select a **new** artifact directory
+outside the checkout and every source workspace; its parent must exist:
+
+```sh
+python3 scripts/collect_facts.py \
+  --endpoint http://127.0.0.1:8765 \
+  --out /tmp/capital-facts-run-001 \
+  --limit 100 --max-pages 1000 \
+  --max-response-bytes 4194304 --max-total-bytes 67108864 --timeout 10
+python3 -m capital.verify --facts /tmp/capital-facts-run-001
+```
+
+The stdlib collector uses GET only, bootstraps one session, and saves exact
+canonical response bytes as `page-00000000.json`, `page-00000001.json`, … .
+`next_cursor: null` ends fetching; successful offline verification establishes
+completion. Exit 0 means `COMPLETE.json` was atomically published with status
+`VERIFIED_COMPLETE`, ordered filenames, byte counts, SHA256 hashes and the
+existing verifier report. Re-verify the pages before later use: a marker records
+collection success and cannot protect files from later edits.
+
+Existing outputs (including empty directories and symlinks) are refused. The
+collector creates no parent directories and leaves source workspaces untouched.
+Page count, per-response body bytes, aggregate body bytes (including bootstrap
+and error responses), and a finite deadline per request bound collection. The
+endpoint must be exactly `http://127.0.0.1:PORT` (optional final `/`). Proxy
+environment variables are ignored; redirects, compression and chunked/ambiguous
+framing are refused. Responses must close after their declared body.
+The synthetic bootstrap token stays in memory and never enters artifacts or
+collector diagnostics; token-bearing pages are refused before writing.
+
+`CUT_MOVED`, `SESSION_CHANGED`, storage-health refusal, timeout, malformed data,
+failed replay or failed file publication terminates with exit 1 and no completion
+marker. Invalid CLI arguments exit 2. Partial directories are inspectable but
+incomplete and cannot be resumed. Investigate the failure, then explicitly choose
+a different new directory for another invocation. No automatic restart, cursor
+reset, command submission, polling, server snapshot retention or workspace import
+is provided. All output remains `SIMULATED`, source authority and authentication
+`NOT_BOUND`, and `stage7_authenticated_export: false`. No new signing or stage-5
+durability claim is made. See [integration details](docs/INTEGRATION.md) and the
+[operator handbook](docs/OPERATOR_HANDBOOK_KO.md).

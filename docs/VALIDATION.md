@@ -4249,3 +4249,68 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## facts-export-collector builder verification — 2026-11-01
+
+Implemented `scripts/collect_facts.py` and 19 stdlib HTTP/filesystem/CLI tests in
+`tests/test_collect_facts.py`. Real loopback tests compare exact response bytes,
+reconstruct F04 and overlay journals against source exports, and preserve source
+workspace bytes and receipts. Hostile peers cover redirects, framing, byte/page
+bounds, slow headers/body deadlines, malformed and resealed pages, fixed-session
+failures, token echoes and failed writes/verifier/marker publication. Existing
+facts tamper vectors are reused without regeneration or new committed fixtures.
+The collector writes only a newly selected artifact directory; a final null
+cursor ends fetching, and existing offline replay gates `COMPLETE.json`.
+All observations are local **SIMULATED**; source authority and authentication
+remain **NOT_BOUND**, with `stage7_authenticated_export: false` and no funds
+execution or stage-5 durability claim.
+
+Commands actually run and observed results:
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -p 'test_collect_facts.py' -v` — initial invocation | Exit 1; 19 tests ran, with three subtest errors in the empty/F04/overlay comparison. The new test incorrectly tried to JSON-encode the already-byte-valued `_frozen()` snapshot. Corrected it to compare the bytes directly; no production code or existing test was weakened. |
+| Same narrow command — first rerun | Exit 0; 19 passed in 4.571 s. |
+| Same narrow command — after strengthening canonical source-export comparisons | Exit 0; 19 passed in 3.768 s. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 canonical/intentional-tamper files match. |
+| `python3 scripts/http_hostile.py --check` | Exit 0; 76 files match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 273 artifacts / nine stages. Re-run after the final validation entry also passed. |
+| `npm ci` | Exit 0; three packages installed, four audited, zero vulnerabilities reported. No lockfile change. |
+| `python3 -m unittest discover -s tests -v > /tmp/capital-facts-collector-unittest.log 2>&1` | Exit 0; **1,321 passed** in 390.547 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed in 0.001 s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm run test:browser > /tmp/capital-facts-collector-browser.log 2>&1` | Exit 1 at web-server startup: shared port 8765 was occupied by an unrelated crawler from another workspace. No browser assertions ran. The listener was left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser' > /tmp/capital-facts-collector-browser-isolated.log 2>&1` | Exit 0; **76 passed** in 2.3 min with installed Playwright 1.58.2 / Chromium headless shell 1208. Configuration and assertions were unchanged. No browser skip. |
+| Vendor/protected-path assertion block below | Exit 0; all five manifest SHA256 locks match, all five vendor files plus manifest and legacy export are byte-identical to HEAD, no protected-path diff. Re-run after final documentation edits also passed. |
+| `git diff --check` | Exit 0, including after final documentation edits. |
+| Process inspection after browser completion | No remaining Capital server or Playwright test process from this run. All test servers were closed; the unrelated crawler was not changed. |
+
+The vendor/protected-path command used was:
+
+```sh
+python3 - <<'PY'
+import hashlib, json, subprocess
+from pathlib import Path
+root=Path.cwd()
+manifest=json.loads((root/'capital/vendor/manifest.json').read_bytes())
+for name, expected in manifest['files'].items():
+    raw=(root/'capital/vendor'/name).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == expected, name
+    assert raw == subprocess.check_output(['git','show','HEAD:capital/vendor/'+name]), name
+    print('SHA256_LOCK_MATCH',name)
+for name in ('capital/vendor/manifest.json','capital/export.py'):
+    assert (root/name).read_bytes() == subprocess.check_output(['git','show','HEAD:'+name]), name
+    print('HEAD_BYTE_IDENTICAL',name)
+assert not subprocess.check_output(['git','diff','HEAD','--','.aiops/','.github/','capital/vendor/','capital/export.py'])
+print('PROTECTED_PATHS_UNCHANGED')
+PY
+```
+
+Plan adjustments: the client additionally probes for EOF after Content-Length
+to refuse undeclared trailing bytes; this matches the existing server's closing
+responses and is documented as supported framing. Browser verification used an
+isolated loopback namespace because of the unrelated occupied port. No product
+decision was needed. No production facts/verifier/server/auth/export module,
+vendored reference, manifest, `.aiops/`, CI or Protocol/Commerce checkout was
+changed. No commit, push, PR, issue, external comment or other post was made.
