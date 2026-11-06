@@ -138,6 +138,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'fold_fuzz.json': (
         'tests/vectors/fold_fuzz.json', 'scripts/fold_fuzz.py --check'),
+    'participation_window.json': (
+        'tests/vectors/participation_window.json', 'scripts/participation_vectors.py --check'),
     'export-dev.key': ('tests/vectors/export-dev.key',),
     'dev-keyset-active.json': ('tests/vectors/dev-keyset-active.json', 'scripts/manifest_vectors.py --check'),
     'dev-keyset-retired.json': ('tests/vectors/dev-keyset-retired.json', 'scripts/manifest_vectors.py --check'),

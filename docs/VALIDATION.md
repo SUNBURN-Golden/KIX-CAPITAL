@@ -4472,6 +4472,46 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## participation-window-shadow — builder verification (2026-11-02)
+
+Built `capital/participation.py` (bounded disposable multi-claim participation
+replay behind `ShadowPolicyPort.participation_replay` plus the
+`python3 -m capital.participation` CLI), the pinned vector file
+`tests/vectors/participation_window.json`, the read-only checker
+`scripts/participation_vectors.py --check`, and `tests/test_participation.py`.
+The worktree already held an uncommitted first draft of the module, the vector
+file and the checker; this round reviewed them against the adopted decision
+note, normalized echoed input for full reorder invariance, and completed the
+missing tests, bindings, needles and docs. All outputs are `SIMULATED` /
+`SHADOW_NOT_APPLIED` / `UNSUPPORTED_BY_PINNED_FSM` with every execution flag
+false; nothing is stored, posted or executed. The eight
+`participation-window-decision` bindings are now `CONSUMED` by
+`capital/participation.py` and `tests/test_participation.py`; the settlement
+`revenue_participation` entry additionally lists both. No legacy single-claim
+vector, golden, vendor file, manifest, `.aiops/` or CI file changed.
+
+| Check | Measured result |
+|---|---|
+| `python3 -m unittest tests.test_participation tests.test_shadow tests.test_shadow_slice_uc tests.test_seams -v` | Exit 0; 96 passed. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,335 passed** in 361.539 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/participation_vectors.py --check` | Exit 0; 13 independent scenarios match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 274 artifacts / 9 stages after adding the `participation_window.json` needle entry and README prose. |
+| `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101102 bytes match. |
+| `python3 scripts/fsm_contract_claims_check.py --execute` | Exit 0; 35/35 CLAIM_CONFORMANCE passed. |
+| `npm ci` + `npm run test:browser` | `npm ci` installed @playwright/test 1.58.2 (dev dependency, unchanged lockfile); browser suite exit 0, **76 passed** in 2.2 m on default ports 8765–8768 (all free; no remapped config needed). |
+| Vendor SHA-256 re-verification (all five files + manifest) | All `OK` against `capital/vendor/manifest.json` (pin `7481b0e`). |
+
+Boundary and arithmetic coverage: independent 89/90/91-day cases, duplicate
+identical/conflicting events, fractional carry isolation across statements,
+irreversible cap latch with statement-limited clawback, term-day `T`
+inclusiveness, post-term negative-only adjustments, empty-day observation
+closure, every capacity bound, classification/source-substitution atomic
+rejects, number-free `SHADOW_NOT_BOUND` on missing or runtime-mutated notes.
+The single `python3 scripts/acceptance.py` ladder was not rerun as one command;
+its stage-equivalent checks above each passed.
 ## Upstream re-pin policy enforcement — builder verification (2026-11-01)
 
 SIMULATED local verification of `scripts/upstream_repin_check.py`; no actual
@@ -4577,3 +4617,39 @@ Completed-run logs are retained under ignored `build/portfolio-migrations/`
 inspection found no `python3 -m capital.server` or `playwright test` process;
 the test-managed servers exited. Only the six planned source/test/documentation
 files are changed; no work is staged or committed.
+
+## participation-window-shadow — conflict-fix round 1 (2026-11-06)
+
+Resolved the `docs/VALIDATION.md` append conflict while merging `origin/main`.
+Retained the participation replay builder record and main's upstream re-pin and
+portfolio-aging-migrations records byte-for-byte. All automatically merged code,
+tests, decisions and vectors remain present; no implementation or fixture repair
+was needed. This is local SIMULATED verification, with no funds execution,
+provider calls, external posts or deployment.
+
+| Command / check | Measured result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,407 passed** in 546.145 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/participation_vectors.py --check` | Exit 0; all 13 independent scenarios match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 274 artifacts / 9 stages. |
+| `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101104 bytes match. |
+| `python3 scripts/manifest_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | Both exit 0; 19 and 9 files match respectively. |
+| `python3 scripts/fsm_contract_claims_check.py --execute` | Exit 0; 35/35 CLAIM_CONFORMANCE passed. |
+| Chromium launch probe | Installed headless Chromium 145.0.7632.6 launches successfully. |
+| `npm run test:browser` | Exit 1 before tests: an existing listener occupies a required loopback port; left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** in 2.3 min with unchanged configuration and assertions inside isolated loopback networking. |
+| SHA256 and byte preservation | All five vendor files match manifest locks at pin `7481b0e`; the five files, manifest, legacy export and historical root `DECISION_REQUIRED.md` match both HEAD and origin/main. No `.aiops/` changes. |
+| Conflict and whitespace checks | Both original conflicting blocks retained; no conflict markers or unmerged index entries; `git diff --check` passes. |
+
+Ephemeral logs: `/tmp/participation-merge-unit.log`,
+`/tmp/participation-merge-browser.log`,
+`/tmp/participation-merge-browser-isolated.log`,
+`/tmp/participation-merge-check-0.log` through
+`/tmp/participation-merge-check-9.log`, and `/tmp/participation-merge-fsm.log`.
+The failed default-port browser attempt is retained separately from the passing
+isolated run. The resolved merge is staged and left uncommitted for the
+supervisor; no merge abort, commit, push, rebase or reset was performed.

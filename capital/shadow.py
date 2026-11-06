@@ -24,9 +24,11 @@ the ordered UC1-UC4 partition of `undistributed_cash` are pure integer-floor
 functions here (CAPITAL_SHADOW_POLICY section 3.7). Their ratio, cap, advance
 rate and tier rate are read from the settlement and financial-terms notes at
 runtime; only the CAPITAL-SHADOW-V1 rule constants (10000 bps, 365 days) live in
-code. The multi-claim base, 90-day window, upward late cash, term end, slice
-registry, holder priority, impairment, aggregate caps, 180-day timer, D+1 batch
-and provider return stay `SHADOW_DEFERRED` with the unblock seam from the note.
+code. The predecessor participation output retains its `SHADOW_DEFERRED` fields.
+The additive `participation_replay` composes the disposable multi-claim/window
+calculator in `capital.participation`; it reads the later window decision for
+holder priority and cap/term semantics. Slice registry checks remain read-only.
+The 180-day timer, D+1 batch and provider return remain deferred.
 """
 from __future__ import annotations
 
@@ -399,7 +401,9 @@ class DecisionNoteShadow:
     policy value is copied into this module.
     """
 
-    def __init__(self, path=None, *, terms_path=None, shadow_path=None):
+    def __init__(self, path=None, *, terms_path=None, shadow_path=None, participation_path=None):
+        self.participation_path = participation_path
+        self._settlement_override = path
         self.path = default_note_path() if path is None else as_resource(path)
         self.note = read_note(self.path, override=path is not None)
         self.terms_path = default_terms_path() if terms_path is None else as_resource(terms_path)
@@ -857,6 +861,12 @@ class DecisionNoteShadow:
             result.update(extra)
         return self._finish(result, vector)
 
+    def participation_replay(self, book) -> dict:
+        """Disposable multi-claim/window replay; predecessor outputs stay unchanged."""
+        from capital.participation import load_participation_policy, replay_participation
+        binding = load_participation_policy(self.participation_path, self._settlement_override)
+        return replay_participation(book, binding=binding)
+
     def participation(self, vector) -> dict:
         """Single-claim participation posting (ratio and cap read from the note)."""
         def compute(v):
@@ -1081,6 +1091,9 @@ class ShadowPolicyPort(Protocol):
 
     def resale(self, vector) -> dict:
         """Latest-trade resale unwind shadow (RU1-RU3). Inputs are explicit."""
+
+    def participation_replay(self, book) -> dict:
+        """Bounded disposable multi-claim participation with explicit observation day."""
 
     def participation(self, vector) -> dict:
         """Single-claim revenue participation posting shadow."""
