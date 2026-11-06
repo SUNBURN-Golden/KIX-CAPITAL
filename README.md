@@ -300,3 +300,41 @@ with `stage7_authenticated_export: false` and a non-claim of
 with all hashes rebuilt cannot be detected. No source authority, signing, import,
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
+
+### Residual obligations after terminal status
+
+`python3 -m capital.residuals --workspace DIR` emits canonical JSON from one
+captured, audited `DIR/workspace.json`, entirely offline using Python stdlib.
+The `KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1` register is `SIMULATED` /
+`READ_ONLY_RESIDUAL_REGISTER`. Terminal FSM status does not mean every obligation
+is extinguished: principal can be fully repaid and CLOSED while interest or
+unapplied cash remains; DEFAULTED cases can retain claims before and after a
+recorded write-off. IMPAIRED slices can retain outstanding amounts and shortfall.
+
+Five separate sections retain case/slice identity, lifecycle, existing fold
+values and indexed supporting journal references: `closed_unpaid_interest`,
+`unapplied_cash`, `defaulted_unwritten`, `post_writeoff_residual_claims`, and
+`impaired_slice_residuals`. Each integer metric has its own reconciliation and
+total; there is no grand total, cash netting across cases, addition of F04
+exposure to a residual claim, or addition of slice shortfall to outstanding.
+Fractional sub-won remainders remain separate from integer totals.
+
+`COMPLETE` means only the declared recorded population was audited and
+reconciled. Missing monetary evidence is `NOT_BOUND`, with null amounts and
+null category metric totals plus known subtotals; it is never inferred as zero.
+Validated zero rows remain visible. Slice figures use the latest recorded slice
+witness containing the claim, require its mapped payee and recorded baseline,
+and retain its `claim_view_sha`; later settlement history is `NOT_BOUND`.
+Audit/restoration failure emits `AUDIT_FAILED` with null sections. Exit codes:
+0 `COMPLETE`, 1 `INCOMPLETE`/`AUDIT_FAILED`, 2 argument misuse.
+
+Reads take no workspace lock and preserve source bytes/modes. Identical bytes,
+supplied path and local audit inputs produce identical output (the existing
+audit path and saved envelope metadata are retained). This register establishes
+no authentication, actual payment, waiver, refund/cash release, collection,
+slice write-off, legal collectability or accounting recognition. It performs
+no workspace mutation, new persistence, statement reclassification, HTTP/UI
+change or external call. See [the contract](docs/INTEGRATION.md#residual-obligations-report)
+and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
+Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
+and `python3 scripts/docs_surface.py --check`.

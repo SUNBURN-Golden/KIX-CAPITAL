@@ -516,3 +516,91 @@ That cut describes the reopened fixture context; it does not attest persistence 
 disposable settlement book or authenticated recovery cash. `funds_executed`,
 `integrated` and `qualification_claimed` remain false. COA payment postings and
 allowance mechanics are outside these journeys. Human acceptance boxes remain pending.
+
+## residual-obligations-report
+
+Offline stdlib API: `capital.residuals.report_workspace(directory) -> dict`;
+CLI: `python3 -m capital.residuals --workspace DIR`;
+`main(argv=None) -> int`. Read `workspace.json` once, pass those bytes to
+`audit.audit_workspace_bytes(raw, workspace=str(directory))`, strict-parse the
+same capture with `capital.verify.loads`, restore via `evidence.offline_service`,
+require ACTIVE, and close its observability in `finally`. Compose detached
+journals via `overlay.fold(entries, len(journal))`; never open `FileWorkspace`,
+lock, sign, save or connect. Emit `store.canonical_bytes(report) + b'\n'`.
+
+The exact envelope fields are `format` = `KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1`,
+`label` = `SIMULATED`, `mode` = `READ_ONLY_RESIDUAL_REGISTER`, `status` =
+`COMPLETE|INCOMPLETE|AUDIT_FAILED`, `reasons` (strings), `source`, `sections`,
+`interpretation` (fixed explanatory string), `authentication`, `actual_payments`,
+`legal_collectability` (each `NOT_BOUND`), `funds_executed`, `workspace_mutated`
+(both false). `source` has `workspace_sha256`, `payload_sha256`, `state_digest`,
+`overlay_state_digest`, `sim_day`, `audit`; unavailable values are null. The
+existing audit object is copied verbatim, including path and saved metadata.
+Determinism requires identical bytes, supplied path and local audit inputs;
+no new clock/session identifier enters output. `sections` is null on audit or
+restore failure. Exit 0 for COMPLETE, 1 otherwise, 2 for CLI argument misuse.
+
+| Section / declared population | Independent integer metrics (KRW) / reader |
+| --- | --- |
+| `closed_unpaid_interest`: all CLOSED advances | `interest_due_krw`, `default_interest_due_krw` / `overlay.advance_gate` |
+| `unapplied_cash`: all recorded F04 draws | `unapplied_cash_krw` / repayment fold |
+| `defaulted_unwritten`: DEFAULTED without folded write-off | `principal_krw`, `interest_krw`, `default_interest_krw`, `claim_krw` / `recovery.position` |
+| `post_writeoff_residual_claims`: folded write-offs | `residual_claim_krw` / `recovery.recovered` |
+| `impaired_slice_residuals`: IMPAIRED registry rows | `slice_face_krw`, `recourse_received_krw`, `served_krw`, `outstanding_krw`, `eligible_line_krw`, `shortfall_krw` / registry + `slices.derived` |
+
+Each section has exactly `rows`, `coverage` (`population`, `candidates`, `bound`,
+`not_bound`), `totals`, `reconciliation`. Each metric total has exactly
+`known_subtotal_krw`, `total_krw` (null if any unknown), `unknown_rows`.
+Reconciliation has `matched` (true/false/null) and `checks`, each with `id`,
+`status` (`MATCHED|MISMATCH|NOT_CHECKED`), `reason` (string/null). It checks known
+rows even in an incomplete section. Independent arithmetic checks entry cash
+conservation, posted interest minus payments, default anchor components minus
+recoveries, write-off residual minus unique late recoveries, and slice baseline,
+recourse, served, eligibility and shortfall formulas. A mismatch makes the
+report INCOMPLETE with `RECONCILIATION_FAILED`. No cross-category total is defined.
+
+Each row has exactly `advance_id`, `slice_id`, `claim_id`, `beneficiary_role`,
+`payee_label`, `holder_role` (string/null), `lifecycle_status`, `evidence_status`
+(`BOUND|NOT_BOUND`), `reasons`, `basis` (`RECORDED_FOLD|LAST_RECORDED_OBSERVATION`),
+`amounts` (the section's metrics, integer/null), `fold_values`, `remainders`,
+`references`. Rows sort by identity, references by journal/index. Each reference
+has exactly `journal` (`F04|OVERLAY`), zero-based `index`, `entry_id`, `kind`,
+`after_journal_index`, `sim_day` (last two integer/null). F04 logical dates are
+never invented. References resolve into the captured original journals, retaining
+all original evidence/quote/source references. Identical overlay IDs use their
+first occurrence, matching fold deduplication.
+
+`fold_values` contains detached existing objects or null, with exactly:
+`accrual` (overlay advance record: cumulative exact interest, posted integer
+interest, accrual days and existing recognition fields), `repayment` (per-advance
+paid default/contract interest, principal, unapplied cash and posting count),
+`recovery` (`recovery.recovered`: recovered principal, paid interest, written-off
+amount, residual claim and write-off day), `position` (`recovery.position`'s four
+components), `slice` (registry identity, policy, baseline, status and recourse),
+`derived` (`slices.derived`'s served, outstanding, eligibility, encumbrance,
+exposure, shortfall and advisory flags), `observation` (recorded bounded slice
+witness: `claim_view_sha`, refund face, fixture reclassification flag and mapped
+lines with face/outstanding/distributed/recovery_due). These retain their
+existing fold schemas; the report does not define substitute financial fields.
+`remainders` has `contract_subwon`, `default_subwon` as fraction strings/null,
+excluded from integer totals.
+
+Interest requires an actual accrual record. Cash requires a valid folded terms
+binding and per-advance accrual or repayment evidence; absence of repayment is
+zero recorded cash only within that coverage. Default claims also require their
+anchor. Missing evidence yields NOT_BOUND/null, including legacy workspaces;
+validated zero rows remain visible. An impaired slice uses the latest
+first-occurrence audited slice witness containing its claim; that witness must
+contain its payee line and the registry must have its recorded baseline.
+Never fall back to an older cut/current fixture or call `derived` with a missing
+line. The observation hash and supporting witness reference survive; later
+settlement evidence stays NOT_BOUND.
+
+COMPLETE means only the declared recorded population was audited and reconciled.
+Terminal FSM status does not establish extinguishment of every obligation.
+F04 outstanding exposure is never added to a residual claim for the same
+obligation; cash is never netted against other cases; slice shortfall is never
+added to outstanding. This reader decides no waiver, cash release, collection,
+slice write-off, legal collectability or accounting recognition. It changes no
+workspace, persistence format, statement classification, HTTP/UI or upstream
+readiness claim.
