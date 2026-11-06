@@ -4554,3 +4554,91 @@ passed in the second full run). No test, timeout or assertion was weakened.
 Default `npm run test:browser` still cannot bind 8765/8766 (unrelated local
 processes hold them), so the documented temporary configs were used; committed
 CI config is unchanged.
+
+
+### slice-registry-desk PR fix round 1 (2026-11-06)
+
+Reviewed merged HEAD `616584569b62a2e55d5a76385b1b212e5190c70c`
+against the reported `test_acceptance_stage_runs_the_ce1_checker_fourth`
+failure. The reported nonzero acceptance result was not reproduced: the
+isolated test passed, the full 1,328-test suite passed including that test,
+and 20 consecutive runs of the unchanged seven-command upstream-claims
+stage each returned exit 0 with 322 passes, two documented divergences and
+zero failures across 324 evaluated rows. This evidence rebuts a reproducible
+merge regression at this HEAD; it does not establish the cause of the earlier
+failure or claim that an intermittent failure cannot recur.
+
+The only test change adds the captured stage records to the existing exit-code
+assertion's failure message. Those records include child command arguments,
+exit codes, counts and output tails, so a recurrence remains diagnosable after
+the temporary evidence directory is deleted. All assertions, commands,
+timeouts and acceptance criteria remain enforced. No product behavior was
+changed. The complete CE1 module passed all 14 tests after this diagnostic
+change.
+
+Local evidence is under ignored `build/slice-registry-review-round1/`.
+`upstream-claims.json` records a further real execution of the selected
+acceptance stage: all seven commands exit 0, 322 passes plus two documented
+divergences, zero failures. This is selected-stage CLAIM_CONFORMANCE evidence,
+not a full acceptance-ladder or production result. The product results are
+SIMULATED; drift verification of an external Protocol checkout was not run.
+
+Default `npm run test:browser` could not start because unrelated processes
+occupied the default loopback ports (8765, 8766 and 8767). The temporary config
+`/tmp/slice-registry-review-playwright.config.cjs` imports the unchanged tracked
+config and keeps all projects and assertions, while remapping configured
+ports 8765–8768 to 18965–18968. It uses this checkout as the server cwd and
+absolute artifact paths. No existing listener was stopped or reused.
+The first remapped full browser run overlapped the unit suite: 102 passed,
+two failed (30-second page-fixture setup timeout in operator-desk; initial
+loading notice still present at the five-second expectation in portfolio).
+All 28 slice-registry cases passed. The full browser suite was then rerun
+after the unit suite completed, with the same config and assertions.
+
+The second full browser run passed both earlier timeout cases, with 103/104
+passing overall. The association case failed during its beforeEach server
+startup poll (ECONNREFUSED on 127.0.0.1:8951); no association assertion ran.
+Its trace is retained under `browser-second-failure/`. The same case then
+passed unchanged in isolation (1/1 in 3.0s). A third complete run used the
+same unmodified config and assertions. These failed runs remain recorded;
+no inference about the earlier unit-test failure's cause follows from them.
+
+The third full browser run passed all 28 slice-registry cases and 103/104
+overall. Its lifecycle case timed out waiting for the journal-replay notice;
+the trace and log are retained under `browser-third-failure/` and
+`browser-third.log`. A fourth complete run retained the same assertions,
+projects and timeouts. No browser test or product change was made in response
+to these changing timeout failures.
+
+
+| Verification | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,328 tests passed in 460.910s; includes the reported CE1 acceptance test. |
+| `python3 -m unittest discover -s tests -p test_ce1_claims.py -v` | Exit 0; 14 tests passed after the diagnostic-only assertion change. |
+| Twenty consecutive selected upstream-claims executions | Every run exit 0; 322 passes plus two documented divergences / 324 evaluated rows; zero failures. |
+| Further selected acceptance stage with saved evidence | Exit 0; `upstream-claims.json` has `ok=true`, all seven child commands exit 0 and vendor hashes verified. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0. |
+| Vendor verification against manifest and origin/main | All five pinned SHA256 values match; all five reference files and manifest are byte-identical to origin/main. |
+| `git diff --check` | Exit 0. |
+
+Only `tests/test_ce1_claims.py` and this validation record changed during the
+fix round. No vendor, export, `.aiops/`, Protocol/Commerce, decision-document,
+CI, application, financial policy or test expectation changes were made.
+No commit, push, external post, credentials, provider call, funds movement
+or deployment occurred.
+
+Final browser result: `npm run test:browser --
+--config=/tmp/slice-registry-review-playwright.config.cjs` exited 0 with
+104/104 passing in 2.7m, including all 28 slice-registry cases (desktop,
+keyboard, 375px, five statuses, exact quote/guard fields, stale responses,
+role restrictions and zero panel command POSTs). All previously timed-out
+cases passed unchanged in that full run. The final log is
+`build/slice-registry-review-round1/browser-final.log`; the default-port
+failure and all three unsuccessful remapped runs remain recorded separately.
+The temporary config is copied into the evidence directory for inspection.
+These are local SIMULATED browser checks, not production or external-service
+acceptance. Final documentation and diff checks also exit 0.
