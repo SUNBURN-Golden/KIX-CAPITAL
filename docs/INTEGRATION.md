@@ -1,5 +1,69 @@
 # Capital local API and future integration
 
+## Offline portfolio migration contract
+
+`python3 -m capital.portfolio_migrations --before DIR_A --after DIR_B` requires two
+explicit directories containing `workspace.json`. The stdlib entry point
+`report_workspaces(before_dir, after_dir)` invokes `portfolio_compare.compare_workspaces`
+exactly once as its sole compatibility gate. Pure `compose(comparison)` consumes
+that report without mutation. The existing comparison output is unchanged.
+All audit, policy, input, prefix, draw-gate and view checks below apply unchanged.
+Neither snapshot is written or locked; held workspace locks do not prevent reporting.
+
+Canonical JSON plus a newline uses format `KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1`.
+It retains comparator `inputs`, ordered `comparability.checks` and provenance.
+Success has `status: COMPARABLE`, `matrices.portfolio.{aging,watch_status}` and
+`matrices.beneficiaries`, sorted by `beneficiary_role`, each with the same two
+matrices. `reconciliation` contains `matched` and named `{id,scope,dimension,matched}`
+checks. Comparator failures skip aggregation and retain `NON_COMPARABLE` with
+`matrices: null`. Matrix reconciliation failures also suppress all matrices and
+set `reason: MATRIX_RECONCILIATION_FAILED`, retaining the successful comparator
+checks separately. Exit codes are 0 success, 1 non-comparable, 2 argument misuse.
+
+Each matrix has `before_categories`, `after_categories`, dense row-major `cells`,
+`row_totals`, `column_totals` and `grand_totals`. Aging uses `risk.AGING_IDS`
+(`NOT_DUE`, `1-30`, `31-60`, `61-90`, `>90`, `DEFAULTED`); watch status uses
+`portfolio_compare.WATCH_STATUSES` (`CLEAR`, `WATCH`, `BREACH`). The row axis appends
+`ABSENT_BEFORE`; the column axis appends `ABSENT_AFTER`. Zero cells are included.
+Cells identify `before_category` and `after_category`; marginals identify their
+respective category. All cells, marginals and grand totals contain integer measures:
+
+- `advance_count`: the union population of drawn IDs in that cell, including closed
+  and zero-principal advances. Ordinary row/column counts match the respective
+  endpoint population; the grand count includes entries and exits once each.
+- `before_principal_krw`, `after_principal_krw`: separate outstanding principal
+  sums read directly from audited endpoints, with zero for a missing endpoint.
+- `before_open_advance_count`, `after_open_advance_count`: positive-principal
+  endpoint counts, with zero for absence. These correspond to risk aging counts;
+  covenant watch counts instead use the full drawn population.
+
+Classifications and beneficiary roles come directly from comparator rows; no aging,
+watch or financial terms are recomputed here. For every ordinary before row and
+after column, counts, principal and open counts match endpoint rows. Aging principal
+and watch counts additionally match comparator endpoint totals already reconciled to
+risk/covenant views. Absence categories are excluded from endpoint populations.
+Cells sum componentwise to both marginals and grand totals. Per-beneficiary cells,
+marginals and grand totals sum componentwise to the portfolio; both dimensions have
+identical grand totals. Empty snapshots have dense zero matrices and no beneficiaries.
+
+Absence describes only a missing endpoint. It never establishes repayment. Closed
+or fully reduced draws remain present, retain their existing aging/watch classification
+and contribute zero principal. Prefix-compatible snapshots normally cannot lose old
+draws; exit arithmetic is covered only by an explicitly synthetic helper test.
+For example, four day-zero draws of 10,000 each at day 60, followed by a 4,000
+principal reduction, one default, one full reduction and closure, a day-61 tick and
+a new 10,000 draw produce `NOT_DUE -> 1-30` count 3, principal 30,000 -> 16,000;
+`NOT_DUE -> DEFAULTED` count 1, 10,000 -> 10,000; and
+`ABSENT_BEFORE -> NOT_DUE` count 1, 0 -> 10,000. Total principal is 40,000 -> 36,000.
+These are observed transitions, not transition probabilities, scoring, forecasts,
+causal explanations or evidence of actual payments.
+
+The label remains `SIMULATED`; `historical_policy_provenance`, `authentication`,
+`common_ownership` and `actual_payments` remain `NOT_BOUND`. `funds_executed` and
+`workspace_mutated` are false. Local comparison-time policy hashes do not bind
+historical policy or authenticate a snapshot. No storage/history collection, HTTP/UI,
+forecast or portfolio-cashflow-desk behavior is added.
+
 ## Offline portfolio comparison contract
 
 `python3 -m capital.portfolio_compare --before DIR_A --after DIR_B` reads each explicit
@@ -563,3 +627,91 @@ On `CUT_MOVED`, `SESSION_CHANGED`, storage-health refusal, timeout, malformed
 response or any other failure, investigate and explicitly invoke collection with
 a different new directory. The source service, journals and workspace files are
 read-only inputs. No workspace import is provided.
+
+## residual-obligations-report
+
+Offline stdlib API: `capital.residuals.report_workspace(directory) -> dict`;
+CLI: `python3 -m capital.residuals --workspace DIR`;
+`main(argv=None) -> int`. Read `workspace.json` once, pass those bytes to
+`audit.audit_workspace_bytes(raw, workspace=str(directory))`, strict-parse the
+same capture with `capital.verify.loads`, restore via `evidence.offline_service`,
+require ACTIVE, and close its observability in `finally`. Compose detached
+journals via `overlay.fold(entries, len(journal))`; never open `FileWorkspace`,
+lock, sign, save or connect. Emit `store.canonical_bytes(report) + b'\n'`.
+
+The exact envelope fields are `format` = `KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1`,
+`label` = `SIMULATED`, `mode` = `READ_ONLY_RESIDUAL_REGISTER`, `status` =
+`COMPLETE|INCOMPLETE|AUDIT_FAILED`, `reasons` (strings), `source`, `sections`,
+`interpretation` (fixed explanatory string), `authentication`, `actual_payments`,
+`legal_collectability` (each `NOT_BOUND`), `funds_executed`, `workspace_mutated`
+(both false). `source` has `workspace_sha256`, `payload_sha256`, `state_digest`,
+`overlay_state_digest`, `sim_day`, `audit`; unavailable values are null. The
+existing audit object is copied verbatim, including path and saved metadata.
+Determinism requires identical bytes, supplied path and local audit inputs;
+no new clock/session identifier enters output. `sections` is null on audit or
+restore failure. Exit 0 for COMPLETE, 1 otherwise, 2 for CLI argument misuse.
+
+| Section / declared population | Independent integer metrics (KRW) / reader |
+| --- | --- |
+| `closed_unpaid_interest`: all CLOSED advances | `interest_due_krw`, `default_interest_due_krw` / `overlay.advance_gate` |
+| `unapplied_cash`: all recorded F04 draws | `unapplied_cash_krw` / repayment fold |
+| `defaulted_unwritten`: DEFAULTED without folded write-off | `principal_krw`, `interest_krw`, `default_interest_krw`, `claim_krw` / `recovery.position` |
+| `post_writeoff_residual_claims`: folded write-offs | `residual_claim_krw` / `recovery.recovered` |
+| `impaired_slice_residuals`: IMPAIRED registry rows | `slice_face_krw`, `recourse_received_krw`, `served_krw`, `outstanding_krw`, `eligible_line_krw`, `shortfall_krw` / registry + `slices.derived` |
+
+Each section has exactly `rows`, `coverage` (`population`, `candidates`, `bound`,
+`not_bound`), `totals`, `reconciliation`. Each metric total has exactly
+`known_subtotal_krw`, `total_krw` (null if any unknown), `unknown_rows`.
+Reconciliation has `matched` (true/false/null) and `checks`, each with `id`,
+`status` (`MATCHED|MISMATCH|NOT_CHECKED`), `reason` (string/null). It checks known
+rows even in an incomplete section. Independent arithmetic checks entry cash
+conservation, posted interest minus payments, default anchor components minus
+recoveries, write-off residual minus unique late recoveries, and slice baseline,
+recourse, served, eligibility and shortfall formulas. A mismatch makes the
+report INCOMPLETE with `RECONCILIATION_FAILED`. No cross-category total is defined.
+
+Each row has exactly `advance_id`, `slice_id`, `claim_id`, `beneficiary_role`,
+`payee_label`, `holder_role` (string/null), `lifecycle_status`, `evidence_status`
+(`BOUND|NOT_BOUND`), `reasons`, `basis` (`RECORDED_FOLD|LAST_RECORDED_OBSERVATION`),
+`amounts` (the section's metrics, integer/null), `fold_values`, `remainders`,
+`references`. Rows sort by identity, references by journal/index. Each reference
+has exactly `journal` (`F04|OVERLAY`), zero-based `index`, `entry_id`, `kind`,
+`after_journal_index`, `sim_day` (last two integer/null). F04 logical dates are
+never invented. References resolve into the captured original journals, retaining
+all original evidence/quote/source references. Identical overlay IDs use their
+first occurrence, matching fold deduplication.
+
+`fold_values` contains detached existing objects or null, with exactly:
+`accrual` (overlay advance record: cumulative exact interest, posted integer
+interest, accrual days and existing recognition fields), `repayment` (per-advance
+paid default/contract interest, principal, unapplied cash and posting count),
+`recovery` (`recovery.recovered`: recovered principal, paid interest, written-off
+amount, residual claim and write-off day), `position` (`recovery.position`'s four
+components), `slice` (registry identity, policy, baseline, status and recourse),
+`derived` (`slices.derived`'s served, outstanding, eligibility, encumbrance,
+exposure, shortfall and advisory flags), `observation` (recorded bounded slice
+witness: `claim_view_sha`, refund face, fixture reclassification flag and mapped
+lines with face/outstanding/distributed/recovery_due). These retain their
+existing fold schemas; the report does not define substitute financial fields.
+`remainders` has `contract_subwon`, `default_subwon` as fraction strings/null,
+excluded from integer totals.
+
+Interest requires an actual accrual record. Cash requires a valid folded terms
+binding and per-advance accrual or repayment evidence; absence of repayment is
+zero recorded cash only within that coverage. Default claims also require their
+anchor. Missing evidence yields NOT_BOUND/null, including legacy workspaces;
+validated zero rows remain visible. An impaired slice uses the latest
+first-occurrence audited slice witness containing its claim; that witness must
+contain its payee line and the registry must have its recorded baseline.
+Never fall back to an older cut/current fixture or call `derived` with a missing
+line. The observation hash and supporting witness reference survive; later
+settlement evidence stays NOT_BOUND.
+
+COMPLETE means only the declared recorded population was audited and reconciled.
+Terminal FSM status does not establish extinguishment of every obligation.
+F04 outstanding exposure is never added to a residual claim for the same
+obligation; cash is never netted against other cases; slice shortfall is never
+added to outstanding. This reader decides no waiver, cash release, collection,
+slice write-off, legal collectability or accounting recognition. It changes no
+workspace, persistence format, statement classification, HTTP/UI or upstream
+readiness claim.
