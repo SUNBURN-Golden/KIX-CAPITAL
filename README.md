@@ -311,6 +311,21 @@ with all hashes rebuilt cannot be detected. No source authority, signing, import
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
 
+`GET /api/risk/shared-caps` (`projection:read`) reports the existing shared-cap
+policy from one service-locked local capture. This SIMULATED,
+SHADOW_NOT_APPLIED report separates F04 advance principal from counted OPEN /
+IMPAIRED slice face and labels their sum
+`CONSERVATIVE_SLICE_FACE_POLICY_MEASURE`. PROPOSED, RESOLVED and VOID count zero.
+Slice face is a conservative policy measure, distinct from purchase price,
+accounting exposure and available cash. `/api/risk` remains advance-only.
+Existing beneficiary / portfolio caps determine signed remaining capacity and
+integer permille utilization; headroom grants no draw authority and changes no
+enforcement. Missing, malformed or stale policy inputs and unsupported capture
+adapters return `NOT_BOUND`, with null row containers and no invented capacity.
+See [integration contract](docs/INTEGRATION.md) and the
+[shared-cap operator procedure](docs/OPERATOR_HANDBOOK_KO.md#shared-cap-utilization).
+Focused verification: `python3 -m unittest tests.test_shared_caps -v`.
+
 ### Local upstream re-pin evidence checker
 
 `python3 scripts/upstream_repin_check.py --check --root .` reads the eight

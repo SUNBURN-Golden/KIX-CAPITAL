@@ -39,6 +39,7 @@ GET_DISPATCH = (
     ('/api/overlay/slices', False, 'overlay_slices'),
     ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
+    ('/api/risk/shared-caps', False, 'shared_caps'),
     ('/api/risk/covenants', False, 'covenants'),
     ('/api/risk/scenarios', True, 'risk_scenarios'),
     ('/api/policy', True, 'policy'),
@@ -345,6 +346,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_risk(self, route, principal):
             return self.reply(200, service.risk())
+
+        def _get_shared_caps(self, route, principal):
+            if route.query:
+                raise ApiError('INVALID_ARGUMENTS')
+            return self.reply(200, service.shared_caps())
 
         def _get_portfolio_snapshot(self, route, principal):
             params = parse_qs(route.query, keep_blank_values=True)

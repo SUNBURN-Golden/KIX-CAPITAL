@@ -109,6 +109,23 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_shared_cap_operator_contract(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        start = text.index('<!-- handbook-section:shared-cap-utilization -->')
+        section = text[start:text.index('<!-- /handbook-section -->', start)]
+        for word in ('GET /api/risk/shared-caps', 'projection:read', '403 ROLE_FORBIDDEN',
+                     'SIMULATED', 'SHADOW_NOT_APPLIED', 'SIMULATION_ONLY_NOT_OFFERED_V1',
+                     'title_transferred:false', 'legal_effect:NOT_ASSESSED', 'policy_adopted:false',
+                     'funds_executed:false', 'CONSERVATIVE_SLICE_FACE_POLICY_MEASURE',
+                     'PROPOSED', 'OPEN', 'IMPAIRED', 'RESOLVED', 'VOID', 'NOT_BOUND',
+                     'policy_inputs_digest', 'tests/test_shared_caps.py'):
+            self.assertIn(word, section)
+        for line in section.splitlines():
+            match = _VERIFY.search(line)
+            if match:
+                class_name, method = match.group(2).split('.')
+                self.assertTrue(_python_has(ROOT / match.group(1), class_name, method))
+
     def test_repin_checker_operational_boundary(self):
         for path in (README, HANDBOOK):
             text = path.read_text(encoding='utf-8')

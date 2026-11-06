@@ -81,6 +81,7 @@ ROUTE_PERMISSIONS = (
     ('/api/overlay/slices', 'projection:read', False),
     ('/api/portfolio/snapshot', 'projection:read', False),
     ('/api/risk', 'projection:read', False),
+    ('/api/risk/shared-caps', 'projection:read', False),
     ('/api/risk/covenants', 'projection:read', False),
     ('/api/risk/scenarios', 'projection:read', True),
     ('/api/policy', 'projection:read', True),
