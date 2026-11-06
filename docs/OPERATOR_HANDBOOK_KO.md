@@ -800,6 +800,35 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 
 <!-- /handbook-section -->
 
+### Local upstream re-pin evidence / 로컬 리핀 증거
+
+```sh
+python3 scripts/upstream_repin_check.py --check --root .
+python3 scripts/upstream_repin_check.py --baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json
+```
+
+정책 권위는 `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`의 여덟 ADOPTED 항목이다.
+단독 검사는 지정 root의 HOLD 목록을, 비교는 명시한 baseline의 정책을 소비한다.
+후보는 정책 범위·증거 의무를 줄일 수 없다. `EXECUTABLE_VENDOR`는 manifest와
+vendor 바이트, `EXECUTABLE_CITATION`은 지정 인용 소비자를 구속한다.
+`RESEARCH_BASELINE`은 별도 역사 출처이며 실행 핀에 맞춰 일괄 치환하지 않는다.
+정정은 원래 출처와 digest, 날짜·이유·대체 근거를 함께 남긴다.
+
+증거 JSON과 해시된 로컬 로그는 두 snapshot 밖에 둔다. 후보 전체 digest와
+각 영향 표·벡터·골든·현행 참조 문서·binding의 재생성 증거 및 등록된 명령별
+결과가 필요하다. 같은 바이트 결과에도 재생성 증거가 필요하며, 수동 재구성은
+주장별 source 근거와 독립 기대값이 필요하다. 인용 검사는 명시한 로컬
+source_material 자료를 대상으로 성공해야 한다. `SKIPPED`는 성공이 아니다.
+checker는 네트워크·pin 전환·복구·후보 코드 실행을 수행하지 않는다.
+
+`HOLD`는 현행 유지, `EVIDENCE_COMPLETE`는 검토용 완전성이다. 결과는
+`SIMULATED` / provisional이며 checker **does not authenticate an adoption receipt**.
+승인·채택·seam·영수증 인증은 계속 `NOT_BOUND`다. exit 0은 HOLD 또는 증거 완전,
+exit 1은 findings/입력 오류, exit 2는 인자 오류다. 상세 입력 계약은
+[INTEGRATION.md](INTEGRATION.md#local-upstream-re-pin-evidence)를 따른다.
+`upstream-repin-inventory-contract-invariants`의 `PENDING_NOTE_REGISTRATION`은
+별도 후속이며 이 checker가 범위를 확장하지 않는다.
+
 <!-- handbook-section:residual-obligations-report -->
 
 ### residual-obligations-report

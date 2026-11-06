@@ -311,6 +311,34 @@ with all hashes rebuilt cannot be detected. No source authority, signing, import
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
 
+### Local upstream re-pin evidence checker
+
+`python3 scripts/upstream_repin_check.py --check --root .` reads the eight
+ADOPTED provisional entries in
+[CAPITAL_UPSTREAM_REPINS.md](docs/decisions/CAPITAL_UPSTREAM_REPINS.md).
+It classifies only the declared vendor and five claim-table surfaces as
+`EXECUTABLE_VENDOR` or `EXECUTABLE_CITATION`. Historical decision sources stay
+`RESEARCH_BASELINE`; equal SHA strings do not expand the inventory. Today's
+vendor and citation pins remain `HOLD`.
+
+For a hypothetical local comparison:
+
+```sh
+python3 scripts/upstream_repin_check.py --baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json
+```
+
+The baseline policy governs both snapshots. Evidence and hashed logs must live
+outside both snapshots. The checker reads local sources, artifacts and command
+records; it never fetches, switches, repairs pins or executes candidate code.
+`EVIDENCE_COMPLETE` means completeness for review only. This `SIMULATED`,
+provisional checker **does not authenticate an adoption receipt**. Approval,
+adoption, seam acceptance and receipt authentication remain `NOT_BOUND`.
+Exit 0 reports `HOLD` or `EVIDENCE_COMPLETE`, exit 1 reports findings/invalid input,
+and exit 2 reports argument misuse. See [the input contract](docs/INTEGRATION.md#local-upstream-re-pin-evidence)
+for dependency, regeneration, content-digest and validation requirements.
+The separate `upstream-repin-inventory-contract-invariants` follow-up and its
+`PENDING_NOTE_REGISTRATION` remain unchanged.
+
 ### Residual obligations after terminal status
 
 `python3 -m capital.residuals --workspace DIR` emits canonical JSON from one
