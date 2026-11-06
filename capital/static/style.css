@@ -23,3 +23,7 @@ body.desk-open main>:not(#desk):not(#notice):not(#recovery):not(footer){display:
 #desk-forbidden{border:1px solid #d9b08c;background:#fbf3ea;border-radius:8px;padding:12px 14px;color:#874c29}
 #desk :focus-visible,#desk-refresh:focus-visible,nav a:focus-visible,#role:focus-visible{outline:3px solid #1f6fd1;outline-offset:2px}
 @media(max-width:480px){.desk-tiles{grid-template-columns:1fr}.desk-bar{align-items:stretch}.desk-bar input,.desk-bar select{max-width:100%;width:100%}}
+
+#desk-repayment{min-width:0;max-width:100%;margin-top:24px;border-top:1px solid var(--line);padding-top:8px}#desk-payment-controls{max-width:38rem}#desk-repayment pre{white-space:pre-wrap;overflow-wrap:anywhere}#desk-repayment td{min-width:7rem;max-width:26rem;overflow-wrap:anywhere}#desk-repayment .table-wrap{max-height:28rem}#desk-repayment [role="status"]{font-size:12px;line-height:1.8}#desk-repayment h4{font-size:12px}
+@media(max-width:480px){#desk-repayment .actions{display:grid}#desk-repayment button{width:100%}}
+#desk-timeline-region table{min-width:48rem}#desk-timeline-region td:last-child{min-width:20rem}#desk-payment-quote table{min-width:28rem}
