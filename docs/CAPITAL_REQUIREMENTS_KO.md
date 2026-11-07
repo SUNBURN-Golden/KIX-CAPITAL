@@ -132,6 +132,23 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
+### risk-scenario-desk · SIMULATED_WHATIF
+
+The read-only `#risk-comparison` UI lists the four existing named risk scenarios and
+shows server-calculated risk and covenant results beside an explicitly captured
+portfolio snapshot. Organizer and auditor require `projection:read`; observer and
+agent issue no restricted comparison reads. All comparison requests are GETs.
+Selection retains the captured baseline. Both `baseline_risk_digest` and
+`baseline_covenant_digest` must match non-null snapshot component digests, with a
+complete snapshot and matching captured cut. Stale results disappear and require
+explicit Capture / refresh comparison; there is no polling or automatic refresh.
+NOT_BOUND / unevaluated reasons survive without numeric result tables or apply
+controls. Results remain SYNTHETIC_UNADOPTED; source authentication and reserve
+funding are NOT_BOUND. No scenarios, financial terms, policy editing, execution,
+cashflow desk or slice servicing are added.
+See the risk-scenario-desk keyboard walkthrough in docs/OPERATOR_HANDBOOK_KO.md,
+`tests/test_risk_scenario_desk.py` and `tests/browser/risk-scenario-desk.spec.cjs`.
+
 ## residual-obligations-report — 로컬 기록 잔존 의무 조회
 
 `capital/residuals.py`의 오프라인 stdlib CLI는 감사된 workspace의 기존 상환·회수·

@@ -311,6 +311,23 @@ with all hashes rebuilt cannot be detected. No source authority, signing, import
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
 
+### risk-scenario-desk · SIMULATED_WHATIF
+
+The read-only `#risk-comparison` UI lists the four existing named risk scenarios and
+shows server-calculated risk and covenant results beside an explicitly captured
+portfolio snapshot. Organizer and auditor require `projection:read`; observer and
+agent issue no restricted comparison reads. All comparison requests are GETs.
+Selection retains the captured baseline. Both `baseline_risk_digest` and
+`baseline_covenant_digest` must match non-null snapshot component digests, with a
+complete snapshot and matching captured cut. Stale results disappear and require
+explicit Capture / refresh comparison; there is no polling or automatic refresh.
+NOT_BOUND / unevaluated reasons survive without numeric result tables or apply
+controls. Results remain SYNTHETIC_UNADOPTED; source authentication and reserve
+funding are NOT_BOUND. No scenarios, financial terms, policy editing, execution,
+cashflow desk or slice servicing are added.
+See the risk-scenario-desk keyboard walkthrough in docs/OPERATOR_HANDBOOK_KO.md,
+`tests/test_risk_scenario_desk.py` and `tests/browser/risk-scenario-desk.spec.cjs`.
+
 ### Local upstream re-pin evidence checker
 
 `python3 scripts/upstream_repin_check.py --check --root .` reads the eight

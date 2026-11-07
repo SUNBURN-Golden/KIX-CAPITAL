@@ -32,7 +32,7 @@ function renderRoleBar(){
 }
 function fileWorkspaceActive(){return !!(state&&state.workspace&&state.workspace.kind==='LOCAL_FILE_WORKSPACE'&&state.workspace.status==='ACTIVE');}
 function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state.workspace.status!=='ACTIVE');}
-function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();deskFence();}
+function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').setAttribute('aria-disabled',String(busy));document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();deskFence();comparisonControls();}
 async function request(path, options={}) {const headers=new Headers(options.headers||{});if(sessionToken&&!headers.has('X-Capital-Token'))headers.set('X-Capital-Token',sessionToken);const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
 function validateState(next){const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||next.auth.authentication!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role)||typeof next.local_token!=='string'||!next.local_token||!next.auth.permissions)throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');}
 async function bindSession(role){const opened=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})});if(opened.role!==role||opened.identity!=='NOT_BOUND'||opened.authentication!=='NOT_BOUND'||opened.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||typeof opened.local_token!=='string'||!opened.local_token)throw Error('INVALID_SESSION');sessionToken=opened.local_token;return opened;}
@@ -141,6 +141,7 @@ async function loadDiagnostics(next){
 }
 let refreshInFlight=false,refreshDone=Promise.resolve();
 function refresh(){
+ invalidateComparison();
  refreshInFlight=true;
  const task=(async()=>{try{await refreshCore();}finally{refreshInFlight=false;}})();
  refreshDone=task.catch(()=>{});
@@ -170,8 +171,198 @@ async function refreshCore(){
  const portfolio=await loadPortfolio(next);
  const riskView=await loadRisk(next);
  const deskView=deskOpen()?await loadDesk(next,riskView,evidence,diagnostics.recon):null;
- state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
+ state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();await loadComparisonCatalogue();
 }
+// risk-scenario-desk: display-only reads; no financial arithmetic.
+const comparison={epoch:0,suspended:true,selectedId:'',snapshot:null,scenario:null,catalogue:null,status:'idle',refreshRequired:false};
+const comparisonIds=['largest-advance-default','refund-shock','all-watch-breach','concentration-cap-hit'];
+const comparisonDigest=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
+function comparisonAllowed(){return ['organizer','auditor'].includes(currentRole())&&state?.auth?.role===currentRole()&&can('projection:read');}
+function comparisonClear(status,message){
+ comparison.status=status;comparison.scenario=null;
+ $('risk-comparison-results').replaceChildren();$('risk-comparison-details').replaceChildren();
+ $('risk-comparison-status').textContent=message;
+ $('risk-comparison').dataset.status=status;
+}
+function invalidateComparison(){
+ comparison.epoch++;comparison.suspended=true;comparison.snapshot=null;comparison.catalogue=null;
+ comparison.refreshRequired=false;$('risk-comparison-select').replaceChildren();
+ comparisonClear('idle','상태 재조회 중 · 비교를 다시 캡처하세요.');
+ comparisonControls();
+}
+function comparisonControls(){
+ const unavailable=comparison.suspended||!comparisonAllowed()||!comparison.catalogue;
+ $('risk-comparison-select').disabled=unavailable;
+ // aria-disabled keeps the explicit refresh control focused during an async read.
+ $('risk-comparison-refresh').setAttribute('aria-disabled',String(comparison.suspended||!comparisonAllowed()||comparison.status==='loading'||busy));
+}
+function comparisonEnvelope(body,instance){
+ return body?.instance_id===instance&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false;
+}
+function comparisonSimulation(body,mode){
+ return body?.mode===mode&&body.provisional===true&&body.policy_adopted===false&&body.accounting_policy==='SYNTHETIC_UNADOPTED'
+  &&['BOUND','NOT_BOUND'].includes(body.status)&&typeof body.label==='string'&&Number.isSafeInteger(body.sim_day)&&(typeof body.terms_version==='string'||(body.status==='NOT_BOUND'&&body.terms_version===null));
+}
+function comparisonDataValid(value){
+ if(value===null||typeof value==='string'||typeof value==='boolean')return true;
+ if(typeof value==='number')return Number.isSafeInteger(value);
+ if(Array.isArray(value))return value.every(comparisonDataValid);
+ return !!value&&typeof value==='object'&&Object.entries(value).every(([key,child])=>
+  (!['funds_executed','workspace_mutated','write_authorized','policy_adopted','applied','enforced'].includes(key)||child===false)&&comparisonDataValid(child));
+}
+function comparisonScenarioEnvelope(body,instance){
+ return comparisonDataValid(body)&&comparisonEnvelope(body,instance)&&comparisonSimulation(body,'SIMULATED_WHATIF')&&body.applied===false&&body.enforced===false;
+}
+// Check the required rendered structure. All supplied leaves remain server values;
+// null is an unavailable value, never a numeric default.
+function comparisonShape(value,shape){
+ if(shape==='number')return value===null||Number.isSafeInteger(value);
+ if(shape==='string')return typeof value==='string';
+ if(shape==='boolean')return typeof value==='boolean';
+ if(Array.isArray(shape))return Array.isArray(value)&&value.every(row=>comparisonShape(row,shape[0]));
+ return !!value&&typeof value==='object'&&!Array.isArray(value)&&Object.entries(shape).every(([key,child])=>Object.hasOwn(value,key)&&comparisonShape(value[key],child));
+}
+const comparisonCapShape={status:'string',rows:[{cap:'string',cap_krw:'number',used_krw:'number',utilization_permille:'number',remaining_krw:'number',breached:'boolean'}]};
+const comparisonRiskShape={totals:{advances_drawn:'number',advances_open:'number',outstanding_krw:'number'},
+ by_tier:[{tier:'string',advances:'number',outstanding_krw:'number',share_permille:'number'}],
+ maturity_buckets:{rows:[{id:'string',advances:'number',outstanding_krw:'number'}]},
+ overdue_aging:{rows:[{id:'string',advances:'number',outstanding_krw:'number'}]},
+ concentration:{hhi_permille:'number',beneficiaries:[{role:'string',outstanding_krw:'number',share_permille:'number'}],caps:comparisonCapShape},
+ reserve:{status:'string',label:'string',requirement_krw:'number',unrated_outstanding_krw:'number',applied:'boolean',rows:[{bucket:'string',bps:'number',outstanding_krw:'number',provision_krw:'number'}]},
+ stress:{status:'string',label:'string',applied:'boolean',shocks_bps:['number'],baseline:{margin_call_count:'number'},coverage:{assessed:'number',drawn_open_advances:'number'},rows:[{shock_bps:'number',shocked_eligible_face_krw:'number',margin_call_count:'number',called_outstanding_krw:'number',shortfall_krw:'number'}]},
+ reconciliation:{matched:'boolean'}};
+const comparisonCovenantShape={totals:{advances:'number',clear:'number',watch:'number',breach:'number',outstanding_krw:'number',flagged_outstanding_krw:'number'},
+ advances:[{advance_id:'string',phase:'string',status:'string',outstanding_krw:'number',maturity_day:'number',days_to_maturity:'number',days_past_maturity:'number',reasons:[{code:'string',severity:'string',detail:'string'}],applied:'boolean',enforced:'boolean'}],
+ caps:comparisonCapShape,reserve:{status:'string',requirement_krw:'number',funding_source:'string',coverage:'string',coverage_reason:'string',applied:'boolean'},enforced:'boolean',reconciliation:{matched:'boolean'}};
+function comparisonFoldValid(risk,covenants){
+ return comparisonSimulation(risk,'SIMULATED_RISK_ANALYTICS')&&risk.status==='BOUND'&&comparisonDigest(risk.risk_digest)
+  &&comparisonSimulation(covenants,'SIMULATED_COVENANT_WATCH')&&covenants.status==='BOUND'&&comparisonDigest(covenants.covenant_digest)
+  &&comparisonShape(risk,comparisonRiskShape)&&comparisonShape(covenants,comparisonCovenantShape)
+  &&risk.reserve.applied===false&&risk.stress.applied===false&&covenants.enforced===false&&covenants.reserve.applied===false
+  &&covenants.advances.every(row=>row.applied===false&&row.enforced===false)
+  &&risk.reconciliation.matched===true&&covenants.reconciliation.matched===true;
+}
+function comparisonSnapshotValid(body,instance){
+ return comparisonDataValid(body)&&comparisonEnvelope(body,instance)&&body.format==='KIX_CAPITAL_PORTFOLIO_SNAPSHOT_V1'&&body.label==='SIMULATED'
+  &&body.authenticated_source_cut==='NOT_BOUND'
+  &&(body.status==='INCOMPLETE'||(comparisonDigest(body.snapshot_digest)&&comparisonDigest(body.cut?.state_digest)&&comparisonDigest(body.cut?.overlay_state_digest)&&Number.isSafeInteger(body.cut?.sim_day)))
+  &&['COMPLETE','INCOMPLETE'].includes(body.status)&&typeof body.complete==='boolean'&&Array.isArray(body.completeness?.reasons)
+  &&body.completeness.reasons.every(reason=>typeof reason==='string');
+}
+function comparisonMatches(snapshot,scenario){
+ return snapshot.status==='COMPLETE'&&snapshot.complete===true&&snapshot.completeness.reasons.length===0
+  &&snapshot.completeness.sections?.risk==='AVAILABLE'&&snapshot.completeness.sections?.covenants==='AVAILABLE'
+  &&comparisonFoldValid(snapshot.risk,snapshot.covenants)
+  &&scenario.observed_state_digest===snapshot.cut.state_digest&&scenario.sim_day===snapshot.cut.sim_day
+  &&snapshot.risk.sim_day===snapshot.cut.sim_day&&snapshot.covenants.sim_day===snapshot.cut.sim_day
+  &&scenario.terms_version===snapshot.risk.terms_version&&scenario.terms_version===snapshot.covenants.terms_version
+  &&comparisonDigest(scenario.reconciliation?.baseline_risk_digest)&&comparisonDigest(scenario.reconciliation?.baseline_covenant_digest)
+  &&scenario.reconciliation.baseline_risk_digest===snapshot.risk.risk_digest
+  &&scenario.reconciliation.baseline_covenant_digest===snapshot.covenants.covenant_digest&&scenario.reconciliation.matched===true;
+}
+async function loadComparisonCatalogue(){
+ comparison.suspended=false;
+ if(!comparisonAllowed()){comparisonClear('forbidden',`${currentRole()} · projection:read 권한 없음 · 비교 요청을 보내지 않습니다.`);comparisonControls();return;}
+ const epoch=++comparison.epoch,role=currentRole(),instance=state.instance_id;
+ const current=()=>epoch===comparison.epoch&&!comparison.suspended&&comparisonAllowed()&&currentRole()===role&&state.instance_id===instance;
+ try{
+  const body=await request('/api/risk/scenarios');if(!current())return;
+  if(!comparisonScenarioEnvelope(body,instance)||!Array.isArray(body.scenarios)||body.scenarios.map(row=>row.scenario_id).join(',')!==comparisonIds.join(',')
+   ||body.scenarios.some(row=>typeof row.title!=='string'||typeof row.assumption!=='string'||row.applied!==false||row.enforced!==false))throw Error('INVALID_CATALOGUE');
+  comparison.catalogue=body;
+  $('risk-comparison-select').replaceChildren(...body.scenarios.map(row=>{const option=textElement('option',`${row.scenario_id} · ${row.title}`);option.value=row.scenario_id;return option;}));
+  if(!comparisonIds.includes(comparison.selectedId))comparison.selectedId=comparisonIds[0];
+  $('risk-comparison-select').value=comparison.selectedId;
+  comparisonClear('idle',`SIMULATED_WHATIF · ${body.status} · ${body.reason??'명시적으로 기준선을 캡처하세요.'}`);
+ }catch{if(current())comparisonClear('error','시나리오 목록 조회 실패 · 비교 캡처 버튼으로 다시 조회하세요.');}
+ finally{if(current())comparisonControls();}
+}
+function comparisonValue(value){
+ if(value===null||value===undefined)return 'unavailable';
+ return typeof value==='number'?number(value):String(value);
+}
+// Stable server row identifiers align rows even when a scenario injects an advance.
+function comparisonLeaves(value,path='',out=new Map()){
+ if(Array.isArray(value)){
+  if(!value.length)out.set(path,'[]');
+  for(const [index,row] of value.entries()){
+   const key=row&&typeof row==='object'?(row.advance_id??row.cap??row.tier??row.bucket??row.id??row.role??row.shock_bps??index):index;
+   comparisonLeaves(row,`${path}[${key}]`,out);
+  }
+ }else if(value!==null&&typeof value==='object'){
+  for(const [key,child] of Object.entries(value))comparisonLeaves(child,path?`${path}.${key}`:key,out);
+ }else out.set(path,value);
+ return out;
+}
+function comparisonTable(title,baseline,scenario){
+ const wrap=document.createElement('div');wrap.className='table-wrap';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label',title);
+ const table=document.createElement('table');table.append(textElement('caption',title));
+ const head=document.createElement('thead'),header=document.createElement('tr');
+ for(const label of ['서버 필드 / 합성 KRW·bps·‰','Baseline · captured','Scenario · hypothetical']){const th=textElement('th',label);th.scope='col';header.append(th);}head.append(header);table.append(head);
+ const left=comparisonLeaves(baseline),right=comparisonLeaves(scenario),body=document.createElement('tbody');
+ for(const key of new Set([...left.keys(),...right.keys()])){const row=document.createElement('tr'),label=textElement('th',key);label.scope='row';row.append(label,textElement('td',comparisonValue(left.get(key))),textElement('td',comparisonValue(right.get(key))));body.append(row);}
+ table.append(body);wrap.append(table);return wrap;
+}
+function renderComparison(snapshot,scenario){
+ const results=$('risk-comparison-results');
+ results.append(comparisonTable('Risk totals',snapshot.risk.totals,scenario.risk.totals),comparisonTable('Covenant totals',snapshot.covenants.totals,scenario.covenants.totals));
+ for(const [title,left,right] of [
+  ['Tier / maturity / aging',{by_tier:snapshot.risk.by_tier,maturity:snapshot.risk.maturity_buckets,aging:snapshot.risk.overdue_aging},{by_tier:scenario.risk.by_tier,maturity:scenario.risk.maturity_buckets,aging:scenario.risk.overdue_aging}],
+  ['Concentration / caps',snapshot.risk.concentration,scenario.risk.concentration],
+  ['Reserve / stress',{reserve:snapshot.risk.reserve,stress:snapshot.risk.stress},{reserve:scenario.risk.reserve,stress:scenario.risk.stress}],
+  ['Covenant advances / reasons',snapshot.covenants.advances,scenario.covenants.advances],
+  ['Covenant reserve / caps',{reserve:snapshot.covenants.reserve,caps:snapshot.covenants.caps},{reserve:scenario.covenants.reserve,caps:scenario.covenants.caps}],
+  ['Server reconciliation',{risk:snapshot.risk.reconciliation,covenants:snapshot.covenants.reconciliation},{risk:scenario.risk.reconciliation,covenants:scenario.covenants.reconciliation}],
+ ]){const detail=document.createElement('details');detail.append(textElement('summary',title),comparisonTable(title,left,right));results.append(detail);}
+ $('risk-comparison-details').append(textElement('p',`snapshot_digest ${snapshot.snapshot_digest} · baseline risk_digest ${snapshot.risk.risk_digest} · baseline covenant_digest ${snapshot.covenants.covenant_digest} · whatif_digest ${scenario.whatif_digest}`),
+  textElement('pre',JSON.stringify({cut:snapshot.cut,reconciliation:scenario.reconciliation},null,2)));
+}
+async function captureComparison(capture){
+ if(comparison.suspended||!comparisonAllowed()||busy)return;
+ if(!comparison.catalogue){
+  const loading=loadComparisonCatalogue(),catalogueEpoch=comparison.epoch;await loading;
+  if(catalogueEpoch!==comparison.epoch||!comparison.catalogue||comparison.suspended||!comparisonAllowed()||busy)return;
+ }
+ if(!capture&&comparison.refreshRequired)return;
+ if(!capture&&!comparison.snapshot){comparisonClear('idle','선택됨 · 비교 캡처 버튼으로 기준선을 캡처하세요.');return;}
+ const epoch=++comparison.epoch,role=currentRole(),instance=state.instance_id,id=comparison.selectedId;
+ const current=()=>epoch===comparison.epoch&&!comparison.suspended&&comparisonAllowed()&&role===currentRole()&&instance===state.instance_id&&id===comparison.selectedId;
+ comparisonClear('loading','SIMULATED_WHATIF · 읽기 전용 비교 조회 중');comparisonControls();
+ try{
+  let snapshot=comparison.snapshot;
+  if(capture){snapshot=await request(`/api/portfolio/snapshot?instance_id=${encodeURIComponent(instance)}`);if(!current())return;if(!comparisonSnapshotValid(snapshot,instance))throw Error('INVALID_SNAPSHOT');comparison.snapshot=snapshot;}
+  const scenario=await request(`/api/risk/scenarios/${encodeURIComponent(id)}`);if(!current())return;
+  if(!comparisonScenarioEnvelope(scenario,instance)||scenario.scenario?.scenario_id!==id||typeof scenario.scenario.title!=='string'||typeof scenario.scenario.assumption!=='string'||typeof scenario.evaluated!=='boolean')throw Error('INVALID_SCENARIO');
+  const metadata=()=>{$('risk-comparison-details').append(textElement('p',`${scenario.scenario.title} · ${scenario.scenario.assumption}`));};
+  if(scenario.status==='NOT_BOUND'){
+   if(typeof scenario.reason!=='string')throw Error('INVALID_REASON');
+   comparisonClear('unavailable',`NOT_BOUND · ${scenario.reason}`);metadata();
+   if(snapshot.status==='INCOMPLETE')$('risk-comparison-details').append(textElement('p',`INCOMPLETE · ${snapshot.completeness.reasons.join(' · ')}`));
+   return;
+  }
+  if(snapshot.status!=='COMPLETE'||!snapshot.complete){comparisonClear('unavailable',`INCOMPLETE · ${snapshot.completeness.reasons.join(' · ')} · 명시적으로 새로 캡처하세요.`);metadata();return;}
+  if(!comparisonMatches(snapshot,scenario)){
+   comparison.refreshRequired=true;comparisonClear('stale','REFRESH_REQUIRED · baseline risk/covenant digest 또는 captured cut 불일치 · 비교를 명시적으로 새로 캡처하세요.');return;
+  }
+  if(scenario.evaluated===false){
+   if(typeof scenario.unevaluated_reason!=='string')throw Error('INVALID_REASON');
+   comparisonClear('unavailable',`not evaluated · ${scenario.unevaluated_reason}`);metadata();if(capture)comparison.refreshRequired=false;return;
+  }
+  if(!comparisonDigest(scenario.whatif_digest)||!comparisonFoldValid(scenario.risk,scenario.covenants)||!scenario.target||typeof scenario.target!=='object'||!scenario.assumption_detail||typeof scenario.assumption_detail!=='object'
+   ||!comparisonShape(scenario.reconciliation,{baseline_outstanding_krw:'number',assumption_delta_krw:'number',scenario_outstanding_krw:'number',matched:'boolean'})
+   ||scenario.risk.terms_version!==scenario.terms_version||scenario.covenants.terms_version!==scenario.terms_version||scenario.risk.sim_day!==scenario.covenants.sim_day)throw Error('INVALID_RESULTS');
+  if(capture)comparison.refreshRequired=false;
+  comparisonClear('ready',`SIMULATED_WHATIF · SYNTHETIC_UNADOPTED · captured sim_day ${snapshot.cut.sim_day} · projected sim_day ${scenario.risk.sim_day} · authenticated source cut NOT_BOUND · 캡처된 비교이며 자동 갱신하지 않습니다.`);
+  comparison.scenario=scenario;metadata();
+  $('risk-comparison-details').append(textElement('pre',JSON.stringify({target:scenario.target,assumption_detail:scenario.assumption_detail},null,2)));
+  renderComparison(snapshot,scenario);
+ }catch{if(current())comparisonClear('error','비교 조회/검증 실패 · 결과를 표시하지 않습니다. 비교 캡처 버튼으로 다시 조회하세요.');}
+ finally{if(current())comparisonControls();}
+}
+$('risk-comparison-select').addEventListener('change',()=>{comparison.selectedId=$('risk-comparison-select').value;if(comparison.refreshRequired){comparison.epoch++;comparisonClear('stale','REFRESH_REQUIRED · 비교를 명시적으로 새로 캡처하세요.');comparisonControls();return;}void captureComparison(false);});
+$('risk-comparison-refresh').addEventListener('click',()=>{if(comparison.status!=='loading')void captureComparison(true);});
+// /risk-scenario-desk
+
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
 const POLICY_LABEL='simulated policy application — not executed distribution, not bank movement';
 let termsEpoch=0;
@@ -932,7 +1123,7 @@ $('preview-draw').onclick=async()=>{
  }catch{if(selected===originalCase)$('preview-result').textContent='사전점검 결과를 확인하지 못했습니다. 제안 상태를 바꾸지 않았습니다.';}
  finally{$('preview-draw').disabled=busy||!can('projection:read');}
 };
-$('role').addEventListener('change',async()=>{const role=currentRole();rememberRole(role);if(busy)return;busy=true;fence();try{await refresh();notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
+$('role').addEventListener('change',async()=>{if(busy){if(state?.auth?.role)$('role').value=state.auth.role;return;}const role=currentRole();rememberRole(role);busy=true;fence();try{await refresh();notice(`${role} 합성 역할로 상태를 다시 조회했습니다. 루프백 토큰에 묶인 자기선택이며 신원은 NOT_BOUND입니다.`);}catch{if(state?.auth?.role&&syntheticRoles.includes(state.auth.role))$('role').value=state.auth.role;notice('역할 전환 후 상태를 조회하지 못했습니다.',true);}finally{busy=false;fence();}});
 $('export-journal').onclick=async()=>{
  if(busy)return;
  if(!can('export:read')){notice(`역할 경계: ${permissionReason('export:read')}`,true);return;}

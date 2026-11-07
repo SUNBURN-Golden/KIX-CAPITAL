@@ -109,6 +109,20 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_risk_scenario_desk_guidance_and_keyboard_tests(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        section = _section(text, '### risk-scenario-desk')
+        for needle in ('baseline_risk_digest', 'baseline_covenant_digest', 'REFRESH_REQUIRED',
+                       'NOT_BOUND', 'not evaluated', 'unavailable', 'ArrowDown', 'Space',
+                       'focus', '375px', 'observer/agent', '자동 갱신', 'SIMULATED_WHATIF'):
+            self.assertIn(needle, section)
+        for relative in ('tests/test_risk_scenario_desk.py', 'tests/browser/risk-scenario-desk.spec.cjs'):
+            self.assertIn(relative, section)
+            self.assertTrue((ROOT / relative).is_file())
+        titles = _titles((ROOT / 'tests/browser/risk-scenario-desk.spec.cjs').read_text())
+        for needle in ('keyboard focus', 'digest mismatch', 'role changes', 'recovery'):
+            self.assertTrue(any(needle in title for title in titles), needle)
+
     def test_repin_checker_operational_boundary(self):
         for path in (README, HANDBOOK):
             text = path.read_text(encoding='utf-8')
