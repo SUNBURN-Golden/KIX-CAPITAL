@@ -800,6 +800,14 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:observation-http-fake -->
+
+### observation-http-fake
+
+`capital/observation_http.py`의 `ObservationHttpAdapter`는 `ObservationPort`의 opt-in 루프백 transport 연습용 구현이다(라벨 `LOCAL_FAKE_OBSERVATION`). `fold` 한 번은 `{"facts": [...], "bindings": [...]}` 배치를 `scripts/fake_observation.py`에 최대 한 번 POST한다. 그 가짜는 127.0.0.1에만 묶이는 stdlib 서버로 `LocalFakeObservation`에 위임하고, 인증·durable inbox·기록이 없다. 클라이언트는 비루프백 주소(`NON_LOOPBACK`)와 redirect(`REDIRECT_REFUSED`)를 거절하고 요청·응답·timeout 경계를 둔다. `drop`·`timeout`은 `OBSERVATION_UNAVAILABLE`, `malformed-json`·`duplicate-key`는 `INVALID_JSON`, `oversized`는 `REPLY_TOO_LARGE`, `alter-identity`는 `IDENTITY_MISMATCH`, `alter-execution`은 `FUNDS_EXECUTED`/`EFFECTS_CLAIMED`다. transport 실패는 빈 성공 fold가 아니고 자동 재시도도 없다. `tests/test_observation_http.py`가 같은 벡터와 결함을 확인한다. SIMULATED, `NOT_BOUND`, SEMANTIC_CONFORMANCE가 아니며 CAP-14·CAP-16은 그대로다.
+
+<!-- /handbook-section -->
+
 ### Local upstream re-pin evidence / 로컬 리핀 증거
 
 ```sh

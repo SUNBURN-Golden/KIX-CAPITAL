@@ -288,6 +288,7 @@ class HandbookTests(unittest.TestCase):
             'coa-candidate-projection': ('GET /api/projection?mode=coa-candidate', 'GET /api/reconciliation?mode=coa-candidate', 'SIMULATION_FIXED_V2', 'SYNTHETIC_UNADOPTED', '9790', 'coa_candidate_totals_vs_v1', 'interest_ledger_vs_projection'),
             'audit60-fix2': ('KIX_CAPITAL_EXPORT_MANIFEST_V2', 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'overlaypart', 'SECTION_SET', 'overlay_fold_digest_equals_persisted', 'tests/golden/overlay_demo.json'),
             'overlay-repayment-posting': ('post_repayment', 'REPAYMENT_ADVANCE_STATE', 'REPAYMENT_UNAPPLIED_CAP', 'SIM_UNAPPLIED_MEMO', 'UNPOSTED_F04_REPAY'),
+            'observation-http-fake': ('capital/observation_http.py', 'scripts/fake_observation.py', 'LOCAL_FAKE_OBSERVATION', 'OBSERVATION_UNAVAILABLE', 'INVALID_JSON', 'REPLY_TOO_LARGE', 'IDENTITY_MISMATCH', 'NON_LOOPBACK', 'NOT_BOUND', 'tests/test_observation_http.py', 'SIMULATED'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')
