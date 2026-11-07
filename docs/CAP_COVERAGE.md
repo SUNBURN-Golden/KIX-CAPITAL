@@ -30,3 +30,15 @@
 | CAP-18 | 선택적 토큰 담보·보상 | `TL` | NOT_AUTHORIZED | upstream, not adopted. coin lock 결정이 없고 토큰 호출 코드가 없다. |
 | CAP-19 | AI 운영·권한·최소공개 | `CAPITAL-AUTH-BOUNDARY` | NOT_BOUND | 로컬 합성 역할과 SIMULATED QUERY/PROPOSE 픽스처가 있다. 제안은 HUMAN_PENDING이고 effects_executed는 false다. IdP·KYC·AgentGrant/ActionPermit은 upstream, not adopted. |
 | CAP-20 | 접근성·통합 수용 | `acceptance-suite` | SIMULATED | 자동 검증만이다. 브라우저 여정은 `journeys-portfolio`에도 있다. 사람 수용은 PENDING이고 실서비스 출시는 승인되지 않았다. `#desk` 운영 데스크(`POST /api/overlay/commands` sim_day 제어, 사례 타임라인, 서버가 사유를 붙인 다음 작업)의 브라우저 검증도 `tests/browser/operator-desk.spec.cjs`에 있다. 자동 검증이며 사람 수용이 아니다. |
+
+Refund frontier evidence (CAP-01/03/04/08/09/12): `capital/refund_frontier.py`,
+`tests/test_refund_frontier.py`, `tests/vectors/refund_frontier.json` and
+`python3 scripts/refund_frontier_vectors.py --check`. SIMULATED/provisional,
+read-only integer additional refunds on distinct mapped physical lines; existing
+`margin.measure` predicate and frozen draw terms. Binary search is bounded by
+integer bit length and checked against the adopted exact inverse. Exhaustive
+Cartesian synthetic allocations independently verify minima and rounding plateaus.
+Unknown inputs never become zero; positive residual slice occupancy is unsupported.
+Beneficiary minima require complete evaluation except validated zero. Portfolio
+minima cover assessed cases only. Ordinary risk responses and fixed shocks remain
+unchanged. Legal/tax assumptions remain pending professional review.

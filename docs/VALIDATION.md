@@ -4577,3 +4577,15 @@ Completed-run logs are retained under ignored `build/portfolio-migrations/`
 inspection found no `python3 -m capital.server` or `playwright test` process;
 the test-managed servers exited. Only the six planned source/test/documentation
 files are changed; no work is staged or committed.
+
+Refund frontier evidence (CAP-01/03/04/08/09/12): `capital/refund_frontier.py`,
+`tests/test_refund_frontier.py`, `tests/vectors/refund_frontier.json` and
+`python3 scripts/refund_frontier_vectors.py --check`. SIMULATED/provisional,
+read-only integer additional refunds on distinct mapped physical lines; existing
+`margin.measure` predicate and frozen draw terms. Binary search is bounded by
+integer bit length and checked against the adopted exact inverse. Exhaustive
+Cartesian synthetic allocations independently verify minima and rounding plateaus.
+Unknown inputs never become zero; positive residual slice occupancy is unsupported.
+Beneficiary minima require complete evaluation except validated zero. Portfolio
+minima cover assessed cases only. Ordinary risk responses and fixed shocks remain
+unchanged. Legal/tax assumptions remain pending professional review.
