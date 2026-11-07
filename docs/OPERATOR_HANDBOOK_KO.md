@@ -790,6 +790,28 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 `k-stage7-authenticated-export`가 아니다. 해시를 모두 다시 만든 일관된 대체 장부는
 탐지하지 못한다. 내장 fixture만 검증하며 import/resume은 제공하지 않는다.
 
+<!-- handbook-section:facts-verifier-input-bounds -->
+
+### facts-verifier-input-bounds
+
+`python3 -m capital.verify --facts DIR`의 읽기 단계는 페이지를 열기 전에 유한 상한을
+강제한다(`capital.facts.INPUT_LIMITS`, `verify_dir(..., limits=dict)`로 재정의 가능).
+디렉터리 항목 4096개, 일치하는 `page-*.json` 64개, 페이지당 8 MiB, 합계 64 MiB,
+JSON 중첩 32단계다. 심볼릭 링크·fifo·디렉터리 등 비정규 페이지는 `lstat`에서
+`INPUT_NOT_REGULAR:<file>`로 거절하고 열지 않으므로 fifo가 읽기를 막지 못한다.
+lstat과 읽기 후 fstat 사이에 inode·크기·mtime이 어긋나면 `INPUT_CHANGED:<file>`로
+결정적으로 실패한다(교체·잘림·증가·수정; 파일시스템 타임스탬프 해상도 안의 같은 크기
+덮어쓰기는 탐지 한계로 문서화한다). 예산 위반 사유는 `INPUT_DIR_ENTRIES`,
+`INPUT_PAGES`, `INPUT_PAGE_TOO_LARGE:<file>`, `INPUT_TOTAL_TOO_LARGE:<file>`,
+`INPUT_JSON_DEPTH:<file>`이며 `PAGE_SHAPE`·`*_MISMATCH`·`UNREADABLE` 같은 의미
+불일치와 구분된다. 실패는 종료 코드 1이며 부분 성공 없고 사유에는 파일 이름만
+담는다. 이 상한은 도입된 생산자 상한(`MAX_OPERATIONS=500`, `OVERLAY_MAX_ENTRIES=2000`,
+`OVERLAY_ENTRY_MAX_BYTES=4096`, `ENVELOPE_MAX_BYTES=4 MiB`, 페이지 limit 500) 위에
+여유를 둔 데모 기술 경계이지 금융 한도가 아니다. 최대 생성 export(페이지 5장,
+약 12 MiB)도 기본값 안에 든다. 검증은 `tests/test_facts_bounds.py`가 고정한다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:http-hostile-corpus -->
 
 ### http-hostile-corpus

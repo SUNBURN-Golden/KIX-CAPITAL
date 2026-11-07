@@ -103,3 +103,65 @@ goldens, facts vectors and fold-fuzz corpus remain unchanged. No CI configuratio
 or existing test assertion was changed. No commit, push or external post was made.
 All facts results remain SIMULATED, with source authority and authentication
 NOT_BOUND. No product decision was needed.
+
+## facts-verifier-input-bounds — bounded reader evidence
+
+This node hardened `capital/facts.py` `verify_dir` and the
+`python3 -m capital.verify --facts DIR` CLI with a bounded read phase on branch
+`agent/capital-facts-verifier-input-bounds`, based on HEAD
+`c4114c751ea149865493bd3c734bc5d3c423ae2e`, with the implementation uncommitted.
+`source_cut` and `authentication` remain `NOT_BOUND`; this is not
+`k-stage7-authenticated-export`. All inputs below are synthetic local fixtures.
+No commit, push, PR, issue or external comment was made.
+
+The read phase enforces `INPUT_LIMITS` (4096 directory entries, 64 matched
+`page-*.json` files, 8 MiB per page, 64 MiB aggregate, 32 JSON levels) before
+unbounded reads or accumulation; non-regular pages refuse on `lstat` with
+`INPUT_NOT_REGULAR` and replacement/vanish/modify observed via inode, size or
+mtime fails with `INPUT_CHANGED`. Budget failures carry `INPUT_*` reasons,
+distinct from the unchanged semantic reasons (`PAGE_SHAPE`, `*_MISMATCH`,
+`UNREADABLE`, `NONCANONICAL_ENCODING`). Page ordering, canonical bytes and the
+pinned 133-file corpus are untouched. The bounds are demo technical budgets
+sized above the adopted producer caps (`MAX_OPERATIONS=500`,
+`OVERLAY_MAX_ENTRIES=2000`, `OVERLAY_ENTRY_MAX_BYTES=4096`,
+`ENVELOPE_MAX_BYTES=4MiB`, page limit 500), not financial limits; a synthesized
+maximum-supported export (500 journal rows near the 8192-byte request cap plus
+2000 foldable overlay clock entries, five sealed pages, ~12 MiB) fits the
+defaults and only fails on the fabricated journal op (`JOURNAL_REPLAY_FAILED`),
+a semantic reason. An in-place rewrite that also preserves size and stays
+within the filesystem timestamp granularity is the documented undetectable
+fence case — the mtime arm is exercised in tests via an explicit `os.utime`.
+
+## Commands actually run and results
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -p test_facts_bounds.py -v` | 9 passed (after fixing an invalid rewrite byte and a timestamp-granularity false negative in the test fixture itself). |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | 23 passed; clean and semantic-tamper corpus outcomes unchanged. |
+| `python3 -m unittest discover -s tests -v` | 1,311 passed in 305.422s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 files match, no regeneration. |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; 7 pages, 27 rows. |
+| `python3 -m unittest tests.test_handbook tests.test_docs_surface -v` | 26 passed. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages. |
+| `npm ci` | Exit 0; 3 lockfile packages, 0 vulnerabilities. |
+| `npm run test:browser` | Exit 1 at startup; default loopback port 8765 is held by an unrelated service. |
+| `npm run test:browser -- --config playwright.local.config.cjs` | Exit 0; 76 passed in 1.9m on temporary ports 28765–28768 (port-only remap of the tracked config; removed afterward, no listener left). |
+| `git diff --exit-code capital/export.py capital/vendor tests/golden docs/decisions` | Exit 0; guarded paths byte-identical. |
+
+`tests/test_facts_bounds.py` (9 tests) covers exact-limit accept and one-over
+refusal for each of the five bounds, excessive directory entries, unmatched
+exotic files, dangling/live symlinks, fifo and directory pages refused without
+following or blocking, replacement/vanish/same-size-rewrite/growth-during-read
+as deterministic `INPUT_CHANGED`, over-depth and recursion-limit JSON,
+duplicate keys, truncated pages, lexicographic page ordering, the synthesized
+maximum export under default bounds, CLI exit codes with no partial success, no
+source writes and no leaked file contents.
+
+Vendor files and manifest remain pinned and unmodified; `capital/export.py`,
+`capital/overlay.py`, `.aiops/`, `docs/decisions/` and `tests/golden/` are
+untouched. No decision note, corpus file or route changed. No product,
+financial, legal, provider or deployment decision was needed; the bound values
+are documented technical budgets, not financial terms.

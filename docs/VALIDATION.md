@@ -1,5 +1,87 @@
 # Validation scope
 
+## Facts verifier input bounds — supervisor conflict-fix round 1
+
+2026-11-08. Resolved the supervisor-started merge of incoming main
+`15c2900a2ba9f468e131304e5d3ece199279fe20` into feature parent
+`e25085c430709f33f51198b033d8f85d9390c215`.
+All checks use local SIMULATED fixtures; no real payments, credentials,
+external provider calls or deployment were involved.
+
+The sole conflict was `docs/VALIDATION.md`. Combined the facts verifier input
+bounds record with main's residual obligations records, retaining the complete
+validation text of both parents in order. The feature reader, CLI, boundary
+tests and evidence remain byte-identical to the feature parent. Main's
+portfolio migrations, residual obligations and upstream-repin modules and tests
+remain byte-identical to the incoming parent. No code, test or CI repair was
+needed, and no corpus regeneration was required.
+
+| Command or check | Measured local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,383 passed in 457.789s, including facts boundaries/corpora, incoming main tests and legacy baseline byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; all 133 canonical/intentional-tamper files match. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | Exit 0 each; all nine pack files match and declared decision references pass. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` and local Chromium launch probe | Exit 0 each; three packages installed from local cache, Chromium launches. |
+| `npm run test:browser` | Exit 1 before tests; the default loopback port is occupied (`Errno 98`). Existing listener left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 Chromium tests passed in 1.9m with unchanged tests and configuration in isolated loopback networking. |
+| Vendor and protected-path preservation | All five manifest SHA256 pins match; vendor files, manifest, legacy export, historical root decision file and `.aiops/` unchanged against both merge parents. |
+| Merge hygiene | No unmerged entries or tracked conflict markers; whitespace checks pass. |
+
+Logs: `/tmp/facts-bounds-merge-unit.log`,
+`/tmp/facts-bounds-merge-browser-default.log` and
+`/tmp/facts-bounds-merge-browser-isolated.log`. The failed default-port browser
+attempt is distinct from the successful isolated run. The merge remains
+uncommitted for the supervisor. No merge abort, commit, push, rebase, reset,
+external post or Protocol/Commerce edit was performed.
+
+## Facts verifier input bounds
+
+2026-11-02, baseline HEAD `c4114c751ea149865493bd3c734bc5d3c423ae2e` on branch
+`agent/capital-facts-verifier-input-bounds`, with the implementation uncommitted.
+All verification below uses local SIMULATED fixtures; no real payments,
+credentials or external services were touched.
+
+`capital/facts.py` `verify_dir` now reads through a bounded, refusal-first read
+phase (`INPUT_LIMITS`: 4096 directory entries, 64 matched `page-*.json` files,
+8 MiB per page, 64 MiB aggregate, 32 JSON levels). Symlinks and other
+non-regular pages are refused on `lstat` without being followed or opened;
+replacement, truncation, growth or a modify-in-place observed through inode,
+size or mtime between `lstat` and the post-read `fstat` fails with
+`INPUT_CHANGED:<file>`. The five `INPUT_*` budget reasons and `INPUT_CHANGED` /
+`INPUT_NOT_REGULAR` are distinguished from semantic mismatches; page ordering,
+canonical bytes, all existing reason strings and the pinned corpus are
+unchanged. The same-size in-place rewrite inside the filesystem timestamp
+granularity is documented as the undetectable case.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_facts_bounds.py -v` | Exit 0; 9 passed after two fix rounds (invalid rewrite bytes, timestamp granularity) |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | Exit 0; 23 passed |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,311 passed in 305.422s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 canonical/intentional-tamper files match |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; 7 pages, 27 rows |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 -m unittest tests.test_handbook tests.test_docs_surface -v` | Exit 0; 26 passed |
+| `npm ci` | Exit 0; 3 lockfile packages, 0 vulnerabilities |
+| `npm run test:browser` | Exit 1 at startup; default loopback port 8765 occupied by an unrelated service |
+| `npm run test:browser -- --config playwright.local.config.cjs` | Exit 0; 76 Chromium tests passed in 1.9m on temporary ports 28765–28768 |
+| `git diff --exit-code capital/export.py capital/vendor tests/golden docs/decisions` | Exit 0; guarded paths byte-identical |
+
+The temporary browser config required the tracked `playwright.config.cjs` and
+preserved every test, project, timeout and `reuseExistingServer:false`; it
+remapped only the four loopback ports/base URLs to 28765–28768 and pointed the
+seeded-demo workspace at `/tmp`. No unrelated service was stopped and no
+committed CI configuration was changed; `ss -ltn` confirmed all four temporary
+ports were released afterward. `node_modules/`, test output and the temporary
+config were removed after the run.
+
 ## Residual obligations report — PR fix round 2
 
 2026-11-04, reviewed head `bbe1b48b51e86744d65158af754e33dc3d640fc4`.
