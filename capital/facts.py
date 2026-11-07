@@ -235,31 +235,36 @@ def paginate(journal, entries, state_digest, fixtures_digest, after=None, limit=
     return seal(rows, cut, after, start, limit, len(rows))
 
 
-def verify_dir(directory):
-    """Read canonical page files only; replay locally, never write or restore a service."""
+def _report(reason=None, pages=0, rows=0):
+    return {'ok': reason is None, 'reason': reason, 'pages': pages, 'rows': rows,
+            'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
+
+
+def verify_raw_pages(raw_pages):
+    """Verify already-captured page bytes; replay locally, never read the directory.
+
+    `raw_pages` is an iterable of ``(name, raw_bytes)`` pairs. A caller that
+    captures each page file once therefore verifies exactly the bytes it
+    compares. `verify_dir` reads the directory and delegates here.
+    """
     pages, rows = [], []
+    raw_pages = list(raw_pages)
 
     def report(reason=None):
-        return {'ok': reason is None, 'reason': reason, 'pages': len(pages), 'rows': len(rows),
-                'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
+        return _report(reason, len(pages), len(rows))
 
-    try:
-        paths = sorted(Path(directory).glob('page-*.json'))
-    except OSError:
+    if not raw_pages:
         return report('NO_PAGES')
-    if not paths:
-        return report('NO_PAGES')
-    for path in paths:
+    for name, raw in raw_pages:
         try:
-            raw = path.read_bytes()
             page = loads(raw)
-        except (OSError, ValueError, UnicodeError, RecursionError):
-            return report('UNREADABLE:' + path.name)
+        except (ValueError, UnicodeError, RecursionError):
+            return report('UNREADABLE:' + name)
         try:
             if raw != canonical_bytes(page):
-                return report('NONCANONICAL_ENCODING:' + path.name)
+                return report('NONCANONICAL_ENCODING:' + name)
         except (ValueError, RecursionError):
-            return report('NONCANONICAL_ENCODING:' + path.name)
+            return report('NONCANONICAL_ENCODING:' + name)
         pages.append(page)
     for page in pages:
         if type(page) is not dict or set(page) != PAGE_KEYS or page['format'] != PAGE_FORMAT:
@@ -361,3 +366,20 @@ def verify_dir(directory):
         if canonical_bytes(actual) != canonical_bytes({**rebuilt, 'row_sha256': row_digest(rebuilt)}):
             return report(f'ROW_MISMATCH:{index}')
     return report()
+
+
+def verify_dir(directory):
+    """Read canonical page files once; replay locally, never write or restore a service."""
+    try:
+        paths = sorted(Path(directory).glob('page-*.json'))
+    except OSError:
+        return _report('NO_PAGES')
+    if not paths:
+        return _report('NO_PAGES')
+    raw_pages = []
+    for path in paths:
+        try:
+            raw_pages.append((path.name, path.read_bytes()))
+        except OSError:
+            return _report('UNREADABLE:' + path.name)
+    return verify_raw_pages(raw_pages)

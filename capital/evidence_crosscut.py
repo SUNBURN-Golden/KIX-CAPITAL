@@ -2,8 +2,9 @@
 
 `python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`
 reads each input once, verifies it with the existing offline verifiers
-(`audit_workspace_bytes`, `verify_manifest`, `facts.verify_dir`), then compares
-the F04 journal, overlay and fixture commitments shared by all three.
+(`audit_workspace_bytes`, `verify_manifest`, and the `facts.verify_dir` core
+over the captured page bytes), then compares the F04 journal, overlay and
+fixture commitments shared by all three.
 Individually valid artifacts captured from different cuts of a workspace fail
 with named `CROSS_*` reasons even when every artifact's own hashes verify.
 
@@ -99,6 +100,47 @@ def _workspace_input(path, checks):
     return info, extracted
 
 
+def _manifest_extract(document):
+    """Extract the shared commitments, or None if any required shape is unusable.
+
+    `verify.verify_manifest` checks the section envelope (`sha256` plus `body`)
+    and hash values, but it does not require every `body` to be a mapping (a V2
+    manifest never inspects body shape). Guard that here so a hash-valid but
+    structurally unusable manifest fails closed instead of raising.
+    """
+    try:
+        sections = document['sections']
+        bodies = {}
+        for name in sections:
+            body = sections[name]['body']
+            if type(body) is not dict:
+                return None
+            bodies[name] = body
+        journal = bodies['journal'].get('entries')
+        fixture_rows = bodies['fixtures'].get('rows')
+        fixtures_digest = bodies['fixtures'].get('fixtures_digest')
+        if OVERLAY_SECTION in bodies:
+            overlay_body = bodies[OVERLAY_SECTION]
+            overlay_journal = overlay_body.get('journal')
+            overlay_digest = overlay_body.get('overlay_state_digest')
+        else:
+            overlay_journal, overlay_digest = [], None
+    except (KeyError, TypeError, AttributeError):
+        return None
+    if (type(journal) is list and type(fixture_rows) is dict
+            and type(fixtures_digest) is str
+            and type(overlay_journal) is list
+            and (OVERLAY_SECTION not in bodies or type(overlay_digest) is str)):
+        return {
+            'journal': journal,
+            'fixture_rows': fixture_rows,
+            'fixtures_digest': fixtures_digest,
+            'overlay_journal': overlay_journal,
+            'overlay_digest': overlay_digest,
+        }
+    return None
+
+
 def _manifest_input(path, checks, *, key, key_error, keyset, keyset_error):
     """Read FILE once, verify section hashes/digest/signature, extract bodies."""
     raw = _capture_file(path)
@@ -113,29 +155,8 @@ def _manifest_input(path, checks, *, key, key_error, keyset, keyset_error):
             'report': report, 'sha256': _sha(raw)}
     extracted = None
     if report['ok']:
-        bodies = {name: document['sections'][name]['body']
-                  for name in document['sections']}
-        journal = bodies['journal'].get('entries')
-        fixture_rows = bodies['fixtures'].get('rows')
-        fixtures_digest = bodies['fixtures'].get('fixtures_digest')
-        if OVERLAY_SECTION in bodies:
-            overlay_body = bodies[OVERLAY_SECTION]
-            overlay_journal = overlay_body.get('journal')
-            overlay_digest = overlay_body.get('overlay_state_digest')
-        else:
-            overlay_journal, overlay_digest = [], None
-        if (type(journal) is list and type(fixture_rows) is dict
-                and type(fixtures_digest) is str
-                and type(overlay_journal) is list
-                and (OVERLAY_SECTION not in bodies or type(overlay_digest) is str)):
-            extracted = {
-                'journal': journal,
-                'fixture_rows': fixture_rows,
-                'fixtures_digest': fixtures_digest,
-                'overlay_journal': overlay_journal,
-                'overlay_digest': overlay_digest,
-            }
-        else:
+        extracted = _manifest_extract(document)
+        if extracted is None:
             # A hash-valid manifest can still lack a shared field; fail closed.
             info['ok'], info['reason'] = False, 'MANIFEST_EXTRACT_FAILED'
     _check(checks, 'manifest_verify', info['ok'], info['reason'])
@@ -143,22 +164,26 @@ def _manifest_input(path, checks, *, key, key_error, keyset, keyset_error):
 
 
 def _facts_input(directory, checks):
-    """Capture page bytes once, verify DIR, extract the cut and ordered rows."""
+    """Capture page bytes once, verify those exact bytes, extract the cut and rows."""
     try:
         paths = sorted(Path(directory).glob('page-*.json'))
     except (OSError, TypeError, ValueError):
         paths = []
-    pages, captured = [], bytearray()
+    raw_pages, pages, captured = [], [], bytearray()
     capture_ok = True
     for path in paths:
         raw = _capture_file(path)
-        page = _parse(raw) if raw is not None else None
+        if raw is None:
+            capture_ok = False
+            break
+        raw_pages.append((path.name, raw))
+        page = _parse(raw)
         if page is None:
             capture_ok = False
             break
         pages.append(page)
         captured += path.name.encode() + b'\x00' + raw
-    report = facts_module.verify_dir(directory)
+    report = facts_module.verify_raw_pages(raw_pages)
     pages_sha = _sha(bytes(captured)) if capture_ok and captured else None
     info = {'path': str(directory), 'ok': report['ok'], 'reason': report['reason'],
             'report': report, 'sha256': pages_sha}

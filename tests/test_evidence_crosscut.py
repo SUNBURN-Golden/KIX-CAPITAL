@@ -301,6 +301,41 @@ class CrosscutCliTests(unittest.TestCase):
         self.assertEqual(report['reason'], 'CROSS_FIXTURES_MISMATCH')
         self.assertIsNone(report['commitments']['fixtures_digest'])
 
+    def test_resealed_manifest_non_dict_body_fails_closed(self):
+        # `verify_manifest` accepts a resealed V2 envelope whose section body is
+        # not a mapping; extraction must fail closed rather than raise.
+        from capital.verify import verify_manifest
+        mutations = {
+            'journal-body-list': lambda s: s['journal'].__setitem__('body', []),
+            'fixtures-body-list': lambda s: s['fixtures'].__setitem__('body', []),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                tampered = reseal(self.data_a['manifest'], mutate)
+                path = self.root / f'{name}.json'
+                path.write_bytes(canonical_bytes(tampered))
+                self.assertIs(verify_manifest(json.loads(path.read_bytes()))['ok'], True)
+                proc = self.run_cli('--workspace', self.ws_a, '--manifest', path,
+                                    '--facts', self.facts_a)
+                self.assertEqual((proc.returncode, proc.stderr), (1, b''))
+                report = json.loads(proc.stdout)
+                self.assertEqual(statuses(report)['workspace_audit'], 'MATCHED')
+                self.assertEqual(statuses(report)['manifest_verify'], 'MISMATCH')
+                self.assertEqual(reasons(report)['manifest_verify'],
+                                 'MANIFEST_EXTRACT_FAILED')
+                self.assertEqual(statuses(report)['facts_verify'], 'MATCHED')
+                for check_name in crosscut.CROSS_CHECKS:
+                    self.assertEqual(statuses(report)[check_name], 'NOT_CHECKED')
+
+    def test_facts_verification_uses_the_captured_bytes(self):
+        # Capture each page once, then corrupt the directory: replay of the
+        # captured bytes is unaffected while a fresh directory read fails.
+        paths = sorted(self.facts_a.glob('page-*.json'))
+        raws = [(path.name, path.read_bytes()) for path in paths]
+        paths[0].write_bytes(b'{}')
+        self.assertTrue(facts.verify_raw_pages(raws)['ok'])
+        self.assertIs(facts.verify_dir(self.facts_a)['ok'], False)
+
     def test_resealed_manifest_journal_replay_fails(self):
         def mutate(sections):
             entries = copy.deepcopy(sections['journal']['body']['entries'])
