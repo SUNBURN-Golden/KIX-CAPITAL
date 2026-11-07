@@ -1,5 +1,45 @@
 # Validation scope
 
+## Offline evidence cross-cut check — PR fix round 1
+
+2026-11-08, node `evidence-crosscut-check`, reviewed head `71dceae` (branch
+`agent/capital-evidence-crosscut-check`). SIMULATED local fixtures only; no
+payments, providers, credentials, signing or source authentication are involved.
+
+The blocking review finding was that a hash-valid manifest with a non-mapping
+section body could abort the CLI with an `AttributeError`. `_manifest_extract`
+now requires every section `body` to be a dict before extracting, and returns
+`None` instead of raising, so such a manifest reports `manifest_verify`
+`MISMATCH` with `MANIFEST_EXTRACT_FAILED`, leaves the cross checks
+`NOT_CHECKED` and exits 1. Regression tests reseal a V2 manifest with list
+`journal`/`fixtures` bodies and assert the existing verifier still accepts the
+envelope while the cross-cut CLI fails closed without a traceback.
+
+The facts input now computes its verification over the page bytes captured once
+(`facts.verify_raw_pages`, the replay core that `facts.verify_dir` now
+delegates to), so the bytes verified are exactly the bytes compared; a
+regression test corrupts the directory after capture and confirms the captured
+bytes still verify. Documentation pointers were brought up to date here, in
+`README.md`, `docs/INTEGRATION.md` and `docs/CAPITAL_REQUIREMENTS_KO.md`.
+`origin/main` (`15c2900`) was merged into the worktree because the
+`test_coa_candidate` V1Unchanged guard treats main's newer decision notes as
+baseline drift; the resolved merge is staged and left uncommitted for the
+supervisor.
+
+| Check | Measured result |
+| --- | --- |
+| `python3 -m unittest tests.test_evidence_crosscut -v` | 14 passed, including the non-dict-body and captured-bytes regressions |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,388 passed** in 458.116 s after the `origin/main` merge and documentation updates |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `npm run test:browser` (isolated loopback namespace, unchanged config) | Exit 0; **76 passed** in 2.0 min. The default invocation first failed only because ports 8765–8768 were occupied (`Address already in use`); the rerun used the same pinned `@playwright/test` 1.58.2 and CLI config without changing tests, projects, assertions, timeouts or retries. |
+| Vendor SHA256 pins and protected sources | All five vendor files match `capital/vendor/manifest.json`; `git diff origin/main -- capital/vendor .aiops capital/export.py` is empty |
+| `git diff --check` | Exit 0 |
+
+No commit, push, external post, Protocol/Commerce edit, provider call or funds
+movement was performed.
+
 ## Residual obligations report — PR fix round 2
 
 2026-11-04, reviewed head `bbe1b48b51e86744d65158af754e33dc3d640fc4`.

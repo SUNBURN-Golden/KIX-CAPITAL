@@ -130,6 +130,72 @@ The report describes observed differences only. `historical_policy_provenance`,
 `funds_executed` and `workspace_mutated` are false. No payment, causal explanation,
 authenticated ownership, reserve booking or new accounting policy is inferred.
 
+## Offline evidence cross-cut contract
+
+`python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`
+detects individually valid artifacts that were captured from different cuts of a
+workspace. Each explicit input is read once — no lock, no write, no repair — and
+verified with the existing offline verifiers: `audit.audit_workspace_bytes` over
+the captured workspace bytes, `verify.verify_manifest` over the strict-parsed
+manifest, and `facts.verify_raw_pages` over the captured page files (the same
+replay code `facts.verify_dir` delegates to), so the bytes verified are exactly
+the bytes compared. Optional mutually
+exclusive `--key-file`/`--keyset-file` arguments feed the manifest signature only,
+through the same DEV_ONLY loaders as `capital.verify`; they are integrity
+material, never credentials, and are never printed. Python callers can use
+`capital.evidence_crosscut.crosscut(workspace_file, manifest_file, facts_dir)`
+for the same report dict.
+
+The canonical sorted-key JSON format is `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1`,
+`mode` `EVIDENCE_CROSSCUT_CHECK`, labeled `SIMULATED`/`LOCAL_ONLY`.
+`inputs.{workspace,manifest,facts}` each carry `path`, `ok`, `reason`, the full
+inner verifier `report`, and `sha256` of the captured bytes (a composite over
+the ordered page files for facts). `checks` is an ordered list of
+`{id, status, reason, detail}` where status is `MATCHED`, `MISMATCH` or
+`NOT_CHECKED`: `workspace_audit`, `manifest_verify`, `facts_verify`, then the
+cross-artifact checks `journal_content`, `f04_commitment`, `overlay_presence`,
+`overlay_content`, `overlay_commitment` and `fixtures_commitment`. A missing,
+unreadable or failing input leaves every dependent cross check `NOT_CHECKED`
+and the exit code is 1. `commitments` echoes the shared `state_digest`,
+`journal_length`, `overlay_present`, `overlay_state_digest`,
+`overlay_entry_count` and `fixtures_digest` only where the matching check
+`MATCHED`; unmatched fields are null. No timestamp, instance id or random value
+is generated, so identical inputs emit identical stdout bytes. Exit codes:
+0 all matched, 1 any failed input or cross mismatch, 2 argument misuse.
+
+The comparisons bind journal content and overlay presence, not only digests:
+`journal_content` requires the workspace payload journal, the manifest journal
+section entries and the facts JOURNAL rows to be canonically identical;
+`f04_commitment` replays the manifest journal into a scratch `CreditMachine`
+over `FixtureViews` and requires the replayed `state_digest` to equal the
+workspace payload and facts cut digests with matching `journal_length`;
+`overlay_presence` compares the three emptiness signals (a v2 workspace's
+non-empty overlay journal, a V3 manifest `overlay` section, a facts cut's
+`overlay_state_digest`), so overlay-only cuts fail before content is read;
+`overlay_content` and `overlay_commitment` compare the overlay journals and the
+`overlay_state_digest` values and are `MATCHED` vacuously on an all-empty set;
+`fixtures_commitment` compares the manifest `fixtures_digest`, the recomputed
+fixture-row hash and the facts cut digest. A named `CROSS_*` reason —
+`CROSS_JOURNAL_CONTENT_MISMATCH`, `CROSS_STATE_DIGEST_MISMATCH`,
+`CROSS_JOURNAL_LENGTH_MISMATCH`, `CROSS_JOURNAL_REPLAY_FAILED`,
+`CROSS_OVERLAY_PRESENCE_MISMATCH`, `CROSS_OVERLAY_CONTENT_MISMATCH`,
+`CROSS_OVERLAY_COUNT_MISMATCH`, `CROSS_OVERLAY_DIGEST_MISMATCH` or
+`CROSS_FIXTURES_MISMATCH` — marks the first failing check, including when each
+artifact's own section hashes, content digest and page chain are internally
+valid. Matched empty-overlay V2 sets and matched non-empty-overlay V3 sets
+both pass.
+
+Only commitments represented by all relevant inputs are compared; manifest-only
+sections (receipts, projection, reconciliation, statement, source_pin) and the
+workspace's fixture mapping are out of scope by construction. Page collection,
+SQL projection checks, new manifest formats, signing, source authentication and
+detecting wholesale replacement by a fully consistent alternative book are out
+of scope: `authentication`, `source_cut` and `common_ownership` stay
+`NOT_BOUND`, `wholesale_replacement` is `NOT_DETECTABLE`, `lock_taken`,
+`writes`, `workspace_mutated`, `funds_executed` and
+`stage7_authenticated_export` are false, and `repair` is `NOT_IMPLEMENTED`.
+Executed-command evidence is in `docs/VALIDATION.md`.
+
 ## Observation fixture seam
 
 `ObservationPort` exposes `fold(facts, *, bindings) -> dict`; `LocalFakeObservation`

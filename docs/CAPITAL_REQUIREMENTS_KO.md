@@ -69,6 +69,22 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 자동 수집·import·예측·what-if·영속 이력 DB·새 회계정책은 범위 밖이다.
 계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
 
+## evidence-crosscut-check
+
+`capital/evidence_crosscut.py` / `tests/test_evidence_crosscut.py`:
+`python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`은
+명시한 워크스페이스 파일, export manifest, facts 디렉터리를 각각 한 번 캡처해
+기존 오프라인 검증기(`audit_workspace_bytes`, `verify_manifest`, 캡처한 페이지
+바이트에 대한 `facts.verify_dir` 재생 코어)로 검증한 뒤 셋이 공유하는 F04 저널
+내용, 재생 `state_digest`·`journal_length`, 오버레이 존재·내용·digest, fixture
+digest를 비교한다. 서로 다른 컷에서 온 개별적으로 유효한 아티팩트는 각자의 내부
+해시가 맞아도 `CROSS_*` 이름의 사유로 실패한다. 빈 오버레이 V2 조합과 비어 있지
+않은 V3 조합은 통과하며, 누락·검증 실패 입력은 의존 검사를 `NOT_CHECKED`로 두고
+exit 1이다. 서명은 선택적 DEV_ONLY 키/키셋으로 manifest 무결성만 검사한다.
+페이지 수집·SQL 투영·새 manifest 형식·서명·출처 인증·완전히 일관된 대체 장부로의
+통째 교체 탐지는 범위 밖이고 `wholesale_replacement`는 `NOT_DETECTABLE`이다.
+계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
+
 ## 권위와 전체 범위
 
 사용자의 2026-10-07 지시는 Capital을 `SUNBURN-Golden/KIX-CAPITAL`에 구현하며 KIX Protocol의 큰 청사진을 따르라는 것이다. 따라서 과거 Finance 후보의 “새 저장소 없음/화면은 Commerce” 토폴로지는 이번 **Capital 로컬 개발 위치**에 적용하지 않는다. 그것이 후보 금융 정책 채택·AIOPS 신규 프로그램 생성·upstream 노드 완료·운영 권한 확대를 뜻하지는 않는다. Protocol·Commerce는 수정하지 않는다.
