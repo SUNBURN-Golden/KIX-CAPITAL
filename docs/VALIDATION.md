@@ -4249,3 +4249,79 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+
+## risk-scenario-desk builder verification — 2026-11-02
+
+All results below concern local SIMULATED fixtures. This node adds a read-only
+comparison UI, HTTP/static coverage, Chromium coverage and handbook guidance.
+No financial assumptions, scenarios, backend routes or contracts were changed.
+No git commit/push, PR, issue, comment, provider call or external post was made.
+
+The plan was checked against the repository before implementation. Snapshot risk
+and covenant components are raw calculation bodies, so the UI uses separate
+validators rather than the standalone service-envelope validator. Required fields,
+non-null digests, read-only flags, captured state/day/terms and both reconciliation
+baseline digests gate result tables. Stable server row identifiers align the two
+columns, including the hypothetical injected advance. Selection keeps its baseline;
+only an explicit capture replaces it. Errors, application refreshes and role changes
+clear results and invalidate outstanding requests. Stale mismatches latch until an
+explicit valid recapture. All numeric values, including reconciliation deltas, come
+from server responses; null is unavailable. No polling or apply controls were added.
+
+Plan refinements/deviations:
+
+- Detailed comparisons use paired field tables grouped in expandable sections so
+  every supplied risk/covenant reason and server value remains inspectable.
+- A legitimate NOT_BOUND response has `terms_version: null`. Validation preserves
+  that reason without allowing numeric result tables. Incomplete diagnostic cuts
+  can also lack digests; their completeness reasons remain visible without a comparison.
+- The role selector uses aria-disabled with an event guard while busy to preserve
+  keyboard focus during role transitions. Existing command and UNKNOWN fencing
+  remains active. Comparison responses never move focus.
+- Catalogue errors can be retried by the explicit capture control. A successful
+  retry loads the catalogue and captures a new pair in the same explicit action.
+- The historical root DECISION_REQUIRED.md was preserved. Current HEAD and local
+  origin/main both resolve to c4114c751ea149865493bd3c734bc5d3c423ae2e; the historical
+  integration-baseline guard failure did not reproduce. No new decision is needed.
+
+Executed verification (stdout/stderr were captured under /tmp/risk-desk-*.log for
+longer commands; the results here are durable summaries):
+
+| Command | Actual result |
+| --- | --- |
+| `npm ci` | PASS; 3 packages installed, 0 vulnerabilities. |
+| `python3 -m unittest tests.test_risk_scenario_desk -v` | Initial run: 3 harness errors and 1 static-guard failure; empty bootstrap token header and string-literal matching corrected. An intermediate rerun exposed an indentation error, corrected. |
+| `python3 -m unittest tests.test_risk_scenario_desk tests.test_risk_whatif tests.test_portfolio_snapshot tests.test_handbook -v` | Initial combined run: 58 passed, 1 harness error (snapshot_inputs belongs to producer, corrected). Final run: PASS, 59/59 in 4.709s. |
+| `npm run test:browser -- --project workspace tests/browser/risk-scenario-desk.spec.cjs` | Invalid Playwright CLI argument ordering; no tests ran. Corrected below. |
+| `npm run test:browser -- tests/browser/risk-scenario-desk.spec.cjs --project=workspace` | First run 4/5: NOT_BOUND null terms version rejected, fixed. Expanded run 6/7: focus assertion lacked initial focus, corrected. Then PASS, 7/7. Added catalogue/application-refresh coverage afterward. |
+| `npm run test:browser -- tests/browser/risk-scenario-desk.spec.cjs tests/browser/terms-overlay.spec.cjs --project=workspace` | PASS, 10/10 in 16.6s (8 comparison tests plus both unchanged terms-overlay tests). |
+| `python3 scripts/docs_surface.py --check` | PASS; 36 routes, 273 artifacts, 9 stages. |
+| `python3 scripts/risk_scenario_vectors.py --check` | PASS; existing 37,747-byte scenario vector is byte-identical. No new vectors. |
+| `python3 -m unittest discover -s tests -v` | PASS; 1,308/1,308 in 389.993s. Includes the unchanged baseline guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | PASS; 7/7. |
+| `python3 -m compileall -q capital` | PASS, exit 0. |
+| `node --check capital/static/app.js` | PASS, exit 0. |
+| `npm run test:browser` | First full run: 82/83 passed; unchanged terms-overlay initial-label assertion timed out while full unit verification ran concurrently. Its focused rerun passed without timeout/test changes. Final full rerun: PASS, 84/84 in 2.7m, including all 8 comparison tests. |
+| `git diff --exit-code -- capital/vendor capital/export.py .aiops` | PASS; no changes. |
+| `git diff --exit-code HEAD -- capital/overlay.py capital/ports.py docs/decisions/CAPITAL_UPSTREAM_BINDING.md` | PASS; historical guard paths unchanged. |
+| Python stdlib SHA256 + `git show HEAD:<path>` byte verification | PASS; all five vendor file hashes match manifest pins, and all five files plus manifest are byte-identical to HEAD. |
+| `git diff --check` | PASS. |
+
+Initial read-only data-shape inspection used an incorrect import
+`scripts.seed_demo_workspace` (ModuleNotFoundError); corrected to the existing
+`scripts.seed_demo`. This did not modify state. The failed HTTP harness run was
+interrupted and its in-process servers exited; every subsequent HTTP fixture and
+Playwright web server is closed by its teardown. No long job was detached.
+
+Keyboard verification is automated in the comparison browser spec and documented
+in the handbook: scenario arrow-key selection, Enter/Space capture, focus retention,
+expandable details and keyboard-scrollable tables, 375px layout, stale/error result
+clearing, explicit recovery, observer refusal and auditor inspection. No separate
+human/manual walkthrough is claimed.
+
+Final cleanup: `ss -ltnp` showed no listeners on the test-owned loopback ports
+8765–8768, 8891–8892, 8901–8903 or 8911–8913; no capital.server or focused unittest
+process remained. Final `git diff --check` and documentation surface check passed.
+All five vendored reference hashes and their manifest remained unchanged. The
+worktree changes are uncommitted and ready for supervisor review.

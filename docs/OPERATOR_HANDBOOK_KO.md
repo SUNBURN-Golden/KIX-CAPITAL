@@ -799,3 +799,41 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:risk-scenario-desk -->
+### risk-scenario-desk
+
+`#risk-comparison` 위험 시나리오 비교는 organizer/auditor의 `projection:read` 전용입니다.
+observer/agent는 제한된 비교 요청을 보내지 않습니다. `GET /api/risk/scenarios` 목록의
+`largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`만 선택합니다.
+`Capture / refresh comparison`은 `GET /api/portfolio/snapshot?instance_id=…` 기준선과
+`GET /api/risk/scenarios/{id}`를 조회합니다. 선택 변경은 기준선을 유지하고 해당 시나리오만 읽습니다.
+상단 상태 재조회·역할/세션 전환·명령 뒤 재조회는 진행 중 응답과 표시 결과를 무효화합니다.
+
+결과는 SIMULATED_WHATIF / SYNTHETIC_UNADOPTED입니다. 서버 금액·비중·대사 차이만 표시합니다.
+기준선의 risk_digest와 covenant_digest가 각각 baseline_risk_digest와 baseline_covenant_digest에
+일치하고 완전한 snapshot 및 captured cut 검사를 통과해야 나란히 표시합니다. absent/null digest는
+일치가 아닙니다. overlay 시계만 바뀌어 F04 digest가 같아도 비교는 stale일 수 있습니다.
+REFRESH_REQUIRED가 나오면 결과가 지워지며 선택 변경으로 해제되지 않습니다. 명시적 캡처로만
+복구합니다. INCOMPLETE는 completeness 사유를 유지하며 독립 위험 조회로 대체하지 않습니다.
+NOT_BOUND와 not evaluated는 서버 사유를 유지하고 가상 숫자 결과·적용 버튼을 표시하지 않습니다.
+null은 unavailable입니다. 준비금 자금원·coverage와 authenticated source cut은 NOT_BOUND입니다.
+이것은 캡처된 비교이며 현재 상태를 계속 추적하지 않습니다. 자동 갱신, 정책 편집, 명령 실행,
+새 시나리오, cashflow desk, slice servicing은 범위 밖입니다.
+
+키보드 점검 (합성 fixture / 제어된 오류만 사용):
+
+1. 내비게이션의 위험 시나리오 비교 링크를 Enter로 열고 Tab으로 selector에 이동합니다.
+2. ArrowDown/ArrowUp으로 네 시나리오를 선택합니다. 선택 후 focus는 selector에 남습니다.
+3. Tab으로 캡처 버튼에 이동하여 Enter 또는 Space로 조회합니다. 응답 후 버튼 focus가 유지됩니다.
+4. Tab으로 스크롤 가능한 표 영역과 details summary에 이동합니다. summary에서 Enter로 펼치고
+   Tab/방향키로 표를 읽습니다. 기준선과 projected sim_day를 구분하고 375px에서도 페이지 넘침이 없는지 확인합니다.
+5. `tests/browser/risk-scenario-desk.spec.cjs`의 제어된 digest mismatch/네트워크 오류를 사용합니다.
+   결과가 사라지고 live status가 REFRESH_REQUIRED 또는 조회/검증 실패를 알리는지 확인합니다.
+   시나리오 선택만으로 stale이 풀리지 않아야 합니다. 명시적 캡처로 복구하며 응답이 focus를 빼앗지 않아야 합니다.
+6. 역할 selector에서 observer로 전환합니다. 비교 결과가 사라지고 추가 제한 요청이 없어야 합니다.
+   역할 selector focus가 유지되어야 합니다. auditor로 전환한 뒤 다시 명시적으로 캡처합니다.
+
+검증: `tests/test_risk_scenario_desk.py`의 ComparisonHTTPTests와 ComparisonStaticTests,
+`tests/browser/risk-scenario-desk.spec.cjs`의 keyboard/digest/role/error recovery 시나리오.
+<!-- /handbook-section -->
