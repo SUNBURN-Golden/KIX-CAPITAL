@@ -376,3 +376,14 @@ change or external call. See [the contract](docs/INTEGRATION.md#residual-obligat
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
+
+Refund frontier analytics (SIMULATED / provisional):
+`GET /api/risk?refund_frontier=1&instance_id=…` requires `projection:read`.
+It returns integer-KRW boundaries, predecessor witnesses, per-advance margin
+measurements, affected cases, coverage and canonical source/result digests.
+Portfolio minima are `ASSESSED_CASES_ONLY`; incomplete beneficiary minima are
+null unless a validated existing breach proves zero. Immutable fixtures, missing
+line refund attribution and positive residual slice encumbrance are explicit
+diagnostics. This read writes no journal and makes no forecast or probability claim.
+Pinned synthetic evidence: `tests/vectors/refund_frontier.json`;
+`python3 scripts/refund_frontier_vectors.py --check`.
