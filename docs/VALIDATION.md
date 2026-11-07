@@ -1,5 +1,40 @@
 # Validation scope
 
+## observation-http-fake — bounded loopback ObservationPort exercise
+
+2026-11-02. All results use local SIMULATED fixtures; no provider calls,
+credentials or real money are involved. `ObservationHttpAdapter`
+(`capital/observation_http.py`, label `LOCAL_FAKE_OBSERVATION`) posts one
+`{"facts", "bindings"}` batch per `fold` to `scripts/fake_observation.py`, a
+`127.0.0.1`-only stdlib fake delegating to `LocalFakeObservation`. One fold is
+at most one transport attempt; dropped, timed-out, redirected, oversized,
+malformed, duplicate-key or stamp-altered replies raise explicit errors, never
+an empty fold and never a retry. `tests/test_observation_http.py` runs the
+pinned `run_observation_vectors` corpus over the transport plus each armed
+fault with post-count accounting. `capital/ports.py`, `capital/observation.py`,
+vendor files, `.aiops/` and `tests/vectors/` are untouched; ObservationPort,
+CAP-14 and CAP-16 stay `NOT_BOUND` and nothing is SEMANTIC_CONFORMANCE.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_observation_http.py' -v` | Exit 0; 18 passed in ~7.3s (vectors over loopback, populated-workspace invariance, loopback refusal, all eight faults, reply-stamp validation, one-attempt post counts) |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,320 passed in 357.762s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/observation_vectors.py --check` | Exit 0; `SIMULATED observation vectors PASS` |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/fake_observation.py --port 0` | Banner `LOCAL_FAKE_OBSERVATION http://127.0.0.1:<port> mode=SIMULATED binding=NOT_BOUND semantic_conformance=false`; stopped |
+| `npm run test:browser` | Exit 1 at webServer startup; default loopback port 8765 occupied by an unrelated local service (`Errno 98`) |
+| `npx playwright test --config /tmp/playwright.observation-http-fake.cjs` | Exit 0; all 76 Chromium tests passed in 1.9m |
+
+The temporary browser configuration requires the tracked configuration and
+preserves every test, assertion, project, timeout and retry. It remaps only
+loopback ports 8765–8768 to 28765–28768 (including the first server's implicit
+default) and supplies absolute test/output paths and the repository server
+working directory. No unrelated service was stopped, no committed browser
+configuration was changed, and all test-created servers have stopped.
+
 ## Portfolio history comparison — supervisor conflict-fix round 2
 
 2026-10-30. Resolved the supervisor-started merge of incoming main

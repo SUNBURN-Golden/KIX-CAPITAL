@@ -38,6 +38,16 @@ All outputs are SIMULATED, applied=false, funds_executed=false. There are no net
 calls, recording commands, or state effects. CAP-14 and CAP-16 remain NOT_BOUND;
 this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
+`ObservationHttpAdapter` (`capital/observation_http.py`, label
+`LOCAL_FAKE_OBSERVATION`) is an opt-in test/development entry point that
+exercises the same fold over a bounded loopback fake
+(`scripts/fake_observation.py`, `127.0.0.1` only, delegating to
+`LocalFakeObservation`). One fold is at most one POST; lost, redirected,
+oversized, malformed or dishonestly stamped replies raise explicit errors and
+are never retried. `tests/test_observation_http.py` runs the pinned vectors
+over that transport plus the fault cases. The adapter stays NOT_BOUND and is
+not SEMANTIC_CONFORMANCE.
+
 로컬 합성 데이터로 Capital의 정산 근거 → 제안 → 모의 승인 → 노출 기록 → 상환 메모 → 종결·재생 검증을 연결하는 개발용 제품입니다. **전체 Capital 청사진 완료·실대출·신용심사·운영 출시가 아닙니다.**
 
 ## Capital-local named journeys (SIMULATED)

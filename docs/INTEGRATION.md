@@ -77,6 +77,18 @@ Transmission metadata is separate from normalized item content. Same scoped item
 key/content dedups; changed content retains the original and flags CONFLICT.
 UNMATCHED stays diagnostic with no effects. CAP-14/CAP-16 remain NOT_BOUND.
 
+`ObservationHttpAdapter` (`capital/observation_http.py`) is a bounded loopback
+exercise of the same port, not a service constructor argument or `/api` route.
+It posts `{"facts": [...], "bindings": [...]}` once per `fold` to
+`LOCAL_FAKE_OBSERVATION` (`scripts/fake_observation.py`, a `127.0.0.1`-only
+stdlib server delegating to `LocalFakeObservation`). The client refuses
+non-loopback destinations and redirects, applies explicit request-body,
+reply-body and timeout bounds, and treats dropped, timed-out, malformed,
+duplicate-key, oversized or stamp-altered replies as explicit errors, never an
+empty fold and never a retry. `tests/test_observation_http.py` runs
+`run_observation_vectors(factory)` over that transport plus the fault cases.
+The label is SIMULATED and not SEMANTIC_CONFORMANCE.
+
 The fixture profile `LOCAL_SYNTHETIC_JSON_SHA256_V1` derives `sim-event-<sha256>`
 from canonical local JSON `{profile, key}`, where `key` contains provider, account
 alias, environment, profile_version and the stable synthetic item_key. JSON uses

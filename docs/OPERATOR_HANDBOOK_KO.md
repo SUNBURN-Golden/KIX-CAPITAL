@@ -799,3 +799,11 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:observation-http-fake -->
+
+### observation-http-fake
+
+`capital/observation_http.py`의 `ObservationHttpAdapter`는 `ObservationPort`의 opt-in 루프백 transport 연습용 구현이다(라벨 `LOCAL_FAKE_OBSERVATION`). `fold` 한 번은 `{"facts": [...], "bindings": [...]}` 배치를 `scripts/fake_observation.py`에 최대 한 번 POST한다. 그 가짜는 127.0.0.1에만 묶이는 stdlib 서버로 `LocalFakeObservation`에 위임하고, 인증·durable inbox·기록이 없다. 클라이언트는 비루프백 주소(`NON_LOOPBACK`)와 redirect(`REDIRECT_REFUSED`)를 거절하고 요청·응답·timeout 경계를 둔다. `drop`·`timeout`은 `OBSERVATION_UNAVAILABLE`, `malformed-json`·`duplicate-key`는 `INVALID_JSON`, `oversized`는 `REPLY_TOO_LARGE`, `alter-identity`는 `IDENTITY_MISMATCH`, `alter-execution`은 `FUNDS_EXECUTED`/`EFFECTS_CLAIMED`다. transport 실패는 빈 성공 fold가 아니고 자동 재시도도 없다. `tests/test_observation_http.py`가 같은 벡터와 결함을 확인한다. SIMULATED, `NOT_BOUND`, SEMANTIC_CONFORMANCE가 아니며 CAP-14·CAP-16은 그대로다.
+
+<!-- /handbook-section -->
