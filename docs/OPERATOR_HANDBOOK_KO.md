@@ -799,3 +799,25 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+
+## 오프라인 합성 이벤트 스트레스
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json`은 캡처한
+`workspace.json` 한 개를 감사하고 표준 출력으로 정규 JSON 보고서를 만든다.
+README의 `CAPITAL_EVENT_STRESS_V1` 예제를 사용한다. 이벤트 구성원은 정확한
+claim_id/trade_id/currency로 지정하며 각 시나리오는 같은 기준 캡처에서 독립적으로
+시작한다. 추가 미결 환불 금액은 구성 채권마다 한 번만 적용된다.
+
+채권별 적격 액면과 환불·수취인·반올림 증거, 인출별 기준/충격 차입기준·여유액·가상
+마진 위반, 이벤트/포트폴리오 증감 및 계산 범위를 확인한다. 인출별 채권 문맥은
+NON_ADDITIVE이므로 합산하지 않는다. 외부 구성 채권과 미금융 픽스처도 채권 범위에
+남는다. 미금융 채권에 금리나 차입 권한을 만들지 않는다. 공유 배분·환불 매핑·보유자·
+슬라이스 의미가 미확정이면 해당 값과 종속 합계는 null이다. PARTIAL은 전체 안전을
+뜻하지 않는다. 잘못된 구성원이나 용량 초과는 전체 요청을 거절한다.
+
+COMPLETE는 종료 0(가상 위반도 포함), PARTIAL/UNAVAILABLE/REJECTED는 종료 1,
+인수 오류는 종료 2다. 입력·정책·요청 해시로 계산 자료를 구분하지만 과거 정책 인증은
+NOT_BOUND다. 모든 값은 SIMULATED/provisional이며 applied=false,
+funds_executed=false, workspace_mutated=false, production NOT_AUTHORIZED다.
+원본 파일·원장·시계는 바뀌지 않으며 실제 지급·환불·권리확인이나 검색 최적화가 아니다.
+`python3 scripts/event_stress_vectors.py --check`로 합성 고정 벡터를 검증한다.

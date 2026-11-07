@@ -1,5 +1,65 @@
 # Validation scope
 
+## Offline event stress report — local builder verification
+
+2026-11-03, branch `agent/capital-event-stress-report`. All calculations and
+fixtures are SIMULATED/provisional. No financial execution, production authority,
+external post, commit, push, PR, issue or comment. This node adds an offline CLI;
+it does not add a live route or modify legacy export construction.
+
+The implementation follows the supplied plan with two explicit domain details:
+exposure reconciliation uses the existing projection over the complete F04
+journal with no settlement evidence, so unsupported claim equations are diagnosed
+per claim without suppressing known exposure. Captured F04 relationships support
+one claim per advance; multi-claim relationship shapes are not flattened or
+allocated. Future multi-claim/slice/holder allocations remain non-computed. The
+fixture universe, including unfinanced/outside claims, defines eligible-face
+coverage; allocated base/headroom/breach totals cover recorded drawn advances.
+Unfinanced claims receive no invented rate. Multiple recorded draws, including
+closed/current pairs, keep allocation-dependent totals null to prevent repeated
+collateral bases. These are reporting/mapping details,
+not new financial terms. The new versioned binding note records Codex
+implementation provenance, without attributing implementation to the decision lane.
+
+Observed commands (logs for long runs are local ignored files under
+`build/event-stress-verification/`; successes below were observed, not prefilled):
+
+| Command | Observed result |
+| --- | --- |
+| `python3 -m unittest tests.test_event_stress -v` | Final standalone exit 0; 28 tests passed in 1.572s (including the final closed/current-draw collateral regression). Earlier exit-1 runs caught a test syntax error, 5 fixture/projection setup errors, and an incorrect assumption that approval reserves collateral. Fixed and reran; the pinned FSM reserves only at draw. |
+| `python3 -m unittest tests.test_event_stress tests.test_decision_bindings -v` | Exit 0; all 53 tests passed in 24.921s after the final mapping note and sorted inventory updates. |
+| `python3 -m unittest discover -s tests -v` (first run) | Exit 1; 1,329 tests in 315.186s, one sorted decision-binding inventory failure. Corrected registry ordering; no test or CI weakening. |
+| `python3 -m unittest discover -s tests -v` (final rerun) | Exit 0; all 1,330 tests passed in 304.834s; no skips. Includes final collateral regression, legacy byte guards, packaging tests and generated corpus checks. |
+| `python3 scripts/event_stress_vectors.py --write` | Final exit 0; 198,233 bytes. Earlier exit-1 setup attempts caught invalid operation-ID underscores, supplied arguments already bound by the service, and a refund fixture that cannot draw. Corrected the synthetic builder; no policy or legacy tests changed. |
+| `python3 scripts/event_stress_vectors.py --check` | Final exit 0; all 3 synthetic cases byte-match. Earlier attempts reflected the same setup failures before a corpus existed. |
+| `python3 scripts/pack_vectors.py --write` | Exit 0; regenerated 9 files because the added implementation note changes the decision inventory. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; all 9 files match. |
+| `python3 scripts/docs_surface.py --check` | Final exit 0; 36 routes, 274 artifacts, 9 stages. Initial exit 1 correctly reported the event vector missing before generation. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; six scope entries and the mapping are registered CONSUMED with module/test bindings. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all 7 tests passed; no skips. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci` | Exit 0; 3 packages installed; audit reported 0 vulnerabilities. |
+| `npm run test:browser` | Exit 1 at web-server startup: pre-existing listeners on default ports (8765/8766); no tests executed. Existing processes were left untouched. |
+| `npm run test:browser -- --config build/event-stress-verification/playwright.config.cjs` | Exit 0; all 76 Chromium tests passed in 2.1m; no skips. Temporary config changes only ports/cwd/isolated test workspace; test files and tracked config unchanged. |
+| `ss -ltn '( sport = :45007 or sport = :49467 or sport = :59649 or sport = :36361 )'` | Exit 0; no listeners remain on the four test-server ports after Playwright exited. |
+| `git diff --exit-code -- capital/vendor/ capital/export.py .aiops/` | Exit 0; protected tracked paths unchanged. |
+| `sha256sum -c build/event-stress-verification/vendor-before.sha256` | Exit 0; all five Python reference files and manifest match the before hashes. |
+| `git diff --check` | Exit 0. |
+| Python read-only comparison of `git show HEAD:PATH` against protected file bytes | Exit 0; legacy `capital/export.py`, five vendor references and manifest unchanged; no `.aiops/` diff. |
+
+Vendor SHA256 observations (also checked by the existing unit pin guard):
+
+```text
+f4f6b3698dd848538d2efa10b276cb33659eb4877fcbea0feb7429b28456491b  capital/vendor/credit_advance_f04/credit_fsm.py
+5e75fcc76fb0857f671b2fa33ca0fc851e9d676d4b5db8f357393367bc725d95  capital/vendor/credit_advance_f04/mock_credit.py
+75cd55f773e3e71553392f674d1595af66cf82560565cc5603bf829a9a29e99d  capital/vendor/credit_advance_f04/test_mock_credit.py
+9e9c25571fdbe7b90b7539df2cc71afaee83d81905293dc56dbeb9faaf864170  capital/vendor/settlement_f01_f03/mock_settlement.py
+c6d7ae79fe0c3289def2d3c195212247d1ab2c2e913feb80612fcd9ff64c77c8  capital/vendor/settlement_f01_f03/settlement_fsm.py
+b5ff2fca301bf456826dcbc9a6617521d528746efb03b8107f23b818fb4d6def  capital/vendor/manifest.json
+```
+
+
 ## Portfolio history comparison — supervisor conflict-fix round 2
 
 2026-10-30. Resolved the supervisor-started merge of incoming main
