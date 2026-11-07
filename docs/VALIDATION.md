@@ -1,5 +1,49 @@
 # Validation scope
 
+## Facts verifier input bounds
+
+2026-11-02, baseline HEAD `c4114c751ea149865493bd3c734bc5d3c423ae2e` on branch
+`agent/capital-facts-verifier-input-bounds`, with the implementation uncommitted.
+All verification below uses local SIMULATED fixtures; no real payments,
+credentials or external services were touched.
+
+`capital/facts.py` `verify_dir` now reads through a bounded, refusal-first read
+phase (`INPUT_LIMITS`: 4096 directory entries, 64 matched `page-*.json` files,
+8 MiB per page, 64 MiB aggregate, 32 JSON levels). Symlinks and other
+non-regular pages are refused on `lstat` without being followed or opened;
+replacement, truncation, growth or a modify-in-place observed through inode,
+size or mtime between `lstat` and the post-read `fstat` fails with
+`INPUT_CHANGED:<file>`. The five `INPUT_*` budget reasons and `INPUT_CHANGED` /
+`INPUT_NOT_REGULAR` are distinguished from semantic mismatches; page ordering,
+canonical bytes, all existing reason strings and the pinned corpus are
+unchanged. The same-size in-place rewrite inside the filesystem timestamp
+granularity is documented as the undetectable case.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_facts_bounds.py -v` | Exit 0; 9 passed after two fix rounds (invalid rewrite bytes, timestamp granularity) |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | Exit 0; 23 passed |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,311 passed in 305.422s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 canonical/intentional-tamper files match |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; 7 pages, 27 rows |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 -m unittest tests.test_handbook tests.test_docs_surface -v` | Exit 0; 26 passed |
+| `npm ci` | Exit 0; 3 lockfile packages, 0 vulnerabilities |
+| `npm run test:browser` | Exit 1 at startup; default loopback port 8765 occupied by an unrelated service |
+| `npm run test:browser -- --config playwright.local.config.cjs` | Exit 0; 76 Chromium tests passed in 1.9m on temporary ports 28765–28768 |
+| `git diff --exit-code capital/export.py capital/vendor tests/golden docs/decisions` | Exit 0; guarded paths byte-identical |
+
+The temporary browser config required the tracked `playwright.config.cjs` and
+preserved every test, project, timeout and `reuseExistingServer:false`; it
+remapped only the four loopback ports/base URLs to 28765–28768 and pointed the
+seeded-demo workspace at `/tmp`. No unrelated service was stopped and no
+committed CI configuration was changed; `ss -ltn` confirmed all four temporary
+ports were released afterward. `node_modules/`, test output and the temporary
+config were removed after the run.
+
 ## Portfolio history comparison — supervisor conflict-fix round 2
 
 2026-10-30. Resolved the supervisor-started merge of incoming main

@@ -276,6 +276,19 @@ It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
 `tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
 bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
 
+The read phase is bounded before any page is opened: a directory may hold at
+most 4096 entries, 64 matched `page-*.json` files of at most 8 MiB each and
+64 MiB in aggregate, and JSON nesting no deeper than 32 levels
+(`capital.facts.INPUT_LIMITS`). Symlinks and other non-regular page files are
+refused without being followed or opened, and a page that is replaced, renamed
+or modified while it is read fails deterministically. These input-budget
+failures report `INPUT_DIR_ENTRIES`, `INPUT_PAGES`, `INPUT_PAGE_TOO_LARGE:<file>`,
+`INPUT_TOTAL_TOO_LARGE:<file>`, `INPUT_NOT_REGULAR:<file>`, `INPUT_CHANGED:<file>`
+and `INPUT_JSON_DEPTH:<file>`, kept distinct from the semantic mismatch reasons.
+They are demo technical bounds sized above the adopted producer caps (500
+operations, 2000 overlay entries, 4 KiB entries, 4 MiB envelopes, page limit
+500), not financial limits; every export this demo can produce fits them.
+
 Labels remain `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 with `stage7_authenticated_export: false` and a non-claim of
 `k-stage7-authenticated-export`. Hashes detect corruption; consistent replacement

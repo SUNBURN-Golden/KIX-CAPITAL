@@ -6,7 +6,11 @@ integrity checks, not authentication. There is no import or resume operation.
 from __future__ import annotations
 
 import copy
+import errno
+import fnmatch
+import os
 import re
+import stat
 from pathlib import Path
 
 from capital import overlay, recovery, slices
@@ -24,6 +28,21 @@ CHAIN = 'KIX_CAPITAL_FACTS_CHAIN_V1'
 PAGE = 'KIX_CAPITAL_FACTS_PAGE_V1'
 CUT = 'KIX_CAPITAL_FACTS_CUT_V1'
 LIMIT_DEFAULT, LIMIT_MAX = 100, 500
+# Read-phase input budget of verify_dir: a demo bound, not a financial limit.
+# Sized above the adopted producer bounds (MAX_OPERATIONS=500,
+# OVERLAY_MAX_ENTRIES=2000, OVERLAY_ENTRY_MAX_BYTES=4096, request bodies
+# <=8192 bytes, ENVELOPE_MAX_BYTES=4MiB, page limit 500) so every export the
+# producer can emit fits: 2500 rows ~8.5KiB worst case fit five pages under
+# 8MiB each and 64MiB in aggregate; real pages nest about six levels.
+INPUT_LIMITS = {
+    'max_dir_entries': 4096,
+    'max_pages': 64,
+    'max_page_bytes': 8 * 1024 * 1024,
+    'max_total_bytes': 64 * 1024 * 1024,
+    'max_json_depth': 32,
+}
+PAGE_GLOB = 'page-*.json'
+_CHANGED_ERRNOS = {errno.ENOENT, errno.ENOTDIR, getattr(errno, 'ELOOP', errno.ENOENT)}
 UINT_MAX = 99_999_999
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 CURSOR = re.compile(r'kfc1\.([0-9]{8})\.([0-9a-f]{64})\Z')
@@ -235,31 +254,142 @@ def paginate(journal, entries, state_digest, fixtures_digest, after=None, limit=
     return seal(rows, cut, after, start, limit, len(rows))
 
 
-def verify_dir(directory):
-    """Read canonical page files only; replay locally, never write or restore a service."""
+class _ChangedError(OSError):
+    """The named page vanished, moved or changed while it was being read."""
+
+
+def _page_names(directory, bounds):
+    """(reason, names): the sorted page-*.json names, budget-checked while scanning.
+
+    The scan never holds more than the matched names plus counters; both the
+    directory-entry count and the matched-page count refuse before unbounded
+    accumulation. Selection and ordering match sorted glob(PAGE_GLOB).
+    """
+    names, count = [], 0
+    try:
+        with os.scandir(directory) as it:
+            for entry in it:
+                count += 1
+                if count > bounds['max_dir_entries']:
+                    return 'INPUT_DIR_ENTRIES', None
+                if fnmatch.fnmatchcase(entry.name, PAGE_GLOB):
+                    names.append(entry.name)
+                    if len(names) > bounds['max_pages']:
+                        return 'INPUT_PAGES', None
+    except OSError:
+        return 'NO_PAGES', None
+    return None, sorted(names)
+
+
+def _read_regular(path, before):
+    """Read exactly `before.st_size` bytes from a regular file; refuse any observed change.
+
+    The descriptor is opened without following a final symlink (where the
+    platform offers O_NOFOLLOW) and fstat-compared to the pre-open lstat before
+    and after the bounded read, so replacement, truncation, growth and a
+    modify-in-place observed through inode, size or mtime all fail identically.
+    A non-regular fd is never read, so a substituted fifo cannot block the read.
+    """
+    flags = (os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0)
+             | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        if exc.errno in _CHANGED_ERRNOS:
+            raise _ChangedError() from exc
+        raise
+    try:
+        opened = os.fstat(fd)
+        if (not stat.S_ISREG(opened.st_mode)
+                or (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
+                != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)):
+            raise _ChangedError()
+        chunks, remaining = [], before.st_size
+        while remaining:
+            chunk = os.read(fd, remaining)
+            if not chunk:
+                raise _ChangedError()
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        if os.read(fd, 1):
+            raise _ChangedError()
+        after = os.fstat(fd)
+        if (after.st_ino, after.st_size, after.st_mtime_ns) != (
+                opened.st_ino, opened.st_size, opened.st_mtime_ns):
+            raise _ChangedError()
+        return b''.join(chunks)
+    finally:
+        os.close(fd)
+
+
+def _json_depth(value):
+    """Nesting depth of a decoded document: a scalar is 0; []/{} each add one."""
+    depth, stack = 0, [(value, 0)]
+    while stack:
+        node, level = stack.pop()
+        if type(node) is dict:
+            children = node.values()
+        elif type(node) is list:
+            children = node
+        else:
+            continue
+        depth = max(depth, level + 1)
+        stack.extend((child, level + 1) for child in children)
+    return depth
+
+
+def verify_dir(directory, *, limits=None):
+    """Read canonical page files only; replay locally, never write or restore a service.
+
+    The read phase is bounded by INPUT_LIMITS (overridable through `limits`):
+    directory entries, page count, per-page bytes, aggregate bytes and JSON
+    depth refuse before unbounded reads or accumulation. Input-budget failures
+    report INPUT_* reasons; semantic mismatches keep their existing reasons.
+    """
+    bounds = dict(INPUT_LIMITS)
+    if limits is not None:
+        bounds.update(limits)
     pages, rows = [], []
 
     def report(reason=None):
         return {'ok': reason is None, 'reason': reason, 'pages': len(pages), 'rows': len(rows),
                 'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
 
-    try:
-        paths = sorted(Path(directory).glob('page-*.json'))
-    except OSError:
+    reason, names = _page_names(directory, bounds)
+    if reason is not None:
+        return report(reason)
+    if not names:
         return report('NO_PAGES')
-    if not paths:
-        return report('NO_PAGES')
-    for path in paths:
+    total = 0
+    for name in names:
+        path = Path(directory) / name
         try:
-            raw = path.read_bytes()
+            before = path.lstat()
+        except (FileNotFoundError, NotADirectoryError):
+            return report('INPUT_CHANGED:' + name)
+        except OSError:
+            return report('UNREADABLE:' + name)
+        if not stat.S_ISREG(before.st_mode):
+            return report('INPUT_NOT_REGULAR:' + name)
+        if before.st_size > bounds['max_page_bytes']:
+            return report('INPUT_PAGE_TOO_LARGE:' + name)
+        if total + before.st_size > bounds['max_total_bytes']:
+            return report('INPUT_TOTAL_TOO_LARGE:' + name)
+        try:
+            raw = _read_regular(path, before)
             page = loads(raw)
+        except _ChangedError:
+            return report('INPUT_CHANGED:' + name)
         except (OSError, ValueError, UnicodeError, RecursionError):
-            return report('UNREADABLE:' + path.name)
+            return report('UNREADABLE:' + name)
+        if _json_depth(page) > bounds['max_json_depth']:
+            return report('INPUT_JSON_DEPTH:' + name)
         try:
             if raw != canonical_bytes(page):
-                return report('NONCANONICAL_ENCODING:' + path.name)
+                return report('NONCANONICAL_ENCODING:' + name)
         except (ValueError, RecursionError):
-            return report('NONCANONICAL_ENCODING:' + path.name)
+            return report('NONCANONICAL_ENCODING:' + name)
+        total += before.st_size
         pages.append(page)
     for page in pages:
         if type(page) is not dict or set(page) != PAGE_KEYS or page['format'] != PAGE_FORMAT:

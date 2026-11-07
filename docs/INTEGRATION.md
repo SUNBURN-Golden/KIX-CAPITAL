@@ -487,6 +487,33 @@ section journal. The legacy export has no overlay field and is unchanged.
 Empty overlays omit both overlay cut keys under the adopted
 [overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
 
+The offline verifier (`python3 -m capital.verify --facts DIR`,
+`capital.facts.verify_dir`) bounds its inputs before reading or accumulating
+anything (`capital.facts.INPUT_LIMITS`, a demo bound, not a financial limit):
+
+| Bound | Default | Refusal |
+|---|---|---|
+| Directory entries (matched or not) | 4096 | `INPUT_DIR_ENTRIES` |
+| Matched `page-*.json` files | 64 | `INPUT_PAGES` |
+| Bytes per page file (via lstat, before open) | 8 MiB | `INPUT_PAGE_TOO_LARGE:<file>` |
+| Aggregate page bytes | 64 MiB | `INPUT_TOTAL_TOO_LARGE:<file>` |
+| JSON nesting depth | 32 | `INPUT_JSON_DEPTH:<file>` |
+
+Symlinks, fifos, directories and other non-regular `page-*.json` entries are
+refused with `INPUT_NOT_REGULAR:<file>` on `lstat`, without following or opening
+them — a fifo can never block the read. A page that is renamed, replaced or
+modified between the directory lstat and the post-read fstat (inode, size or
+mtime) fails deterministically with `INPUT_CHANGED:<file>`; an in-place rewrite
+inside the filesystem timestamp granularity is the documented undetectable
+case. `INPUT_*` reasons are input-budget failures, distinct from semantic
+mismatches (`PAGE_SHAPE`, `*_MISMATCH`, `UNREADABLE`, `NONCANONICAL_ENCODING`);
+the CLI still exits 0 on success, 1 on any refusal and 2 on misuse, prints only
+file names and reason codes — never page contents — and writes nothing. The
+bounds sit above the adopted producer caps (`MAX_OPERATIONS=500`,
+`OVERLAY_MAX_ENTRIES=2000`, `OVERLAY_ENTRY_MAX_BYTES=4096`,
+`ENVELOPE_MAX_BYTES=4MiB`, facts page limit 500), so a maximum-generated export
+(five pages, ~12 MiB) fits the defaults with headroom.
+
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
