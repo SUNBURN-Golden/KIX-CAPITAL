@@ -29,6 +29,36 @@ payments remain `NOT_BOUND`. No reserve is booked; reserve funding/coverage rema
 are out of scope. See `tests/test_portfolio_compare.py`, `docs/INTEGRATION.md` and
 `docs/VALIDATION.md` for the contract and actual verification evidence.
 
+## Offline evidence cross-cut check
+
+```sh
+python3 -m capital.evidence_crosscut --workspace WS.json --manifest MANIFEST.json --facts FACTS_DIR
+```
+
+The stdlib CLI reads each explicit input once — no lock, no write, no repair —
+and verifies it with the existing offline verifiers (`audit_workspace_bytes`,
+`verify_manifest`, `facts.verify_dir`). It then compares the commitments shared
+by all three artifacts: the F04 journal content, the replayed `state_digest` and
+`journal_length`, overlay presence/content/`overlay_state_digest`, and the
+fixture digest. Deterministic `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1` JSON reports one
+`MATCHED`/`MISMATCH`/`NOT_CHECKED` status per check. Exit codes: 0 matched,
+1 any failed input or cross mismatch, 2 argument misuse.
+
+Individually valid artifacts captured from different cuts fail with named
+`CROSS_*` reasons — `CROSS_JOURNAL_CONTENT_MISMATCH`,
+`CROSS_STATE_DIGEST_MISMATCH`, `CROSS_OVERLAY_PRESENCE_MISMATCH`,
+`CROSS_OVERLAY_CONTENT_MISMATCH`, `CROSS_OVERLAY_DIGEST_MISMATCH`,
+`CROSS_FIXTURES_MISMATCH`, `CROSS_JOURNAL_REPLAY_FAILED` —
+even when every artifact's internal hashes verify. A missing or failed input
+leaves the dependent checks `NOT_CHECKED`. Optional `--key-file`/`--keyset-file`
+use the existing DEV_ONLY loaders for the manifest signature only. This is
+local SIMULATED consistency evidence: page collection, SQL projection checks,
+new manifest formats, signing, source authentication and detecting wholesale
+replacement by a fully consistent alternative book are out of scope;
+`wholesale_replacement` stays `NOT_DETECTABLE`. See
+`tests/test_evidence_crosscut.py`, `docs/INTEGRATION.md` and
+`docs/VALIDATION.md`.
+
 ## Synthetic provider observation fold
 
 `tests/vectors/provider_facts.json` pins synthetic identity cases. Run
@@ -132,6 +162,7 @@ python3 scripts/smoke_release.py dist/capital-0.2.0.pyz
 - 크래시 경계 재생 행렬(`tests/crash_matrix.py`, 고정 표 `tests/vectors/workspace_crash.json`). 고정 명령열(F04 저널 추가·overlay entry·temp-file rename 경계)을 재생하면서 각 쓰기 경계의 앞·뒤에 crash를 주입하고, torn payload·stale temp·`--workspace` 서브프로세스 SIGKILL 칸을 돌립니다. 매 칸 재시작 뒤 `state_digest`와 `overlay_state_digest`가 핀과 바이트 동일하거나 `WORKSPACE_UNREADABLE`로 닫혀야 하고, 조용한 빈 장부는 실패입니다. `python3 tests/crash_matrix.py --check`가 표 드리프트에 1로 끝나고 `python3 -m unittest tests.test_crash_replay`가 칸을 실행합니다. 라벨은 `SIMULATED`, stage5 durable transaction·cross-host fencing 주장은 없고 CAP-11은 `NOT_BOUND`입니다.
 - 시드 고정 fold 결정성 코퍼스(`tests/vectors/fold_fuzz.json`). `python3 scripts/fold_fuzz.py --check`가 핀된 LCG32 시드 16개의 명령열을 서로 독립인 파일 작업공간 두 개에서 재생하며, 매 접두사의 F04/overlay digest·receipt 해시·봉투 전체 바이트를 비교합니다. 복사한 저널을 다시 fold하고 완료된 각 열을 새 세션으로 다시 열어 receipt와 파일 바이트 불변을 검사합니다. 봉투 바이트 동일성은 같은 인터프리터·트리에서 고정 합성 writer와 시계 입력을 쓸 때만 성립하고 평범한 wall-clock 저장은 이 주장 밖입니다. 코퍼스는 합성 ID와 논리 일수만 담고 채택된 용량 한계 안에 있습니다. 드리프트·누락·잘못된 입력·서식 변경은 아무것도 다시 쓰지 않고 1로 끝나고, `--write`는 이 코퍼스만 명시적으로 만들며 `--file PATH`로 격리 검사를 지원합니다. 크래시 행렬을 보완해 순서 결정성만 검증하므로 라벨은 `SIMULATED`, 내구성·성능 주장과 명령 의미 변경은 없고 CAP-11은 `NOT_BOUND`입니다.
 - 오프라인 감사 증거 팩(`scripts/evidence_pack.py`, 형식 `KIX_CAPITAL_EVIDENCE_PACK_V1`, 라벨 `SIMULATED`/`LOCAL_ONLY`). `python3 scripts/evidence_pack.py --workspace DIR --out DIR`이 `DIR/workspace.json` 바이트만 읽어(잠금·쓰기·복구 없음) export manifest, 오프라인 작업공간 감사, 대사 보고, 결정 노트 요약, 인가 표 다섯 표면을 `part_tag`/`document`로 감싼 섹션별 SHA-256 아래 `evidence-pack.json` 하나로 모읍니다. instance id·시각·저장 시각 같은 휘발 필드는 `content_digest` 계산에서 빠지고 `volatile` 블록으로 따로 해시되며, 이벤트 로그는 묶지 않아 같은 작업공간에 두 번 쓰면 바이트가 같습니다. `python3 scripts/evidence_pack.py --verify FILE`이 오프라인으로 섹션 해시·`volatile` 해시·`content_digest`·내장 manifest를 다시 계산해 한 바이트라도 어긋나면 1로 끝납니다. 감사가 어긋난 작업공간은 `INCOMPLETE` 팩으로 남고(실패의 증거) 종료 코드는 1입니다. `DEV_ONLY` 키·토큰은 읽거나 복사하지 않고 내장 manifest 서명은 `NOT_BOUND`입니다. 원격 attestation·stage7 인증 export·보존 집행은 범위 밖이고 가져오기·재개 경로는 없습니다. `tests/vectors/pack/`의 고정 변조 코퍼스(정상본·섹션 다섯 곳의 한 바이트 변조·`volatile`·`content-digest`·절단)는 `python3 scripts/pack_vectors.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝납니다.
+- 오프라인 증거 교차 검사(`python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`, 형식 `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1`, 라벨 `SIMULATED`/`LOCAL_ONLY`). 명시한 세 입력을 각각 한 번 읽어(잠금·쓰기·복구 없음) 기존 오프라인 검증기(`audit_workspace_bytes`, `verify_manifest`, `facts.verify_dir`)로 확인한 뒤 셋이 공유하는 약속을 비교합니다: F04 저널 내용, 재생 `state_digest`·`journal_length`, 오버레이 존재·내용·`overlay_state_digest`, fixture digest. 검사마다 `MATCHED`/`MISMATCH`/`NOT_CHECKED`를 찍고, 서로 다른 컷에서 온 개별적으로 정상인 아티팩트는 각자의 내부 해시가 맞아도 `CROSS_JOURNAL_CONTENT_MISMATCH`·`CROSS_STATE_DIGEST_MISMATCH`·`CROSS_OVERLAY_PRESENCE_MISMATCH`·`CROSS_OVERLAY_CONTENT_MISMATCH`·`CROSS_OVERLAY_DIGEST_MISMATCH`·`CROSS_FIXTURES_MISMATCH`·`CROSS_JOURNAL_REPLAY_FAILED` 같은 이름 있는 이유로 1로 끝납니다. 빈 오버레이 V2 조합과 비어 있지 않은 V3 조합은 통과하고, 누락·실패 입력은 의존 검사를 `NOT_CHECKED`로 둡니다. `--key-file`/`--keyset-file`은 기존 DEV_ONLY 로더로 manifest 서명만 검사합니다. 페이지 수집·SQL 투영 점검·새 manifest 형식·서명·출처 인증·완전히 일관된 대체 장부로의 통째 교체 탐지는 범위 밖이고 `wholesale_replacement`는 `NOT_DETECTABLE`입니다. 종료 코드는 일치 0, 입력 실패·교차 불일치 1, 인수 오류 2입니다.
 - 금융 벡터 팩(`tests/vectors/finance_vectors.json`, 형식 `KIX_CAPITAL_FINANCE_VECTORS_V1`, 라벨 `SIMULATED`). 여덟 그룹이 각각 `FINANCE_PENDING_NODES` 후보 하나(`fin-ledger-contract`, `fin-double-entry-projection`, `fin-observation-reconciliation`, `fin-multi-payee-refund-proof`, `fin-credit-exposure-reconciliation`, `fin-consistent-accounting-export`, `fin-catalogue-read-model`, `fin-finance-closeout`)의 입력으로 `INPUT_VECTOR_CANDIDATE` 역할을 합니다. 여덟 후보 모두 `vectors`가 null이 아니고 `reason`은 null입니다. `fin-finance-closeout`의 그룹 `closeout_digest`는 아래 클로즈아웃 다이제스트를 그대로 내장합니다. `semantic_conformance`는 false이고 `upstream_nodes_completed`는 비어 있습니다. `SEMANTIC_CONFORMANCE`가 아니며 어떤 upstream 노드도 완료하지 않고, 회계 정책을 채택하거나 정산 정책을 고르지도 않습니다. 후보는 자기 upstream 완료 증거가 있어야만 이 벡터를 채택할 수 있습니다. 내장하므로 다이제스트를 먼저 다시 쓴 뒤 `python3 scripts/finance_vectors.py --write`가 다시 쓰고 `python3 scripts/finance_vectors.py --check`가 바이트를 비교해 어긋남이나 누락이면 1로 끝나며, 고정된 로컬 코드가 여전히 같은 바이트를 낸다는 뜻일 뿐 의미 적합성의 증거가 아닙니다.
 - 클로즈아웃 다이제스트(`tests/vectors/closeout_digest.json`, 형식 `KIX_CAPITAL_CLOSEOUT_DIGEST_V1`, 라벨 `SIMULATED`/`INPUT_VECTOR_CANDIDATE`). 커밋하지 않는 `build/acceptance-evidence.json`에서 파생한 결정론적 부분집합으로, 수용 단계마다 `stage_id`·명령·`status`·기대 종료 코드·`test_count`·라벨 `SIMULATED`·`funds_executed` false를 싣고 seeded-demo `state_digest`·`content_digest`·`debit`·`credit`, vendor pin commit과 다섯 파일 `verified`, 패키지 `sha256`을 더합니다. git `head_sha`, 도구 버전, 시각, instance id, 경로는 `docs/decisions/CAPITAL_CLOSEOUT_ARTIFACT.md`의 제거 키 목록대로 빼고 그 목록을 `stripped_keys`에 적습니다. `python3 scripts/closeout_digest.py --write`는 `ok:true`·`SIMULATED`·`funds_executed` false이고 아홉 단계가 모두 통과한 evidence에서만 다시 쓰고, 두 번 실행해도 같은 바이트입니다. `python3 scripts/closeout_digest.py --check`는 evidence 없이 구조·라벨·제거 키 부재·금융 벡터 팩의 내장 사본과의 바이트 일치를 보고 어긋남이면 1로 끝나며, `--check-evidence`는 새 evidence에서 다시 만들어 비교하고 첫 어긋난 경로를 이름 붙입니다. `SEMANTIC_CONFORMANCE`가 아니고 어떤 upstream 노드도 완료하지 않으며 이 저장소 도구가 스스로 낸 증거일 뿐입니다. 수용 사다리에는 단계를 더하지 않았습니다.
 - 게이트 결함 코퍼스(`tests/vectors/gate_faults.json`, 형식 `KIX_CAPITAL_GATE_FAULTS_V1`, 라벨 `LOCAL_FAKE_GATE`). 옵트인 `--producer gate-fake` 경로를 127.0.0.1의 `scripts/fake_gate.py`에 붙이고 정상 수락·5xx·잘못된 JSON·연결 절단·지연 후 유실·같은 operationId 다른 본문(409 `IDEMPOTENCY_CONFLICT`)을 고정합니다. 유실 응답은 `retry_authorized=false`인 `UNKNOWN`이고 자동 재전송은 없습니다. `python3 scripts/gate_faults.py --check`가 코퍼스를 다시 실행해 어긋남이면 1로 끝나며 아무것도 다시 쓰지 않습니다. SIMULATED이고 ProducerPort는 `NOT_BOUND`입니다. SEMANTIC_CONFORMANCE가 아닙니다.
