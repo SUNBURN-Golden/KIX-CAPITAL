@@ -47,17 +47,23 @@ Python 3.10 이상. 패키지 설치와 DB는 없다. 저장소 루트에서 실
 
 1. 화면의 기본 역할로 결합 여정(제안, 승인, 정산 결합, 인출, 상환, 종결)을 끝까지 진행하고 export 재생이 맞는지 본다. 금액은 합성 fixture다. 검증: tests/browser/journey.spec.cjs::complete bound lifecycle, repayment and export
 2. 같은 여정이 API에서 액면 예약과 상환 순서를 지키는지 확인한다. 검증: tests/test_capital.py::DomainTests.test_full_journey_and_read_only_settlement
+3. 운영 데스크(#desk) 진단 구역이 건강·workspace 상태·명령/오버레이 용량·op별 receipt 카운터·event_log written/errors/dropped를 `진단 새로고침` 수동 조회로만 서버 값 그대로 보여 주는지 본다. 검증: tests/browser/operator-health-desk.spec.cjs::organizer sees health, capacity and counters that match the APIs, refreshed only on demand
+4. 키보드만으로 `진단 새로고침`에 도달해 Enter로 다시 조회하고 용량 표기가 `현재/최대`로 읽히는지 본다. 검증: tests/browser/operator-health-desk.spec.cjs::keyboard walkthrough reaches the diagnostics refresh and capacity labels stay readable
+5. 조회 실패 시 재시도·복구 조작 없이 unavailable로만 표시되는지 본다. 검증: tests/browser/operator-health-desk.spec.cjs::a failed metrics read shows an unavailable state once, with no retry or repair controls
+6. 서버 재시작 뒤 이전 프로세스의 진단 값이 남지 않고 새 프로세스 카운터만 표시되는지 본다. 검증: tests/browser/operator-health-desk.spec.cjs::a restarted session clears stale diagnostic values back to the new process counters
 
 ### auditor
 
 1. auditor로 바꾼 뒤 쓰기는 거절되고 export와 대사는 읽히는지 본다. 검증: tests/browser/auditor-role.spec.cjs::auditor session blocks every write and still reads export and reconciliation
 2. 민감 읽기 경로가 역할 행렬과 같은지 확인한다. 검증: tests/test_auth.py::HttpAuthTests.test_sensitive_reads_follow_the_matrix
 3. 등록된 모든 경로를 네 역할과 토큰 없는 호출자로 나눈 표 전체가 루프백 서버의 실제 응답과 같은지, agent 레인과 등록되지 않은 경로 404를 포함해 확인한다. 검증: tests/test_auth_matrix.py::LiveMatrixTests.test_every_cell
+4. auditor도 허용된 진단(건강·용량·metrics 카운터)을 같은 값으로 읽는지 본다. 검증: tests/browser/operator-health-desk.spec.cjs::auditor gets the same permitted diagnostics
 
 ### observer
 
 1. observer는 manifest를 받지 못하고 쓰기 횟수가 늘지 않는지 본다. 검증: tests/browser/export-manifest.spec.cjs::observer cannot export
 2. observer의 export 요청이 403인지 확인한다. 검증: tests/test_export_manifest.py::ManifestTests.test_http_auditor_may_export_the_manifest_and_observer_may_not
+3. observer는 진단 구역에서 허용된 건강 정보만 보고 `/api/metrics`·`/api/overlay` 요청 없이 서버 거절 사유만 표시되는지 본다. 검증: tests/browser/operator-health-desk.spec.cjs::observer gets health only with the server denial shown
 
 ## 사람 점검표
 

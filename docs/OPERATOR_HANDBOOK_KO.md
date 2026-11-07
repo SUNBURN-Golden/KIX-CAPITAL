@@ -800,6 +800,48 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:operator-health-desk -->
+
+### operator-health-desk
+
+운영 데스크(`#desk`) 맨 아래의 진단 구역(`#desk-diag`)은 이미 있는 읽기
+경로 넷을 `진단 새로고침` 한 번의 수동 조회로만 다시 그린다. 새 라우트·권한·
+텔레메트리 스키마·백그라운드 폴링·외부 exporter·복구 조작은 없다. 브라우저
+전용 표면이라 서버·계약·골든은 바뀌지 않는다.
+
+- `GET /api/health`의 `status`, `uptime_seconds`, `workspace_status`,
+  `mode`를 그대로 보여 준다. `health:read`는 organizer·auditor·observer가
+  가진다. 응답이 `LOCAL_OBSERVABILITY` 모양이 아니면 그 블록만
+  `unavailable`로 둔다.
+- 명령 용량은 `GET /api/state`의 `operation_count`/`operation_capacity`를,
+  오버레이 용량은 `GET /api/overlay`의 `capacity`를 `현재/최대`로 표시한다.
+  라벨 열은 서버 값 `DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY`다.
+- `GET /api/metrics`의 `counters.commands`는 반환된 receipt마다 센
+  ACCEPTED/REJECTED를 op별로 그대로 보여 준다. transport duplicate 재반환도
+  ACCEPTED에 더해지며 이를 저널의 서로 다른 명령 수로 읽지 않는다.
+  `rejections`, `operation_lookups`, `http_requests`(0이 아닌 경로만),
+  `event_log`의 `enabled`·`written`·`errors`·`dropped`·`max_bytes`와
+  `workspace`도 표시한다. 외부 exporter·tracing·alerting·network_sinks는
+  `NOT_BOUND` 행으로 둔다.
+
+역할: organizer와 auditor는 `metrics:read`·`projection:read`가 허용한 전체
+진단을 본다. observer는 `health:read`가 허용한 건강 정보만 보고 용량·
+카운터 칸에는 서버의 `metrics:read` 거절 사유가 표시되며 `/api/metrics`와
+`/api/overlay` 요청을 보내지 않는다. agent는 화면 역할이 없고 두 권한이
+없어 제한 진단 요청은 `403 ROLE_FORBIDDEN`이다.
+
+카운터는 프로세스 메모리에만 있고 서버 재시작 시 0부터 다시 센다.
+`GET /api/metrics` 응답은 그 조회 요청 자신을 세지 않는다. 세션
+(instance_id)이 바뀌면 이전 진단 값을 지우고 수동 새로고침으로만 다시
+조회한다. 조회 실패는 재시도 없이 `unavailable`로 표시하고 복구·수리
+조작이나 UNKNOWN 명령 fencing 변경은 없다. `health`의 `ok`는 대사 일치·
+내구성·출시 준비를 뜻하지 않으며 금융 근거·감사 증거·SLO가 아니다.
+
+키보드 동선: Tab으로 `진단 새로고침`까지 이동(데스크 마지막 초점 순서)하고
+Enter·Space로 다시 조회한다. 용량 칸은 `현재/최대`로 읽힌다. 검증:
+`tests/test_health_desk.py`, `tests/browser/operator-health-desk.spec.cjs`.
+<!-- /handbook-section -->
+
 ### Local upstream re-pin evidence / 로컬 리핀 증거
 
 ```sh
