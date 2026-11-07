@@ -22,4 +22,10 @@ body.desk-open main>:not(#desk):not(#notice):not(#recovery):not(footer){display:
 .desk-actions button[aria-disabled="true"],#desk-advance[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
 #desk-forbidden{border:1px solid #d9b08c;background:#fbf3ea;border-radius:8px;padding:12px 14px;color:#874c29}
 #desk :focus-visible,#desk-refresh:focus-visible,nav a:focus-visible,#role:focus-visible{outline:3px solid #1f6fd1;outline-offset:2px}
-@media(max-width:480px){.desk-tiles{grid-template-columns:1fr}.desk-bar{align-items:stretch}.desk-bar input,.desk-bar select{max-width:100%;width:100%}}
+#desk-diag{margin-top:24px;min-width:0;max-width:100%}
+#desk-diag dl{display:grid;grid-template-columns:minmax(9rem,15rem) 1fr;gap:4px 12px;font-size:12px;margin:8px 0;overflow-wrap:anywhere}
+#desk-diag dt{color:var(--muted)}
+#desk-diag dd{margin:0;white-space:pre-wrap}
+#desk-diag .unavailable{color:#874c29}
+#desk-diag-gaps{padding-left:18px;font-size:12px;line-height:1.7;color:var(--muted)}
+@media(max-width:480px){.desk-tiles{grid-template-columns:1fr}.desk-bar{align-items:stretch}.desk-bar input,.desk-bar select{max-width:100%;width:100%}#desk-diag dl{grid-template-columns:1fr}}
