@@ -311,6 +311,41 @@ with all hashes rebuilt cannot be detected. No source authority, signing, import
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
 
+### Offline synthetic event stress
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json` audits the
+single captured `DIR/workspace.json` and emits canonical JSON. It reads no live
+route and writes neither workspace nor financial postings. Example request:
+
+```json
+{"format":"CAPITAL_EVENT_STRESS_V1","events":[{"event_id":"E1","claim_refs":[{"claim_id":"sim-committed","trade_id":"sim-trade-sim-committed","currency":"KRW"}]}],"scenarios":[{"scenario_id":"S1","event_id":"E1","kind":"ADDITIONAL_OPEN_REFUND_KRW","additional_open_refund_krw":100}]}
+```
+
+Every independent scenario raises each distinct member claim's open refund once.
+Baseline terms, rates, exposure and logical day stay fixed. Claim witnesses show
+membership, source digest, mapped payees, refund increment and integer floor
+arithmetic; advance context is NON_ADDITIVE. Eligible face covers unique captured
+fixture claims, including outside/unfinanced claims. Borrowing base, headroom
+and hypothetical breaches cover recorded drawn advances with proven allocation.
+Unfinanced claims acquire no rate or borrowing permission. Shared reservations,
+unresolved slices/holders and unsupported refund mappings retain null dependent
+metrics and explicit coverage. Reports never assert portfolio safety.
+
+All outputs are `SIMULATED`, provisional, `applied=false`, `funds_executed=false`,
+`workspace_mutated=false`, production `NOT_AUTHORIZED`. Input, financial policy,
+event policy, implementation mapping, and raw/normalized request digests are
+included; historical policy authentication remains `NOT_BOUND`. `COMPLETE` exits
+0 (including a hypothetical breach); `PARTIAL`, `UNAVAILABLE`, and `REJECTED`
+exit 1; CLI argument misuse exits 2. Invalid requests reject atomically without
+financial results. The effective payload cap is the lower of the adopted event
+policy and shared 8,192-byte request bound. Other lower existing capacities apply.
+
+The mapping and supported domain are documented in
+[CAPITAL_EVENT_STRESS_BINDING.md](docs/decisions/CAPITAL_EVENT_STRESS_BINDING.md).
+The deterministic synthetic input/report corpus is `tests/vectors/event_stress.json`;
+`python3 scripts/event_stress_vectors.py --check` checks its bytes read-only.
+Regenerate intentionally with `python3 scripts/event_stress_vectors.py --write`.
+
 ### Local upstream re-pin evidence checker
 
 `python3 scripts/upstream_repin_check.py --check --root .` reads the eight

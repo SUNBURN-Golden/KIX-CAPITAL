@@ -132,6 +132,17 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
+### event-stress-report (CAP-04, CAP-08, CAP-20)
+
+`capital/event_stress.py`와 `scripts/event_stress.py`는 감사된 단일 워크스페이스의
+분리 입력에서 명시적 합성 이벤트별 절대 미결 환불 증가를 평가한다. 공유 채권 충격은
+한 번이며 적격 액면은 채권별, 노출은 인출별로 한 번 계산한다. 기준 약정은 고정하고
+미지원 배분/환불/보유자/슬라이스 의미의 종속 값과 합계는 null로 보고한다. 외부 구성
+채권도 범위에 남으며 부분 결과는 전체 안전 판단이 아니다. 누락 정책은 UNAVAILABLE,
+잘못된 구성원·상한 초과는 원자적 REJECTED다. 입력/정책 해시 및 계산 증거를 제공하며
+SIMULATED, funds_executed=false, 원본 불변을 유지한다. 온라인 경로·최적화·금융
+전표는 추가하지 않는다. 검증: `tests/test_event_stress.py`, `tests/vectors/event_stress.json`.
+
 ## residual-obligations-report — 로컬 기록 잔존 의무 조회
 
 `capital/residuals.py`의 오프라인 stdlib CLI는 감사된 workspace의 기존 상환·회수·

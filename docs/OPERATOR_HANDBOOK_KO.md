@@ -800,6 +800,28 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 
 <!-- /handbook-section -->
 
+## 오프라인 합성 이벤트 스트레스
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json`은 캡처한
+`workspace.json` 한 개를 감사하고 표준 출력으로 정규 JSON 보고서를 만든다.
+README의 `CAPITAL_EVENT_STRESS_V1` 예제를 사용한다. 이벤트 구성원은 정확한
+claim_id/trade_id/currency로 지정하며 각 시나리오는 같은 기준 캡처에서 독립적으로
+시작한다. 추가 미결 환불 금액은 구성 채권마다 한 번만 적용된다.
+
+채권별 적격 액면과 환불·수취인·반올림 증거, 인출별 기준/충격 차입기준·여유액·가상
+마진 위반, 이벤트/포트폴리오 증감 및 계산 범위를 확인한다. 인출별 채권 문맥은
+NON_ADDITIVE이므로 합산하지 않는다. 외부 구성 채권과 미금융 픽스처도 채권 범위에
+남는다. 미금융 채권에 금리나 차입 권한을 만들지 않는다. 공유 배분·환불 매핑·보유자·
+슬라이스 의미가 미확정이면 해당 값과 종속 합계는 null이다. PARTIAL은 전체 안전을
+뜻하지 않는다. 잘못된 구성원이나 용량 초과는 전체 요청을 거절한다.
+
+COMPLETE는 종료 0(가상 위반도 포함), PARTIAL/UNAVAILABLE/REJECTED는 종료 1,
+인수 오류는 종료 2다. 입력·정책·요청 해시로 계산 자료를 구분하지만 과거 정책 인증은
+NOT_BOUND다. 모든 값은 SIMULATED/provisional이며 applied=false,
+funds_executed=false, workspace_mutated=false, production NOT_AUTHORIZED다.
+원본 파일·원장·시계는 바뀌지 않으며 실제 지급·환불·권리확인이나 검색 최적화가 아니다.
+`python3 scripts/event_stress_vectors.py --check`로 합성 고정 벡터를 검증한다.
+
 ### Local upstream re-pin evidence / 로컬 리핀 증거
 
 ```sh

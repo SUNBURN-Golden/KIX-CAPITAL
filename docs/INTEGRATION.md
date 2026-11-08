@@ -555,6 +555,41 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+## Offline event stress CLI
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json` is an offline
+stdlib entry point, without a new HTTP route. The `CAPITAL_EVENT_STRESS_V1` request
+contains `events` (`event_id`, nonempty `claim_refs` with exact `claim_id`,
+`trade_id`, `currency`) and independent `scenarios` (`scenario_id`, `event_id`,
+`kind=ADDITIONAL_OPEN_REFUND_KRW`, nonnegative integer
+`additional_open_refund_krw`). See README for a runnable request shape.
+
+One workspace byte capture is audited, hashed and restored through the existing
+read-only in-memory helper; a lock-protected `FrozenInputs` cut detaches all
+calculations. No filesystem locks, source mutations, postings or commands are
+issued. Event definitions, scenarios and member identities are canonically sorted.
+Duplicate/unknown/ambiguous memberships (including unselected events), malformed
+requests, and capacity overflow reject atomically. Invalid JSON encodings and
+non-integer shock amounts reject before calculation.
+
+`capital.event_stress.report_workspace(directory, request_bytes)` emits
+`KIX_CAPITAL_EVENT_STRESS_REPORT_V1`; `evaluate_detached(frozen, request_bytes)`
+is a pure local test/evaluation seam and does not assert an audit. Baseline and
+scenario rows include claim/refund/payee/rate/rounding witnesses, allocated drawn
+advance base/headroom/breach metrics, unique-claim eligible face, unique-advance
+exposure, event/portfolio deltas, and coverage. Unfinanced fixture claims stay in
+eligibility coverage without an invented rate. Shared collateral gets no guessed
+allocation. Unsupported dependent values and deltas are null. Baseline non-margin
+risk folds are retained unchanged; their existing relative-shock table is excluded.
+
+Exit 0: COMPLETE, including computed hypothetical breaches. Exit 1: REJECTED,
+UNAVAILABLE or PARTIAL; exit 2: argument misuse. Rejections contain diagnostics
+without financial results or scenario digests. All reports label SIMULATED,
+provisional=true, applied=false, funds_executed=false, workspace_mutated=false,
+production NOT_AUTHORIZED. Digests identify captured inputs and current loaded
+policies; historical policy authentication remains NOT_BOUND. No scenario search,
+optimization, financial execution, or rights verification is introduced.
+
 ## Local upstream re-pin evidence
 
 `scripts/upstream_repin_check.py` is a stdlib, read-only local checker. All
