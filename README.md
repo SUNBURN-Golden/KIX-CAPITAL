@@ -1,5 +1,34 @@
 # KIX Capital
 
+## Disposable workspace relocation rehearsal
+
+```sh
+python3 scripts/relocation_rehearsal.py
+python3 scripts/relocation_rehearsal.py --case unsigned
+python3 scripts/relocation_rehearsal.py --case dev-keyset
+```
+
+The stdlib harness builds a temporary zipapp and creates bounded synthetic repayment,
+default/write-off and claim-slice history. After stopping and reaping its writer, it
+audits a captured document, preserves a separate untouched capture, physically moves
+the workspace into a different runtime directory, and starts the staged zipapp from
+an unrelated directory with `PYTHONPATH` removed. All rehearsal writes are disposable.
+It accepts no live workspace argument and stages only the archive, `workspace.json`
+and, in the separate DEV_ONLY-keyset case, a synthetic keyset at exact mode 0600.
+DEV_ONLY affects export integrity only; the zipapp remains unsigned.
+
+`KIX_CAPITAL_RELOCATION_REHEARSAL_V1` JSON reports matching F04/overlay digests,
+receipt and journal hashes, statement totals, reconciliation, bundled policy provenance,
+session fencing, first-result replay and three corrupt-copy refusals. Exit codes:
+0 all cases pass, 1 rehearsal failure, 2 argument misuse. Reports omit tokens, keysets,
+key bytes, paths and raw subprocess diagnostics. The keyset is never bundled.
+Results are `SIMULATED`, `LOCAL_FILE_WORKSPACE`, `funds_executed: false`.
+No backup service, live snapshot copying, automatic repair, disaster-recovery
+certification or cross-host fencing is provided. CAP-11/stage5 and stage7 remain
+`NOT_BOUND`; shared-HMAC integrity is not authentication. See
+[the integration contract](docs/INTEGRATION.md#workspace-relocation-rehearsal) and
+[measured validation](docs/VALIDATION.md#workspace-relocation-rehearsal).
+
 ## Offline portfolio history comparison
 
 ```sh

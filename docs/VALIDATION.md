@@ -1,5 +1,96 @@
 # Validation scope
 
+## Workspace relocation rehearsal
+
+2026-11-03, branch `agent/capital-workspace-relocation-rehearsal`. All new evidence is
+SIMULATED and LOCAL_FILE_WORKSPACE; `funds_executed: false`. No real provider,
+payment, authentication, deployment or upstream qualification is claimed.
+
+The harness completed separate unsigned and DEV_ONLY-keyset cases. Each populated
+book has 6 F04 journal entries, 10 overlay entries, 6 original F04 receipts and 11
+submitted commands replayed after a physical directory move. Required repayment,
+default anchor, write-off and slice propose/open history is present. The statement
+shows synthetic principal repaid 1000 and outstanding 59000 from a 60000 draw.
+All seven live/offline reconciliation checks match before and after relocation;
+complete internal evidence and workspace bytes remain unchanged after replay.
+Old token/instance fences, first-result receipts and both idempotency-conflict routes
+pass. All three corrupt copies fail closed without byte changes. Synthetic keysets
+are staged at exact 0600 before loading; mode 0644 fails without repair. All writer
+processes are reaped, the preserved capture is unchanged and temporary trees are removed.
+
+| Command actually run | Result |
+| --- | --- |
+| `python3 scripts/relocation_rehearsal.py` | Exit 0; unsigned and dev-keyset PASSED |
+| `python3 scripts/relocation_rehearsal.py --case unsigned` / `--case dev-keyset` | Exit 0 each, through real CLI subprocess tests from unrelated cwd |
+| `python3 -m unittest discover -s tests -p 'test_relocation_rehearsal.py' -v` | Exit 0; 13 passed, final focused run 27.332s |
+| `python3 -m unittest discover -s tests -p 'test_coverage.py' -v` | Exit 0; 7 passed after restoring the guarded pin-scope header placement |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/workspace_vectors.py --check` | Exit 0; 6 files match |
+| `python3 scripts/manifest_vectors.py --check` | Exit 0; 19 files match |
+| `python3 -m unittest discover -s tests -v` | First run: 1,315 tests in 388.036s, one requirements-header placement failure; corrected. Final rerun: exit 0; all 1,315 passed in 489.828s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm ci` | Exit 0; 3 packages installed, 0 vulnerabilities |
+| `npm run test:browser` | Exit 1 at startup: existing unrelated service occupies a default loopback port (`Errno 98`) |
+| `npm run test:browser -- --config /tmp/kix-relocation-browser-023xxax_/playwright.config.cjs` | Exit 0; all 76 Chromium tests passed in 2.9m |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 scripts/upstream_claims_check.py --execute` | Exit 0; 87/87 local claims passed |
+| `python3 scripts/agent_claims_check.py --execute` | Exit 0; 94/94 local claims passed |
+| `python3 scripts/read_model_claims_check.py --execute` | Exit 0; 39/39 local claims passed |
+| `python3 scripts/ce1_claims_check.py --execute` | Exit 0; 49/49 local claims passed |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | Exit 0; 30/30 local claims passed |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; 12/12 local claims passed; optional upstream drift check SKIPPED |
+| `python3 scripts/readiness_claims_check.py --execute` | Exit 0; 11 passed, 2 existing documented divergences, no failures; optional drift check SKIPPED |
+| `python3 scripts/build_release.py --out /tmp/kix-relocation-package-ci-m6pyls_9/dist` (and `dist2`) | Exit 0 twice; temporary outputs |
+| `cmp /tmp/kix-relocation-package-ci-m6pyls_9/dist/capital-0.2.0.pyz /tmp/kix-relocation-package-ci-m6pyls_9/dist2/capital-0.2.0.pyz` | Exit 0; byte-identical |
+| `python3 scripts/smoke_release.py /tmp/kix-relocation-package-ci-m6pyls_9/dist/capital-0.2.0.pyz` | Exit 0; all 11 release smoke checks passed |
+| `python3 scripts/seed_demo.py` | Exit 0; existing golden matches |
+| `python3 scripts/sim_journeys.py --check` | Exit 0; all six SIMULATED journeys passed (22/38/35/33/16/18 steps) |
+| Python SHA256/`git show HEAD:path` byte comparison | Exit 0; all five vendor pins match; five references, vendor manifest and `capital/export.py` byte-identical to starting HEAD |
+| `git diff --exit-code HEAD -- capital/vendor/ capital/export.py .aiops/ docs/decisions/` | Exit 0 |
+| `git diff --check` | Exit 0 |
+
+The local CI counterparts were executed individually, including storage/crash tests
+inside full discovery; the nine-stage `scripts/acceptance.py` wrapper was not invoked.
+No tests, CI requirements or assertions were weakened. The temporary browser config
+requires the tracked config and preserves all projects, tests, assertions, retries and
+timeouts. It remaps only four loopback ports and supplies absolute test, output and
+server cwd paths. The config/output tree was removed; all four remapped server ports
+were checked closed after Playwright exited. No unrelated server was stopped.
+
+Implementation runs first caught harness assumptions about document paths, current
+policy-envelope session IDs, recovery POST versus lookup labels, valid mutation shapes
+for corrupt-copy probes and archive-entry versus source-text keyset exclusion. Those
+were corrected before the passing focused run. A first full run caught the newly
+inserted requirements heading interrupting the guarded pin-scope header; the section
+was moved below the original header and its focused guard passes. Full rerun results
+are recorded above. These were implementation/documentation fixes, not relaxed checks.
+
+Plan adjustments: slice face is derived from the current quote maximum using the
+existing one-fifth synthetic sizing pattern, avoiding private service-policy access.
+The existing recovery POST memo label is checked against the original POST separately
+from the exact recorded lookup core. Browser verification uses temporary free loopback
+ports due to local contention. No consequential product decision was needed.
+CAP-11/stage5 durable transactions and stage7 authenticated export remain NOT_BOUND.
+No backup service, live copying, automatic repair, DR certification or cross-host
+fencing is implemented. Recovery coverage is default/write-off history, not cash recovery.
+No commit, push, PR, issue operation, external post, Protocol/Commerce or `.aiops/`
+change was performed.
+An inherited tracked root `DECISION_REQUIRED.md` describes an older portfolio-history
+integration baseline. It remains byte-identical to starting HEAD; the current full
+suite, including the baseline byte guard it cites, passes. It is not a new decision
+request from this node. A supplementary final integrity probe first failed because it
+incorrectly asserted that this inherited file was absent. Rechecking its HEAD bytes
+and all protected files passed (eight files, including the inherited note); no product
+code, test or decision note was changed to resolve that probe.
+
+Local logs: `/tmp/kix-relocation-focused.log`, `/tmp/kix-relocation-coverage.log`,
+`/tmp/kix-relocation-unit.log`, `/tmp/kix-relocation-unit-rerun.log`,
+`/tmp/kix-relocation-browser.log`, `/tmp/kix-relocation-browser-remapped.log`,
+`/tmp/kix-relocation-ci-extra.log`. The sanitized CLI report is
+`/tmp/kix-relocation-report.json`; all rehearsal runtime inputs were temporary.
+
 ## Portfolio history comparison — supervisor conflict-fix round 2
 
 2026-10-30. Resolved the supervisor-started merge of incoming main
