@@ -4249,3 +4249,87 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## statement-source-trace (2026-11-03 KST)
+
+Implemented `capital/statement_trace.py`, the stdlib `scripts/statement_trace.py`
+CLI, and ten pinned input/expected files under `tests/vectors/statement_trace/`.
+The implementation follows the supplied design: a single workspace capture goes
+through the existing byte auditor and offline restoration, then the existing
+statement builder and separate provenance run under the service lock. All numeric
+statement leaves have independently evaluable signed witnesses. Receipt checks
+use immediate historical replay results, including sibling claim reservations;
+missing optional details and unvalidated extensions never become persisted evidence.
+Demo wrappers/terms carry the synthetic profile labels. All amounts/roles and
+results remain local simulation evidence; external readiness is unchanged.
+
+The design needed one compatibility clarification: the existing audit already
+requires the offer receipt amount and repayment receipt list. Their absence still
+fails that audit; only optional details that pass it can be emitted as NOT_BOUND.
+No protected module, legacy construction, existing golden/vector, decision note,
+vendored reference, `.aiops/` file or CI configuration was changed.
+
+Actual builder verification commands/results:
+
+| Command | Observed result |
+|---|---|
+| `python3 scripts/statement_trace_vectors.py --write` | Final exit 0; ten files written. An early invocation exited 1 because a generated operation ID contained an underscore; fixed to the existing facade syntax. A source-pointer/classification key collision found during inspection was also fixed before focused validation. |
+| `python3 -m unittest tests.test_statement_trace -v` | Final exit 0; 24 tests in 4.711 s. Independent evaluation checks every numeric row/total against hand-authored case and all thirteen fixture expectations, count-once rules, historical receipt mutations, optional evidence, legacy/nonempty-overlay restoration, single capture, read-only preservation, CLI determinism and errors. Initial run: 23 tests, two failures and one error (incorrect test assumptions about audit-required optionality, repayment-list tampering already caught by audit, and the FileWorkspace factory). Corrected with explicit baseline-required-detail coverage; no existing test changed. |
+| `python3 -m unittest discover -s tests -v` | Final exit 0; **1326 passed** in 392.575 s. Initial invocation ran 1326 tests in 310.695 s with one preservation failure because the builder strengthened `tests/test_statement_trace.py` during the suite; its source and import-cache changes were detected by the existing fold-fuzz preservation test. Reran with code/tests held fixed; all passed without weakening that guard. |
+| `python3 scripts/statement_trace_vectors.py --check` | Exit 0; ten files match, including a rehashed tamper accepted by the baseline audit and rejected by historical trace validation. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 283 artifacts, nine stages. |
+| `python3 scripts/manifest_vectors.py --check` | Exit 0; 19 files match. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101102 bytes match. |
+| `python3 scripts/workspace_vectors.py --check` | Exit 0; six files match. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; nine files match. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci` | Exit 0; three development packages installed, zero audit vulnerabilities reported. |
+| `npm run test:browser` | Initial exit 1: loopback port already occupied; no assertion or configuration changes. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; 76 passed in 2.2 min using installed Chromium, with the unchanged configuration inside an isolated loopback namespace. All started browser servers stopped. |
+| `python3 scripts/build_release.py --out build/statement-trace-dist` | Exit 0; local unsigned artifact SHA256 `a8b16f4bbcf207adc6dbc795022a430c06c5ac14c4a5f14d780ceea75cf28811`. |
+| `python3 scripts/build_release.py --out build/statement-trace-dist2` | Exit 0; same SHA256. |
+| `cmp build/statement-trace-dist/capital-*.pyz build/statement-trace-dist2/capital-*.pyz` | Exit 0; deterministic package bytes. |
+| `python3 scripts/smoke_release.py build/statement-trace-dist/capital-*.pyz` | Exit 0; all eleven named smoke checks pass, including source integrity, bundled policy/accrual and restart receipts/closed state. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only, pending anchors remain pending. |
+| `python3 build/statement-trace/check_preservation.py` | Exit 0; all 22 captured protected baseline files match, including statement/audit/recon/service/export, vendor manifest/reference files and existing goldens; all five vendor SHA256 pins match. This local helper and baseline live in ignored build output. |
+| `git diff --check` | Exit 0. |
+
+Additional CI acceptance stages ran using the unmodified acceptance runner,
+selected explicitly to avoid claiming a new full-ladder execution:
+
+```python
+from pathlib import Path
+from scripts.acceptance import ROOT, build_plan, execute_plan
+selected = ('storage-conformance', 'upstream-claims', 'seeded-demo', 'integrated-journeys')
+plan = [stage for stage in build_plan() if stage['id'] in selected]
+raise SystemExit(execute_plan(plan, root=ROOT,
+    evidence_path=Path('build/statement-trace-selected-evidence.json'), required=selected))
+```
+
+This `python3 -` invocation exited 0: storage-conformance 19 passed, seven
+upstream-claims commands 322 passed plus two DOCUMENTED_DIVERGENCE rows (324
+rows evaluated, zero failures), seeded demo one pass, and all six local synthetic
+journeys passed. Executed child commands were:
+
+```sh
+python3 -m unittest discover -s tests -p test_storage_conformance.py -v
+python3 -m unittest tests.test_crash_replay -v
+python3 scripts/upstream_claims_check.py --execute
+python3 scripts/agent_claims_check.py --execute
+python3 scripts/read_model_claims_check.py --execute
+python3 scripts/ce1_claims_check.py --execute
+python3 scripts/adapter_identity_claims_check.py --execute
+python3 scripts/lifecycle_claims_check.py --execute
+python3 scripts/readiness_claims_check.py --execute
+python3 scripts/seed_demo.py
+python3 scripts/sim_journeys.py --check
+```
+
+The upstream citation checks that lack a supplied checkout remain SKIPPED,
+never a verified upstream citation. These commands execute local fixtures only.
+Logs are retained under ignored `build/statement-trace/`, and selected-stage
+evidence is `build/statement-trace-selected-evidence.json`. No external post,
+commit, push, PR/issue action, Protocol/Commerce edit, provider call or funds
+movement was performed. No consequential product decision was needed.
