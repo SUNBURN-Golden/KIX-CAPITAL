@@ -1,5 +1,33 @@
 # KIX Capital
 
+## Offline portfolio aging and watch migrations
+
+```sh
+python3 -m capital.portfolio_migrations --before SNAPSHOT_A --after SNAPSHOT_B
+```
+
+Both directories explicitly supply `workspace.json`. This stdlib CLI calls the
+existing portfolio comparison checks once and emits additive, deterministic
+`KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1` JSON. It leaves the comparison report and both
+snapshot trees unchanged, taking no workspace locks. Exit codes: 0 comparable,
+1 non-comparable/input or reconciliation failure, 2 argument misuse. Failures
+retain diagnostics and return `NON_COMPARABLE` with `matrices: null`.
+
+Portfolio and sorted synthetic-beneficiary matrices show observed aging and
+watch-status endpoint transitions. Every cell carries advance count, separate
+before/after principal KRW and positive-principal endpoint counts. Row/column
+totals reconcile to endpoint views; beneficiary matrices sum to the portfolio.
+The population includes all draws, even closed or zero-principal advances.
+`ABSENT_BEFORE` / `ABSENT_AFTER` mean missing endpoints, never repayment; closure
+remains present. Compatible journal prefixes normally retain all historical draws.
+
+All results are `SIMULATED`. Clock aging, principal reductions, defaults and new
+draws are observations, with no actual-payment, causal or transition-probability
+inference. Historical policy provenance, authentication, common ownership and
+actual payments remain `NOT_BOUND`; no funds execute. No scoring, history database,
+forecast, HTTP/UI or portfolio-cashflow-desk changes are included. See
+`tests/test_portfolio_migrations.py`, `docs/INTEGRATION.md` and `docs/VALIDATION.md`.
+
 ## Offline portfolio history comparison
 
 ```sh
@@ -300,3 +328,104 @@ with `stage7_authenticated_export: false` and a non-claim of
 with all hashes rebuilt cannot be detected. No source authority, signing, import,
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
+
+### Offline synthetic event stress
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json` audits the
+single captured `DIR/workspace.json` and emits canonical JSON. It reads no live
+route and writes neither workspace nor financial postings. Example request:
+
+```json
+{"format":"CAPITAL_EVENT_STRESS_V1","events":[{"event_id":"E1","claim_refs":[{"claim_id":"sim-committed","trade_id":"sim-trade-sim-committed","currency":"KRW"}]}],"scenarios":[{"scenario_id":"S1","event_id":"E1","kind":"ADDITIONAL_OPEN_REFUND_KRW","additional_open_refund_krw":100}]}
+```
+
+Every independent scenario raises each distinct member claim's open refund once.
+Baseline terms, rates, exposure and logical day stay fixed. Claim witnesses show
+membership, source digest, mapped payees, refund increment and integer floor
+arithmetic; advance context is NON_ADDITIVE. Eligible face covers unique captured
+fixture claims, including outside/unfinanced claims. Borrowing base, headroom
+and hypothetical breaches cover recorded drawn advances with proven allocation.
+Unfinanced claims acquire no rate or borrowing permission. Shared reservations,
+unresolved slices/holders and unsupported refund mappings retain null dependent
+metrics and explicit coverage. Reports never assert portfolio safety.
+
+All outputs are `SIMULATED`, provisional, `applied=false`, `funds_executed=false`,
+`workspace_mutated=false`, production `NOT_AUTHORIZED`. Input, financial policy,
+event policy, implementation mapping, and raw/normalized request digests are
+included; historical policy authentication remains `NOT_BOUND`. `COMPLETE` exits
+0 (including a hypothetical breach); `PARTIAL`, `UNAVAILABLE`, and `REJECTED`
+exit 1; CLI argument misuse exits 2. Invalid requests reject atomically without
+financial results. The effective payload cap is the lower of the adopted event
+policy and shared 8,192-byte request bound. Other lower existing capacities apply.
+
+The mapping and supported domain are documented in
+[CAPITAL_EVENT_STRESS_BINDING.md](docs/decisions/CAPITAL_EVENT_STRESS_BINDING.md).
+The deterministic synthetic input/report corpus is `tests/vectors/event_stress.json`;
+`python3 scripts/event_stress_vectors.py --check` checks its bytes read-only.
+Regenerate intentionally with `python3 scripts/event_stress_vectors.py --write`.
+
+### Local upstream re-pin evidence checker
+
+`python3 scripts/upstream_repin_check.py --check --root .` reads the eight
+ADOPTED provisional entries in
+[CAPITAL_UPSTREAM_REPINS.md](docs/decisions/CAPITAL_UPSTREAM_REPINS.md).
+It classifies only the declared vendor and five claim-table surfaces as
+`EXECUTABLE_VENDOR` or `EXECUTABLE_CITATION`. Historical decision sources stay
+`RESEARCH_BASELINE`; equal SHA strings do not expand the inventory. Today's
+vendor and citation pins remain `HOLD`.
+
+For a hypothetical local comparison:
+
+```sh
+python3 scripts/upstream_repin_check.py --baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json
+```
+
+The baseline policy governs both snapshots. Evidence and hashed logs must live
+outside both snapshots. The checker reads local sources, artifacts and command
+records; it never fetches, switches, repairs pins or executes candidate code.
+`EVIDENCE_COMPLETE` means completeness for review only. This `SIMULATED`,
+provisional checker **does not authenticate an adoption receipt**. Approval,
+adoption, seam acceptance and receipt authentication remain `NOT_BOUND`.
+Exit 0 reports `HOLD` or `EVIDENCE_COMPLETE`, exit 1 reports findings/invalid input,
+and exit 2 reports argument misuse. See [the input contract](docs/INTEGRATION.md#local-upstream-re-pin-evidence)
+for dependency, regeneration, content-digest and validation requirements.
+The separate `upstream-repin-inventory-contract-invariants` follow-up and its
+`PENDING_NOTE_REGISTRATION` remain unchanged.
+
+### Residual obligations after terminal status
+
+`python3 -m capital.residuals --workspace DIR` emits canonical JSON from one
+captured, audited `DIR/workspace.json`, entirely offline using Python stdlib.
+The `KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1` register is `SIMULATED` /
+`READ_ONLY_RESIDUAL_REGISTER`. Terminal FSM status does not mean every obligation
+is extinguished: principal can be fully repaid and CLOSED while interest or
+unapplied cash remains; DEFAULTED cases can retain claims before and after a
+recorded write-off. IMPAIRED slices can retain outstanding amounts and shortfall.
+
+Five separate sections retain case/slice identity, lifecycle, existing fold
+values and indexed supporting journal references: `closed_unpaid_interest`,
+`unapplied_cash`, `defaulted_unwritten`, `post_writeoff_residual_claims`, and
+`impaired_slice_residuals`. Each integer metric has its own reconciliation and
+total; there is no grand total, cash netting across cases, addition of F04
+exposure to a residual claim, or addition of slice shortfall to outstanding.
+Fractional sub-won remainders remain separate from integer totals.
+
+`COMPLETE` means only the declared recorded population was audited and
+reconciled. Missing monetary evidence is `NOT_BOUND`, with null amounts and
+null category metric totals plus known subtotals; it is never inferred as zero.
+Validated zero rows remain visible. Slice figures use the latest recorded slice
+witness containing the claim, require its mapped payee and recorded baseline,
+and retain its `claim_view_sha`; later settlement history is `NOT_BOUND`.
+Audit/restoration failure emits `AUDIT_FAILED` with null sections. Exit codes:
+0 `COMPLETE`, 1 `INCOMPLETE`/`AUDIT_FAILED`, 2 argument misuse.
+
+Reads take no workspace lock and preserve source bytes/modes. Identical bytes,
+supplied path and local audit inputs produce identical output (the existing
+audit path and saved envelope metadata are retained). This register establishes
+no authentication, actual payment, waiver, refund/cash release, collection,
+slice write-off, legal collectability or accounting recognition. It performs
+no workspace mutation, new persistence, statement reclassification, HTTP/UI
+change or external call. See [the contract](docs/INTEGRATION.md#residual-obligations-report)
+and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
+Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
+and `python3 scripts/docs_surface.py --check`.
