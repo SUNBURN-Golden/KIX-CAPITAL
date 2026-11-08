@@ -222,6 +222,9 @@ class LiveBase:
 
     def start(self, authorizer):
         self.server = make_server(0, authorizer=authorizer, workspace=str(self.workspace), event_log=str(self.event_log))
+        # server_close must join handlers before the temporary event log/workspace
+        # are removed; the response can reach the client before logging finishes.
+        self.server.daemon_threads = False
         self.port = self.server.server_port
         worker = threading.Thread(target=self.server.serve_forever, daemon=True)
         worker.start()

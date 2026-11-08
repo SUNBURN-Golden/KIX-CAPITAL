@@ -1,5 +1,31 @@
 # KIX Capital
 
+## Offline draw order rehearsal
+
+```sh
+python3 -m capital.draw_order --workspace SNAPSHOT_DIR --advance sim-a --advance sim-b
+```
+
+Select two to four distinct, already-approved advances. The stdlib CLI audits one
+capture of `workspace.json`, then evaluates every sorted permutation (2, 6 or 24)
+in separate memory services through existing underwriting and draw commands.
+`KIX_CAPITAL_DRAW_ORDER_REHEARSAL_V1` canonical JSON is labeled `SIMULATED`.
+Each step includes the preceding U1–U6 record, actual receipt or API refusal,
+claim reservation and advance/slice exposure movements. Advisory failures can
+coexist with accepted draws. Final risk includes the whole portfolio and the
+existing per-advance reserve flooring; requirements do not mean funded reserves.
+
+The report hashes exact workspace bytes, full fixture inputs and comparison-time
+policy inputs, including provisional terms, bounds, slice and recovery policies.
+It neither recommends an ordering nor establishes allocation priority. No source
+write/lock, signing key, network, clock advance or live batch is used. Exit 0
+means all rehearsals completed, including business refusals; exit 1 means invalid
+inputs or incomplete replay; argparse misuse exits 2. Historical policy provenance,
+authentication and reserve funding remain `NOT_BOUND`. An earlier UNKNOWN without
+persisted evidence is unknowable. See [integration contract](docs/INTEGRATION.md),
+[operator handbook](docs/OPERATOR_HANDBOOK_KO.md) and `tests/test_draw_order.py`.
+Fixtures are embedded in tests; this node adds no `tests/vectors/` files.
+
 ## Offline portfolio history comparison
 
 ```sh

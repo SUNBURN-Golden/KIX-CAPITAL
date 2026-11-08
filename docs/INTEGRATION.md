@@ -1,5 +1,67 @@
 # Capital local API and future integration
 
+## Offline draw order rehearsal contract
+
+`python3 -m capital.draw_order --workspace DIR --advance sim-a --advance sim-b`
+and `capital.draw_order.rehearse_workspace(directory, advance_ids) -> dict` audit
+one exact capture, then restore independent `InMemoryStorage.from_envelope`
+services. That supported storage factory deep-copies and verifies legacy/v2
+envelopes without saving; service restoration still validates journal semantics.
+Inputs must contain 2–4 distinct existing APPROVED advances without a successful
+draw journal entry. Prior REJECTED attempts are eligible. An earlier UNKNOWN
+without persisted evidence is unknowable; persisted inconsistency fails audit.
+Selection, generated `dor-p00-s0`…`dor-p23-s3` ID collisions and per-clone operation
+capacity are checked before any replay. No HTTP route or live batch is added.
+
+Canonical ASCII JSON plus newline has format
+`KIX_CAPITAL_DRAW_ORDER_REHEARSAL_V1`, `label: SIMULATED`, `status: COMPLETE|INCOMPLETE`,
+`reasons`, `audit`, `readiness_checks`, `input_metadata`, `inputs`, `selection`,
+`baseline`, `orderings`, and `comparison`. Exit 0 means every ordering completed
+(ordinary business refusals included); unavailable policy/capture/selection or
+incomplete replay exits 1; argparse misuse exits 2. Each sorted permutation
+contains ordered `steps` with the preceding `underwriting` U1–U6 record,
+`observed_state_digest`, deterministic operation ID, `command.kind: RECEIPT|API_ERROR`
+(or NOT_ATTEMPTED on failure), and `movements.{before,after,delta}`. Command
+receipts preserve ACCEPTED/REJECTED and errors; API errors preserve code/status/detail.
+UNKNOWN or unexpected faults stop that ordering without retry. Advisory FAIL
+does not automatically refuse a draw; existing F04 and slice guards decide.
+
+Movement maps count claim reservations once per claim, advance outstanding once
+per advance and derived slice exposure separately. Final `risk` calls the
+existing service fold over the complete portfolio with per-advance reserve
+flooring. `comparison.outcome_variants` lists result variants and permutation
+indexes for each advance; `differing_financial_measures` compares financial
+sections, excluding journal/risk digests and command identities. No ordering is
+recommended. Risk requirements are not funded reserves.
+
+`inputs.workspace_sha256` hashes exact captured bytes; payload, state and overlay
+digests are also retained. `fixtures_digest` hashes full rows, profiles,
+beneficiaries and projection IDs. A separate versioned `policy_inputs` object
+captures ordered terms items (and `items_json` preserving nested map order), version/top/reason/status (including `notes_source`
+and `note_sha256`), overlay/repayment bounds, slice/recovery policies and fixed
+sim_day/organizer/existing draw-day assumptions. `policy_inputs_digest` is SHA256
+of `store.canonical_bytes` of that whole object. This extends beyond the existing
+portfolio `FrozenInputs` capture. Each clone checks fixture, policy, prefix,
+mapping, recorded gate and terms-binding compatibility using the existing
+portfolio comparison readiness helpers. Forecast readiness is unrelated.
+
+These are **comparison-time provisional inputs**, loaded by existing helpers
+from `CAPITAL_FINANCIAL_TERMS.md`, `CAPITAL_CLAIM_SLICE_REGISTRY.md` (and its
+`CAPITAL_SETTLEMENT_POLICY.md` sizing inputs), `CAPITAL_DEFAULT_RECOVERY.md`,
+`CAPITAL_OVERLAY_STATE.md`, `CAPITAL_OVERLAY_DIGEST_EXPORT.md` and
+`CAPITAL_REPAYMENT_POSTING.md` under `docs/decisions/`. They do not authenticate
+historical policy. `historical_policy_provenance`, `authentication`,
+`reserve_funding` remain NOT_BOUND. The report normalizes the workspace path to
+CAPTURED_WORKSPACE, removes embedded instance IDs, and retains captured save
+metadata only in `input_metadata`. It embeds no generated envelope or telemetry.
+Source bytes are read once without a lock; all command saves are memory-only.
+No signing key, network, clock advancement, approval, reserve booking, lending
+policy or settlement allocation priority is added. `funds_executed`,
+`workspace_mutated`, `lock_taken` are false. Unlike the participation-window
+bounded multi-claim replay and order-independent event-stress fold, this report
+explores competing draws. Synthetic fixtures live in `tests/test_draw_order.py`;
+there are no new vector files.
+
 ## Offline portfolio comparison contract
 
 `python3 -m capital.portfolio_compare --before DIR_A --after DIR_B` reads each explicit
