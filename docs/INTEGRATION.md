@@ -1,5 +1,72 @@
 # Capital local API and future integration
 
+## Workspace relocation rehearsal
+
+`python3 scripts/relocation_rehearsal.py` runs unsigned and DEV_ONLY-keyset cases
+independently; `--case unsigned` and `--case dev-keyset` select one. There is no
+live-workspace option. All writes, including archive construction and staged keysets,
+are inside disposable temporary directories. Children use loopback port 0, `-B`, a
+scrubbed `PYTHONPATH` and no checkout policy overrides; every child is stopped and reaped.
+
+The harness reuses release subprocess helpers and the offer/approve/bind/draw command
+fixtures from `smoke_release.STEPS`. With immutable `FixtureViews`, it advances the
+logical clock, posts the existing synthetic interest-plus-1000-principal repayment,
+defaults after overlay creation, reads the write-off day from the recovery view and
+explicitly posts write-off then. It registers/opens a slice on `demo-delta-small` with
+the current quote and F04 journal index. Slice face is a synthetic one fifth of the
+observed quote maximum, following the existing seed/test sizing pattern; this adds no
+financial term. Existing synthetic approval labels are reused. Required nonempty
+history kinds are `repayment`, `default_anchor`, `WRITEOFF`, `SLICE_PROPOSE`, `SLICE_OPEN`.
+
+After live evidence capture the writer must exit before `workspace.json` is read once.
+`audit_workspace_bytes` checks those exact bytes and reconciles them against the live
+cut. A separate capture directory is never opened by writable storage. The harness
+removes only its stopped disposable lock artifact, physically moves the populated
+workspace to a different runtime root, and verifies the old path is absent. The
+runtime stages exactly the zipapp, document and optional committed synthetic keyset
+(copied to exact mode 0600 before loading). Presence and byte hashes are checked before
+launch, avoiding empty-book or missing-key generation fallbacks. A third unrelated
+working directory contains no runtime inputs. Bundled provenance and every release
+manifest file hash are checked against the staged archive.
+
+Stable internal evidence compares both complete journals, F04 receipt/fingerprint maps
+including original writer identities, command lookup cores, all statement categories
+and totals, fixture/source/policy provenance, slice views, reconciliation results and
+the independently verified export manifest `content_digest`. Only the explicit top-level
+session identities on policy envelopes are separated; nested fields are retained.
+F04 duplicates retain original receipt identity; overlay duplicate envelopes carry the
+current session. Recovery POST uses the generic overlay memo label while lookup retains
+its recorded SIMULATED label; both are checked. Old tokens get `403 LOCAL_TOKEN_REQUIRED`;
+stale command instances and F04 receipt lookup get `409 SESSION_CHANGED`. Every submitted
+body is replayed under the fresh instance, must return `transport_duplicate`, and must
+preserve original lookup results. Changed bodies on both command routes must return
+`409 IDEMPOTENCY_CONFLICT`. Business evidence, counts, totals and document bytes must
+remain unchanged. Process counters are not treated as business evidence.
+
+Truncation, unresealed payload checksum damage and a re-folded/resealed invalid
+F04-default link are tested in separate disposable copies. Each must fail the offline
+audit and restore, return `WORKSPACE_UNREADABLE` and 503 on both valid command routes,
+and preserve the damaged bytes. The DEV_ONLY-keyset case also rejects mode 0644 without repair. The zipapp itself
+remains unsigned; DEV_ONLY applies only to export integrity.
+The final destination is audited again; preserved capture bytes and its complete tree
+inventory must still match.
+
+Stdout is one allowlisted `KIX_CAPITAL_RELOCATION_REHEARSAL_V1` JSON report: `label:
+SIMULATED`, `workspace_kind: LOCAL_FILE_WORKSPACE`, `funds_executed: false`,
+`authentication: NOT_BOUND`, `stage5_durable_transactions: NOT_BOUND`,
+`stage7_authenticated_export: false`, per-case checks/evidence/session/corruption checks,
+and limitations. Evidence contains hashes, counts, totals and check outcomes; tokens,
+keysets, key bytes, session identities, local paths and raw diagnostics are excluded.
+Hashes incorporating original writer identities may vary between independent rehearsals;
+stability is asserted across each actual relocation. Exit 0 requires every selected
+case to pass; failure is exit 1 with sanitized codes; CLI misuse is exit 2.
+
+This is a stopped-writer, one-host LOCAL_FILE_WORKSPACE rehearsal. It implements no
+backup service, live snapshot copying, automatic repair, disaster-recovery certification,
+cross-host fencing or new storage format. Recovery coverage means default/write-off
+history, not observed cash recovery. CAP-11/stage5 and stage7 remain NOT_BOUND.
+Shared-HMAC DEV_ONLY integrity is not authentication. No provider calls or funds execute.
+
 ## Offline portfolio migration contract
 
 `python3 -m capital.portfolio_migrations --before DIR_A --after DIR_B` requires two
