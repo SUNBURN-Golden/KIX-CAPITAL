@@ -4531,6 +4531,69 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## interest-accrual-trace (2026-11-02)
+
+Implemented `GET /api/cases/{advance_id}/interest-trace?instance_id=` as a detached
+SIMULATED report under the dossier's existing `projection:read` boundary. The
+complete overlay fold (bounded by the F04 journal length) remains authoritative.
+Segments explain recorded cumulative-fraction differences and cumulative-floor
+postings; no accrual writer or second interest engine runs during reads. Stored
+repayment and recovery witnesses, resolved F04 receipts, acceleration/default/
+write-off context, separate payment/adjustment totals, and F04/overlay digest
+bindings are retained. Missing bindings produce explicit number-free computed
+blocks. Tests cover same-day operations, sub-won carry, partial repayment,
+acceleration (jumped/daily), default, accrual stop before late write-off posting,
+post-write-off residual recovery, deduplication/conflicts/dangling indices,
+read detachment, restart digest stability, persistence prohibition, unchanged
+workspace/dossier/export bytes, lock serialization, HTTP roles and strict queries.
+
+No financial terms, commands, UI or COA behavior changed. No commit, push, GitHub
+operation, external provider, credentials, deployment or paid service was used.
+
+Commands actually run during this implementation (logs retained in
+`build/interest-trace/`; these are local verification results over SIMULATED data):
+
+| Command | Result |
+|---|---|
+| `PYTHONPATH=tests python3 -m unittest test_interest_trace -v` | Initial run: 14 tests, two fixture setup errors (`UNKNOWN_PROPOSAL`, `REPAYMENT_TERMS_NOT_BOUND`). Fixed by creating the proposal through the existing agent fixture API and binding the clock before same-day draw/payment. Rerun: 14 passed in 1.907s.  Final rerun with the old-clock duplicate regression: 15 passed in 1.982s. |
+| `PYTHONPATH=tests python3 -m unittest test_interest_trace test_overlay test_repayment_posting test_recovery test_dossier test_facade_contract test_auth_matrix test_finance_vectors test_docs_surface -v` | 262 passed in 26.362s.  Final rerun after duplicate-clock hardening: 263 passed in 27.743s. |
+| `python3 scripts/auth_matrix.py --write` | Exit 0; regenerated authorization vectors and both generated documentation blocks. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; refreshed 37 GET API routes / 49 total facade routes; 101866 bytes. |
+| `python3 scripts/pack_vectors.py --write` | Exit 0; refreshed nine existing pack vectors for authorization evidence changes. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0; generated and served catalog match. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101866 bytes match. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; nine files match. |
+| `python3 scripts/dossier_vectors.py --check` | Exit 0; all six existing dossiers byte-identical. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 dispatcher routes, 273 artifacts, nine stages. |
+| `python3 -m unittest discover -s tests -v` | Initial full run: 1316 passed in 340.572s. Final rerun after duplicate-clock hardening: **1317 passed in 316.901s**, exit 0. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven passed in 0.002s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three pinned local cached packages installed; no network/package changes. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 browser tests passed in 2.3m using available Chromium. Playwright stopped all four loopback servers. |
+| `git diff --check` | Exit 0. |
+| Inline Python `hashlib.sha256` check against the initial protected-file snapshot and `capital/vendor/manifest.json` | All five vendored reference hashes match the locked manifest; manifest, `capital/export.py`, `capital/overlay.py`, all tracked vendor and `.aiops/` bytes unchanged. |
+| `git diff --exit-code -- capital/vendor/ capital/export.py capital/overlay.py .aiops/` | Exit 0; protected tracked files unchanged. |
+
+Design deviations: derived report objects and accrual/repayment payloads use
+closed response schemas. Raw recovery/context payloads follow the dossier's
+opaque recorded-evidence schema convention and the authoritative semantic fold
+validates them; the reader does not introduce a second policy schema. The
+handbook's regenerated authorization block is byte-identical because the prefix
+permission catalog and error-code set are unchanged. Browser verification uses
+an isolated loopback network namespace with the repository Playwright configuration
+unchanged, avoiding host ports owned by unrelated processes.
+
+Final review aligned recovery link validation with the fold's identical-ID
+deduplication. A repeated old clock after a later default must not move the
+logical day seen by the link reader. A dedicated regression now checks unchanged
+segments, payments, events, totals and overlay digest for that history. Focused
+tests and vector/documentation/syntax/protected-byte checks were rerun after this
+change.
+
+Final process inspection found no remaining Capital server or worktree Playwright
+process. All requested checks passed; no product decision or STOP condition arose.
+
 ## Upstream re-pin policy enforcement — builder verification (2026-11-01)
 
 SIMULATED local verification of `scripts/upstream_repin_check.py`; no actual
@@ -4685,3 +4748,48 @@ product, test or assertion changes. Logs and the temporary alternate config
 remain under ignored `build/event-stress-merge-verification/`. No unrelated
 listener was stopped. No external post, real financial execution, deployment,
 Protocol/Commerce edit or protected-path modification was performed.
+
+## interest-accrual-trace — conflict-fix round 1 (2026-11-08)
+
+Resolved the supervisor-started merge of `origin/main` at
+`ec5d237c8dd1b17f9802689306667587583ff895` into
+`agent/capital-interest-accrual-trace`. Both documentation additions survive:
+the interest trace and main's event-stress, residual, portfolio migration and
+upstream re-pin verification sections. Regenerated the finance vector and all
+nine evidence-pack vectors from the combined producers rather than selecting
+one parent's digests. Against the branch's finance vector, only the incoming
+closeout evidence changes; against main's, only the interest-trace facade
+catalog changes. The clean pack combines main's decision rows with the branch's
+authorization edges/probes and recomputes their hashes. No implementation or
+test changes were needed beyond the automatic merge.
+
+All results below are local checks over SIMULATED / READ_ONLY_FIXTURE data,
+not evidence of actual financial execution or upstream adoption. Logs are
+retained under ignored `build/interest-trace-merge-verification/`.
+
+| Command / check | Observed result |
+|---|---|
+| `python3 scripts/finance_vectors.py --write`; `python3 scripts/pack_vectors.py --write` | Exit 0; combined finance vector 101868 bytes, nine pack vectors regenerated. |
+| `PYTHONPATH=tests python3 -m unittest test_interest_trace test_dossier test_facade_contract test_auth_matrix test_finance_vectors test_docs_surface -v` | Exit 0; 143 tests passed in 19.973s. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1417 tests passed in 473.835s, including incoming feature tests and the legacy byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed in 0.001s. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check`; `python3 scripts/dossier_vectors.py --check` | All exit 0; combined authorization/finance/pack evidence matches, all six dossier vectors unchanged. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 dispatcher routes, 274 artifacts, nine stages. |
+| `npm run test:browser` | Exit 1 at server startup because a configured loopback port was occupied; existing listener left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Final serial run exit 0; all 76 passed in 1.9m using available Chromium 145.0.7632.6 and the unchanged tracked configuration/assertions. |
+| SHA256 and byte comparisons against initial snapshot, `HEAD`, and `MERGE_HEAD` | All five manifest-locked vendor files, manifest, legacy export, `.aiops/`, and historical root `DECISION_REQUIRED.md` unchanged. |
+| `git ls-files -u`; tracked-file marker scan; `git diff --check`; `git diff --cached --check` | No unmerged entries or conflict markers; whitespace checks pass. |
+
+The first isolated browser run overlapped the full unit suite: 71 passed and
+five failed. The lifecycle test timed out waiting for its close button, which
+is present in its failure snapshot; its unclosed reservation then caused four
+later draw refusals (`ADVANCE_EXCEEDS_OPEN_FACE`). A complete rerun after the
+unit suite finished used fresh servers and passed all 76 tests without code,
+test, timeout or configuration changes. Both logs are retained; the initial
+failed run is not represented as passing.
+
+All twelve conflict paths are staged. The merge remains uncommitted for the
+supervisor. No abort, commit, push, rebase, reset, external post, paid service,
+provider call, deployment, real money movement or Protocol/Commerce edit was
+performed. No new product decision was required.

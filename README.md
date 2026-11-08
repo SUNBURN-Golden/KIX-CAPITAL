@@ -244,6 +244,36 @@ remain outside this table.
 
 `GET /api/portfolio/snapshot?instance_id=<current instance>` returns one SIMULATED local diagnostic cut of terms rollup, risk, covenant watch and forecast. It requires `projection:read`; current session identity is mandatory. `COMPLETE` is limited to the in-process pinned producer with immutable fixture views, bound loaded terms and healthy reconciled storage. Gate-fake, mutable sources and degraded/unbound inputs return explicit `INCOMPLETE` diagnostics, never fabricated totals. The cut carries business, overlay, fixture and policy-input digests plus a deterministic snapshot digest. Terms rollup keeps draw day 0 while risk/covenants/forecast use recorded draw days; settlement cash day remains `EXPECTED_DAY_NOT_PROVIDED`. No workspace writes or real funds occur. Authentication, cross-process cuts and historical storage remain NOT_BOUND/out of scope. See `tests/test_portfolio_snapshot.py` for controlled concurrency and read-only evidence and `docs/INTEGRATION.md` for the contract.
 
+### Interest accrual trace · SIMULATED
+
+`GET /api/cases/{advance_id}/interest-trace?instance_id=` returns a detached
+`KIX_CAPITAL_INTEREST_TRACE_V1` JSON report under the dossier's `projection:read`
+permission (organizer/auditor). It explains recorded interest postings and stored
+repayment/recovery witnesses, with F04 and overlay digest bindings. It never
+accrues interest or changes the dossier, export, commands, or COA postings.
+
+Each segment retains its overlay index/id, F04 journal boundary, posting day,
+principal, tier, rates, terms version, elapsed `from_day`/`to_day` boundaries and
+recorded contractual/default day split. Components show reduced exact cumulative
+fractions before/after, their difference, posted KRW and carried remainders.
+Posting equals the difference of cumulative floors independently per bucket;
+sub-won carry survives payments. Recorded day counts remain authoritative: the
+reader never adjusts interval endpoints or recalculates historical pricing.
+Same-day operations add no synthetic segment. See [interval examples and payment
+scopes](docs/INTEGRATION.md#interest-accrual-trace).
+
+Payments are `UNVERIFIED_ASSERTED`: allocations, arithmetic witnesses, optional
+citations, F04 references and resolved receipts are copied. Recovery quote/policy
+witnesses are retained; post-write-off residual recoveries have no interest
+allocation. Totals reconcile separate repayment, recovery and write-off scopes
+against the existing fold. Missing bindings/gates/default anchors produce explicit
+`NOT_BOUND`, number-free computed blocks; recorded payloads remain raw evidence.
+Undrawn cases use `NOT_APPLICABLE / NOT_DRAWN`; bound empty history is valid.
+`trace_digest` is canonical SHA256 with the dossier's volatile-field exclusions,
+for local integrity only, with no authentication claim. No hypothetical repricing,
+waivers, maturity extension, UI, financial-term choices or external execution.
+Tests: `tests/test_interest_trace.py`.
+
 ### Advance case dossier · SIMULATED
 
 `GET /api/cases/{advance_id}/dossier?instance_id=` returns a deterministic

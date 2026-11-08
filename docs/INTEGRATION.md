@@ -398,6 +398,8 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | unregistered GET path | `GET /api/no-such-route` | every caller: 404 NOT_FOUND |
 | unregistered POST path | `POST /api/no-such-route` | organizer, auditor, observer, agent: 404 NOT_FOUND; no-token: 403 LOCAL_TOKEN_REQUIRED |
 | near-miss GET path | `GET /api/projection/extra`, `GET /api/state/`, `GET /api/preview` | organizer: 404 NOT_FOUND |
+| near-miss interest trace path | `GET /api/cases/sim-mtx/interest-trace/`, `GET /api/cases/sim-mtx/nested/interest-trace` | organizer: 404 NOT_FOUND |
+| interest trace rejects extra or repeated arguments | `GET /api/cases/sim-mtx/interest-trace?instance_id=@instance&cash=1`, `GET /api/cases/sim-mtx/interest-trace?instance_id=@instance&instance_id=@instance` | organizer: 400 INVALID_ARGUMENTS |
 | near-miss POST path | `POST /api/session/` | organizer: 404 NOT_FOUND |
 | GET on a POST-only route | `GET /api/commands`, `GET /api/session`, `GET /api/overlay/commands`, `GET /api/agent/query_grant`, `GET /api/agent/query_subject`, `GET /api/agent/propose_action`, `GET /api/agent/withdraw_proposal`, `GET /api/agent/propose_grant_change`, `GET /api/agent/execute` | every caller: 404 NOT_FOUND |
 | POST on a GET-only route | `POST /api/state` | organizer, auditor, observer, agent: 404 NOT_FOUND; no-token: 403 LOCAL_TOKEN_REQUIRED |
@@ -418,6 +420,74 @@ Outside the route-by-role cells the table also pins these cases. Each lists what
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` | bogus-token: 200 |
 | static asset ignores token and role headers | `GET /`, `GET /app.js`, `GET /style.css` (X-Capital-Role: clerk) | no-token: 200 |
 <!-- generated:auth-matrix end -->
+
+### Interest accrual trace
+
+`GET /api/cases/{advance_id}/interest-trace?instance_id=` shares the dossier's
+`projection:read` permission, session/case checks, one lock and frozen-state guard.
+It accepts only one `instance_id` parameter. Missing/stale sessions return
+`409 SESSION_CHANGED`, unknown cases `404 CASE_NOT_FOUND`, unknown/repeated
+parameters `400 INVALID_ARGUMENTS`, and malformed child paths `404 NOT_FOUND`.
+The local facade contract has 37 GET API routes, 49 routes overall. The existing
+permission-catalog prefix `/api/cases/` covers both child routes; no new permission
+or authenticated identity is introduced.
+
+The detached `SIMULATED / READ_ONLY_INTEREST_TRACE` response contains `cut`,
+`segments`, `payments`, `events`, `totals`, `diagnostics` and `trace_digest`, with
+`funds_executed`, `workspace_mutated` and `write_authorized` false. `cut` binds the
+F04 state digest and journal length, overlay fold digest and raw journal length,
+and recorded terms binding. The full overlay folds with the F04 length bound
+before case selection; identical IDs count once, conflicting IDs fail closed.
+Raw overlay indices always identify the first effective occurrence.
+
+For each interest posting, `recorded_payload` preserves the writer's principal,
+rate, tier, terms version, draw/maturity days, `from_day`, `to_day`, day counts and
+optional recovery witness. The interval endpoints are elapsed-time boundaries,
+not a new calendar inclusion rule: ordinary draw day 0 to day 3 records three
+contractual days; across maturity 60, day 59 to 61 records one contractual and
+one default day. Recovery acceleration to day 25 followed by a day-40 tick
+retains the writer's split (25 contractual and 15 default elapsed days in total).
+A default anchor at day 10 can lower effective maturity to 10. Its stored
+write-off eligibility day is the accrual stop, even if the clock jumps past it
+and the write-off command is posted later. The trace keeps posting day, segment
+end, anchor day, effective stop day and write-off posting day distinct.
+Historical day splits (including any writer minimum-day convention) are copied;
+no day is silently added or removed. Same-day commands add no accrual segment.
+
+For each contractual/default component, `exact_increment = cumulative_after -
+cumulative_before`, `remainder = cumulative_exact - floor(cumulative_exact)`,
+and `posted_krw = floor(cumulative_after) - floor(cumulative_before)`. All exact
+values are reduced fractions, including `0/1`. Rounding is independent by bucket,
+with cumulative carry across zero-KRW segments and payments. This reader never
+multiplies current principal, rates or day counts to reprice history or calls an
+accrual writer. Due values are copied from existing overlay/recovery readers.
+
+Repayment rows preserve `allocation`, `witness`, `terms_binding`, F04 operation
+and receipt references, optional evidence/proposal citations, and linked stored
+F04 receipt/journal row (null for interest-only payments). Recovery rows preserve
+stored quote/policy witnesses. All payments are `UNVERIFIED_ASSERTED`.
+`totals.repayment`, `recovery_paid`, `writeoff_adjustments` and
+`residual_recovery_krw` have distinct scopes: recovery before write-off allocates
+to interest/principal; recovery afterward reduces residual claim without an
+interest allocation. `recovery_fold` and `due_reader.recovery_position` expose
+the existing readers, whose residual-claim scope differs from displayed due
+interest after write-off. Reversed/released interest is never reported as paid.
+Direct F04 repayments are not inferred as interest payments and receive a diagnostic.
+
+Missing terms, incompatible current/recorded terms versions, absent draw gates,
+or a DEFAULTED case without a dated default anchor yield `NOT_BOUND` computed
+blocks containing only status/reason, with an explicit diagnostic. Raw recorded
+payloads remain visible as evidence. Undrawn cases are `NOT_APPLICABLE / NOT_DRAWN`;
+valid bound empty history has zero totals and `NO_POSTINGS_YET`. Unexpected
+errors propagate. Derived report objects and accrual/repayment payloads have
+closed schemas; raw recovery/context payloads follow the dossier's opaque-evidence
+convention and are validated by the existing semantic fold.
+
+`trace_digest` excludes itself and recursively strips the established export
+volatile keys, matching dossier canonical SHA256 conventions. It is local
+integrity, not authentication or remote attestation. Reads preserve receipts,
+journals, digests, operation count, workspace bytes, dossier and export formats.
+There is no UI, command, COA posting, repricing, waiver or maturity-extension change.
 
 ### Advance case dossier
 

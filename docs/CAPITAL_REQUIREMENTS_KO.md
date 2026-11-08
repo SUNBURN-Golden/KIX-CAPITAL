@@ -132,6 +132,17 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
+### Interest accrual trace — CAP-01 / CAP-04
+
+`GET /api/cases/{advance_id}/interest-trace?instance_id=`는 dossier와 같은
+`projection:read` 권한으로 기록된 이자 구간과 상환·회수 증거를 설명한다.
+CAP-01: 원금·금리·기간·정확한 분수·누적 내림·잔여 이월 및 저장된 상환 배분을
+F04/overlay digest에 연결한다. CAP-04: 가속·부도 anchor·상각 적격일의 이자 중지와
+상각 전 이자 회수, 상각 후 residual claim 회수를 구분한다. 모두 `SIMULATED`,
+지급 증거는 `UNVERIFIED_ASSERTED`이며 실자금·실제 회수·새 금융 조건이 아니다.
+결합 누락은 숫자 없는 `NOT_BOUND`, 미인출은 `NOT_APPLICABLE / NOT_DRAWN`이다.
+기존 fold만 사용하고 dossier/export/명령/COA/Protocol/Commerce는 변경하지 않는다.
+
 ### event-stress-report (CAP-04, CAP-08, CAP-20)
 
 `capital/event_stress.py`와 `scripts/event_stress.py`는 감사된 단일 워크스페이스의

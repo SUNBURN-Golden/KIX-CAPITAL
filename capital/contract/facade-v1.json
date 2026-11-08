@@ -523,6 +523,36 @@
     },
     {
       "method": "GET",
+      "path": "/api/cases/{advance_id}/interest-trace",
+      "operationId": "local_case_interest_trace",
+      "dispatch": "/api/cases/",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/interest_trace"
+      },
+      "errors": [
+        "INVALID_TARGET",
+        "LOOPBACK_HOST_REQUIRED",
+        "ORIGIN_REJECTED",
+        "CROSS_SITE_REJECTED",
+        "NOT_FOUND",
+        "ROLE_UNKNOWN",
+        "LOCAL_TOKEN_REQUIRED",
+        "ROLE_MISMATCH",
+        "SESSION_REQUIRED",
+        "ROLE_FORBIDDEN",
+        "SESSION_CHANGED",
+        "INVALID_ARGUMENTS",
+        "READ_ONLY_INVARIANT",
+        "CASE_NOT_FOUND"
+      ],
+      "permission": "projection:read",
+      "query": [
+        "instance_id"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/portfolio/snapshot",
       "operationId": "local_portfolio_snapshot",
       "dispatch": "/api/portfolio/snapshot",
@@ -17708,6 +17738,898 @@
         },
         "matched": {
           "type": "boolean"
+        }
+      }
+    },
+    "interest_trace_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "days",
+        "rate_bps",
+        "cumulative_before",
+        "cumulative_after",
+        "exact_increment",
+        "posted_krw",
+        "remainder_before",
+        "remainder_after"
+      ],
+      "properties": {
+        "days": {
+          "type": "integer"
+        },
+        "rate_bps": {
+          "type": "integer"
+        },
+        "cumulative_before": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        },
+        "cumulative_after": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        },
+        "exact_increment": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        },
+        "posted_krw": {
+          "type": "integer"
+        },
+        "remainder_before": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        },
+        "remainder_after": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        }
+      }
+    },
+    "interest_trace_accrual_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "tier",
+        "terms_version",
+        "principal",
+        "draw_day",
+        "maturity_day",
+        "from_day",
+        "to_day",
+        "contractual_days",
+        "default_days",
+        "contract_bps",
+        "default_bps",
+        "posted_contract_krw",
+        "posted_default_krw",
+        "cumulative_contract_exact",
+        "cumulative_default_exact"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "terms_version": {
+          "type": "string"
+        },
+        "principal": {
+          "type": "integer"
+        },
+        "draw_day": {
+          "type": "integer"
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "from_day": {
+          "type": "integer"
+        },
+        "to_day": {
+          "type": "integer"
+        },
+        "contractual_days": {
+          "type": "integer"
+        },
+        "default_days": {
+          "type": "integer"
+        },
+        "contract_bps": {
+          "type": "integer"
+        },
+        "default_bps": {
+          "type": "integer"
+        },
+        "posted_contract_krw": {
+          "type": "integer"
+        },
+        "posted_default_krw": {
+          "type": "integer"
+        },
+        "cumulative_contract_exact": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        },
+        "cumulative_default_exact": {
+          "type": "string",
+          "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+        },
+        "recovery_witness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "policy_version",
+            "denominator",
+            "stop_day"
+          ],
+          "properties": {
+            "policy_version": {
+              "const": "DEFAULT_RECOVERY_V1"
+            },
+            "denominator": {
+              "type": "integer"
+            },
+            "stop_day": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "interest_trace_segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlay_index",
+        "overlay_id",
+        "after_journal_index",
+        "sim_day",
+        "recorded_payload",
+        "components"
+      ],
+      "properties": {
+        "overlay_index": {
+          "type": "integer"
+        },
+        "overlay_id": {
+          "type": "string"
+        },
+        "after_journal_index": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "recorded_payload": {
+          "$ref": "#/definitions/interest_trace_accrual_payload"
+        },
+        "components": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "contract",
+                "default"
+              ],
+              "properties": {
+                "status": {
+                  "const": "COMPUTED"
+                },
+                "contract": {
+                  "$ref": "#/definitions/interest_trace_component"
+                },
+                "default": {
+                  "$ref": "#/definitions/interest_trace_component"
+                }
+              }
+            },
+            {
+              "$ref": "#/definitions/dossier_unbound"
+            },
+            {
+              "$ref": "#/definitions/dossier_skipped"
+            }
+          ]
+        }
+      }
+    },
+    "interest_trace_repayment_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_ref",
+        "amount_krw",
+        "unapplied_before_krw",
+        "allocation",
+        "witness",
+        "terms_binding",
+        "f04_operation_id",
+        "f04_receipt_ref",
+        "label",
+        "basis"
+      ],
+      "properties": {
+        "advance_ref": {
+          "type": "string"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "unapplied_before_krw": {
+          "type": "integer"
+        },
+        "allocation": {
+          "$ref": "#/definitions/overlay_repayment_split"
+        },
+        "witness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "denominator",
+            "paid_interest_krw",
+            "paid_default_krw",
+            "principal_before_krw",
+            "accrued_interest_num",
+            "accrued_default_num"
+          ],
+          "properties": {
+            "denominator": {
+              "type": "integer"
+            },
+            "paid_interest_krw": {
+              "type": "integer"
+            },
+            "paid_default_krw": {
+              "type": "integer"
+            },
+            "principal_before_krw": {
+              "type": "integer"
+            },
+            "accrued_interest_num": {
+              "type": "string"
+            },
+            "accrued_default_num": {
+              "type": "string"
+            }
+          }
+        },
+        "terms_binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terms_version"
+          ],
+          "properties": {
+            "terms_version": {
+              "type": "string"
+            }
+          }
+        },
+        "f04_operation_id": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "f04_receipt_ref": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "basis": {
+          "const": "SIM_REPAY_MEMO"
+        },
+        "evidence_ref": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      }
+    },
+    "interest_trace_payment": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "overlay_index",
+            "overlay_id",
+            "after_journal_index",
+            "sim_day",
+            "payment_basis",
+            "f04_receipt",
+            "f04_journal_row",
+            "kind",
+            "recorded_payload"
+          ],
+          "properties": {
+            "overlay_index": {
+              "type": "integer"
+            },
+            "overlay_id": {
+              "type": "string"
+            },
+            "after_journal_index": {
+              "type": "integer"
+            },
+            "sim_day": {
+              "type": "integer"
+            },
+            "payment_basis": {
+              "const": "UNVERIFIED_ASSERTED"
+            },
+            "f04_receipt": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/accepted_receipt"
+                }
+              ]
+            },
+            "f04_journal_row": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "journal_index",
+                    "entry"
+                  ],
+                  "properties": {
+                    "journal_index": {
+                      "type": "integer"
+                    },
+                    "entry": {
+                      "$ref": "#/definitions/journal_entry"
+                    }
+                  }
+                }
+              ]
+            },
+            "kind": {
+              "const": "repayment"
+            },
+            "recorded_payload": {
+              "$ref": "#/definitions/interest_trace_repayment_payload"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "overlay_index",
+            "overlay_id",
+            "after_journal_index",
+            "sim_day",
+            "payment_basis",
+            "f04_receipt",
+            "f04_journal_row",
+            "kind",
+            "recorded_payload"
+          ],
+          "properties": {
+            "overlay_index": {
+              "type": "integer"
+            },
+            "overlay_id": {
+              "type": "string"
+            },
+            "after_journal_index": {
+              "type": "integer"
+            },
+            "sim_day": {
+              "type": "integer"
+            },
+            "payment_basis": {
+              "const": "UNVERIFIED_ASSERTED"
+            },
+            "f04_receipt": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/accepted_receipt"
+                }
+              ]
+            },
+            "f04_journal_row": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "journal_index",
+                    "entry"
+                  ],
+                  "properties": {
+                    "journal_index": {
+                      "type": "integer"
+                    },
+                    "entry": {
+                      "$ref": "#/definitions/journal_entry"
+                    }
+                  }
+                }
+              ]
+            },
+            "kind": {
+              "const": "RECOVERY"
+            },
+            "recorded_payload": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Recorded recovery/context evidence copied verbatim, validated by the authoritative overlay fold; no reader-defined policy schema."
+            }
+          }
+        }
+      ]
+    },
+    "interest_trace_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlay_index",
+        "overlay_id",
+        "after_journal_index",
+        "sim_day",
+        "kind",
+        "recorded_payload"
+      ],
+      "properties": {
+        "overlay_index": {
+          "type": "integer"
+        },
+        "overlay_id": {
+          "type": "string"
+        },
+        "after_journal_index": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "margin_call",
+            "margin_cure",
+            "margin_acceleration",
+            "default_eligible_proposal",
+            "default_anchor",
+            "WRITEOFF",
+            "acceleration_event"
+          ]
+        },
+        "recorded_payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Recorded recovery/context evidence copied verbatim, validated by the authoritative overlay fold; no reader-defined policy schema."
+        }
+      }
+    },
+    "interest_trace_totals": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reconciled",
+            "posted_krw",
+            "cumulative_exact",
+            "repayment",
+            "recovery_paid",
+            "writeoff_adjustments",
+            "residual_recovery_krw",
+            "recovery_fold",
+            "due_reader"
+          ],
+          "properties": {
+            "status": {
+              "const": "COMPUTED"
+            },
+            "reconciled": {
+              "const": true
+            },
+            "posted_krw": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "contract",
+                "default"
+              ],
+              "properties": {
+                "contract": {
+                  "type": "integer"
+                },
+                "default": {
+                  "type": "integer"
+                }
+              }
+            },
+            "cumulative_exact": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "contract",
+                "default"
+              ],
+              "properties": {
+                "contract": {
+                  "type": "string",
+                  "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+                },
+                "default": {
+                  "type": "string",
+                  "pattern": "(0|[1-9][0-9]*)/[1-9][0-9]*"
+                }
+              }
+            },
+            "repayment": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "paid_default_krw",
+                "paid_interest_krw",
+                "principal_krw",
+                "unapplied_cash_krw",
+                "postings"
+              ],
+              "properties": {
+                "paid_default_krw": {
+                  "type": "integer"
+                },
+                "paid_interest_krw": {
+                  "type": "integer"
+                },
+                "principal_krw": {
+                  "type": "integer"
+                },
+                "unapplied_cash_krw": {
+                  "type": "integer"
+                },
+                "postings": {
+                  "type": "integer"
+                }
+              }
+            },
+            "recovery_paid": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "paid_default_krw",
+                "paid_interest_krw",
+                "principal_recovered_krw"
+              ],
+              "properties": {
+                "paid_default_krw": {
+                  "type": "integer"
+                },
+                "paid_interest_krw": {
+                  "type": "integer"
+                },
+                "principal_recovered_krw": {
+                  "type": "integer"
+                }
+              }
+            },
+            "writeoff_adjustments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "writeoff_principal_krw",
+                "accrued_interest_reversed_krw",
+                "suspended_interest_released_krw"
+              ],
+              "properties": {
+                "writeoff_principal_krw": {
+                  "type": "integer"
+                },
+                "accrued_interest_reversed_krw": {
+                  "type": "integer"
+                },
+                "suspended_interest_released_krw": {
+                  "type": "integer"
+                }
+              }
+            },
+            "residual_recovery_krw": {
+              "type": "integer"
+            },
+            "recovery_fold": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "principal_recovered_krw",
+                "paid_interest_krw",
+                "paid_default_krw",
+                "written_off_krw",
+                "residual_claim_krw",
+                "writeoff_sim_day"
+              ],
+              "properties": {
+                "principal_recovered_krw": {
+                  "type": "integer"
+                },
+                "paid_interest_krw": {
+                  "type": "integer"
+                },
+                "paid_default_krw": {
+                  "type": "integer"
+                },
+                "written_off_krw": {
+                  "type": "integer"
+                },
+                "residual_claim_krw": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "writeoff_sim_day": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "due_reader": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "interest_due_krw",
+                "default_interest_due_krw",
+                "recovery_position"
+              ],
+              "properties": {
+                "interest_due_krw": {
+                  "type": "integer"
+                },
+                "default_interest_due_krw": {
+                  "type": "integer"
+                },
+                "recovery_position": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "principal_krw",
+                        "interest_krw",
+                        "default_interest_krw",
+                        "claim_krw"
+                      ],
+                      "properties": {
+                        "principal_krw": {
+                          "type": "integer"
+                        },
+                        "interest_krw": {
+                          "type": "integer"
+                        },
+                        "default_interest_krw": {
+                          "type": "integer"
+                        },
+                        "claim_krw": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "$ref": "#/definitions/dossier_unbound"
+        },
+        {
+          "$ref": "#/definitions/dossier_skipped"
+        }
+      ]
+    },
+    "interest_trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "label",
+        "mode",
+        "advance_id",
+        "drawn",
+        "sim_day",
+        "clock_source",
+        "cut",
+        "segments",
+        "payments",
+        "events",
+        "totals",
+        "diagnostics",
+        "trace_digest",
+        "funds_executed",
+        "workspace_mutated",
+        "write_authorized",
+        "instance_id",
+        "observed_state_digest"
+      ],
+      "properties": {
+        "format": {
+          "const": "KIX_CAPITAL_INTEREST_TRACE_V1"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "mode": {
+          "const": "READ_ONLY_INTEREST_TRACE"
+        },
+        "advance_id": {
+          "type": "string"
+        },
+        "drawn": {
+          "type": "boolean"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "cut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_digest",
+            "overlay_state_digest",
+            "journal_length",
+            "overlay_journal_length",
+            "terms_binding"
+          ],
+          "properties": {
+            "state_digest": {
+              "type": "string"
+            },
+            "overlay_state_digest": {
+              "type": "string"
+            },
+            "journal_length": {
+              "type": "integer"
+            },
+            "overlay_journal_length": {
+              "type": "integer"
+            },
+            "terms_binding": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "terms_version",
+                    "status",
+                    "sim_day"
+                  ],
+                  "properties": {
+                    "terms_version": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "sim_day": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/interest_trace_segment"
+          }
+        },
+        "payments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/interest_trace_payment"
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/interest_trace_event"
+          }
+        },
+        "totals": {
+          "$ref": "#/definitions/interest_trace_totals"
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "scope",
+              "status",
+              "reason"
+            ],
+            "properties": {
+              "scope": {
+                "enum": [
+                  "computed",
+                  "segments",
+                  "payments"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "NOT_BOUND",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "trace_digest": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "workspace_mutated": {
+          "const": false
+        },
+        "write_authorized": {
+          "const": false
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "observed_state_digest": {
+          "type": "string"
         }
       }
     }

@@ -252,7 +252,8 @@
       "handler": "_get_cases",
       "permission": "projection:read",
       "probes": [
-        "/api/cases/sim-mtx/dossier?instance_id=@instance"
+        "/api/cases/sim-mtx/dossier?instance_id=@instance",
+        "/api/cases/sim-mtx/interest-trace?instance_id=@instance"
       ]
     },
     {
@@ -3172,6 +3173,46 @@
       "expect": {
         "status": 404,
         "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "near-miss interest trace path",
+      "method": "GET",
+      "path": "/api/cases/sim-mtx/interest-trace/",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "near-miss interest trace path",
+      "method": "GET",
+      "path": "/api/cases/sim-mtx/nested/interest-trace",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "interest trace rejects extra or repeated arguments",
+      "method": "GET",
+      "path": "/api/cases/sim-mtx/interest-trace?instance_id=@instance&cash=1",
+      "token": "organizer",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
+      }
+    },
+    {
+      "name": "interest trace rejects extra or repeated arguments",
+      "method": "GET",
+      "path": "/api/cases/sim-mtx/interest-trace?instance_id=@instance&instance_id=@instance",
+      "token": "organizer",
+      "expect": {
+        "status": 400,
+        "error": "INVALID_ARGUMENTS"
       }
     },
     {
