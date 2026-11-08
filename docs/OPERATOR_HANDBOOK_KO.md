@@ -821,3 +821,68 @@ NOT_BOUND다. 모든 값은 SIMULATED/provisional이며 applied=false,
 funds_executed=false, workspace_mutated=false, production NOT_AUTHORIZED다.
 원본 파일·원장·시계는 바뀌지 않으며 실제 지급·환불·권리확인이나 검색 최적화가 아니다.
 `python3 scripts/event_stress_vectors.py --check`로 합성 고정 벡터를 검증한다.
+
+### Local upstream re-pin evidence / 로컬 리핀 증거
+
+```sh
+python3 scripts/upstream_repin_check.py --check --root .
+python3 scripts/upstream_repin_check.py --baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json
+```
+
+정책 권위는 `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`의 여덟 ADOPTED 항목이다.
+단독 검사는 지정 root의 HOLD 목록을, 비교는 명시한 baseline의 정책을 소비한다.
+후보는 정책 범위·증거 의무를 줄일 수 없다. `EXECUTABLE_VENDOR`는 manifest와
+vendor 바이트, `EXECUTABLE_CITATION`은 지정 인용 소비자를 구속한다.
+`RESEARCH_BASELINE`은 별도 역사 출처이며 실행 핀에 맞춰 일괄 치환하지 않는다.
+정정은 원래 출처와 digest, 날짜·이유·대체 근거를 함께 남긴다.
+
+증거 JSON과 해시된 로컬 로그는 두 snapshot 밖에 둔다. 후보 전체 digest와
+각 영향 표·벡터·골든·현행 참조 문서·binding의 재생성 증거 및 등록된 명령별
+결과가 필요하다. 같은 바이트 결과에도 재생성 증거가 필요하며, 수동 재구성은
+주장별 source 근거와 독립 기대값이 필요하다. 인용 검사는 명시한 로컬
+source_material 자료를 대상으로 성공해야 한다. `SKIPPED`는 성공이 아니다.
+checker는 네트워크·pin 전환·복구·후보 코드 실행을 수행하지 않는다.
+
+`HOLD`는 현행 유지, `EVIDENCE_COMPLETE`는 검토용 완전성이다. 결과는
+`SIMULATED` / provisional이며 checker **does not authenticate an adoption receipt**.
+승인·채택·seam·영수증 인증은 계속 `NOT_BOUND`다. exit 0은 HOLD 또는 증거 완전,
+exit 1은 findings/입력 오류, exit 2는 인자 오류다. 상세 입력 계약은
+[INTEGRATION.md](INTEGRATION.md#local-upstream-re-pin-evidence)를 따른다.
+`upstream-repin-inventory-contract-invariants`의 `PENDING_NOTE_REGISTRATION`은
+별도 후속이며 이 checker가 범위를 확장하지 않는다.
+
+<!-- handbook-section:residual-obligations-report -->
+
+### residual-obligations-report
+
+`python3 -m capital.residuals --workspace DIR`는 `workspace.json`을 한 번만
+캡처하고 동일 바이트를 오프라인 감사한 뒤 메모리로 복원하여
+`KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1` canonical JSON을 출력한다. Python stdlib만
+사용하며 `SIMULATED` / `READ_ONLY_RESIDUAL_REGISTER`이다. 저장·잠금·회수 실행은 없다.
+
+FSM 종결은 모든 의무의 소멸을 뜻하지 않는다. 원금 상환 후 CLOSED여도 미지급
+계약/연체이자 또는 미배정 현금이 남을 수 있다. DEFAULTED와 상각은 회수 후 잔존
+청구권의 소멸을 증명하지 않으며 IMPAIRED 슬라이스에도 잔액이 남을 수 있다.
+`closed_unpaid_interest`, `unapplied_cash`, `defaulted_unwritten`,
+`post_writeoff_residual_claims`, `impaired_slice_residuals`를 각각 조회한다.
+
+행은 케이스/슬라이스 신원, 종결 상태, 기존 fold 값, 원본 저널의 인덱스/ID를
+보존한다. 각 금액 열은 독립적으로 대사·합산하며 총괄 합계는 없다. 미배정 현금으로
+다른 케이스를 상계하지 않고 F04 노출을 동일 잔존 청구권에 더하지 않으며 슬라이스
+shortfall과 outstanding을 더하지 않는다. 원 미만 유리수는 합계에서 제외한다.
+
+증거 부족은 0이 아닌 `NOT_BOUND`/null이다. 금액별 알려진 소계와 미확인 행 수를
+함께 표시하며 확인된 0행도 보존한다. 슬라이스는 해당 claim이 포함된 마지막 기록
+witness만 사용하고 payee 줄·baseline이 없으면 과거 witness나 현재 fixture로
+대체하지 않는다. `claim_view_sha`와 witness 참조를 보존하며 이후 정산은 `NOT_BOUND`다.
+
+`COMPLETE`는 선언된 기록 모집단의 감사·대사 완료만 뜻한다. 인증·전체 정산 이력·실제
+지급을 보장하지 않는다. 금액 증거 누락이나 대사 불일치는 `INCOMPLETE`, 감사/복원
+실패는 `AUDIT_FAILED` 및 sections null이다. 종료 코드는 각각 0, 1, 인자 오류 2다.
+동일 파일 바이트·입력 경로·로컬 감사 입력이면 출력도 동일하며 감사의 기존 경로와
+saved_at/saved_by_instance는 그대로 남긴다.
+
+면제, 환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식은 결정하지
+않는다. 새 영속 포맷·명세서 재분류·외부 호출·HTTP/UI 변경도 없다.
+
+<!-- /handbook-section -->
