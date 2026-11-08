@@ -311,6 +311,46 @@ with all hashes rebuilt cannot be detected. No source authority, signing, import
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
 
+### Offline statement source trace
+
+`python3 scripts/statement_trace.py --workspace DIR` reads `DIR/workspace.json`
+once, audits those captured bytes, restores them offline, and prints the existing
+five-category statement plus a separate deterministic contribution map as canonical
+JSON. Exit 0 means local consistency; exit 1 reports input/consistency failure;
+exit 2 means argument misuse. No file workspace lock, write, repair, keyset or
+provider is used. Redirect stdout outside the source workspace to retain evidence.
+
+The `KIX_CAPITAL_STATEMENT_PROVENANCE_V1` document traces every numeric statement
+field (including capacity configuration) through named roots and escaped JSON
+Pointers. Signed witnesses reconstruct approved amounts, drawn/repaid/outstanding
+exposure, claim reservations, fixture settlement cash and refunds. Sibling cases
+share one claim reservation in the total; repayment does not release it, close
+does, and default retains it. Every built-in fixture contributes cash/refunds once,
+including all ten demo-book fixtures, even when multiple cases reference it.
+
+F04 case/journal evidence is `SIMULATED`; settlement/refund sources are
+`READ_ONLY_FIXTURE`, generated locally rather than observed externally. Demo-derived
+wrappers and witness terms additionally carry `SYNTHETIC_FIXTURE_PROFILE`,
+`profile_version: CAPITAL-DEMO-BOOK-V1`, `policy_adopted: false` and
+`funds_executed: false`. Amounts are synthetic KRW integer units; beneficiary and
+payee labels are synthetic roles. Historical receipt results are checked against
+the immediate journal prefix, including shared reservations; optional missing
+fields remain `NOT_BOUND`, unknown extensions/facade metadata are unvalidated, and
+neither supports witnesses. The existing audit's required receipt details remain
+required. Original persisted receipts are preserved without restore-added labels.
+
+`primary_sales`, `resale_sales` and `actual_paid` remain three separate `NOT_BOUND`
+categories without numeric substitutes. Hashes and replay prove local consistency,
+not workspace authenticity, authenticated historical fixture provenance, external
+receipts, provider completeness, actual cash movement or Capital revenue.
+No statement categories or legacy export construction change.
+
+Focused synthetic inputs and expected diagnostics/maps live in
+`tests/vectors/statement_trace/` (empty, shared claim, lifecycle, optional detail,
+rehashed tampered input). Check them with
+`python3 scripts/statement_trace_vectors.py --check`; deliberate updates require
+`python3 scripts/statement_trace_vectors.py --write`.
+
 ### Offline synthetic event stress
 
 `python3 scripts/event_stress.py --workspace DIR --spec events.json` audits the

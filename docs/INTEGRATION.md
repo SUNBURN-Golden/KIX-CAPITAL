@@ -555,6 +555,75 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+### Offline statement provenance (local diagnostic)
+
+`python3 scripts/statement_trace.py --workspace DIR` captures `workspace.json`
+exactly once, calls `audit.audit_workspace_bytes` on that capture, strict-parses
+and restores it through `evidence.offline_service`, and captures
+`CapitalService.statement()` and detached evidence under the service lock.
+It does not compose an evidence pack (which rereads the path), open a file
+workspace, acquire a workspace lock, read event logs/keysets, or save anything.
+Restoration must be ACTIVE; producer/storage resources are closed in `finally`.
+Existing statement/export bytes and category definitions are unchanged.
+
+The stdout envelope is `KIX_CAPITAL_STATEMENT_TRACE_V1` with `label: SIMULATED`,
+`ok`, `reason`, `failed_check`, the existing `audit`, `statement`, and `provenance`.
+Failures have null statement/provenance and a non-success diagnostic. Historical
+receipt contradictions use `RECEIPT_RESULT_MISMATCH` with operation ID, zero-based
+journal index and persisted receipt pointer. Exit codes are 0 success, 1 capture,
+audit or consistency failure, 2 argument misuse. Serialization is sorted canonical
+ASCII JSON plus newline. Identical bytes and built-in fixtures produce identical
+output: the offline identity and audit workspace label are fixed, and there are
+no generated timestamps or absolute workspace paths.
+
+The separate provenance format is `KIX_CAPITAL_STATEMENT_PROVENANCE_V1`:
+
+- `hashes` binds raw workspace bytes, canonical payload, F04 state, full fixture
+  inputs and the unchanged statement. `fixture_inputs` includes all rows,
+  profiles, synthetic beneficiaries and the projection ID subset.
+- `roots` contains detached `cases` and `fixtures` (raw `view` inside a provenance
+  wrapper), `case_fixtures`, zero-indexed original `journal`, original persisted
+  `receipts`, independently generated `historical_replay` and `configuration`.
+  Replayed values are explicitly replay expectations, never persisted evidence.
+- `fields` maps each numeric statement JSON Pointer to sources, witness IDs,
+  relevant journal and original receipt references, and present validated receipt
+  fields. References are `{root, pointer}`; pointers escape `~` as `~0` and `/`
+  as `~1`. Booleans are excluded from numeric enumeration. Capacity references
+  `capital.service.MAX_OPERATIONS`, a local capacity rather than a financial limit.
+- `witnesses` gives a target, counting rule, ordered source terms with sign +1/-1,
+  computed value, statement value and match status. Empty sums describe no local
+  contributions. Approved terms include phase eligibility. Exposure uses accepted
+  draws minus repayments. Reservations group siblings by claim and require equal
+  final views; draws reserve, closes release the offer amount, repayments do not
+  release, and defaults retain. Totals count each claim once. Case confirmed-face
+  cash is traced separately and never added to fixture settlement totals.
+- Settlement and refund witnesses use every `FixtureViews.rows` entry once,
+  rather than the projection's original three IDs. Fixture generation is local
+  `READ_ONLY_FIXTURE` evidence, not a workspace settlement receipt or external
+  observation. F04 wrappers identify `F04_CASE_EVIDENCE`. Demo-derived wrappers and
+  contribution terms carry `SYNTHETIC_FIXTURE_PROFILE`, profile version
+  `CAPITAL-DEMO-BOOK-V1`, `policy_adopted: false`, `funds_executed: false`, synthetic
+  KRW integer units and synthetic beneficiary/payee roles. Raw evidence is intact.
+- `receipt_checks` replays the full F04 journal into a fresh machine using the
+  restored immutable fixture inputs, retains each immediate result, and verifies
+  the replayed journal and final digest. Each persisted journal-linked receipt
+  must have valid linkage/outcome. Every present known pinned result field is
+  compared type-strictly against its historical result, recursively, including
+  phase, identity, flags, amounts, reservations, confirmed-face cash, repayment
+  order, draw ID, note status, settlement gate and operation effects. Missing
+  optional pointers are `NOT_BOUND`; unknown extensions and facade metadata are
+  listed as unvalidated and cannot support a witness. Missing details required by
+  the existing audit (offer amount, repayment list) still fail that audit. Rejected
+  and reconcile-only receipts contribute no amounts and have no inferred case.
+
+`not_bound` preserves separate primary sales, resale sales and actual-paid gaps
+without zero substitutes; it also names historical fixture authentication,
+workspace authenticity, external receipts, provider observations, source cut,
+completeness and Capital revenue. `funds_executed` and `workspace_mutated` are
+false. A wholly replaced internally consistent workspace cannot be detected by
+hash/replay checks. This diagnostic adds no SQL cross-check, provider reconciliation,
+policy capsule, financial terms, signing, HTTP route or UI.
+
 ## Offline event stress CLI
 
 `python3 scripts/event_stress.py --workspace DIR --spec events.json` is an offline
