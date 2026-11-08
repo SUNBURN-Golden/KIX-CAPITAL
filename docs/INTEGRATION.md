@@ -555,6 +555,69 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+## Offline observation triage (SIMULATED)
+
+`python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`
+accepts exactly one explicit local regular file. It never reads an implicit workspace,
+fetches a URL, accepts an output path, posts captures, resolves conflicts, authenticates
+providers, records financial facts or retains new state. CAP-14/CAP-16 remain NOT_BOUND.
+
+Input has exactly `format: KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1`,
+`label: SIMULATED`, `facts: [...]`, `bindings: [...]`. Both lists are required and
+may be empty. Facts use the exact `capital.observation.normalize` schema including
+`provenance: SYNTHETIC_FIXTURE`; bindings have the four scope fields (`provider`,
+`account`, `environment`, `profile_version`) plus `operation`, `payment_key`, `order_id`.
+Contradictory bindings for a scoped operation are rejected. Equal repeated bindings
+are allowed. No timezone is inferred; null offsets remain null.
+
+Limits are 262,144 input bytes (also applied to canonical API input), 256 facts,
+256 bindings, 4,096 characters per string and nesting depth eight, root at depth one.
+These are diagnostic resource bounds, not recorded-financial-fact limits. The reader
+consumes at most the byte limit plus one; non-regular files, duplicate JSON keys at
+any depth, invalid UTF-8, BOM/NUL, nonstandard constants, floats, lone surrogates,
+excess nesting, numeric-parser failures and invalid shapes fail before calling fold.
+Errors on stderr are JSON with stable `error_code`, `label: SIMULATED`, `applied: false`
+and `funds_executed: false`. Exits: 0 report completed (including conflict/unmatched),
+1 `INVALID_INPUT` (including read failures), 2 `ARGUMENT_ERROR`,
+3 `ADAPTER_CONTRACT_ERROR` or `INTERNAL_ERROR`. Serialization completes before stdout
+is written. Output has sorted object keys, compact separators, UTF-8 and one newline.
+
+`capital.observation_triage.triage(facts, *, bindings, observation_port=None)` defaults
+to `LocalFakeObservation`, validates and detaches inputs, calls fold exactly once and
+rejects output inconsistent with the pinned local fold contract, including safety
+labels, event identity, digests, binding statuses, duplicate/conflict indices and order.
+The report format is `KIX_CAPITAL_OBSERVATION_TRIAGE_V1` with `label: SIMULATED`,
+`applied: false`, `funds_executed: false`, `applied_effects: []`,
+`binding_status: NOT_BOUND`, `semantic_conformance: false` and the existing
+`LOCAL_SYNTHETIC_JSON_SHA256_V1` identity profile.
+
+Groups follow first encounter and carry event identity, scoped key, fold status,
+separate first-variant fold binding status, delivery indices, comparison-only
+`reference_delivery_index`, stable reason codes/text, variants and conflicts.
+Every distinct normalized variant retains its digest and delivery indices, in
+first-encounter order. Each has a scoped-operation lookup, supplied binding (or null),
+status, explanation and payment/order mismatches. Every fold conflict, including a
+repeated conflicting variant, retains the delivery index and ordered
+`{field, reference_value, incoming_value}` differences in normalization field order.
+The first content is solely a comparison reference; no authoritative winner is chosen.
+A group stays CONFLICT even after an identical redelivery of the reference content.
+
+Top-level `deliveries` retains exact input order and all supplied transmission
+references. Each entry identifies its group and variant and preserves fold classification
+FIRST/DUPLICATE/CONFLICT. Reasons distinguish first observation, identical redelivery,
+changed transmission metadata and content conflict. `redelivery_reason_code` and
+`redelivery_explanation` additionally describe repeated conflicting variants without
+changing their CONFLICT fold classification. A reference-equal delivery may be classified
+DUPLICATE while its group remains CONFLICT. No transmission array is sorted.
+
+Investigation workflow: run the pinned example; follow delivery indices into groups;
+compare conflict fields against the comparison reference; inspect each variant's
+binding explanation; retain all unresolved variants. A MATCHED_FIXTURE label only
+means equality with an explicitly supplied synthetic binding. The diagnostic does
+not authorize or apply any financial operation. Named vectors in
+`tests/vectors/observation_triage/` are checked read-only with
+`python3 scripts/observation_triage_vectors.py --check`.
+
 ## Offline event stress CLI
 
 `python3 scripts/event_stress.py --workspace DIR --spec events.json` is an offline

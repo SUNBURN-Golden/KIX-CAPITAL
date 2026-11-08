@@ -132,6 +132,20 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
+## 합성 관측 조사 CLI 확장
+
+`python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`은
+명시한 로컬 합성 파일과 바인딩만 읽고 기존 ObservationPort fold를 한 번 호출한다.
+전달 순서와 모든 내용 변형을 보존하며 동일 재전달, 전송 메타데이터 변경,
+내용 충돌, 바인딩 불일치, 미매칭을 설명한다. 첫 내용은 비교 기준일 뿐 권위 있는
+승자가 아니며 충돌을 해결하거나 금융 사실로 기록하지 않는다. 각 변형의 scoped
+operation 조회와 payment/order 차이를 별도로 제시한다. 입력 크기·개수·문자열·깊이
+제한과 엄격 JSON 파싱을 적용하며 오류 종료 코드는 INTEGRATION 문서에 고정한다.
+결과는 항상 SIMULATED / applied=false / funds_executed=false 이며 CAP-14와 CAP-16은
+NOT_BOUND다. HTTP 전송, 실 제공자 payload, 인증, 영속 상태, 워크스페이스 변경은
+범위 밖이다. `python3 scripts/observation_triage_vectors.py --check`는 합성 벡터를
+읽기 전용으로 검증하며 upstream semantic conformance를 주장하지 않는다.
+
 ### event-stress-report (CAP-04, CAP-08, CAP-20)
 
 `capital/event_stress.py`와 `scripts/event_stress.py`는 감사된 단일 워크스페이스의

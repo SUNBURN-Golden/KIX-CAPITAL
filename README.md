@@ -57,6 +57,24 @@ payments remain `NOT_BOUND`. No reserve is booked; reserve funding/coverage rema
 are out of scope. See `tests/test_portfolio_compare.py`, `docs/INTEGRATION.md` and
 `docs/VALIDATION.md` for the contract and actual verification evidence.
 
+## Offline synthetic observation investigation
+
+Run `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`.
+The stdlib CLI reads one explicit local regular file, calls `ObservationPort` once,
+and prints deterministic diagnostic JSON. Follow the top-level delivery indices in
+supplied order, find their groups and variants, then inspect normalized conflict
+fields and each variant's explicit scoped-operation binding. Identical redelivery
+and changed transmission metadata have separate reasons. Keep every conflicting
+variant unresolved: the first content is a comparison reference only.
+
+The pinned example and named cases live under `tests/vectors/observation_triage/`;
+run `python3 scripts/observation_triage_vectors.py --check` to check them read-only.
+Reports remain SIMULATED, applied=false, funds_executed=false and NOT_BOUND;
+conflicts and unmatched observations exit 0. Invalid input exits 1, argument
+misuse 2, adapter/internal failure 3. There is no posting, resolution command,
+authentication, financial recording or workspace mutation. See
+`docs/INTEGRATION.md` for input limits and the report contract.
+
 ## Synthetic provider observation fold
 
 `tests/vectors/provider_facts.json` pins synthetic identity cases. Run
