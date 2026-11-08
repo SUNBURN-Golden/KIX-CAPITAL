@@ -4249,3 +4249,122 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## observation-triage-cli
+
+Implemented offline SIMULATED observation diagnostics with a bounded stdlib API/CLI,
+explicit synthetic bindings, deterministic grouping, delivery-order preservation,
+all content variants, comparison-only first content, normalized conflict differences
+and per-variant binding explanations. CAP-14/CAP-16 remain NOT_BOUND. No observation
+is recorded as a financial fact; no workspace, persistent state, provider, transport,
+authentication or conflict-resolution surface is added.
+
+The design matches the existing fold: repeats of a non-reference conflicting
+variant remain CONFLICT; repeats equal to the reference remain DUPLICATE while
+the group retains CONFLICT. A separate redelivery reason explains identical or
+changed transmission metadata even on a conflicting variant. This is an additive
+explanation of the planned distinctions, with no identity or fold change. Input and
+output corpus digests are pinned; the vector checker has no regeneration mode.
+
+Initial focused verification found one test-fixture error: the drift negative control
+assigned CONFLICT to an already-CONFLICT group, so no exception was appropriate.
+Changed that test mutation to UNMATCHED and reran; no runtime weakening was needed.
+
+Local verification is SIMULATED / READ_ONLY_FIXTURE evidence only, not real provider
+execution, authentication, semantic conformance or upstream completion. Commands
+below run from the node worktree; logs are ignored under `build/observation-triage/`.
+
+| Command | Measured result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_observation_triage.py' -v` | Initial: 13 tests, one negative-control failure described above. Corrected rerun: 13 passed in 1.160 s. |
+| `python3 scripts/observation_triage_vectors.py --check` | Exit 0; nine named cases, pinned reports and runnable example pass; SIMULATED / NOT_BOUND / applied=false / funds_executed=false. |
+| `python3 scripts/observation_vectors.py --check` | Exit 0; existing identity corpus unchanged and passing. |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | Exit 0; 30/30 CLAIM_CONFORMANCE rows pass. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 275 artifacts, nine stages. |
+| `python3 -m unittest discover -s tests -p 'test_docs_surface.py' -v` | Exit 0; 15 tests pass, including both new missing-needle controls. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci` | Exit 0; three locked development packages installed, no lockfile change, zero audit vulnerabilities reported. Initial module probe failed before installation. |
+| `node` script calling `chromium.launch()` and `browser.close()` | Exit 0; installed headless Chromium 145.0.7632.6 launches and closes. The full Chromium executable-path probe was absent; the existing headless shell is usable. |
+| `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json` | Exit 0; seven deliveries, CONFLICT group with three variants and one UNMATCHED group; JSON saved only under ignored build logs. |
+| Python SHA256/baseline comparison of `capital/vendor/manifest.json`, its five locked files and `capital/export.py` | All pins match; all seven files byte-identical to HEAD. |
+| `git diff --check` | Exit 0. |
+
+Environment adjustment: unrelated processes already listen on browser ports 8765
+and 8766 in the shared namespace. They were inspected and left untouched.
+`unshare -Urn -- bash -c 'ip link set lo up && ...'` provides isolated loopback for
+browser and acceptance commands; a bind probe passed. Repository commands,
+stages, timeouts and test configuration are unchanged. No Chromium installation
+or browser skip is needed; `npm ci` enables the already cached headless shell.
+
+| Local CI equivalent | Measured result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,316 tests passed in 360.962 s. This includes the new triage and docs controls, adapter identity gates and legacy export byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed in 0.002 s. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js`; `git diff --check` | Repeated after the full unit suite; all exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 Chromium tests passed in 2.8 min. Playwright-managed loopback servers stopped when the run completed; no skip. |
+
+Adding 14 discovered tests changes the covered unit count, and adding the top-level
+Python module changes the packaged artifact hash. Both trigger
+`CAPITAL-CLOSEOUT-REGEN-V1`. The two full acceptance runs and generator results
+are recorded below; only clean `ok:true`, SIMULATED, funds_executed=false evidence
+with every required stage passed is eligible for regeneration. Artifacts are never
+hand-edited and no acceptance stage or timeout is changed.
+
+| Closeout regeneration command (sequential; stopped on any failure) | Measured result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (first pass) | Exit 0; all nine stages passed, `ok:true`, SIMULATED, funds_executed=false. Unit 1,316; storage 19; vendor seven; claims 322 passes plus two documented divergences / 324 evaluated rows; node syntax; browser 76; packaged smoke 11; seed one; journeys six. Evidence preserved in `build/observation-triage/acceptance-first.json`. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0; generated 4,582 bytes exclusively from the clean first-pass evidence. SHA256 `7b5577074895f0b8f55ef5d54a9b1f1d984044d4eb18e2a79d19cb9d1c11988b`. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; generated 101,112 bytes with the closeout copy embedded. SHA256 `d0575a8cff3d98d47bae2fecf66ecd41190357670f563d05d7ca2580116f9409`. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (second attempt) | Exit 1; unit stage 1,314 passed / two failed in 589.700 s; all eight remaining stages passed, including 76 browser tests and 11 smoke checks. `ok:false` evidence preserved as `build/observation-triage/acceptance-second-failed.json` and excluded from regeneration. |
+
+The second attempt exposed a pre-existing closeout fixture mismatch only after
+mandatory regeneration: `tests/test_closeout_digest.py` pinned the journey command
+without `--check`, while the unchanged live acceptance plan uses
+`python3 scripts/sim_journeys.py --check`. Updated the exact hand-maintained
+expectation to the command actually executed; no stage, timeout or assertion was
+removed. This adds one changed test file beyond the design's file list and does
+not change the discovered test count or packaged code. The second failure was
+`test_upstream_claims.UpstreamClaimsTests.test_acceptance_stage_records_claim_counts`
+returning 1 from its nested claims-stage invocation; its cause is unconfirmed
+until isolated rerun. The failed evidence was not used to write either artifact.
+
+| Focused recovery command | Measured result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 -m unittest tests.test_closeout_digest tests.test_upstream_claims.UpstreamClaimsTests.test_acceptance_stage_records_claim_counts -v'` | Exit 0; 62 tests passed in 3.429 s. The exact command expectation now matches live acceptance. The nested claims test passed unchanged in isolation; the earlier nested failure is not reproduced, and no claims test or timeout was changed. |
+
+After this test-fixture correction, repeat the full two-pass closeout sequence;
+the earlier failed attempt remains recorded rather than relabeled as passing.
+
+| Repeated closeout sequence after fixture correction | Measured result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (third attempt; new first pass) | Exit 0; all nine stages passed with the same counts as the first clean run: unit 1,316, storage 19, vendor seven, claims 322 passes plus two documented divergences / 324, browser 76, packaged smoke 11, seed one, journeys six, node syntax passed. `ok:true`, SIMULATED, funds_executed=false. Evidence preserved as `build/observation-triage/acceptance-third.json`. |
+| `python3 scripts/closeout_digest.py --write` | Repeated from third-attempt clean evidence; exit 0, 4,582 bytes. |
+| `python3 scripts/finance_vectors.py --write` | Repeated after the digest write; exit 0, 101,112 bytes. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (fourth attempt; final second pass) | Exit 0; all nine stages passed with the same counts as the third attempt, including 1,316 unit, 76 browser and 11 packaged smoke checks. `ok:true`, SIMULATED, funds_executed=false. Evidence preserved as `build/observation-triage/acceptance-fourth.json` and retained at the default evidence path for fresh comparison. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4,582 bytes structurally valid and byte-identical to the embedded copy. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; all 101,112 bytes reproduce. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0; regenerated digest matches the fresh fourth-attempt evidence exactly. |
+
+Final generator hashes remain the two SHA256 values recorded above; regeneration
+from the first and third clean runs produced identical bytes. The packaged artifact
+hash is `559c63f896ca5cbb235a3963510d1d8100c0ff1a07e8be91ce432eca16d725df`.
+Only `packaged` and `stages` changed in the standalone closeout artifact, and only
+the `closeout_digest` group changed in the finance vector pack. All other finance
+groups and existing provider/identity corpora remain unchanged.
+
+| Final preservation and consistency command | Measured result |
+| --- | --- |
+| `python3 scripts/observation_triage_vectors.py --check`; `python3 scripts/observation_vectors.py --check`; `python3 scripts/adapter_identity_claims_check.py --execute`; `python3 scripts/docs_surface.py --check` | All exit 0 after final acceptance and regeneration; nine triage cases, existing observation corpus, 30/30 identity claims, 36 routes / 275 artifacts / nine stages. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js`; `git diff --check` | All exit 0 after final acceptance. |
+| `git diff --exit-code -- capital/vendor capital/export.py capital/observation.py capital/ports.py tests/vectors/provider_facts.json tests/adapter_identity_claims.json .aiops .github` | Exit 0; all listed surfaces unchanged from HEAD. |
+| Python SHA256/manifest-baseline check and `/proc` process inspection | All five vendor locks and manifest baseline pass. No remaining `capital.server` process from this worktree. All test-managed loopback servers stopped. |
+
+Deviations: isolated loopback namespaces were needed for occupied shared browser
+ports; one extra test fixture file was corrected to match the unchanged live journey
+command. The initial negative-control error and failed second acceptance attempt
+are preserved above. The nested claims-stage failure did not recur in isolation or
+in either subsequent complete acceptance run. No product decision, runtime policy,
+CI change, weakened test, vendor edit, export edit, Protocol/Commerce change, git
+commit, push or external post was made. Work is complete and left uncommitted for
+the supervisor; all reported execution remains SIMULATED and funds_executed=false.
