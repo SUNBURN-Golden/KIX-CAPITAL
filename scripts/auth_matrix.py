@@ -57,7 +57,8 @@ DEFAULT_HANDBOOK = ROOT / 'docs' / 'OPERATOR_HANDBOOK_KO.md'
 ADVANCE = 'sim-mtx'
 OFFER_OPERATION = 'sim-mtx-offer'
 GET_PROBES = {
-    '/api/cases/': [f'/api/cases/{ADVANCE}/dossier?instance_id={INSTANCE}'],
+    '/api/cases/': [f'/api/cases/{ADVANCE}/dossier?instance_id={INSTANCE}',
+                    f'/api/cases/{ADVANCE}/interest-trace?instance_id={INSTANCE}'],
     '/api/state': ['/api/state'],
     '/api/permissions': ['/api/permissions'],
     '/api/scenarios': ['/api/scenarios', '/api/scenarios/full-after'],
@@ -263,6 +264,14 @@ def _edges():
             no_token if token == 'none' else not_found, body={})
     for path in ('/api/projection/extra', '/api/state/', '/api/preview'):
         add('near-miss GET path', 'GET', path, 'organizer', not_found)
+    for path in (f'/api/cases/{ADVANCE}/interest-trace/',
+                 f'/api/cases/{ADVANCE}/nested/interest-trace'):
+        add('near-miss interest trace path', 'GET', path, 'organizer', not_found)
+    for query in (f'instance_id={INSTANCE}&cash=1',
+                  f'instance_id={INSTANCE}&instance_id={INSTANCE}'):
+        add('interest trace rejects extra or repeated arguments', 'GET',
+            f'/api/cases/{ADVANCE}/interest-trace?{query}', 'organizer',
+            {'status': 400, 'error': 'INVALID_ARGUMENTS'})
     add('near-miss POST path', 'POST', '/api/session/', 'organizer', not_found, body={})
     for prefix, _permission in POST_DISPATCH:
         for token in tokens:

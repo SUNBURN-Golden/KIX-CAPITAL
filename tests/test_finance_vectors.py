@@ -199,6 +199,7 @@ SHA256 = re.compile(r'[0-9a-f]{64}')
 # Every GET api route of the facade contract, in contract order: path -> response definitions.
 FACADE_READS = [
     ('/api/cases/{advance_id}/dossier', ['case_dossier']),
+    ('/api/cases/{advance_id}/interest-trace', ['interest_trace']),
     ('/api/portfolio/snapshot', ['portfolio_snapshot']),
     ('/api/state', ['state']),
     ('/api/scenarios', ['scenario_list']),
@@ -748,14 +749,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_thirty_six_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 36)
+    def test_exactly_the_thirty_seven_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 37)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 48)
+        self.assertEqual(len(self.contract['routes']), 49)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
@@ -775,6 +776,8 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(self.by_path['/api/export/manifest']['permission'], 'export:read')
         self.assertEqual(self.by_path['/api/cases/{advance_id}/dossier']['permission'], 'projection:read')
         self.assertEqual(self.by_path['/api/cases/{advance_id}/dossier']['operation_id'], 'local_case_dossier')
+        self.assertEqual(self.by_path['/api/cases/{advance_id}/interest-trace']['permission'], 'projection:read')
+        self.assertEqual(self.by_path['/api/cases/{advance_id}/interest-trace']['operation_id'], 'local_case_interest_trace')
 
     def test_definition_digests_are_recomputed_from_the_contract_file(self):
         definitions = self.contract['definitions']

@@ -64,7 +64,8 @@ _STAGE_ANCHOR = 'stage id'
 # one prose sentence that names them — the generated matrix repeats those
 # names and is stripped before the search.
 ROUTE_NEEDLES = {
-    ('GET', '/api/cases/'): ('`GET /api/cases/{advance_id}/dossier',),
+    ('GET', '/api/cases/'): ('`GET /api/cases/{advance_id}/dossier',
+                           '`GET /api/cases/{advance_id}/interest-trace'),
     ('GET', '/api/state'): ('- `GET /api/state`:',),
     ('GET', '/api/permissions'): ('- `GET /api/permissions`:',),
     ('GET', '/api/scenarios'): ('`GET /api/scenarios` and `/api/scenarios/{id}`',),

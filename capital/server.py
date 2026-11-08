@@ -375,13 +375,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 sim_day=sim_day or 0, amount=amount))
 
         def _get_cases(self, route, principal):
-            match = re.fullmatch(r'/api/cases/([^/]+)/dossier', route.path)
+            match = re.fullmatch(r'/api/cases/([^/]+)/(dossier|interest-trace)', route.path)
             if match is None:
                 raise ApiError('NOT_FOUND', 404)
             params = parse_qs(route.query, keep_blank_values=True)
             if set(params) - {'instance_id'} or len(params.get('instance_id', [])) > 1:
                 raise ApiError('INVALID_ARGUMENTS')
-            return self.reply(200, service.dossier(match[1], params.get('instance_id', [''])[0]))
+            reader = service.dossier if match[2] == 'dossier' else service.interest_trace
+            return self.reply(200, reader(match[1], params.get('instance_id', [''])[0]))
 
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
