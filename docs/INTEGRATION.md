@@ -555,6 +555,47 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+
+### Recovery posting desk (SIMULATED)
+
+`#desk-recovery` consumes the existing `/api/overlay` recovery block for the
+selected DEFAULTED case. It displays server source references, quote references,
+available and quoted amounts, waterfall steps, default and write-off eligibility
+days, loss and residual claim values, and recorded allocations / waterfall traces.
+`writeoff_sim_day` is the eligibility day; completed write-offs are identified by
+recorded WRITEOFF entries. Before a trace exists only server quote steps are
+shown. Null values stay unavailable. Missing, malformed, stale-cut or NOT_BOUND
+recovery data clears drafts and disables posting. Reserve accounting remains
+`NOT_BOUND`, `reserve_step_version: UNBUILT_V1`.
+
+The organizer sends existing `post_recovery` and `post_writeoff` command shapes
+through `/api/overlay/commands`; no route or permission changes. Recovery copies
+`source_ref` and `quote_ref` unchanged; write-off has no quote field. Both carry
+explicit `approvals`, including `[]`. The initially unselected `sim-approver-a`
+and `sim-approver-b` checkboxes are SIMULATED controls, identity/authentication
+NOT_BOUND, not authenticated second-person approval. A set-off decline reason
+is sent only when explicitly entered. The browser checks integer/label syntax;
+allocation, limits, waterfall order, approval thresholds and policy refusals
+remain server-owned. There is no repayment entry, acceleration control, automatic
+posting, policy change, real collection, reserve or COA posting in this panel.
+
+Drafts are scoped to instance, case, overlay digest and quote identity. Posting
+persists the entire original command under the existing writer lock before one
+POST. Lost or invalid responses preserve UNKNOWN and block all writes across
+reload. The existing result button looks up `/api/overlay?operation_id=...` and
+validates its smaller receipt core independently of the POST envelope, including
+operation, advance, logical day, entry kind and normalized command (approvals,
+source, quote, decline reason). Refresh cannot clear pending operations. Absent,
+malformed, mismatched and old-instance receipts remain UNKNOWN; no automatic
+resubmission occurs. Existing explicit restart acknowledgement remains available.
+Auditor access is read-only; observer access, including a pending reload and
+result lookup, sends no protected requests.
+
+`tests/browser/support/recovery_server.py` uses stdlib `make_server`,
+`PinnedFsmProducer` and `ScenarioReplaySource` to seed isolated disposable
+SIMULATED books without adding routes. Browser coverage and actual builder
+commands/results are recorded in [VALIDATION.md](VALIDATION.md).
+
 ## Offline observation triage (SIMULATED)
 
 `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`
