@@ -320,3 +320,44 @@ change or external call. See [the contract](docs/INTEGRATION.md#residual-obligat
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
+
+## repayment-schedule-comparison
+
+`python3 -m capital.repayment_compare --workspace DIR --schedule schedules.json`
+audits one captured `workspace.json` and compares two explicit payment schedules
+on separate disposable memory copies of one drawn, nonterminal advance. This is
+`SIMULATED`, with `applied: false`, `workspace_mutated: false` and
+`funds_executed: false`. It is a counterfactual comparison, not an optimizer or
+funding forecast. The workspace is never locked or saved.
+
+```json
+{"format":"KIX_CAPITAL_REPAYMENT_SCHEDULES_V1","advance_id":"sim-a","horizon_sim_day":10,"schedules":[{"id":"earlier","payments":[{"at_sim_day":3,"amount_krw":45000}]},{"id":"later","payments":[{"at_sim_day":6,"amount_krw":45000}]}]}
+```
+
+Supply exactly two uniquely named schedules, each with 0–32 payments, using
+integer sim-days in nondecreasing order from capture through the shared horizon.
+Equal-day payments keep their supplied order. The loaded policy bounds apply;
+amounts must be integers in `0..amount_max_krw` (currently `10^12`). Zero payments
+still require held cash under the existing handler. Unknown fields, duplicate
+JSON keys, floats, booleans, invalid dates, unsupported cases and unusable policy
+bindings are rejected. A capture-day payment requires an existing terms binding;
+a later positive day advance can establish it normally.
+
+The canonical `KIX_CAPITAL_REPAYMENT_COMPARISON_V1` report includes source hashes,
+full audit, local loaded policy provenance, per-step outcomes, exact accrual and
+fractional carry, principal/interest/cash, close advisory and selected-advance
+residual reconciliation. Failed steps stay visible and later steps on that
+branch are `NOT_ATTEMPTED`. Only a `COMPARABLE` report includes numeric B-minus-A
+deltas. No independent residual categories are totaled. Empty monetary evidence
+is null/`NOT_BOUND`. Authentication, actual payments and historical policy
+provenance remain `NOT_BOUND`.
+
+Exit codes: 0 comparable, 1 validation/audit/execution/report failure, 2 CLI
+misuse. Identical captured bytes, specification, workspace path and local
+policy/fixture/audit inputs produce identical report bytes. No live posting,
+new terms, maturity extension, waiver, policy capsule, external cash assumption,
+automatic close/default/recovery/write-off, HTTP or UI surface is added.
+Whole-workspace day advances retain the existing handler's effects on unrelated
+advances; those advances are never pruned. See the [report contract](docs/INTEGRATION.md#repayment-schedule-comparison).
+Focused checks: `python3 -m unittest discover -s tests -p test_repayment_compare.py -v`
+and `python3 scripts/docs_surface.py --check`.

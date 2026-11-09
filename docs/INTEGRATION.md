@@ -578,3 +578,85 @@ added to outstanding. This reader decides no waiver, cash release, collection,
 slice write-off, legal collectability or accounting recognition. It changes no
 workspace, persistence format, statement classification, HTTP/UI or upstream
 readiness claim.
+
+## repayment-schedule-comparison
+
+The stdlib entry point is
+`python3 -m capital.repayment_compare --workspace DIR --schedule FILE`;
+Python callers use `compare_workspace(directory, specification) -> dict`.
+The input tag is `KIX_CAPITAL_REPAYMENT_SCHEDULES_V1`; its closed object contains
+`format`, handler-compatible `advance_id` (`sim-[A-Za-z0-9-]{1,60}`),
+`horizon_sim_day` and exactly two `schedules`. Each schedule has only `id`
+(unique ASCII `[A-Za-z0-9-]{1,32}`) and `payments` (0–32 objects containing only
+`at_sim_day` and `amount_krw`). Dates are integer logical days, not calendar dates;
+capture ≤ payment ≤ horizon ≤ loaded `SIM_DAY_MAX`. Payments are ordered by
+nondecreasing day, retaining equal-day order. Amounts are integers within the
+loaded repayment maximum (currently 1,000,000,000,000 KRW). Zero remains subject
+to the existing held-cash rule. Duplicate JSON keys, nonfinite numbers, floats,
+booleans, unknown keys and invalid bounds fail explicitly.
+
+One read captures workspace bytes; the offline auditor and strict parser consume
+those same bytes. The restored target must be `DRAWN`, without a default anchor,
+with accepted draw evidence and usable tier/ledger terms. Every drawn advance's
+receipt gate must be readable, since the handlers and final reader traverse the
+whole book. Missing/incompatible loaded interest, term, default-loss, allocation
+or bounds inputs fail; unrelated policy entries are not readiness gates.
+Captured terms bindings must match the loaded version and have BOUND/PARTIAL
+status. Without a binding, a capture-day first payment fails with
+`REPAYMENT_TERMS_NOT_BOUND`; a later positive tick may bind normally.
+
+A module-local `StoragePort` adapter deep-copies the verified envelope, verifies
+and copies on load, constructs normal envelopes on save exclusively in RAM, and
+has an inert close. Each branch restores the original capture with detached
+policy, bounds and immutable fixture values. Service and storage writer IDs are
+fixed before commands. Positive `advance_day` chunks use the loaded
+`max_step_days`; `post_repayment` uses the existing allocation and F04 handler.
+Equal-day ticks are omitted. Only these two handlers are invoked, as organizer,
+without write-off directives. Deterministic command IDs use branch/command
+indices, independent of schedule names; preflight reserves command, terms,
+interest (for every drawn advance), and derived repayment IDs against restored
+overlay IDs, receipt keys, F04 journal keys and other planned IDs.
+
+The output tag is `KIX_CAPITAL_REPAYMENT_COMPARISON_V1`:
+
+- `label: SIMULATED`, `mode: SIMULATED_REPAYMENT_COMPARISON`, `applied: false`,
+  `workspace_mutated: false`, `funds_executed: false`.
+- `source`: captured workspace/payload/F04/overlay/fixture hashes, vendor pin,
+  captured sim-day/state digests and full offline audit. `specification` retains
+  the accepted schedules and `specification_sha256` covers their canonical form.
+- `policy`: local note provenance, validated loaded items, bounds and digest.
+  `target`: draw gate/day, tier, rates, denominator/minimum days, term source,
+  original/effective maturity, captured binding and allocation order. These
+  describe local comparison-time inputs, not authenticated historical policy.
+- `branches`: supplied order, deterministic commands, selected receipt outcome
+  fields, final day/phase/digests, posted principal/interest/unapplied cash,
+  exact cumulative fractions/remainders, close advisory, and selected residuals.
+  Rejected steps retain code/HTTP status/detail; following work is
+  `NOT_ATTEMPTED`. Unexpected transport duplicates also fail the branch.
+- `comparability.checks`: ordered `{id, side, status, reason, entries}` records,
+  with `MATCHED`, `MISMATCH` or `NOT_CHECKED`. `COMPARABLE` requires every command,
+  both horizons, final monetary evidence and selected residual reconciliation
+  to succeed. Otherwise `comparison` is null. `comparison.delta` contains the
+  six integer servicing metrics in `final.values`, computed B minus A with null
+  propagation. Exact fractions remain unchanged in branch evidence.
+
+Final values use the overlay reader and residual fold composition, with no new
+finance formula. Residual selection happens before reconciliation; it covers
+advance residual categories only and explicitly marks claim slices
+`OUTSIDE_SCOPE`. The default residual-register schema remains unchanged.
+Independent categories are never totaled or netted. Missing monetary evidence
+stays null/`NOT_BOUND`; an absent close gate is `NOT_APPLICABLE/EMPTY_OVERLAY`.
+Close readiness and gates never establish actual closure. Reader failure makes
+the comparison `NON_COMPARABLE`, and the other branch is still attempted.
+
+Output is canonical JSON plus newline. Regenerated envelopes, timestamps,
+telemetry and volatile receipt fields are excluded. Determinism requires the
+same captured bytes, accepted specification, supplied workspace path and local
+policy/fixture/audit inputs. Exit codes are 0 for comparable, 1 for invalid JSON,
+validation/audit/policy/execution/report failure, 2 for CLI misuse.
+Authentication, actual payments and historical policy provenance stay
+`NOT_BOUND`. There is no optimizer, forecast, external cash assumption, live
+posting, new terms, maturity extension, waiver, policy capsule, automatic
+close/default/recovery/write-off, network, HTTP or UI addition. Existing ticks
+still traverse all draws and may accrue unrelated cases; no case is removed to
+make a schedule succeed. Source bytes, modes and directory entries are preserved.

@@ -124,3 +124,29 @@ F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산�
 결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
 Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
 검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
+
+## repayment-schedule-comparison
+
+한 번 캡처하고 감사한 workspace의 동일한 DRAWN 비종결 advance에 대해,
+명시적 상환 일정 두 개를 독립적인 폐기용 메모리 서비스에서 실행한다.
+`python3 -m capital.repayment_compare --workspace DIR --schedule FILE`은
+`KIX_CAPITAL_REPAYMENT_SCHEDULES_V1` 입력과 공통 horizon을 사용한다.
+각 일정은 0–32개의 정수 sim-day/금액을 가지며 같은 날짜의 입력 순서를
+보존한다. 캡처 이전/기간 밖 날짜, 미지원 사례, 불용 정책 바인딩, 중복
+JSON 키와 알 수 없는 필드를 명시적으로 거부한다.
+
+기존 `advance_day`와 `post_repayment`만 배분·이자·원금·미배분 현금을
+결정한다. 보고서는 `SIMULATED_REPAYMENT_COMPARISON`이며 `SIMULATED`,
+`applied: false`, `workspace_mutated: false`, `funds_executed: false`이다.
+원본 해시, 감사, 로컬 정책 출처, 단계별 결과, 정확한 유리수 잔여,
+close advisory와 선택 advance의 residual 대사를 포함한다. 거부된 단계는
+숨기지 않고 이후 작업은 `NOT_ATTEMPTED`로 남긴다. 양쪽이 horizon에
+도달하고 금액 근거와 residual 대사가 완전할 때만 `COMPARABLE` 및
+B-minus-A 차이를 출력한다. 금액 근거 부재는 null/`NOT_BOUND`이다.
+
+이는 최적화·자금 예측이 아닌 명시적 반사실 비교다. 실제 결제·인증·과거
+정책 출처는 `NOT_BOUND`이다. live posting, 새 금융 조건, 만기 연장,
+면제 결정, policy capsule, 외부 현금 가정, 자동 close/default/recovery/
+write-off, HTTP/UI를 제외한다. claim slice는 선택 residual 범위 밖이며
+독립 residual 범주를 합산하지 않는다. 기존 portfolio-history-comparison의
+what-if 제외 범위는 그대로 유지한다. 원본 바이트·권한을 변경하지 않는다.

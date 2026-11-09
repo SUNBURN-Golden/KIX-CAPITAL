@@ -4414,3 +4414,63 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## repayment-schedule-comparison — builder (2026-11-04)
+
+Implemented `capital.repayment_compare` and its stdlib CLI over one audited byte
+capture, with detached writable memory ports, frozen local policy/bounds and
+fixture values, deterministic branch identities and collision reservation.
+Only the existing organizer `advance_day` and `post_repayment` handlers execute.
+The report retains rejected and unattempted steps, exact fractional accrual,
+source and policy hashes, close advisory and selected-advance residual
+reconciliation. A payment-only cash record does not establish missing interest
+coverage. Results remain SIMULATED; no real payments, authentication, historical
+policy attestation, optimizer or funding forecast is claimed.
+
+Plan deviations: the existing `tests/decision_bindings.json` inventory also
+needed declarations for this module's interest/term/default-loss consumers. The
+checker and its assertions were unchanged. Browser execution uses an isolated
+loopback namespace because unrelated services already own ports 8765/8766;
+committed Playwright configuration, ports and assertions are unchanged. The
+historical root `DECISION_REQUIRED.md` is preserved byte-for-byte; fresh results
+below describe this worktree, not its historical baseline claim. No new
+consequential product decision or financial term was required.
+
+Commands below were actually executed by this builder. Routine repository
+inspection commands are omitted. Evidence logs are under ignored
+`build/repayment-compare-evidence/` where indicated.
+
+| Command | Measured result |
+|---|---|
+| `python3 -m unittest discover -s tests -p test_repayment_compare.py -v` | Final focused run: exit 0, **30 passed** in 4.143 s. Earlier 27-test runs exposed two then one incorrect fixture expectations: the FSM keeps DRAWN after full repayment, and held cash yields UNAPPLIED_HELD. Corrected those expectations to the unchanged handlers; the intervening 29-test run passed. |
+| `python3 -m unittest discover -s tests -p test_residuals.py -v` | Exit 0; **26 passed** in 2.496 s, retaining default residual schema/behavior. |
+| `python3 -m unittest discover -s tests -p test_decision_bindings.py -v` | Exit 0; **25 passed** in 20.448 s after declaring the new consumers; log `bindings.log`. |
+| `python3 scripts/decision_bindings.py --check` | Initial invocation reported the unlisted interest-rate consumer (exit 1); after the inventory update, exit 0, declared references match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. No new vector files were added. |
+| `npm ci --offline --ignore-scripts` | Exit 0; three packages installed from local cache, zero vulnerabilities reported; no browser download. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed** in 0.001 s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| Inline Python SHA256/preservation check, `git diff --exit-code HEAD -- capital/vendor capital/export.py capital/overlay.py capital/ports.py .aiops docs/decisions tests/golden DECISION_REQUIRED.md .github` | All five manifest SHA256 locks match. Protected paths, vendor manifest and historical blocker note are unchanged against HEAD. |
+| `git diff --check` | Exit 0. |
+
+No commit, push, PR, issue, external comment, `.aiops/` change, Protocol/Commerce
+modification, provider call, credential use or funds movement was performed.
+
+Full-suite result: `python3 -m unittest discover -s tests -v` first exited 1
+with **1,357 tests / three failures**, all reporting the new module's unlisted
+interest-rate consumption (`unit-initial.log`, 306.795 s). After the inventory
+update and the additional payment-only evidence regression, the same command
+exited 0: **1,358 passed** in 340.399 s (`unit.log`). The unchanged
+`test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`
+passed in both runs. The historical blocker note is retained as instructed and
+is not evidence of a current failure. Final Python/JavaScript syntax checks and
+the docs surface check were rerun after the implementation fix; all exit 0.
+
+| Final command | Measured result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** in 1.8 min, using locally cached Chromium headless shell 1208 / Playwright 1.58.2. Log `browser.log`. No config, retry, assertion or timeout changes. |
+| Final inline Python vendor/protected-path and `/proc` cleanup check | Exit 0; all five vendor SHA256 locks and commit 7481b0e match, manifest and protected paths remain unchanged, and no Capital/Playwright server from this worktree remains. Unrelated existing listeners were left alone. |
+
+The requested narrow and local CI verification commands pass. This records
+local checks only; no GitHub CI, publication or supervisor action is claimed.
