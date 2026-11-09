@@ -15,6 +15,31 @@ Registry of Capital facade ports. A later node adds its port as a new row here a
 
 `tests/test_producer_port.py` runs positive and negative command vectors through any `ProducerPort` factory (`run_producer_vectors(factory)`). The pinned factory is `PinnedFsmProducer`. A future adapter must pass the same vectors. Passing them is a local gateway check. It is not a SEMANTIC_CONFORMANCE profile, and it does not qualify Commerce or Protocol.
 
+The same module exports `run_value_isolation_vectors(factory)` for additional
+local ownership checks. A no-argument factory must return a fresh producer.
+Both `PinnedFsmProducer` and owned `GateHttpProducer()` instances on ephemeral
+`127.0.0.1` ports run the harness. It mutates actual nested first and duplicate
+command results, views with a partial repayment, exported journal entries and
+offer faces, and disposable draw previews. It also changes caller-owned offer
+and repayment argument dictionaries and restoration journals after acceptance.
+Subsequent full views, journal values, canonical state, SHA256 state digest and
+original command-time idempotent results must remain equal to detached baselines.
+Restored books retain the same baselines and can advance independently. Optional
+`close()` cleanup is registered immediately for every source and restored port,
+including assertion failures; `close` is not added to `ProducerPort`.
+
+Run with `python3 -m unittest discover -s tests -p 'test_*producer*.py' -v`.
+Deliberately aliasing test doubles must fail with a named scenario, mutated path
+and invariant. These checks support existing first-result claim `inv.3`
+(`tests/contract_invariants.json`), non-mutation check `read.readonly.state`
+(`tests/read_model_claims.json`), and FSM checks `f04.restore_digest` /
+`f04.restore_duplicate` (`tests/fsm_contract_claims.json`); they add no upstream
+claim rows or guarantees. They
+exercise only public port methods, without mutation of `.machine` or `.fixtures`
+internals or concurrent mutation during a call. Data remains SIMULATED /
+READ_ONLY_FIXTURE, the HTTP adapter remains LOCAL_FAKE_GATE, CAP-16 remains
+NOT_BOUND, and passing is not SEMANTIC_CONFORMANCE.
+
 `tests/storage_conformance.py` runs storage vectors through any `StoragePort` factory (`run_storage_vectors(factory)`). `InMemoryStorage` and `FileWorkspace` pass them. A future adapter must pass the same vectors. Passing them is a local gate. It is not SEMANTIC_CONFORMANCE, and it does not bind stage5 durable transactions. CAP-11 stays `NOT_BOUND`.
 
 `GateHttpProducer` is an opt-in stand-in (`--producer gate-fake`) for that future adapter. It speaks `{operationId, actor, action, body}` to `scripts/fake_gate.py` on `127.0.0.1`. The label is `LOCAL_FAKE_GATE`. `actor` is not authentication. A lost response is `UNKNOWN` and is not retried. `scripts/gate_faults.py --check` replays the pinned fault corpus `tests/vectors/gate_faults.json` (accept, gate 5xx, malformed JSON, dropped connection, delayed-then-lost, and a conflicting same-`operationId` replay answered `409 IDEMPOTENCY_CONFLICT`) through the real loopback facade. Passing the vectors through it is still not a SEMANTIC_CONFORMANCE profile. ProducerPort stays `NOT_BOUND`.

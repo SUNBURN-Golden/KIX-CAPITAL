@@ -4249,3 +4249,82 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## producer-value-isolation — local ownership checks (2026-11-04)
+
+Starting revision: `8ab3d954bd732aa80351d580d703500ebf50dcc5` on
+`agent/capital-producer-value-isolation`. The design was checked against the
+existing adapters before implementation. Neither adapter exposed a shared
+mutable value under these probes, so no production copying was added.
+`ProducerPort` signatures and serialized results remain unchanged.
+
+`tests/test_producer_port.py` now exports the stdlib-only
+`run_value_isolation_vectors(factory)`. Both `PinnedFsmProducer` and actual
+owned `GateHttpProducer()` loopback servers run five fresh-book scenarios:
+
+| Scenario | Caller mutation and guarded values |
+|---|---|
+| `command-results` | Mutate first and duplicate offer/approve/bind/draw/partial-repay results, nested credit and repayment dictionaries, repayment list structure, and non-null effects. Replay every pristine saved command, including earlier commands after later transitions, and compare its full original command-time payload with only `duplicate=True`, `applied=None`. |
+| `views` | Change credit fields, change and clear a repayment row, append/remove repayment entries, remove a view field. Compare full subsequent views, journal, canonical state, digest and original results on source and restored producers. |
+| `journal-exports` | Change an entry, its body, the offer face and nested obligation, clear obligations, append/remove entries. Preserve the same full source/restored baselines. |
+| `preview` | Start APPROVED and BOUND; mutate preview credit, repayment list and non-null effect. Repeat preview with equal values and verify the live book remains APPROVED with no draw journaled. |
+| `inputs-and-restore` | Replace/clear caller-owned offer and repay argument dictionaries after acceptance; mutate a journal after restoration; mutate restored views, exports and command results; advance only the restored book with an independent second repayment and retain its original result. |
+
+Expected values are detached before mutation; actual returned objects are
+mutated. Every state check also compares the digest to SHA256 of canonical
+state UTF-8 bytes. Each created/restored port's optional `close()` is registered
+immediately through `ExitStack`, including failure paths. Four deliberately
+aliasing doubles (result, view, journal, preview) must fail at a named mutation
+and invariant; all source/restored doubles must be closed. A separate gate test
+mutates command results, duplicate results and receipt lookups, then verifies
+the stored first receipt still has the original payload and `duplicate=False`.
+
+These are additional **local ownership checks** supporting existing mappings,
+not new upstream claim rows or stronger upstream guarantees:
+
+| Existing claim/check | Local supporting probe |
+|---|---|
+| `inv.3` in `tests/contract_invariants.json` | First-result preservation despite caller mutation and later lifecycle commands. |
+| `read.readonly.state` in `tests/read_model_claims.json` | Views, exports and preview results cannot mutate the live book. |
+| `f04.restore_digest`, `f04.restore_duplicate` in `tests/fsm_contract_claims.json` | Detached restoration input, equal initial canonical state/digest, retained command-time results and independent book progression. |
+
+Scope remains SIMULATED / READ_ONLY_FIXTURE and LOCAL_FAKE_GATE; CAP-16 remains
+NOT_BOUND, and this is not SEMANTIC_CONFORMANCE. Direct mutation of `.machine`
+or `.fixtures` internals and concurrent argument mutation during a call are
+outside these public-port checks. No new vector artifact, README needle,
+docs-surface registry entry, source repin, golden regeneration, dependency or
+consequential product decision was needed.
+
+Verification commands actually run (exit 0 unless stated):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -p 'test_*producer*.py' -v` | Final focused run: 21 tests passed in 20.977s. First run had two failures/two errors in new test setup (gate operation-key syntax and stale negative-double caches); second run had one error from assuming receipt lookups carry command bodies. Those test setup errors were corrected without changing production behavior. |
+| `python3 -m unittest discover -s tests -p test_seams.py -v` | 6 tests passed. |
+| `python3 -m unittest discover -s tests -p test_fsm_contract_claims.py -v` | 11 tests passed. |
+| `python3 scripts/fsm_contract_claims_check.py --execute` | CLAIM_CONFORMANCE passed=35 total=35 failed=0; includes the five manifest SHA256 locks. No external Protocol citation verification is claimed by this invocation. |
+| `python3 scripts/docs_surface.py --check` | 36 routes, 273 artifacts, 9 stages; passed before and after the documentation additions. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 tests passed. |
+| `python3 -m compileall -q capital` | Passed. |
+| `node --check capital/static/app.js` | Passed. |
+| `npm ci` | Installed the existing three development packages; audit found zero vulnerabilities; no dependency files changed. |
+| `npm run test:browser` | Exit 1 before tests: default ports 8765/8766 are occupied by unrelated processes. Those processes were left alone. |
+| `git diff --exit-code 8ab3d954 -- capital/vendor capital/export.py .aiops capital/producer.py capital/gate_producer.py` | No differences, including `capital/vendor/manifest.json`. |
+| `python3 -` (stdlib AST/source comparison against `git show 8ab3d954:tests/test_producer_port.py`) | Existing `VECTORS`, `run_producer_vectors`, `_run_vector`, `_offer`, `_step` definitions are byte-identical to the starting revision. |
+| `sha256sum capital/vendor/manifest.json` | `b5ff2fca301bf456826dcbc9a6617521d528746efb03b8107f23b818fb4d6def`; manifest unchanged. |
+| `git diff --check` | Passed. |
+| `npm run test:browser -- --config build/producer-value-isolation/playwright.config.cjs` | All 76 tests passed (1.9m) using installed Chromium headless shell; the unchanged suite ran with ports 18765–18768. All four owned web servers stopped; no listener remained on those ports. |
+| `python3 -m unittest discover -s tests -v` | All 1,306 tests passed in 316.674s. |
+| `git diff --exit-code 8ab3d954 -- capital/vendor capital/export.py .aiops capital/producer.py capital/gate_producer.py capital/ports.py` | Final protected-path check passed; both adapters and mandatory port signatures are unchanged. |
+| `ss -ltnp '( sport = :18765 or sport = :18766 or sport = :18767 or sport = :18768 )'` | No listeners after browser completion or after the full Python suite. |
+
+The sole execution deviation was browser port isolation. The ignored temporary
+config imports the repository config, changes server/base URL ports, resolves
+`testDir` and server working directories to this worktree, and places browser
+results under `build/producer-value-isolation/`; it preserves test selection,
+workers, browser, assertions and server commands apart from their ports. The
+repository Playwright config and CI are unchanged. The initial full-Chromium
+path probe found no full browser at Playwright's expected path, but the installed
+matching headless shell ran the entire suite successfully after existing dev
+dependencies were installed. Verification logs are under the ignored
+`build/producer-value-isolation/` directory. No external messages were posted.
