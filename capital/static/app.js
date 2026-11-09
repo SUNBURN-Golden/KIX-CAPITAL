@@ -32,7 +32,7 @@ function renderRoleBar(){
 }
 function fileWorkspaceActive(){return !!(state&&state.workspace&&state.workspace.kind==='LOCAL_FILE_WORKSPACE'&&state.workspace.status==='ACTIVE');}
 function writesBlocked(){return storageBlocked||!!(state&&state.workspace&&state.workspace.status!=='ACTIVE');}
-function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked;const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();deskFence();}
+function fence(){const blocked=busy||!!pending||writesBlocked();document.querySelectorAll('#offer-form button,#offer-form input,#offer-form select,#actions button,#repay,#repay-amount,#unbound-draw').forEach(b=>b.disabled=blocked);document.querySelectorAll('#refresh,#cases button').forEach(b=>b.disabled=busy);if($('role'))$('role').disabled=busy;document.querySelectorAll('[data-op]').forEach(el=>applyRoleGate(el,`command:${el.dataset.op}`,blocked));document.querySelectorAll('[data-permission]').forEach(el=>applyRoleGate(el,el.dataset.permission,busy));$('recovery').hidden=!pending&&!storageBlocked;$('recover').disabled=busy||!pending||storageBlocked||!can('projection:read');const changed=pending&&state&&pending.instance_id!==state.instance_id;$('new-session').hidden=!changed;$('new-session').disabled=busy;$('new-session').textContent=fileWorkspaceActive()?'서버 재시작 확인 · 복원된 작업공간 열기':'서버 재시작 확인 · 새 시뮬레이션 열기';$('recovery-copy').textContent=storageBlocked?'브라우저 저장소를 사용할 수 없거나 대기 기록이 손상됐습니다. 새 명령을 차단했습니다. 저장소 문제를 해결한 후 새로고침하세요.':changed?(fileWorkspaceActive()?'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 복원된 작업공간을 열어도 이전 요청은 재전송하지 않습니다.':'서버가 재시작되어 이전 프로세스의 결과를 확인할 수 없습니다. 이전 결과는 UNKNOWN으로 남습니다. 새 시뮬레이션을 열어도 이전 요청은 재전송하지 않습니다.'):'응답 확인 전에는 새 명령을 보내지 않습니다. 원 요청의 결과를 조회하세요.';renderRoleBar();deskFence();}
 async function request(path, options={}) {const headers=new Headers(options.headers||{});if(sessionToken&&!headers.has('X-Capital-Token'))headers.set('X-Capital-Token',sessionToken);const response=await fetch(path,{...options,headers,signal:AbortSignal.timeout(7000),cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(Error(body.error||'HTTP_ERROR'),{knownRejection:response.status>=400&&response.status<500&&typeof body.error==='string',detail:body});return body;}
 function validateState(next){const ws=next.workspace;if(next.mode!=='LOCAL_SIMULATION'||next.provenance!=='MOCK_CREDIT_F04_ONLY'||next.funds_executed!==false||!Array.isArray(next.cases)||!next.auth||next.auth.identity!=='NOT_BOUND'||next.auth.authentication!=='NOT_BOUND'||!syntheticRoles.includes(next.auth.role)||typeof next.local_token!=='string'||!next.local_token||!next.auth.permissions)throw Error('INVALID_STATE');if(!ws||(ws.kind!=='MEMORY'&&ws.kind!=='LOCAL_FILE_WORKSPACE')||typeof ws.status!=='string'||!(ws.path===null||typeof ws.path==='string'))throw Error('INVALID_STATE');if(ws.kind==='MEMORY'&&(next.durable!==false||ws.path!==null||ws.status!=='ACTIVE'))throw Error('INVALID_STATE');if(ws.kind==='LOCAL_FILE_WORKSPACE'&&(next.durable!=='LOCAL_FILE_WORKSPACE'||typeof ws.path!=='string'||!ws.path))throw Error('INVALID_STATE');}
 async function bindSession(role){const opened=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})});if(opened.role!==role||opened.identity!=='NOT_BOUND'||opened.authentication!=='NOT_BOUND'||opened.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||typeof opened.local_token!=='string'||!opened.local_token)throw Error('INVALID_SESSION');sessionToken=opened.local_token;return opened;}
@@ -590,11 +590,16 @@ async function loadDesk(next,riskView,evidence,reconciliation){
  return view;
 }
 function validateOverlayReceipt(receipt,body){
+ if(['post_recovery','post_writeoff'].includes(body.op)){validateRecoveryReceipt(receipt,body,true);return;}
  const labeled=syntheticRoles.includes(receipt?.role)&&receipt?.role_provenance==='SYNTHETIC_LOCAL_ROLE';
  if(!receipt||receipt.operation_id!==body.operation_id||receipt.instance_id!==body.instance_id||receipt.op!=='advance_day'||receipt.outcome!=='APPLIED'||receipt.from_sim_day!==body.from_sim_day||receipt.to_sim_day!==body.to_sim_day||receipt.sim_day!==body.to_sim_day||receipt.reason!==body.reason||receipt.label!==MEMO_LABEL||receipt.clock_source!=='SIM_LOGICAL_CLOCK'||receipt.funds_executed!==false||receipt.f04_journal_written!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean'||!labeled)throw Error('INVALID_RECEIPT');
 }
 function validateOverlayLookup(view,original){
  const op=view?.operation;
+ if(['post_recovery','post_writeoff'].includes(original.op)){
+  if(!view||view.mode!=='SIMULATED_OVERLAY'||view.label!==MEMO_LABEL||view.instance_id!==original.instance_id||view.clock_source!=='SIM_LOGICAL_CLOCK'||view.funds_executed!==false||view.f04_journal_written!==false)throw Error('UNKNOWN');
+  validateRecoveryReceipt(op,original,false);return;
+ }
  if(!view||view.mode!=='SIMULATED_OVERLAY'||view.instance_id!==original.instance_id||!op||op.operation_id!==original.operation_id||op.outcome!=='APPLIED'||op.op!=='advance_day'||op.from_sim_day!==original.from_sim_day||op.to_sim_day!==original.to_sim_day||op.reason!==original.reason)throw Error('UNKNOWN');
 }
 function deskAdvanceState(){
@@ -681,6 +686,9 @@ function deskFence(){
  $('desk-refresh').disabled=busy;$('desk-case').disabled=busy;
  $('desk-days').disabled=blocked;$('desk-advance').disabled=blocked;
  document.querySelectorAll('#desk-actions button').forEach(button=>{button.disabled=blocked;});
+ const recovery=recoveryView();
+ document.querySelectorAll('#desk-recovery-controls input,#desk-recovery-controls select,#desk-recovery-controls button').forEach(control=>{control.disabled=blocked||!can('overlay:command')||!recovery.enabled;});
+ $('desk-recovery-post').disabled=blocked||!can('overlay:command')||!recovery.enabled||!recovery.row?.quotes.length;
 }
 async function deskAdvance(){
  const gate=deskAdvanceState();
@@ -692,6 +700,94 @@ async function deskAdvance(){
  await writeFenced('/api/overlay/commands',()=>{const from=deskData.overlay.sim_day;return {instance_id:state.instance_id,operation_id:'desk-'+crypto.randomUUID(),op:'advance_day',from_sim_day:from,to_sim_day:from+Number(days),reason:'operator desk advance_day'};},validateOverlayReceipt,receipt=>notice(`sim_day ${receipt.from_sim_day} → ${receipt.to_sim_day} 반영 · SIMULATED · F04 저널은 바뀌지 않았고 자금은 움직이지 않았습니다.`));
  $('desk-advance').focus();
 }
+const RECOVERY_LABEL=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const RECOVERY_MONEY=['principal_krw','interest_krw','default_interest_krw','claim_krw','outstanding_loss_krw','residual_claim_krw'];
+let recoveryDraftKey=null;
+function sameRecoveryValue(a,b){
+ if(a===b)return true;
+ if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+ const keys=Object.keys(a).sort(),other=Object.keys(b).sort();
+ return keys.length===other.length&&keys.every((key,index)=>key===other[index]&&sameRecoveryValue(a[key],b[key]));
+}
+function validateRecoveryReceipt(receipt,body,envelope){
+ const entry=receipt?.entry,command={...body};delete command.instance_id;delete command.operation_id;
+ if(!Array.isArray(command.approvals)||!command.approvals.every(a=>a&&typeof a.approver_label==='string'&&RECOVERY_LABEL.test(a.approver_label)))throw Error('INVALID_RECEIPT');
+ command.approvals=[...new Set(command.approvals.map(a=>a.approver_label))].sort().map(approver_label=>({approver_label}));
+ if(!receipt||receipt.operation_id!==body.operation_id||receipt.op!==body.op||receipt.outcome!=='APPLIED'||receipt.sim_day!==body.at_sim_day||receipt.recorded_posting!==true||receipt.f04_journal_written!==false||!entry||entry.entry_id!==body.operation_id||entry.advance_id!==body.advance_ref||entry.sim_day!==body.at_sim_day||entry.entry_kind!==(body.op==='post_recovery'?'RECOVERY':'WRITEOFF')||entry.label!=='SIMULATED'||!sameRecoveryValue(entry.command,command))throw Error('INVALID_RECEIPT');
+ if(envelope){
+  if(receipt.label!==MEMO_LABEL||receipt.instance_id!==body.instance_id||receipt.clock_source!=='SIM_LOGICAL_CLOCK'||receipt.actor!=='LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED'||receipt.role!=='organizer'||receipt.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||receipt.funds_executed!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean')throw Error('INVALID_RECEIPT');
+ }else if(receipt.label!=='SIMULATED')throw Error('INVALID_RECEIPT');
+ if(body.op==='post_recovery'&&(entry.amount_krw!==body.amount_krw||entry.quote_ref!==body.quote_ref||!sameRecoveryValue(entry.source_ref,body.source_ref)))throw Error('INVALID_RECEIPT');
+}
+function recoveryView(){
+ const c=state?.cases.find(item=>item.advance_id===selected),overlay=deskData?.overlay,r=overlay?.recovery;
+ const unavailable=reason=>({enabled:false,reason});
+ if(!c||c.phase!=='DEFAULTED')return unavailable('DEFAULTED 사례를 선택하세요.');
+ if(!r||overlay.clock_source!=='SIM_LOGICAL_CLOCK'||typeof overlay.overlay_state_digest!=='string'||r.label!=='SIMULATED'||r.provisional!==true||r.proposal_only!==true||r.f04_default_called!==false||r.executionAuthorized!==false||r.reserve_binding!=='NOT_BOUND'||r.reserve_step_version!=='UNBUILT_V1'||!Array.isArray(r.advances)||!Array.isArray(r.entries))return unavailable('Recovery data unavailable or incompatible · NOT_BOUND');
+ if(r.status!=='BOUND'||overlay.status!=='BOUND')return unavailable('Recovery policy NOT_BOUND');
+ const row=r.advances.find(item=>item?.advance_id===selected);
+ const money=value=>Number.isSafeInteger(value)&&value>=0;
+ const source=value=>!!value&&Object.keys(value).sort().join()===['claim_id','payee_label','source_cut'].join()&&Object.values(value).every(v=>typeof v==='string'&&RECOVERY_LABEL.test(v));
+ const recorded=e=>{
+  if(!e||!['RECOVERY','WRITEOFF'].includes(e.entry_kind)||e.label!=='SIMULATED'||typeof e.entry_id!=='string'||typeof e.advance_id!=='string'||!money(e.sim_day))return false;
+  if(e.entry_kind==='WRITEOFF')return money(e.residual_claim_krw)&&money(e.writeoff_principal_krw)&&e.reserve_binding==='NOT_BOUND'&&e.reserve_step_version==='UNBUILT_V1'&&Array.isArray(e.waterfall_trace)&&e.waterfall_trace.every(step=>step&&typeof step.step==='string'&&typeof step.status==='string'&&money(step.absorbed_krw));
+  return money(e.amount_krw)&&source(e.source_ref)&&typeof e.quote_ref==='string'&&typeof e.waterfall_step==='string'&&(e.phase==='POST_WRITEOFF'?money(e.residual_claim_krw):e.phase==='POST_DEFAULT'&&['principal_krw','interest_krw','default_interest_krw'].every(key=>money(e.allocation?.[key])));
+ };
+ const entries=r.entries.filter(item=>item?.advance_id===selected);
+ if(!row||r.advances.filter(item=>item?.advance_id===selected).length!==1||!['KNOWN','DEFAULT_DAY_UNKNOWN'].includes(row.default_day_status)||typeof row.writeoff_eligible!=='boolean'||!Array.isArray(row.quotes)||!r.entries.every(recorded))return unavailable('Recovery data unavailable or incompatible · NOT_BOUND');
+ if(row.default_day_status!=='KNOWN')return {enabled:false,row,entries,reason:'DEFAULT_DAY_UNKNOWN · 부도일 근거 없음; 기록 차단'};
+ if(!money(row.default_sim_day)||!money(row.writeoff_sim_day)||!RECOVERY_MONEY.every(key=>money(row[key])||(key==='residual_claim_krw'&&row[key]===null))||!row.quotes.every(q=>q&&q.label==='SIMULATED'&&q.advance_id===selected&&q.state_digest===overlay.overlay_state_digest&&source(q.source_ref)&&typeof q.quote_ref==='string'&&RECOVERY_LABEL.test(q.quote_ref)&&money(q.available_krw)&&money(q.amount_krw)&&typeof q.waterfall_step==='string'))return unavailable('Recovery data unavailable or incompatible · NOT_BOUND');
+ return {enabled:overlay.workspace_status==='ACTIVE',row,entries,reason:`SIMULATED · reserve_binding=${r.reserve_binding} · reserve_step_version=${r.reserve_step_version} · writeoff_eligible는 날짜 기준이며 서버가 최종 허용 여부를 판단합니다. · workspace_status=${overlay.workspace_status}`};
+}
+function clearRecoveryDraft(){
+ recoveryDraftKey=null;
+ $('desk-recovery-source').replaceChildren();$('desk-recovery-amount').value='';$('desk-recovery-decline').value='';
+ $('desk-recovery-approval-a').checked=false;$('desk-recovery-approval-b').checked=false;
+}
+function paintDeskRecovery(){
+ const c=state.cases.find(item=>item.advance_id===selected),view=recoveryView(),row=view.row;
+ $('desk-recovery').hidden=c?.phase!=='DEFAULTED';
+ $('desk-recovery-status').textContent=view.reason;
+ $('desk-recovery-facts').replaceChildren();$('desk-recovery-quotes').replaceChildren();
+ $('desk-recovery-entries').textContent=view.entries?JSON.stringify(view.entries,null,2):'';
+ $('desk-recovery-empty').textContent=row?.quotes.length?'':'서버 회수 견적 없음 · 재원을 만들거나 추정하지 않습니다.';
+ $('desk-recovery-controls').hidden=!view.enabled||currentRole()!=='organizer'||!can('overlay:command');
+ const key=row&&view.enabled?JSON.stringify([state.instance_id,selected,currentRole(),deskData.overlay.overlay_state_digest,row.quotes]):null;
+ if(key!==recoveryDraftKey||!key){clearRecoveryDraft();recoveryDraftKey=key;}
+ if(!row){deskFence();return;}
+ const fields=['default_day_status','default_sim_day','writeoff_sim_day','writeoff_eligible',...RECOVERY_MONEY];
+ for(const name of fields){const value=row[name];const dd=textElement('dd',value===null||value===undefined?'— (unavailable)':String(value));dd.dataset.field=name;$('desk-recovery-facts').append(textElement('dt',name),dd);}
+ $('desk-recovery-facts').append(textElement('dt','recorded WRITEOFF'),textElement('dd',String(view.entries.some(e=>e.entry_kind==='WRITEOFF'))));
+ $('desk-recovery-quotes').replaceChildren(...row.quotes.map(q=>{const tr=document.createElement('tr');for(const value of [JSON.stringify(q.source_ref),q.quote_ref,q.available_krw,q.amount_krw,q.waterfall_step])tr.append(textElement('td',String(value)));return tr;}));
+ if(key&&!$('desk-recovery-source').options.length){
+  const placeholder=textElement('option','회수 견적을 직접 선택하세요');placeholder.value='';
+  $('desk-recovery-source').replaceChildren(placeholder,...row.quotes.map(q=>{const option=textElement('option',`${q.source_ref.claim_id} · ${q.source_ref.payee_label} · ${q.waterfall_step} · ${q.quote_ref}`);option.value=q.quote_ref;return option;}));
+ }
+ deskFence();
+}
+async function deskPostRecovery(op){
+ if(busy||pending||writesBlocked()||!state)return;
+ if(currentRole()!=='organizer'||!can('overlay:command')){notice(permissionReason('overlay:command'),true);return;}
+ const view=recoveryView();
+ if(!view.enabled){notice(view.reason,true);return;}
+ const draftKey=recoveryDraftKey,quote=view.row.quotes.find(q=>q.quote_ref===$('desk-recovery-source').value);
+ const amount=$('desk-recovery-amount').value,reason=$('desk-recovery-decline').value;
+ if(op==='post_recovery'&&(!quote||!/^[1-9]\d*$/.test(amount)||!Number.isSafeInteger(Number(amount)))){notice('서버 견적을 선택하고 양의 안전한 정수 금액을 입력하세요.',true);return;}
+ if(op==='post_writeoff'&&reason&&!RECOVERY_LABEL.test(reason)){notice('상계 거절 사유 라벨 형식을 확인하세요.',true);return;}
+ const approvals=['desk-recovery-approval-a','desk-recovery-approval-b'].filter(id=>$(id).checked).map(id=>({approver_label:$(id).value}));
+ if(!approvals.every(a=>RECOVERY_LABEL.test(a.approver_label))){notice('합성 승인 라벨 형식을 확인하세요.',true);return;}
+ if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금을 지원하는 브라우저가 필요합니다.',true);return;}
+ await writeFenced('/api/overlay/commands',()=>{
+  if(draftKey!==recoveryDraftKey||!recoveryView().enabled)throw Error('RECOVERY_DRAFT_CHANGED');
+  const body={instance_id:state.instance_id,operation_id:'desk-'+crypto.randomUUID(),op,advance_ref:selected,at_sim_day:deskData.overlay.sim_day,approvals};
+  if(op==='post_recovery')Object.assign(body,{amount_krw:Number(amount),source_ref:{...quote.source_ref},quote_ref:quote.quote_ref});
+  else if(reason)body.setoff_declined_reason=reason;
+  return body;
+ },validateOverlayReceipt,()=>notice(`${op} · SIMULATED 기록 반영 · 실제 추심·자금 이동 없음`));
+}
+$('desk-recovery-post').onclick=()=>{void deskPostRecovery('post_recovery');};
+$('desk-recovery-writeoff').onclick=()=>{void deskPostRecovery('post_writeoff');};
+$('desk-recovery-source').onchange=()=>{$('desk-recovery-amount').value='';$('desk-recovery-decline').value='';$('desk-recovery-approval-a').checked=false;$('desk-recovery-approval-b').checked=false;};
 function paintDeskTiles(risk){
  const wrap=$('desk-tiles'),label=$('desk-risk-label');
  if(!risk?.risk){wrap.replaceChildren();label.textContent=risk?.error||'위험 요약을 표시하지 않습니다.';return;}
@@ -769,6 +865,7 @@ function paintDeskAudit(c){
  $('desk-audit-unknown').textContent=JSON.stringify({unknown_policy:report.unknown_policy,unknown_unresolved:report.unknown_unresolved},null,2);
 }
 function renderDesk(){
+ if(!can('projection:read'))clearRecoveryDraft();
  if($('desk-dossier').dataset.case!==selected){$('desk-dossier').dataset.case=selected??'';$('desk-dossier-note').textContent='';$('desk-dossier-result').textContent='';$('desk-dossier-result').hidden=true;}
  $('desk-dossier').hidden=!can('projection:read');
  $('desk-dossier').disabled=busy||!can('projection:read')||!state?.cases?.some(item=>item.advance_id===selected);
@@ -787,6 +884,7 @@ function renderDesk(){
  if([...select.options].map(option=>option.value).join()!==ids.join())select.replaceChildren(...ids.map(id=>{const option=textElement('option',id);option.value=id;return option;}));
  if(selected)select.value=selected;
  paintDeskOverlay();
+ paintDeskRecovery();
  paintDeskTimeline(state.cases.find(item=>item.advance_id===selected));
  const commandsAllowed=can('overlay:command')||Object.entries(state.auth.permissions).some(([name,item])=>name.startsWith('command:')&&item.allowed);
  $('desk-commands').hidden=!commandsAllowed;
@@ -856,7 +954,8 @@ function clearMatching(original){
 }
 $('recover').onclick=()=>pendingAction(async original=>{
  try{
-  if(original.op==='advance_day'){const view=await request(`/api/overlay?operation_id=${encodeURIComponent(original.operation_id)}`);validateOverlayLookup(view,original);clearMatching(original);notice('원 sim_day 요청은 서버에 반영되어 있습니다. 같은 요청을 다시 보내지 않았습니다.');await refresh();return;}
+  if(!can('projection:read')){notice(permissionReason('projection:read'),true);return;}
+  if(original.op==='advance_day'||['post_recovery','post_writeoff'].includes(original.op)){const view=await request(`/api/overlay?operation_id=${encodeURIComponent(original.operation_id)}`);validateOverlayLookup(view,original);clearMatching(original);notice('원 오버레이 요청은 서버에 반영되어 있습니다. 같은 요청을 다시 보내지 않았습니다.');await refresh();return;}
   const receipt=await request(`/api/operations/${encodeURIComponent(original.operation_id)}?instance_id=${encodeURIComponent(original.instance_id)}`);validateReceipt(receipt,original);clearMatching(original);showReceipt(receipt);await refresh();}
  catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}
 });

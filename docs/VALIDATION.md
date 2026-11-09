@@ -4249,3 +4249,84 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## recovery-posting-desk builder verification (2026-11-04)
+
+Implemented the focused DEFAULTED-case recovery panel using existing overlay reads
+and organizer `post_recovery` / `post_writeoff` commands. Display and posting use
+server amounts, source/quote references, allocations, eligibility and residuals;
+there is no new financial arithmetic or policy. Synthetic approver checkboxes
+start unselected and explicitly state SIMULATED controls, identity/authentication
+NOT_BOUND, not authenticated second-person approval. Auditor access is read-only;
+observer access sends no protected requests, including pending receipt lookup.
+UNKNOWN retains the original full command and blocks writes across reload until
+a matching overlay receipt is explicitly read. Absent, invalid, mismatched and
+old-instance receipts preserve UNKNOWN without resubmission.
+
+Files changed: `capital/static/{app.js,index.html,style.css}`,
+`tests/test_operator_desk.py`, `tests/browser/recovery-posting-desk.spec.cjs`,
+`tests/browser/support/recovery_server.py`, `README.md`,
+`docs/{CAPITAL_REQUIREMENTS_KO.md,INTEGRATION.md,VALIDATION.md}`.
+The test-only stdlib harness adds no routes and seeds disposable SIMULATED books
+with existing service methods, `PinnedFsmProducer` and `ScenarioReplaySource`.
+The design plan was checked against the existing read model and distinct POST
+receipt envelope / lookup receipt core before implementation. No production
+Python, contract, financial decision, new vector, vendor, legacy export, golden,
+CI or `.aiops/` changes were needed.
+
+Actual commands and results (local automation, not human product acceptance):
+
+| Command | Result |
+|---|---|
+| `npm ci` | Exit 0; three packages installed, zero reported vulnerabilities; lockfile unchanged. |
+| `python3 -m unittest discover -s tests -p test_operator_desk.py -v` | Initial run: five passed, one static arithmetic-token guard failed because a UI string contained a spaced slash. Replaced the separator with a middle dot, preserving the guard. Subsequent run: eight passed, exit 0, including the two added safety checks. |
+| `python3 -m unittest discover -s tests -p test_recovery.py -v` | Exit 0; 29 passed, 1.668 s. |
+| `npm run test:browser -- tests/browser/recovery-posting-desk.spec.cjs` | Exit 1 before tests: port 8765 already occupied in the shared host namespace. No existing process was stopped. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- tests/browser/recovery-posting-desk.spec.cjs'` | First isolated run: 17 passed, two test-setup failures. Fixed historical unanchored seeding to default before overlay activation, and dispatched the storage event for a simulated other-tab pending record. Expanded receipt/draft coverage: 22 passed in 30.9 s. After strengthening malformed ledger validation: 22 passed in 1.1 min, exit 0. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,304 passed** in 491.537 s, including auth, documentation, recovery, legacy byte/golden and package regression checks. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **98 passed** in 3.2 min, including all 22 new recovery browser tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. No new vector registry entries needed. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0; authorization matrix unchanged. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only, pending anchors remain unimplemented. |
+| `python3 scripts/seed_demo.py` | Exit 0; unchanged SIMULATED state digest `a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`, content digest `2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca`. |
+| `python3 scripts/seed_overlay_recovery.py` | Exit 0; unchanged SIMULATED_DISPOSABLE_BOOK golden, 18 overlay entries. |
+
+Browser coverage compares displayed facts and quotes directly with real loopback
+service JSON and checks exact command shapes, unchanged F04 journal/digest,
+recovery before write-off, explicit eligible write-off, late recovery, server
+`RECOVERY_QUOTE_STALE`, `TWO_PERSON_REQUIRED`, `NOT_BOUND`,
+`WRITEOFF_NOT_ELIGIBLE`, `WRITEOFF_SETOFF_AVAILABLE` and
+`RECOVERY_WATERFALL_ORDER` refusals, both operations' response loss before/after
+application, pending identity across reload, absent and mismatched receipts,
+role boundaries, missing/malformed/unanchored data, empty sources, draft reset,
+keyboard order and 375px/1280px widths. These are simulated service results;
+no real recovery, approval authentication or bank activity was performed.
+
+Deviations: browser commands use an isolated loopback network namespace because
+the repository's standard test port is occupied externally. The unchanged
+Playwright configuration and assertions run against installed Chromium. The
+harness also has historical/unavailable/no-source/policy-race modes so refusal
+and fail-closed paths can be tested without adding any HTTP route. No product
+scope or policy deviation, consequential decision, commit, push, PR, issue or
+external comment was made.
+
+Per-command logs are under ignored `build/recovery-posting-desk/`.
+
+Final full-suite screenshots: `test-results/recovery-posting-desk/lifecycle-375.png`
+and `test-results/recovery-posting-desk/lifecycle-1280.png` (SIMULATED, full page).
+The 375px screenshot was visually inspected, and both widths pass the browser
+horizontal-overflow and keyboard assertions. Playwright 1.58.2 uses installed
+Chromium headless-shell build 1208. Toolchain: Python 3.13.5, Node v24.22.1,
+npm 11.21.1. Verification used this uncommitted worktree based on HEAD
+`8ab3d954bd732aa80351d580d703500ebf50dcc5`.
+
+Inline Python preservation checks read `capital/vendor/manifest.json`, assert
+all five declared SHA256 values, and assert an empty `git diff HEAD` for
+`capital/vendor`, `capital/export.py`, `.aiops`, `tests/golden`,
+`tests/historical`, `docs/decisions` and `.github`: passed.
+`git diff --check`: exit 0. The final `python3 scripts/docs_surface.py --check`
+after this record is updated also exits 0 (36 routes, 273 artifacts, nine stages).
+All test-started servers were stopped; no long job is left running.
