@@ -94,6 +94,7 @@ GET_PROBES = {
 }
 # `reconcile` on the seeded offer stores one receipt and leaves the machine digest alone.
 POST_BODIES = {
+    '/api/agent/query_case': {'grant_id': '0' * 32, 'subject': {'case_id': ADVANCE, 'beneficiary_id': 'fixture-organizer'}},
     '/api/commands': {
         'instance_id': INSTANCE, 'operation_id': 'sim-mtx-reconcile', 'op': 'reconcile',
         'advance_id': ADVANCE, 'args': {},
@@ -223,6 +224,9 @@ def _cell(route, caller):
     method, permission = route['method'], route['permission']
     if permission is None:
         return 'PUBLIC', {'status': 200}
+    if route['route'] == '/api/agent/query_case':
+        outcome = 'ALLOW' if caller != NO_TOKEN and _holds(caller, permission) else 'DENY'
+        return outcome, {'status': 200, 'body': {'status': 'UNAVAILABLE', 'code': 'CASE_BRIEF_UNAVAILABLE'}}
     if method == 'POST' and caller == NO_TOKEN:
         return 'DENY', {'status': 403, 'error': 'LOCAL_TOKEN_REQUIRED'}
     if not _holds(caller, permission):
@@ -375,6 +379,8 @@ def dump(table) -> str:
 
 
 def label(expect) -> str:
+    if 'body' in expect:
+        return str(expect['status']) + ' CASE_BRIEF_UNAVAILABLE'
     return f"{expect['status']} {expect['error']}" if 'error' in expect else str(expect['status'])
 
 
@@ -417,7 +423,7 @@ def render_integration(table=None) -> str:
     lines = [
         f"Generated from `tests/auth_matrix.json` (`{table['format']}`, label `{table['label']}`, role provenance `{table['provenance']}`, identity and authentication `NOT_BOUND`). Do not edit this block by hand: `python3 scripts/auth_matrix.py --write` rewrites it, and `python3 -m unittest tests.test_auth_matrix` sends every cell below to a real loopback server and fails when the table, this block, the dispatcher or `ROUTE_PERMISSIONS` drift apart.",
         '',
-        'Each cell is the HTTP result for that caller and route. A bare `200` means the gate passed. `no-token` sends no `X-Capital-Token`: a GET is the default organizer, and every POST is `403 LOCAL_TOKEN_REQUIRED` because the loopback boundary checks the token first. A static asset (`permission` `none`) is served before authentication. Denied cells carry the permission and role in the body.',
+        'Each cell is the HTTP result for that caller and route. A bare `200` means the gate passed. `no-token` sends no `X-Capital-Token`: a GET is the default organizer, and ordinary POSTs are `403 LOCAL_TOKEN_REQUIRED` because the loopback boundary checks the token first. A static asset (`permission` `none`) is served before authentication. Ordinary denied cells carry the permission and role in the body. `query_case` always returns uniform `200 CASE_BRIEF_UNAVAILABLE` for failures; ALLOW means route eligibility only and does not confer a dedicated fixture grant.',
         '',
         '| Method | Route | Permission | ' + ' | '.join(callers) + ' |',
         '|---|---|---|' + '---|' * len(callers),
@@ -464,7 +470,7 @@ def render_handbook(table=None) -> str:
     lines = [
         f"이 블록은 `tests/auth_matrix.json`(`{table['format']}`)에서 `python3 scripts/auth_matrix.py --write`가 만든다. 손으로 고치지 않는다. 라벨은 `{table['label']}`이고 역할 출처는 `{table['provenance']}`다. 신원과 인증은 `NOT_BOUND`이며 이 표는 권한 정책이 아니라 합성 자리표시자다. `python3 -m unittest tests.test_auth_matrix`가 모든 칸을 루프백 서버에 실제로 보내 확인한다.",
         '',
-        f"`허용`은 그 역할이 권한을 가진다는 뜻이고 `거절`은 `403 ROLE_FORBIDDEN`이다. `no-token`은 `X-Capital-Token`이 없는 호출자다. GET은 기본 `{table['no_token_principal']}`로 처리돼 그 열과 같고, POST는 어느 권한이든 `403 LOCAL_TOKEN_REQUIRED`(`토큰 필요`)다. 정적 파일(`/`, `/app.js`, `/style.css`)은 인증 전에 응답해 권한이 없다.",
+        f"`허용`은 그 역할이 권한을 가진다는 뜻이고 `거절`은 `403 ROLE_FORBIDDEN`이다. `no-token`은 `X-Capital-Token`이 없는 호출자다. GET은 기본 `{table['no_token_principal']}`로 처리돼 그 열과 같고, 일반 POST는 `403 LOCAL_TOKEN_REQUIRED`(`토큰 필요`)다. `query_case` 실패는 항상 `200 CASE_BRIEF_UNAVAILABLE`이며 별도 fixture grant가 필요하다. 정적 파일(`/`, `/app.js`, `/style.css`)은 인증 전에 응답해 권한이 없다.",
         '',
         '| 권한 | ' + ' | '.join(roles) + f" | {NO_TOKEN} | 경로 |",
         '|---|' + '---|' * (len(roles) + 2),

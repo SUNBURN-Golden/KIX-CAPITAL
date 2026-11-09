@@ -172,3 +172,12 @@ F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산�
 결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
 Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
 검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
+
+
+`agent-case-brief` implements the adopted provisional disclosure policy in
+`CAPITAL_AGENT_CASE_DISCLOSURE.md`: one explicitly granted synthetic case and
+beneficiary, pinned claim/advance, three attributable facts, uniform unavailable
+result and case-scoped digest. `POST /api/agent/query_case` is a
+`CAPITAL_LOCAL_EXTENSION`, not a sixth covered upstream tool. No command
+permission, model integration or real authentication is created. Authentication
+and execution authority stay `NOT_BOUND`; production is `NOT_AUTHORIZED`.

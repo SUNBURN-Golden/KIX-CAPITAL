@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlsplit
 from capital import __version__
 from capital.limits import MAX_REQUEST_BYTES
 from capital.auth import (
-    AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
+    AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_QUERY_CASE, AGENT_WITHDRAW,
     COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES, Principal,
     SESSION_BIND, LocalRoleAuthorizer, path_matches, permission_catalog, require, route_permission,
 )
@@ -62,6 +62,7 @@ POST_DISPATCH = (
     ('/api/overlay/commands', OVERLAY_COMMAND),
     ('/api/agent/query_grant', AGENT_QUERY),
     ('/api/agent/query_subject', AGENT_QUERY_SUBJECT),
+    ('/api/agent/query_case', AGENT_QUERY_CASE),
     ('/api/agent/propose_action', AGENT_PROPOSE),
     ('/api/agent/withdraw_proposal', AGENT_WITHDRAW),
     ('/api/agent/propose_grant_change', AGENT_PROPOSE_CHANGE),
@@ -502,7 +503,36 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             finally:
                 self._observe(started, path, status, code, operation_id)
 
+        def _post_agent_case(self):
+            # No observation finally: even denial must not write metrics or events.
+            # Hold the host lock through complete serialization and response release.
+            with service.lock:
+                try:
+                    route = self.request_route()
+                    self.boundary(mutate=True)
+                    principal = self.principal()
+                    require(authorizer, principal, AGENT_QUERY_CASE)
+                    if route.scheme or route.netloc or route.query or '?' in self.path or route.fragment:
+                        raise ValueError()
+                    body = self.read_json()
+                    result = service.agent_query_case(body, role=principal.role)
+                    from capital.agent_brief import canonical
+                    data = canonical(result)
+                except Exception:
+                    from capital.agent_brief import canonical
+                    data = canonical(service.agent_brief_policy.denial())
+                self.close_connection = True
+                # Outside the exception handler: never send twice after writing starts.
+                self.reply(200, data)
+
         def do_POST(self):
+            # Recognize the local tool before the shared boundary/observability path.
+            try:
+                case_route = self.request_route().path == '/api/agent/query_case'
+            except ApiError:
+                case_route = False
+            if case_route:
+                return self._post_agent_case()
             started = time.perf_counter()
             status = 500
             code = None

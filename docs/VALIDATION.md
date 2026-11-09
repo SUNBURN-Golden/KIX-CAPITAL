@@ -4531,6 +4531,113 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## agent-case-brief — local verification (2026-11-04)
+
+Implemented provisional `SIMULATED` / `CAPITAL_LOCAL_EXTENSION` case briefs. The seven adopted disclosure entries are loaded from the unchanged decision note. The host explicitly issues ephemeral grants for one case/beneficiary and pins its claim/advance; this fixture supports only case ID = advance ID, the pinned local producer and immutable FixtureViews. Currentness and scope gates precede bounded readers. Three attributable source facts are copied without financial arithmetic, with null for unknown individual amounts and a digest over disclosed content only. HTTP checks, projection, serialization and release share the service lock with revocation/period changes. The query writes no receipts, proposals, journals, balances, grants, clocks, metrics, events or workspace bytes.
+
+This is local simulation evidence, with no upstream semantic conformance, real authentication, execution authority, provider calls, credentials, money or production deployment. The pinned five-tool definitions and existing claim rows remain unchanged.
+
+Actual verification and generation commands are listed below. Repeated executions are combined; the last outcome is shown with earlier failures retained. The acceptance command runs the full unit discovery and all nine existing local stages. No checks or assertions were disabled.
+
+| Command | Last result / earlier attempts |
+|---|---|
+| `python3 -m unittest tests.test_agent_brief tests.test_agent_brief_http -v` | PASS (15 tests) |
+| `python3 -m unittest tests.test_auth tests.test_auth_matrix tests.test_facade_contract tests.test_decision_bindings tests.test_release -v` | PASS (100 tests) |
+| `npm ci --offline` | PASS (exit 0) |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | PASS (7 tests) |
+| `python3 scripts/agent_claims_check.py --execute` | PASS (CLAIM_CONFORMANCE passed=94 total=94 failed=0) |
+| `python3 scripts/auth_matrix.py --check` | PASS (exit 0) |
+| `python3 scripts/decision_bindings.py --check` | PASS (exit 0) |
+| `python3 scripts/docs_surface.py --check` | PASS (exit 0) |
+| `python3 scripts/finance_vectors.py --check` | PASS (exit 0) |
+| `python3 scripts/pack_vectors.py --check` | PASS (exit 0) |
+| `python3 -m compileall -q capital` | PASS (exit 0) |
+| `node --check capital/static/app.js` | PASS (exit 0) |
+| `npm run test:browser` | FAIL (exit 1) |
+| `python3 scripts/auth_matrix.py --write` | PASS (exit 0) |
+| `python3 scripts/pack_vectors.py --write` | PASS (exit 0) |
+| `npm run test:browser -- --config /tmp/kix-case-playwright.config.cjs` | PASS (76 browser tests); earlier failures: 1 |
+| `python3 -m unittest discover -s tests -v` | PASS (1344 tests); earlier failures: 1 |
+| `python3 -m unittest tests.test_agent_brief tests.test_agent_brief_http tests.test_coa_candidate tests.test_handbook -v` | FAIL (exit 1) |
+| `PYTHONPATH=tests python3 -m unittest tests.test_agent_brief tests.test_agent_brief_http tests.test_coa_candidate tests.test_handbook -v` | PASS (62 tests) |
+| `npm run test:browser -- --config /tmp/kix-case-playwright.config.cjs --project workspace tests/browser/portfolio.spec.cjs` | FAIL (exit 1) |
+| `npm run test:browser -- tests/browser/portfolio.spec.cjs --config /tmp/kix-case-playwright.config.cjs --project=workspace` | PASS (6 browser tests) |
+| `PATH=/tmp/kix-case-bin:$PATH python3 scripts/acceptance.py` | PASS (exit 0); earlier failures: 1 |
+| `python3 scripts/build_release.py --out /tmp/kix-case-dist` | PASS (exit 0) |
+| `python3 scripts/build_release.py --out /tmp/kix-case-dist2` | PASS (exit 0) |
+| `cmp /tmp/kix-case-dist/capital-*.pyz /tmp/kix-case-dist2/capital-*.pyz` | PASS (exit 0) |
+| `python3 scripts/smoke_release.py /tmp/kix-case-dist/capital-*.pyz` | PASS (exit 0) |
+| `git diff --check` | PASS (exit 0) |
+| `python3 scripts/finance_vectors.py --write` | PASS (exit 0) |
+
+Final acceptance stages (the full unit discovery command above was rerun inside this ladder):
+
+| Stage | Result |
+|---|---|
+| unit | passed; passed=1344, failed=0 |
+| storage-conformance | passed; passed=19, failed=0 |
+| pinned-vendor | passed; passed=7, failed=0 |
+| upstream-claims | passed; passed=322, failed=0 |
+| node-check | passed |
+| browser | passed; passed=76, failed=0 |
+| packaged-smoke | passed; passed=11, failed=0 |
+| seeded-demo | passed; passed=1, failed=0 |
+| integrated-journeys | passed; passed=6, failed=0 |
+
+**Initial failures and corrections:**
+
+- The first focused run had 14 setup errors: generated operation IDs contained underscores. The next run had two failures because the pinned FSM rejects offers against open refunds. Operation IDs now use hyphens; the positive bearer example is an honestly synthetic projector fixture, and the unchanged built-in buyer refund is checked directly at the projector boundary. The focused suite ultimately passed 15 tests.
+- Finance/pack checks initially reported expected drift after schema, permission and binding changes. Existing artifacts were regenerated with their generators; no vector files were added.
+- The first full discovery ran 1,343 tests with three failures: the live decision-note byte guard, a stale six-route handbook assertion, and the fold checker detecting a source edit made during that run. The decision note was restored byte-for-byte, the assertion now requires all seven routes, and the complete suite was rerun without source edits (1,344 tests passed). The extra test covers corrupt generation counters.
+- A direct focused import of test_coa_candidate failed because its existing sibling imports require the tests directory on sys.path. Repeating that focused command with PYTHONPATH=tests passed 62 tests; normal full discovery already supplies that path.
+- The original browser command could not bind existing ports 8765/8766. Unrelated processes were left alone. A temporary config preserved all 76 tests/assertions and changed only server/baseURL ports to 18765–18768 (plus absolute config path resolution). The first full adapted run passed 72 and failed four portfolio tests; all six portfolio tests then passed on fresh fixtures, and the complete adapted browser suite passed 76. One focused Playwright invocation also failed because the variadic --project argument consumed the filename; the recorded corrected invocation passed.
+- The first extra acceptance-ladder run passed eight stages, including all 1,344 unit tests, but its temporary npm wrapper pointed to /usr/bin/npm. The wrapper was corrected to /usr/local/bin/npm and the complete ladder was rerun. The final artifact is build/acceptance-evidence.json (ignored build output).
+
+**Plan deviations:**
+
+- The planned stale-prose edit to CAPITAL_AGENT_CASE_DISCLOSURE.md was omitted because tests/test_coa_candidate.py live-byte-guards all reviewed decision notes against origin/main. That guard was preserved. Actual implementation status is recorded here and in INTEGRATION.md; the seven machine binding rows are now CONSUMED.
+- Browser verification used the temporary port-only config and npm wrapper described above. Cached headless Chromium was available; npm dependencies were installed offline. No repository CI or Playwright configuration was changed.
+- No product-policy deviation or consequential undecided choice was required.
+
+**Files changed:**
+
+- `README.md`
+- `capital/agent_brief.py`
+- `capital/agent_lane.py`
+- `capital/auth.py`
+- `capital/contract/facade-v1.json`
+- `capital/server.py`
+- `capital/service.py`
+- `docs/CAPITAL_REQUIREMENTS_KO.md`
+- `docs/INTEGRATION.md`
+- `docs/OPERATOR_HANDBOOK_KO.md`
+- `docs/VALIDATION.md`
+- `scripts/auth_matrix.py`
+- `scripts/docs_surface.py`
+- `tests/auth_matrix.json`
+- `tests/decision_bindings.json`
+- `tests/facade_schema.py`
+- `tests/test_agent_brief.py`
+- `tests/test_agent_brief_http.py`
+- `tests/test_auth.py`
+- `tests/test_auth_matrix.py`
+- `tests/test_decision_bindings.py`
+- `tests/test_facade_contract.py`
+- `tests/test_finance_vectors.py`
+- `tests/test_handbook.py`
+- `tests/test_release.py`
+- `tests/vectors/finance_vectors.json`
+- `tests/vectors/pack/clean.json`
+- `tests/vectors/pack/content-digest.json`
+- `tests/vectors/pack/section-auth_matrix.json`
+- `tests/vectors/pack/section-decisions.json`
+- `tests/vectors/pack/section-export_manifest.json`
+- `tests/vectors/pack/section-reconciliation.json`
+- `tests/vectors/pack/section-workspace_audit.json`
+- `tests/vectors/pack/truncated.json`
+- `tests/vectors/pack/volatile.json`
+
+Vendored files/manifest, legacy export construction, reviewed decision notes, .aiops/, Protocol and Commerce references are unchanged. No git commit, push, PR, issue or external comment was made.
 ## observation-triage-cli
 
 Implemented offline SIMULATED observation diagnostics with a bounded stdlib API/CLI,
@@ -4870,3 +4977,61 @@ deployment or Protocol/Commerce modification occurred. No CI, test or assertion
 was weakened. The only initial verification issue was the focused-test invocation
 recorded above; the documented discovery command and both complete discovery runs
 pass without changing the test.
+
+## agent-case-brief — conflict-fix round 1 (2026-11-09)
+
+Resolved the supervisor-started merge of main `5405d9ed870e563e7e2aca8f4b65f7b037db0474`
+into node HEAD `637e0e4227cd3763d9fdfe1f794800c5baec4994`. Both validation
+histories are retained. The existing finance and pack generators regenerated the
+conflicted artifacts from the combined tree, retaining case-brief schema/auth
+changes alongside main's decisions, observation triage, portfolio migrations,
+event stress and upstream repin checks. No implementation or test weakening was
+needed. The adopted disclosure decision remains unchanged.
+
+Resolved paths: `docs/VALIDATION.md`, `tests/vectors/finance_vectors.json`, and
+`tests/vectors/pack/{clean,content-digest,section-auth_matrix,section-decisions,section-export_manifest,section-reconciliation,section-workspace_audit,truncated,volatile}.json`.
+The covered unit count and packaged bytes changed, so the closeout digest was
+also regenerated under `CAPITAL-CLOSEOUT-REGEN-V1`, exclusively from passing
+acceptance evidence; the finance generator then embedded it. No generated
+artifact was hand-edited.
+
+Verification is local SIMULATED / READ_ONLY_FIXTURE evidence, not upstream
+semantic conformance or real authentication. Execution authority stays NOT_BOUND;
+production stays NOT_AUTHORIZED. Python 3.13.5, Node v24.22.1, npm 11.21.1 and
+cached headless Chromium 145.0.7632.6 were available. Acceptance used
+`unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'`
+so the unchanged browser configuration could bind its loopback ports in an
+isolated network namespace. No test, command, stage or timeout was changed.
+
+| Command / evidence | Measured result |
+| --- | --- |
+| `python3 -m unittest tests.test_agent_brief tests.test_agent_brief_http tests.test_auth_matrix tests.test_facade_contract -v` (isolated loopback) | PASS: 60 tests, including currentness-before-access, uniform denials, revocation/release serialization, non-mutation and unrelated-case digest invariance. |
+| `python3 -m unittest discover -s tests -v` (inside first acceptance run) | PASS: 1,432 tests, zero failures. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` (inside first acceptance run) | PASS: seven tests. |
+| `npm run test:browser` (inside first acceptance run) | PASS: all 76 Chromium tests. |
+| `python3 scripts/acceptance.py` (first run, isolated loopback) | PASS: all nine stages; 1,432 unit, 19 storage, seven vendor, 322 passing claims with two documented divergences / 324 evaluated, 76 browser, 11 packaged-smoke, one seeded-demo and six journey checks; node syntax passed. `ok:true`, SIMULATED, `funds_executed:false`. |
+| `python3 scripts/closeout_digest.py --write`; `python3 scripts/finance_vectors.py --write` | PASS: generated from the clean first run, then structurally and byte checked. |
+| `python3 scripts/acceptance.py` (second run, isolated loopback) | PASS: all nine stages again, with the same covered counts and zero failures. Raw passing evidence preserved as `build/agent-case-brief-merge/acceptance-second.json`. |
+| `python3 scripts/closeout_digest.py --check-evidence` | PASS: the regenerated 4,582-byte digest exactly matches fresh second-run evidence. Independent projection of the first and second evidence also produced identical bytes. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | PASS: closeout embedded copy, all 101,112 finance bytes and all nine pack fixtures reproduce. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check`; `python3 scripts/decision_bindings.py --check` | PASS: 37 routes, 276 artifacts and nine stages; local permission/catalogue surface and declared binding references are consistent. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | PASS: exit 0. |
+| Protected-byte/SHA256 comparison; tracked-file conflict-marker scan; `git diff --check`; `git diff --cached --check`; `git ls-files -u` | PASS: pins and protected bytes unchanged, no markers, no whitespace errors, no unmerged entries. |
+
+Evidence and logs are ignored local outputs under `build/agent-case-brief-merge/`.
+All 20 files added on main and nine checked case-brief implementation/test files
+were verified byte-identical to their originating side. The five vendored
+reference files match all SHA256 pins; those files, the manifest, legacy export
+and historical root DECISION_REQUIRED.md remain byte-identical to node HEAD.
+No .aiops/, Protocol or Commerce changes, external posts, provider calls, real
+funds, secrets or deployment were made. No merge abort, commit, push, rebase or
+reset was performed; the supervisor owns the merge commit.
+
+Closeout SHA256: `90d57d7ea9c490de69a3086a555d3bc28223158c2667dee04416e3a5e7fe8c83`.
+Finance-vector SHA256: `66ad233d17971b2de9b6a18f41d71170733b900d7433f9430f273d3f04a90719`.
+A supplemental comparison helper initially passed a Path where the generator
+expects parsed evidence; repeating with parsed JSON verified exact first/second
+run equality. No repository check failed and no repository correction was needed.
+The resolved merge is staged and left uncommitted for the supervisor.
+
+STATUS: READY

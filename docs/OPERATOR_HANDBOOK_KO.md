@@ -71,12 +71,12 @@ python3 -m capital.server --workspace ./var/capital-workspace
 
 | 역할 | 쓰는 일 | 읽지 못하는 것 |
 |---|---|---|
-| organizer | 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
+| organizer | 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 명령과 민감 조회. 자기 명령에 `proposal_id`를 인용하면 receipt에 표시. 시뮬레이션 시계 전진과 상환 기장 명령(`POST /api/overlay/commands`의 `advance_day`·`post_repayment`, 권한 `overlay:command`, organizer 전용) | agent 레인 전체 (`POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/query_case`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`, `POST /api/agent/execute`) |
 | auditor | 없음. 사례 문서(`GET /api/cases/{advance_id}/dossier`) 조회·다운로드. 읽기 경로는 모두 읽음: state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·export·투영·대사·명세서·evidence·preview·심사 기록(`GET /api/underwrite/…`)·`GET /api/metrics`·`GET /api/health`. 조건 오버레이(`/api/terms*`)와 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`)도 읽음 | 명령, agent 레인 |
 | observer | 없음. state·receipt·참조(`GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions`)·`GET /api/health`를 읽음 | 명령, `GET /api/metrics`, export, 투영, 대사, 명세서, evidence, preview, 심사 기록(`GET /api/underwrite/…`), 조건 오버레이(`/api/terms*`), 오버레이 장부(`GET /api/overlay`), 정책 시뮬레이터(`/api/policy*`), agent 레인 |
-| agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
+| agent | `POST /api/agent/query_grant`, `POST /api/agent/query_subject`, `POST /api/agent/query_case`, `POST /api/agent/propose_action`, `POST /api/agent/withdraw_proposal`, `POST /api/agent/propose_grant_change`. 제안은 `HUMAN_PENDING`이고 `effects_executed`는 false. `POST /api/agent/execute`는 항상 `403 EXECUTE_AUTHORITY_DISABLED` | 모든 GET 경로 (`403 ROLE_FORBIDDEN`; state·참조·receipt·export·투영·대사·명세서·metrics·health 읽기 모두 거절), 모든 `command:*`, `session:bind` |
 
-거절 코드는 `403 ROLE_FORBIDDEN`이다. 거절된 명령은 operation 수와 저널을 바꾸지 않는다. 실제 IdP·AgentGrant/ActionPermit은 `NOT_BOUND`다. `agent` 레인은 그 계약을 대신하지 않는 `SIMULATED` 픽스처다. 제안 등록부는 프로세스 메모리이고 workspace payload에 넣지 않는다.
+일반 역할 거절 코드는 `403 ROLE_FORBIDDEN`이다. `query_case` 실패는 HTTP 200 unavailable로 통일한다. 거절된 명령은 operation 수와 저널을 바꾸지 않는다. 실제 IdP·AgentGrant/ActionPermit은 `NOT_BOUND`다. `agent` 레인은 그 계약을 대신하지 않는 `SIMULATED` 픽스처다. 제안 등록부는 프로세스 메모리이고 workspace payload에 넣지 않는다.
 
 ## 증거와 `acceptance.py`
 
@@ -230,7 +230,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 <!-- generated:auth-matrix begin -->
 이 블록은 `tests/auth_matrix.json`(`KIX_CAPITAL_AUTH_MATRIX_V1`)에서 `python3 scripts/auth_matrix.py --write`가 만든다. 손으로 고치지 않는다. 라벨은 `SIMULATED`이고 역할 출처는 `SYNTHETIC_LOCAL_ROLE`다. 신원과 인증은 `NOT_BOUND`이며 이 표는 권한 정책이 아니라 합성 자리표시자다. `python3 -m unittest tests.test_auth_matrix`가 모든 칸을 루프백 서버에 실제로 보내 확인한다.
 
-`허용`은 그 역할이 권한을 가진다는 뜻이고 `거절`은 `403 ROLE_FORBIDDEN`이다. `no-token`은 `X-Capital-Token`이 없는 호출자다. GET은 기본 `organizer`로 처리돼 그 열과 같고, POST는 어느 권한이든 `403 LOCAL_TOKEN_REQUIRED`(`토큰 필요`)다. 정적 파일(`/`, `/app.js`, `/style.css`)은 인증 전에 응답해 권한이 없다.
+`허용`은 그 역할이 권한을 가진다는 뜻이고 `거절`은 `403 ROLE_FORBIDDEN`이다. `no-token`은 `X-Capital-Token`이 없는 호출자다. GET은 기본 `organizer`로 처리돼 그 열과 같고, 일반 POST는 `403 LOCAL_TOKEN_REQUIRED`(`토큰 필요`)다. `query_case` 실패는 항상 `200 CASE_BRIEF_UNAVAILABLE`이며 별도 fixture grant가 필요하다. 정적 파일(`/`, `/app.js`, `/style.css`)은 인증 전에 응답해 권한이 없다.
 
 | 권한 | organizer | auditor | observer | agent | no-token | 경로 |
 |---|---|---|---|---|---|---|
@@ -258,6 +258,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `overlay:command` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/overlay/commands` |
 | `agent:query_grant` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/query_grant` |
 | `agent:query_subject` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/query_subject` |
+| `agent:query_case` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/query_case` |
 | `agent:propose_action` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/propose_action`, `POST /api/agent/execute` |
 | `agent:withdraw_proposal` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/withdraw_proposal` |
 | `agent:propose_grant_change` | 거절 | 거절 | 거절 | 허용 | 토큰 필요 | `POST /api/agent/propose_grant_change` |
@@ -886,3 +887,15 @@ saved_at/saved_by_instance는 그대로 남긴다.
 않는다. 새 영속 포맷·명세서 재분류·외부 호출·HTTP/UI 변경도 없다.
 
 <!-- /handbook-section -->
+
+
+`POST /api/agent/query_case`는 잠정 `SIMULATED` 사례 요약이다.
+`agent:query_case`와 호스트가 명시 발급한 단일 수익자·사례 fixture grant가
+모두 필요하다. 호스트 Python 설정 외 발급·폐기 HTTP 경로는 없다.
+case_id는 이 fixture에서 advance_id와 같다. grant는 메모리에만 있고
+한 logical_period 동안 유효하다. sim_day와 별개이며 재시작 때 복구하지 않는다.
+폐기·기간 변경·응답 쓰기는 같은 잠금으로 직렬화한다. 실패는 경계·권한·파싱
+실패를 포함해 모두 HTTP 200 `CASE_BRIEF_UNAVAILABLE`이다. 개별 금액 미확정은
+null이고 0으로 해석하면 안 된다. 전체 dossier·영수증·원장·다른 사례를 보내지
+않고 관측 이벤트도 쓰지 않는다. `CAPITAL_LOCAL_EXTENSION`으로 upstream
+다섯 도구 클레임 범위를 늘리지 않는다. 실인증·실행 권한은 `NOT_BOUND`다.
