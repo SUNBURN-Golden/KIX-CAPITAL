@@ -54,7 +54,8 @@ def _other_claim_total():
     from capital.ce1_claims import load_table as ce1
     from capital.adapter_identity_claims import load_table as identity
     from capital.lifecycle_claims import load_table as lifecycle
-    return sum(len(load()['claims']) for load in (ce1, identity, lifecycle))
+    from capital.readiness_claims import load_table as readiness
+    return sum(len(load()['claims']) for load in (ce1, identity, lifecycle, readiness))
 
 
 def _acceptance():
@@ -425,6 +426,12 @@ class AcceptanceStageTests(unittest.TestCase):
         acceptance = _acceptance()
         plan = [s for s in acceptance.build_plan(ROOT, protocol_dir) if s['id'] == 'upstream-claims']
         self.assertEqual(len(plan), 1)
+        commands = plan[0]['commands']
+        self.assertEqual(commands[3][1:], ['scripts/ce1_claims_check.py', '--execute'])
+        self.assertEqual(commands[4][1:], ['scripts/adapter_identity_claims_check.py', '--execute'])
+        self.assertEqual(commands[5][1:], ['scripts/lifecycle_claims_check.py', '--execute'])
+        self.assertEqual(commands[6][1:], ['scripts/readiness_claims_check.py', '--execute'])
+        self.assertEqual(len(commands), 7)
         return acceptance, plan
 
     def run_stage(self, acceptance, plan):
@@ -448,9 +455,11 @@ class AcceptanceStageTests(unittest.TestCase):
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['skipped'], ['scripts/read_model_claims_check.py'])
-        self.assertEqual([c['skipped'] for c in stage['commands']], [False, False, True, False, False, False])
+        self.assertEqual([c['skipped'] for c in stage['commands']], [False, False, True, False, False, False, False])
         total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total()
-        self.assertEqual((stage['passed'], stage['total']), (total, total))
+        self.assertEqual((stage['passed'], stage['total']), (total - 2, total))
+        self.assertEqual(stage['documented_divergences'], 2)
+        self.assertEqual(stage['test_count']['failed'], 0)
         self.assertTrue(stage['commands'][2]['output_tail'].startswith('SKIPPED'))
         self.assertIsNone(stage['commands'][2]['test_count'])
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
@@ -469,7 +478,9 @@ class AcceptanceStageTests(unittest.TestCase):
         stage = data['stages'][0]
         self.assertEqual(stage['skipped'], [])
         total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total() + len(table['claims'])
-        self.assertEqual((stage['passed'], stage['total']), (total, total))
+        self.assertEqual((stage['passed'], stage['total']), (total - 2, total))
+        self.assertEqual(stage['documented_divergences'], 2)
+        self.assertEqual(stage['test_count']['failed'], 0)
 
     def test_a_failing_row_fails_the_stage(self):
         table = copy.deepcopy(load_table())

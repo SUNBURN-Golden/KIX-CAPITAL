@@ -21,6 +21,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from capital.server import make_server
 
@@ -200,7 +201,11 @@ class ShapeTests(unittest.TestCase):
 class ReplayTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = make_server(0)
+        # URL-safe tokens can contain double underscores, even text matching
+        # recipe sentinels. Keep this case deterministic in every corpus replay.
+        with mock.patch('capital.server.secrets.token_urlsafe',
+                        return_value='SIMULATED__PORT____TOKEN__hostile-test-token'):
+            cls.server = make_server(0)
         cls.port = cls.server.server_port
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
@@ -241,8 +246,10 @@ class ReplayTests(unittest.TestCase):
                     (expect['status'], expect['code']), EXPECTED[name])
                 request = base64.b64decode(recipe['request_b64'])
                 request = request.replace(b'__PORT__', str(self.port).encode())
+                # Check the template before inserting opaque token bytes: '__'
+                # is valid token data, not evidence of a leftover placeholder.
+                self.assertNotIn(b'__', request.replace(b'__TOKEN__', b''))
                 request = request.replace(b'__TOKEN__', self.token.encode())
-                self.assertNotIn(b'__', request)
                 raw = conformance._exchange(self.port, request)
                 self._assert_clean(raw)
                 status, content_type, body = _split(raw)

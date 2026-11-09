@@ -61,6 +61,7 @@ OFFER_OPERATION = 'sim-mtx-offer'
 DRAWN_ADVANCE = 'sim-mtx-drawn'
 DRAWN_FIXTURE = 'sim-committed'
 GET_PROBES = {
+    '/api/cases/': [f'/api/cases/{ADVANCE}/dossier?instance_id={INSTANCE}'],
     '/api/state': ['/api/state'],
     '/api/permissions': ['/api/permissions'],
     '/api/scenarios': ['/api/scenarios', '/api/scenarios/full-after'],

@@ -7,6 +7,7 @@ and retention enforcement stay NOT_BOUND, and no DEV_ONLY key or token is ever
 copied into the pack.
 """
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -356,6 +357,16 @@ class PackVectorTests(unittest.TestCase):
         golden = json.loads(GOLDEN.read_text(encoding='utf-8'))
         self.assertEqual(embedded['content_digest'], golden['content_digest'])
         self.assertEqual(embedded['signature']['status'], 'NOT_BOUND')
+
+    def test_pack_decision_provenance_hashes_the_actual_notes(self):
+        pack = json.loads((PACKS / 'clean.json').read_bytes())
+        decisions = pack['sections']['decisions']['body']['document']
+        self.assertEqual(decisions['notes_source'], 'CHECKOUT')
+        anchor = ROOT / 'docs' / 'decisions' / 'CAPITAL_FINANCIAL_TERMS.md'
+        self.assertEqual(decisions['note_sha256'], hashlib.sha256(anchor.read_bytes()).hexdigest())
+        for row in decisions['rows']:
+            self.assertEqual(row['notes_source'], 'CHECKOUT')
+            self.assertEqual(row['note_sha256'], hashlib.sha256((ROOT / row['note']).read_bytes()).hexdigest())
 
 
 class PackRegenerationTests(unittest.TestCase):

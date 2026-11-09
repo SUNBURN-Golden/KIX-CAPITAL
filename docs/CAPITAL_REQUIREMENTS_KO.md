@@ -9,11 +9,65 @@ adoption of production identity, aliasing, authenticated queries, or wire layout
 
 2026-10-18. Capital 구현 기준 main `f1c5651b40bf9a15077a37a9769276dc28b8e1a1`.
 실행·참조 소비자가 고정하는 Protocol 기준은 셋이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. (3) **`e2313ab473ea1b5a7b5b9246a564749188c1c2c8`**: STATE_LIFECYCLE.md LC-TERM/LC-FACT/LC-CUT 인용 핀(`tests/lifecycle_claims.json`); FSM vendor 핀과 별개다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
-위 고정은 나열한 실행·참조 소비자에만 묶는다. (1)은 FSM 원본·vendor 바이트와 그 FSM·읽기 모델 클레임 표(`tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`)의 인용에, (2)는 AI 위임 초안 인용과 `tests/agent_claims.json`에, (3)은 수명 계약 인용과 `tests/lifecycle_claims.json`에 적용된다. `docs/decisions/`의 각 결정 노트는 `기준`·`bases` 칸에 그 노트 작성 시점의 역사적 연구 체크아웃을 따로 기록한다(예: [CAPITAL_CLAIM_SLICE_REGISTRY.md](decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md)의 kix-protocol `9eb6b9f`). 그 값은 노트의 출처 증명이며 실행·참조 구속이 아니므로 위 고정의 범위 밖이다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
+위 고정은 나열한 실행·참조 소비자에만 묶는다. (1)은 FSM 원본·vendor 바이트와 그 FSM·읽기 모델 클레임 표(`tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`, `tests/ce1_claims.json`, `tests/contract_invariants.json`)의 인용에, (2)는 AI 위임 초안 인용과 `tests/agent_claims.json`에, (3)은 수명 계약 인용과 `tests/lifecycle_claims.json`에 적용된다. `docs/decisions/`의 각 결정 노트는 `기준`·`bases` 칸에 그 노트 작성 시점의 역사적 연구 체크아웃을 따로 기록한다(예: [CAPITAL_CLAIM_SLICE_REGISTRY.md](decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md)의 kix-protocol `9eb6b9f`). 그 값은 노트의 출처 증명이며 실행·참조 구속이 아니므로 위 고정의 범위 밖이다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
+
+`tests/contract_invariants.json` is a declared, unregistered EXECUTABLE_CITATION consumer of (1), §3 INV-1..INV-5 prose only. `CLAIM_CONFORMANCE` / `SIMULATED`; kernel execution and vendor additions are false. Follow-up `upstream-repin-inventory-contract-invariants` registers binding-note §3.2 bound_tables, §3.6 default impact list and the decision_bindings test_module record; current status `PENDING_NOTE_REGISTRATION`.
 
 DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement 실험입니다.
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
+
+## portfolio-aging-migrations
+
+`capital/portfolio_migrations.py` / `tests/test_portfolio_migrations.py`:
+`python3 -m capital.portfolio_migrations --before SNAPSHOT_A --after SNAPSHOT_B`는
+기존 `portfolio_compare.compare_workspaces()`를 유일한 호환성 게이트로 한 번
+호출한다. 기존 비교 출력은 변경하지 않고 별도 결정적
+`KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1` 보고서를 추가한다. 포트폴리오 및 합성
+beneficiary_role별 연체/워치 상태 전이 행렬에 인출 건수, 전후 원금, 양수 원금
+건수를 담는다. 행·열·전체 합계는 양 끝점 및 수익자별 합계와 대사한다.
+
+전체 인출을 포함하므로 종결·원금 0도 존재하는 행이다. `ABSENT_BEFORE`와
+`ABSENT_AFTER`는 끝점 부재이며 상환을 의미하지 않는다. 시계만 변경한 연체,
+부분 원금 감소, default, 종결, 신규 인출을 수기 기대값으로 검증한다.
+손상·비호환 입력은 집계하지 않고 `NON_COMPARABLE`, `matrices: null`을 반환한다.
+대사 실패도 행렬을 숨긴다. 테스트는 입력 바이트·모드·이름 불변, 쓰기·잠금 없음,
+호환성 위임, 결정성, 종료 코드 및 수익자별 합산을 검증한다.
+
+결과는 `SIMULATED` 관측 전이이며 historical_policy_provenance/authentication/
+common_ownership/actual_payments는 계속 `NOT_BOUND`다. 전이 확률·신용 점수·인과
+추론·이력 DB·예측 변경·portfolio-cashflow-desk·HTTP/UI는 범위 밖이다.
+운영 준비도 주장은 변경하지 않는다. 계약은 `docs/INTEGRATION.md`, 실제 실행
+결과는 `docs/VALIDATION.md`를 참조한다.
+
+## portfolio-history-comparison
+
+`capital/portfolio_compare.py` / `tests/test_portfolio_compare.py`:
+`python3 -m capital.portfolio_compare --before SNAPSHOT_A --after SNAPSHOT_B`는
+명시한 두 디렉터리의 `workspace.json`을 각각 한 번 읽고 같은 바이트로 오프라인
+감사·메모리 복원을 수행한다. 기존 risk/covenant 계산을 재실행하여 advance별·합성
+beneficiary_role별 노출, 만기/연체, 준비금 요구량, watch 상태·사유의 관측 차이를
+결정적 `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1` JSON으로 출력한다. 입력 해시와
+순서가 고정된 비교 가능성 사유, 합계·증감 대사를 포함하며 입력 트리에 쓰거나
+잠금을 잡지 않는다. 결과는 `SIMULATED`다.
+
+필수 정책 6개(`interest_rate`, `term`, `default_loss_treatment`, `reserve`,
+`additional_margin`, `underwriting_depth`)가 모두 존재하고 사용 가능한 ADOPTED여야
+한다. 빈 장부나 BOUND 표시만으로 완전성을 대신하지 않는다.
+실제 임시 결정 노트를 읽는 회귀 테스트도 빈 장부·인출 장부 양쪽에서 필수 항목별
+검증 실패를 확인한다. 해시가 같아도 사용 불가 정책은 비교할 수 없다. 적용 대상 tier의
+margin cure/rate/payee 입력도 필요하다. fixture/policy 입력 해시 및 fixture
+profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix 호환,
+기존 advance 매핑·draw gate 안정성, 기록된 terms binding 호환을 요구한다.
+추가 overlay는 이전 F04 journal 끝 이후에만 위치해야 한다. 불일치 시
+`NON_COMPARABLE`, `changes: null`(exit 1), 성공 exit 0, 인수 오류 exit 2다.
+
+차이는 after-before이며 준비금은 advance별 기존 정수 내림 계산이다. 실제 지급,
+인과관계, 파일의 인증된 공통 소유권은 추론하지 않는다. 비교 시점 로컬 정책을
+사용하므로 historical_policy_provenance/authentication/common_ownership/actual_payments는
+`NOT_BOUND`다. reserve funding/coverage도 `NOT_BOUND`이며 준비금을 기장하지 않는다.
+자동 수집·import·예측·what-if·영속 이력 DB·새 회계정책은 범위 밖이다.
+계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
 
 ## 권위와 전체 범위
 
@@ -54,7 +108,7 @@ CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입
 | CAP-13 | 복식 금융 투영 | 로컬 후보 복식 투영 · `SYNTHETIC_UNADOPTED` 표기 · 운영 원장 `NOT_BOUND` | SIMULATED(로컬 후보); fin-ledger-contract·stage5/6 선행 유지, 계정/수익인식/세무 미정; 추가형 `CAPITAL-COA-V1` 후보(`mode=coa-candidate`, `SIMULATION_FIXED_V2`)도 `SYNTHETIC_UNADOPTED` |
 | CAP-14 | 원관측·대사 예외 | 로컬 대사 예외: receipt↔저널 키, 거절 receipt의 저널 부재, 재생 digest, 제안↔fixture, 투영↔조회, fixtures digest. 오버레이가 비어 있지 않을 때만 조건부 검사 `overlay_fold_digest_equals_persisted`(오버레이 fold digest가 저장된 digest와 같은지)가 붙는다. `GET /api/reconciliation?mode=coa-candidate`에서만 `coa_candidate_totals_vs_v1`(후보 투영 합계가 V1과 같은지)과 `interest_ledger_vs_projection`(후보 이자 기장이 오버레이 fold와 같은지) 두 검사가 더 붙고, 기본 검사 여섯 개(`CHECK_IDS`)는 그대로다. 없는 receipt는 UNKNOWN_UNRESOLVED이며 재시도·해소하지 않음 | SIMULATED(로컬 후보); 로컬 진단만; 은행·PG·제공자 관측, source cut, 제공자 인증 완전성은 NOT_BOUND |
 | CAP-15 | 인증 export·일관 source cut | v1 journal JSON은 그대로 두고, 오버레이가 비어 있으면 `KIX_CAPITAL_EXPORT_MANIFEST_V2`(`tests/golden/demo.json`과 바이트 동일)가 journal·receipts·projection·reconciliation·statement·fixtures·source pin 일곱 섹션을 각각 canonical JSON sha256으로 묶고, 오버레이가 비어 있지 않으면 `KIX_CAPITAL_EXPORT_MANIFEST_V3`가 그 일곱 섹션에 `overlay` 섹션을 더한다. 오프라인 verifier는 V2와 V3를 모두 받고, 포맷과 섹션 집합이 어긋나면(`overlay` 없는 V3, `overlay` 있는 V2) `SECTION_SET`으로 거절한다. content_digest는 instance_id와 시각을 제외한다. cursor·watermark·source_cut은 null이며 NOT_BOUND. SignaturePort의 기본 서명은 NOT_BOUND이고, 옵트인 Dev HMAC은 DEV_ONLY·무결성만이다. 오프라인 verifier가 섹션 해시·digest·서명을 다시 계산한다 | SIMULATED(로컬 후보); 로컬 진단만. stage7 인증 export가 아니다. 외부 키·교차 서비스 cursor·watermark·보존 기간 값은 없다. retention_policy는 다섯 이름 있는 빈 칸(칸마다 owner·status)이다. SignaturePort가 이후 인증을 붙이는 채택 경계다 |
-| CAP-16 | SDK·API 적합성 | 로컬 계약 `capital-local-facade/1` (`capital/contract/facade-v1.json`)와 ProducerPort 양성·음성 vectors. strict 로컬 envelope와 vendor byte hash. 이 vectors는 SEMANTIC_CONFORMANCE가 아니다 | NOT_BOUND(로컬 후보); 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple. 로컬 facade 계약이 그 tuple을 대체하지 않는다 |
+| CAP-16 | SDK·API 적합성 | 로컬 계약 `capital-local-facade/1` (`capital/contract/facade-v1.json`)와 ProducerPort 양성·음성 vectors. strict 로컬 envelope와 vendor byte hash. 이 vectors는 SEMANTIC_CONFORMANCE가 아니다. 합성 `kix-compat-manifest/1` 번들 사전점검 리허설(`capital/compat_preflight.py`, `tests/vectors/compat/` READ_ONLY_FIXTURE)은 expected tuple과의 바이트 일치만 검사하고 `semantic_consumption` `HOLD`·`adoption` `NOT_BOUND`를 유지한다 | NOT_BOUND(로컬 후보); 확대 OpenAPI/SDK/SEMANTIC_CONFORMANCE exact tuple. 로컬 facade 계약이 그 tuple을 대체하지 않는다 |
 | CAP-17 | 공개/비공개·권리 규모 | 외부 의존성과 관람권 비권위 표시 | NOT_BOUND: RS-0~5, privacy/currentness, 1024/16384/65536 규모 검증 없음 |
 | CAP-18 | 선택적 토큰 담보·보상 | 향후 연동 설명, 외부 호출·발행 코드 없음 | NOT_AUTHORIZED: TL 계약·coin lock/user 결정; KRW 목을 토큰 한도로 확장 안 함 |
 | CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer/agent)을 서버가 강제하고 receipt에 표시. agent는 SIMULATED QUERY/PROPOSE 픽스처만 호출하고 제안은 HUMAN_PENDING이며 effects_executed는 false. 계정·비밀번호·개인정보 없음. `tests/agent_claims.json`과 `scripts/agent_claims_check.py`가 초안 `e2a029d`의 클레임을 이 SIMULATED agent lane에 대조한다(`CLAIM_CONFORMANCE`; 결과는 SIMULATED이고, upstream 인용 드리프트 검사는 프로토콜 체크아웃 없이는 `SKIPPED`이며 통과가 아니다) | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리. SIMULATED 레인은 실권한 아님 |
@@ -77,3 +131,44 @@ CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입
 - portfolio-consistent-read: `GET /api/portfolio/snapshot` / `capital/portfolio_snapshot.py` / `tests/test_portfolio_snapshot.py`: one lock-held SIMULATED local diagnostic cut of terms, risk, covenants and forecast; explicit completeness, current instance and projection:read. Authenticated/cross-process cuts and historical storage remain NOT_BOUND/out of scope.
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
+
+## 합성 관측 조사 CLI 확장
+
+`python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`은
+명시한 로컬 합성 파일과 바인딩만 읽고 기존 ObservationPort fold를 한 번 호출한다.
+전달 순서와 모든 내용 변형을 보존하며 동일 재전달, 전송 메타데이터 변경,
+내용 충돌, 바인딩 불일치, 미매칭을 설명한다. 첫 내용은 비교 기준일 뿐 권위 있는
+승자가 아니며 충돌을 해결하거나 금융 사실로 기록하지 않는다. 각 변형의 scoped
+operation 조회와 payment/order 차이를 별도로 제시한다. 입력 크기·개수·문자열·깊이
+제한과 엄격 JSON 파싱을 적용하며 오류 종료 코드는 INTEGRATION 문서에 고정한다.
+결과는 항상 SIMULATED / applied=false / funds_executed=false 이며 CAP-14와 CAP-16은
+NOT_BOUND다. HTTP 전송, 실 제공자 payload, 인증, 영속 상태, 워크스페이스 변경은
+범위 밖이다. `python3 scripts/observation_triage_vectors.py --check`는 합성 벡터를
+읽기 전용으로 검증하며 upstream semantic conformance를 주장하지 않는다.
+
+### event-stress-report (CAP-04, CAP-08, CAP-20)
+
+`capital/event_stress.py`와 `scripts/event_stress.py`는 감사된 단일 워크스페이스의
+분리 입력에서 명시적 합성 이벤트별 절대 미결 환불 증가를 평가한다. 공유 채권 충격은
+한 번이며 적격 액면은 채권별, 노출은 인출별로 한 번 계산한다. 기준 약정은 고정하고
+미지원 배분/환불/보유자/슬라이스 의미의 종속 값과 합계는 null로 보고한다. 외부 구성
+채권도 범위에 남으며 부분 결과는 전체 안전 판단이 아니다. 누락 정책은 UNAVAILABLE,
+잘못된 구성원·상한 초과는 원자적 REJECTED다. 입력/정책 해시 및 계산 증거를 제공하며
+SIMULATED, funds_executed=false, 원본 불변을 유지한다. 온라인 경로·최적화·금융
+전표는 추가하지 않는다. 검증: `tests/test_event_stress.py`, `tests/vectors/event_stress.json`.
+
+## residual-obligations-report — 로컬 기록 잔존 의무 조회
+
+`capital/residuals.py`의 오프라인 stdlib CLI는 감사된 workspace의 기존 상환·회수·
+슬라이스 fold를 메모리에서 읽어 종결 후 미지급 이자, 미배정 현금, 상각 전 부도
+청구권, 상각 후 잔존 청구권, IMPAIRED 슬라이스 잔액을 각각 표시한다. FSM의
+CLOSED/DEFAULTED는 모든 의무 소멸의 근거가 아니다. 각 금액은 독립 대사하고
+F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산을 하지 않는다.
+금액 증거 누락은 `NOT_BOUND`/null이며 COMPLETE는 선언된 기록 모집단의 감사·대사
+완료만 뜻한다. 최신 기록 slice witness 이후의 정산 이력은 보장하지 않는다.
+
+이 기능은 `SIMULATED` / `READ_ONLY_RESIDUAL_REGISTER` 로컬 보고 확장이다. 면제,
+환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식 또는 실제 지급을
+결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
+Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
+검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
