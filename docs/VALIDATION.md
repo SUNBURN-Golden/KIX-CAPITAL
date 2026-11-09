@@ -4968,3 +4968,47 @@ All four resolutions are staged, and the merge remains uncommitted for the
 supervisor. No commit, push, merge abort, rebase, reset, external post,
 Protocol/Commerce edit, real provider call, credential, funds movement or
 deployment was performed. No CI or test assertion was weakened.
+
+## provider-capture-recon — PR fix round 1 verification (2026-11-10)
+
+Verified merge HEAD `23282f6740fc874e68082621cdff5a6de94a7f75` against
+`origin/main` `5405d9ed870e563e7e2aca8f4b65f7b037db0474`. The supplied CI log
+contains one error: the evidence-pack volatile-field test's fresh-workspace
+`seed_demo.py` subprocess exceeded its existing 120-second timeout. The other
+diagnostic stderr lines in that log are expected negative-test output; the log
+reports no assertion failures. The timeout did not reproduce in the focused
+evidence-pack suite or in 25 independent fresh-workspace seed subprocesses run
+with the unchanged timeout (0.162–0.282 seconds each). This is evidence against
+a reproducible seed failure on this tree, not proof of the original timeout's
+cause. The full 1,457-test discovery also passed, including the exact test that
+timed out in CI and the live baseline byte guard. No application, test, timeout,
+CI or policy change was justified by those results.
+
+The interrupted attempt had rewritten the historical root `DECISION_REQUIRED.md`.
+Restored its exact `origin/main` bytes, removing both the interrupted rewrite
+and the stale branch-specific baseline request. Baseline integration is already
+present in the merge HEAD and requires no new decision. No other existing work
+was discarded. The original interrupted root diff is retained outside the repo
+at `/tmp/provider-capture-recon-interrupted-decision.diff`.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` (PR fix round 1) | Exit 0; all 1,457 tests passed in 545.430s, including the reported evidence-pack timeout case and both this node's and merged-main coverage. Full log: `build/provider-capture-recon-fix1/unit.log`. |
+| `python3 -m unittest discover -s tests -p test_provider_capture_recon.py -v` | Exit 0; all 41 tests passed, covering admission, organizer authority, dedup, clock CAS, volatile-key rejection, fold, reconciliation/auditor parity and export isolation. |
+| `python3 -m unittest discover -s tests -p test_evidence_pack.py -v` | Exit 0; all 18 tests passed in 6.176s, including the CI timeout case. |
+| 25 fresh-workspace `scripts/seed_demo.py --workspace` subprocesses | All exit 0, preserve the demo pin and absent observations key; maximum elapsed 0.282s with timeout=120 unchanged. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `npm run test:browser` inside isolated loopback via `unshare -Urn` | Exit 0; all 77 Chromium tests passed in 1.9m using the unchanged tracked configuration, including the recorded-capture conditional check. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 36 routes / 276 artifacts / nine stages; bindings valid. |
+| `python3 scripts/seed_overlay_observations.py` | Exit 0; five SIMULATED entries match the existing observation golden. |
+| Observation, triage, event-stress, pack, manifest and workspace vector checkers with `--check` | All exit 0; existing corpora reproduce. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | Both exit 0; 4,582-byte closeout and 101,256-byte finance pack agree and reproduce. No measured package or test-count change requires regeneration. |
+| `python3 scripts/build_release.py --out build/provider-capture-recon-fix1/dist` | Exit 0; package SHA256 remains `61ccbf5c82fdeb1ea75223e634430fcfa1591a9f489461d340787b42da927f25`. |
+| Protected-byte checks | All five vendor SHA256 locks pass; manifest, legacy export, `demo.json`, `overlay_empty.json`, `.aiops/` and CI equal `origin/main`; the observation golden equals HEAD; the historical root equals `origin/main`. |
+
+Logs and repeat timings are retained under ignored
+`build/provider-capture-recon-fix1/`. These are local SIMULATED /
+READ_ONLY_FIXTURE results only. Recorded captures remain UNVERIFIED_ASSERTED;
+no real provider confirmation, money movement, credential use, deployment or
+upstream change is claimed. No commit, push or external post was performed.
