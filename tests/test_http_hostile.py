@@ -228,7 +228,11 @@ class ShapeTests(unittest.TestCase):
 class ReplayTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = make_server(0)
+        # URL-safe tokens can contain double underscores, even text matching
+        # recipe sentinels. Keep this case deterministic in every corpus replay.
+        with mock.patch('capital.server.secrets.token_urlsafe',
+                        return_value='SIMULATED__PORT____TOKEN__hostile-test-token'):
+            cls.server = make_server(0)
         cls.port = cls.server.server_port
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()

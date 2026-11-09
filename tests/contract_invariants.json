@@ -1,0 +1,119 @@
+{
+  "claims": [
+    {
+      "check_id": "inv1",
+      "claim": "Shared-face NOTED reservations equal the sum of noted amounts and never exceed claim open face.",
+      "expected": true,
+      "id": "inv.1",
+      "needle": "A seat has no two active owners; reservation conserves inventory",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "section": "## 3. Five predicates and their observation boundary",
+      "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
+    },
+    {
+      "check_id": "inv2",
+      "claim": "Receipt and overlay demo stores refuse new ids with SIMULATION_CAPACITY rather than eviction; existing ids replay.",
+      "expected": true,
+      "id": "inv.2",
+      "needle": "Observation budget includes stored events + conflicts + reserved slots and stays bounded",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "section": "## 3. Five predicates and their observation boundary",
+      "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
+    },
+    {
+      "check_id": "inv3",
+      "claim": "Command first receipts remain byte-identical under canonical projection after every step; overlay projection excludes rebuilt instance and digest.",
+      "expected": true,
+      "id": "inv.3",
+      "needle": "A completed command's first result cannot change",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "section": "## 3. Five predicates and their observation boundary",
+      "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
+    },
+    {
+      "check_id": "inv4",
+      "claim": "The first recorded draw increases outstanding exposure by its full amount; exposure never increases again for that advance across repayment, replay and restart.",
+      "expected": true,
+      "id": "inv.4",
+      "needle": "One full provider/account/operation has only one economic capture effect",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "section": "## 3. Five predicates and their observation boundary",
+      "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
+    },
+    {
+      "check_id": "inv5",
+      "claim": "Accepted journal entries, overlay reservations, and drawn amount/draw binding/journal index remain retained.",
+      "expected": true,
+      "id": "inv.5",
+      "needle": "An already retained capture cannot vanish or change through any tested transition",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "section": "## 3. Five predicates and their observation boundary",
+      "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
+    },
+    {
+      "check_id": "inv3",
+      "claim": "Command first receipts remain byte-identical under canonical projection after every step; overlay projection excludes rebuilt instance and digest.",
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "divergence": "Overlay replay rebuilds instance_id and omits overlay_state_digest. Canonical comparison drops those two envelope fields plus transport_duplicate; all operation payload fields remain covered. The first digest is checked against the folded state. Command receipts keep the original instance_id; reads after restart authorize with the current session.",
+      "expected": true,
+      "id": "inv.3.overlay_projection",
+      "needle": "A completed command's first result cannot change",
+      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "section": "## 3. Five predicates and their observation boundary",
+      "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
+    }
+  ],
+  "format": "KIX_CAPITAL_CONTRACT_INVARIANTS_V1",
+  "label": "CLAIM_CONFORMANCE",
+  "pin_consumer": {
+    "consumer": [
+      "capital/contract_invariants.py",
+      "tests/test_contract_invariants.py"
+    ],
+    "consumption_scope": "\u00a73 INV-1..INV-5 prose needles only; no vendor bytes, no kernel execution",
+    "follow_up": "upstream-repin-inventory-contract-invariants",
+    "full_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+    "note_registration": "PENDING_NOTE_REGISTRATION",
+    "pin_class": "EXECUTABLE_CITATION",
+    "repository": "SUNBURN-Golden/kix-protocol",
+    "target_path": "docs/contracts/CONTRACT_INVARIANTS.md",
+    "verification": "python3 scripts/contract_invariants_check.py --protocol-dir PATH"
+  },
+  "pinned_seeds": {
+    "base_seed": 74810500,
+    "count": 12,
+    "digests": {
+      "74810500": "91ea3d55ac266824de71f8c456544d009e6a3d2f24c89d3da6acd263105184ce",
+      "74810501": "d986965a0fc5d3a6c46b989e29f1758ae201eabf51ec63c646c83c51da035d07",
+      "74810502": "840f2904fc2935cbedcdcd0f7f2f86dc9a57e26e638127bca3cd874f932ba5aa",
+      "74810503": "0dea005db1a8e86c0f16a9a9dc7ad725eae35be633aed99d555977b3db5d38af",
+      "74810504": "0fe1a0f93f8adecd7687b3451a82876b3c31d2dba411867cb75990c6463b3137",
+      "74810505": "4a03aa752216cb8b601d1e64be6e88af594e3eacff8671b90040005407ff5971",
+      "74810506": "047ef09fcc9819bf657d54ea233ff85f9a0fd0dd9738ebbcc0048779424360dd",
+      "74810507": "6d7307fe33af74a6b6148c304fc7090cc457e55c77e2f7de2e3bad74073b7c7b",
+      "74810508": "aa3f9b57b600f7a2afb26f0f90cb787e5c74d2992ef73b77a6b3fd6d61e361d1",
+      "74810509": "ae20256073883bc4e0a17e686bce464f154dd9e7d8e3b875b752eb4f421c0c12",
+      "74810510": "1d82a6a7cbfe805d244e6cb3903a8e4f3e2e0aca433f0818daf0564cf1a4d3e9",
+      "74810511": "0ffd8b3f7fd00ce4e2caddc6300bf4700da9f549d5b53aa5039593bb5b8deff0"
+    },
+    "seeds": [
+      74810500,
+      74810501,
+      74810502,
+      74810503,
+      74810504,
+      74810505,
+      74810506,
+      74810507,
+      74810508,
+      74810509,
+      74810510,
+      74810511
+    ]
+  },
+  "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "semantic_conformance": false,
+  "simulation": "SIMULATED",
+  "upstream_kernel_executed": false,
+  "vendored": false
+}
