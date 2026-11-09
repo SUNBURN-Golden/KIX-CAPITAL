@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / 'docs' / 'INTEGRATION.md'
@@ -127,6 +128,15 @@ class MutatedDocTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('POST /api/agent/query_grant', err)
 
+    def test_triage_vector_readme_needles_are_required(self):
+        for needle in docs_surface.VECTOR_NEEDLES['observation_triage/']:
+            with self.subTest(needle=needle):
+                tmp, copy = _mutated_copy(README, lambda text: text.replace(needle, 'REMOVED'))
+                self.addCleanup(tmp.cleanup)
+                code, _, err = _run(['--check', '--readme', str(copy)])
+                self.assertEqual(code, 1)
+                self.assertIn(needle, err)
+
     def test_missing_readme_bullet_fails_naming_the_artifact(self):
         tmp, copy = _mutated_copy(
             README, lambda text: _drop_line(text, 'tests/vectors/finance_vectors.json'))
@@ -145,6 +155,27 @@ class MutatedDocTests(unittest.TestCase):
                 code, _out, err = _run(['--check', '--readme', str(copy)])
                 self.assertEqual(code, 1)
                 self.assertIn(needle, err)
+
+    def test_readiness_claim_readme_references_are_required(self):
+        for artifact in ('tests/readiness_claims.json', 'scripts/readiness_claims_check.py'):
+            with self.subTest(artifact=artifact):
+                tmp, copy = _mutated_copy(README, lambda text: text.replace(artifact, 'REMOVED'))
+                self.addCleanup(tmp.cleanup)
+                code, _out, err = _run(['--check', '--readme', str(copy)])
+                self.assertEqual(code, 1)
+                self.assertIn(f'README.md drops {artifact}', err)
+
+    def test_missing_readiness_claim_artifacts_are_reported(self):
+        original_is_file = Path.is_file
+        for artifact in ('tests/readiness_claims.json', 'scripts/readiness_claims_check.py'):
+            with self.subTest(artifact=artifact):
+                def is_file(path):
+                    return False if path == ROOT / artifact else original_is_file(path)
+
+                with patch.object(Path, 'is_file', is_file):
+                    code, _out, err = _run(['--check'])
+                self.assertEqual(code, 1)
+                self.assertIn(f'claim artifact missing: {artifact}', err)
 
     def test_unexpected_vector_file_fails_naming_it(self):
         with tempfile.TemporaryDirectory() as tmp:

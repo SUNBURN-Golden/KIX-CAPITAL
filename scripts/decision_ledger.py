@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 COVERAGE = ROOT / 'docs' / 'CAP_COVERAGE.md'
 DECISIONS = ROOT / 'docs' / 'decisions'
 
-_FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
+_FENCE_START = re.compile(r'```capital-decision-v1[ \t]*\n')
 _NOTE_PATH = re.compile(r'docs/decisions/[A-Za-z0-9][A-Za-z0-9_.-]*\.md')
 _CAP = re.compile(r'CAP-(?:0[1-9]|1[0-9]|20)\Z')
 _ISO_DATE = re.compile(r'\d{4}-\d{2}-\d{2}\Z')
@@ -57,8 +57,15 @@ def _parse_object(raw):
 def extract_blocks(text):
     """Return the parsed JSON object of each capital-decision-v1 fence."""
     blocks = []
-    for raw in _FENCE.findall(text):
-        blocks.append(_parse_object(raw))
+    position = 0
+    while match := _FENCE_START.search(text, position):
+        # Preserve the first closing fence and non-overlapping matches of the
+        # original lazy regex, without backtracking over every JSON character.
+        end = text.find('```', match.end())
+        if end < 0:
+            break
+        blocks.append(_parse_object(text[match.end():end]))
+        position = end + 3
     return blocks
 
 
@@ -85,7 +92,6 @@ def _iso_date(value):
 
 
 def _note_name(path):
-    path = Path(path)
     return f'docs/decisions/{path.name}'
 
 
@@ -169,16 +175,27 @@ def _validate_entry(name, entry, errors):
 
 
 def validate_note(path):
-    """Return (errors, summary) for one decision note on disk."""
-    path = Path(path)
+    """Return (errors, summary) for a filesystem or Traversable note."""
+    path = Path(path) if isinstance(path, str) else path
     note = _note_name(path)
     try:
-        text = path.read_text(encoding='utf-8')
+        raw = path.read_bytes()
     except OSError as exc:
+        return [f'{note}: {exc}'], _blank(note)
+    return validate_note_bytes(raw, note)
+
+
+def validate_note_bytes(raw, note):
+    """Validate the same raw bytes that a runtime consumer hashes."""
+    if raw is None:
+        return [f'{note}: unreadable note'], _blank(note)
+    try:
+        text = raw.decode('utf-8')
+    except UnicodeError as exc:
         return [f'{note}: {exc}'], _blank(note)
     try:
         blocks = extract_blocks(text)
-    except DecisionParseError as exc:
+    except (DecisionParseError, RecursionError) as exc:
         return [f'{note}: {exc}'], _blank(note)
     if len(blocks) != 1:
         return [f'{note}: expected exactly one capital-decision-v1 block, found {len(blocks)}'], _blank(note)
@@ -214,13 +231,14 @@ def validate_note(path):
     return errors, summary
 
 
-def build_index(decisions_dir, expected):
+def build_index(decisions_dir, expected, validator=None):
     """Rows of {note, decision_id, status, provisional, version, entries} for expected paths, then extras.
 
     `provisional` and `version` come from the block's top-level fields and are None
     when absent. format_index prints only note, decision_id, status and entries.
     """
-    decisions_dir = Path(decisions_dir)
+    decisions_dir = Path(decisions_dir) if isinstance(decisions_dir, str) else decisions_dir
+    validate = validate_note if validator is None else validator
     rows = []
     seen = set()
     for rel in expected:
@@ -236,25 +254,25 @@ def build_index(decisions_dir, expected):
                 'entries': {},
             })
             continue
-        _errors, summary = validate_note(path)
+        _errors, summary = validate(path)
         rows.append(summary)
     if decisions_dir.is_dir():
-        for path in sorted(decisions_dir.glob('*.md')):
+        for path in sorted((p for p in decisions_dir.iterdir() if p.is_file() and p.name.endswith('.md')), key=lambda p: p.name):
             if path.name in seen:
                 continue
-            _errors, summary = validate_note(path)
+            _errors, summary = validate(path)
             rows.append(summary)
     return rows
 
 
 def collect_errors(decisions_dir, expected):
     """Errors for notes that exist. Missing expected notes are not errors."""
-    decisions_dir = Path(decisions_dir)
+    decisions_dir = Path(decisions_dir) if isinstance(decisions_dir, str) else decisions_dir
     errors = []
     seen = set()
     names = [Path(rel).name for rel in expected]
     if decisions_dir.is_dir():
-        names.extend(path.name for path in sorted(decisions_dir.glob('*.md')))
+        names.extend(path.name for path in sorted((p for p in decisions_dir.iterdir() if p.is_file() and p.name.endswith('.md')), key=lambda p: p.name))
     for name in names:
         if name in seen:
             continue

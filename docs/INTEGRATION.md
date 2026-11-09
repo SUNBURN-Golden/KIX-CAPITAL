@@ -1,5 +1,135 @@
 # Capital local API and future integration
 
+## Offline portfolio migration contract
+
+`python3 -m capital.portfolio_migrations --before DIR_A --after DIR_B` requires two
+explicit directories containing `workspace.json`. The stdlib entry point
+`report_workspaces(before_dir, after_dir)` invokes `portfolio_compare.compare_workspaces`
+exactly once as its sole compatibility gate. Pure `compose(comparison)` consumes
+that report without mutation. The existing comparison output is unchanged.
+All audit, policy, input, prefix, draw-gate and view checks below apply unchanged.
+Neither snapshot is written or locked; held workspace locks do not prevent reporting.
+
+Canonical JSON plus a newline uses format `KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1`.
+It retains comparator `inputs`, ordered `comparability.checks` and provenance.
+Success has `status: COMPARABLE`, `matrices.portfolio.{aging,watch_status}` and
+`matrices.beneficiaries`, sorted by `beneficiary_role`, each with the same two
+matrices. `reconciliation` contains `matched` and named `{id,scope,dimension,matched}`
+checks. Comparator failures skip aggregation and retain `NON_COMPARABLE` with
+`matrices: null`. Matrix reconciliation failures also suppress all matrices and
+set `reason: MATRIX_RECONCILIATION_FAILED`, retaining the successful comparator
+checks separately. Exit codes are 0 success, 1 non-comparable, 2 argument misuse.
+
+Each matrix has `before_categories`, `after_categories`, dense row-major `cells`,
+`row_totals`, `column_totals` and `grand_totals`. Aging uses `risk.AGING_IDS`
+(`NOT_DUE`, `1-30`, `31-60`, `61-90`, `>90`, `DEFAULTED`); watch status uses
+`portfolio_compare.WATCH_STATUSES` (`CLEAR`, `WATCH`, `BREACH`). The row axis appends
+`ABSENT_BEFORE`; the column axis appends `ABSENT_AFTER`. Zero cells are included.
+Cells identify `before_category` and `after_category`; marginals identify their
+respective category. All cells, marginals and grand totals contain integer measures:
+
+- `advance_count`: the union population of drawn IDs in that cell, including closed
+  and zero-principal advances. Ordinary row/column counts match the respective
+  endpoint population; the grand count includes entries and exits once each.
+- `before_principal_krw`, `after_principal_krw`: separate outstanding principal
+  sums read directly from audited endpoints, with zero for a missing endpoint.
+- `before_open_advance_count`, `after_open_advance_count`: positive-principal
+  endpoint counts, with zero for absence. These correspond to risk aging counts;
+  covenant watch counts instead use the full drawn population.
+
+Classifications and beneficiary roles come directly from comparator rows; no aging,
+watch or financial terms are recomputed here. For every ordinary before row and
+after column, counts, principal and open counts match endpoint rows. Aging principal
+and watch counts additionally match comparator endpoint totals already reconciled to
+risk/covenant views. Absence categories are excluded from endpoint populations.
+Cells sum componentwise to both marginals and grand totals. Per-beneficiary cells,
+marginals and grand totals sum componentwise to the portfolio; both dimensions have
+identical grand totals. Empty snapshots have dense zero matrices and no beneficiaries.
+
+Absence describes only a missing endpoint. It never establishes repayment. Closed
+or fully reduced draws remain present, retain their existing aging/watch classification
+and contribute zero principal. Prefix-compatible snapshots normally cannot lose old
+draws; exit arithmetic is covered only by an explicitly synthetic helper test.
+For example, four day-zero draws of 10,000 each at day 60, followed by a 4,000
+principal reduction, one default, one full reduction and closure, a day-61 tick and
+a new 10,000 draw produce `NOT_DUE -> 1-30` count 3, principal 30,000 -> 16,000;
+`NOT_DUE -> DEFAULTED` count 1, 10,000 -> 10,000; and
+`ABSENT_BEFORE -> NOT_DUE` count 1, 0 -> 10,000. Total principal is 40,000 -> 36,000.
+These are observed transitions, not transition probabilities, scoring, forecasts,
+causal explanations or evidence of actual payments.
+
+The label remains `SIMULATED`; `historical_policy_provenance`, `authentication`,
+`common_ownership` and `actual_payments` remain `NOT_BOUND`. `funds_executed` and
+`workspace_mutated` are false. Local comparison-time policy hashes do not bind
+historical policy or authenticate a snapshot. No storage/history collection, HTTP/UI,
+forecast or portfolio-cashflow-desk behavior is added.
+
+## Offline portfolio comparison contract
+
+`python3 -m capital.portfolio_compare --before DIR_A --after DIR_B` reads each explicit
+`workspace.json` once. `audit_workspace_bytes(raw, workspace=...)` audits those same
+bytes with the existing audit stages; both audits are attempted. The comparator uses
+`evidence.offline_service` with save-forbidden memory storage and detached
+`portfolio_snapshot.FrozenInputs`, then recomputes `risk.build` and `covenants.build`.
+It opens no FileWorkspace, lock or signing key and creates no directory. No HTTP/UI
+surface, collection, import/resume, forecast, what-if model or history database is added.
+Python callers can use `capital.portfolio_compare.compare_workspaces(before_dir,
+after_dir)` to obtain the same report dict. Each argument is an explicit snapshot
+directory; no live workspace service or signing material is required.
+
+The canonical sorted-key JSON format is `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1`, labeled
+`SIMULATED`. `inputs.before` and `inputs.after` each carry `workspace_sha256`,
+`payload_sha256`, the full `audit`, `state_digest`, `overlay_state_digest`, `sim_day`,
+`fixtures_digest`, `policy_inputs_digest`, `inputs_digest`, `risk_digest` and
+`covenant_digest`. Unavailable digests are null. Existing snapshot digest recipes are
+reused: `fixtures_digest` hashes fixture rows; compatibility also compares profiles,
+beneficiary mappings and projection IDs. `policy_inputs_digest` includes loaded terms,
+overlay bounds and the frozen-input assumptions. These hashes identify comparison-time
+local inputs; workspace envelopes do not archive complete historical fixtures/policy.
+No timestamp/session ID is generated in the report; existing audit envelope metadata
+is retained. Repeated comparisons of unchanged files/local inputs emit identical bytes.
+
+`comparability.checks` is ordered and contains `{id, side, status, reason, entries}`.
+Status is `MATCHED`, `MISMATCH` or `NOT_CHECKED` for dependent unavailable checks.
+Both sides explicitly require these entries to exist and be usable `ADOPTED` values
+after DecisionNoteTermsPolicy loading: `interest_rate`, `term`,
+`default_loss_treatment`, `reserve`, `additional_margin`, `underwriting_depth`.
+Missing names are `REQUIRED_POLICY_ENTRY_MISSING`; unusable names are
+`REQUIRED_POLICY_ENTRY_UNUSABLE`. Neither top-level BOUND nor matching hashes nor
+an empty book replaces this gate. Overlay bounds and risk terms must be usable.
+Applicable drawn tiers must supply `margin_terms`, including cure/rate/payee inputs;
+otherwise `APPLICABLE_MARGIN_TERMS_UNUSABLE`. No-matching-tier rows retain their
+legitimate `NOT_APPLICABLE` semantics; uncovered nonzero reserve exposure fails.
+Fees/forecast readiness is not a comparison requirement.
+An audited draw receipt can still lack usable nested result/gate evidence; absent,
+malformed, empty or non-string gates yield `DRAW_RECEIPT_GATE_MISSING` and leave
+dependent views `NOT_CHECKED`.
+
+Both recomputed views must be BOUND and reconciled, with complete risk reserve
+calculation coverage. Covenant reserve-pool funding/coverage legitimately remains
+`NOT_BOUND`. Pair checks require identical fixture inputs and policy-input digests,
+nondecreasing sim_day, canonical F04/overlay prefixes (legacy v1 overlay is empty),
+new overlay entries at `after_journal_index >= len(before F04 journal)`, stable existing
+advance mappings and draw-receipt gates, and recorded terms bindings compatible with
+loaded terms. Any failure gives `status: NON_COMPARABLE`, `changes: null`, and exit 1.
+Argument misuse exits 2; comparable results exit 0.
+
+`changes.advances` joins sorted drawn IDs, retaining presence, endpoint beneficiary,
+phase, exposure, maturity/aging, reserve class/requirement, covenant status, original
+reasons and margin facts. `watch_change` reports entry, exit and changed reasons.
+`changes.beneficiaries` aggregates by synthetic beneficiary_role.
+`changes.totals` and beneficiary rows contain `before`, `after` and `delta` for
+outstanding/reserve, maturity/aging-bucket exposure and watch-status counts. Deltas
+are after minus before, using zero for absent additive measures only; categorical
+endpoints remain null if absent. Per-advance reserves use existing integer floor
+arithmetic. `changes.reconciliation` checks endpoint views, beneficiary totals and all
+additive deltas; ratios and categorical transitions are never summed.
+
+The report describes observed differences only. `historical_policy_provenance`,
+`authentication`, `common_ownership` and `actual_payments` are `NOT_BOUND`;
+`funds_executed` and `workspace_mutated` are false. No payment, causal explanation,
+authenticated ownership, reserve booking or new accounting policy is inferred.
+
 ## Observation fixture seam
 
 `ObservationPort` exposes `fold(facts, *, bindings) -> dict`; `LocalFakeObservation`
@@ -77,10 +207,10 @@ before verification. Never use fixture keys outside tests.
 
 - `GET /api/permissions`: read-only `KIX_CAPITAL_PERMISSION_CATALOG_V1` catalog with ordered `routes` (`method`, `route`, `children`, `permission`) and `role_permissions` sets. Includes all GET, POST and static registrations; static permissions are null because assets precede authentication. Requires `reference:read`: organizer, auditor and observer allowed; agent receives `403 ROLE_FORBIDDEN`. No token defaults to organizer. Labels are `SIMULATED`, `SYNTHETIC_LOCAL_ROLE`, identity and authentication `NOT_BOUND`; no tokens or operational state are exposed or changed. `python3 scripts/auth_matrix.py --check` fetches this served catalog on an ephemeral memory-only loopback server and reconciles it with the pinned matrix and both generated documentation blocks; `--write` remains offline.
 
-- `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, `terms` (a `{status, reason, terms_version}` snapshot of the decision-note overlay, where `status` is `BOUND`, `PARTIAL` or `NOT_BOUND`, `reason` is null unless `NOT_BOUND`, and `terms_version` is the note's version or null), pinned source, `assets`, local CSRF token, capacity, workspace status and undecided capabilities. `assets` is an array of exactly one entry, the declared KRW AssetSpec `{namespace: "fiat", reference: "KRW", decimals: 0, max_atoms: 1000000000000}` (declared once in `capital/assets.py`; PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` section 3.6). `max_atoms` is the pinned FSM `MONEY_MAX` fixture bound, not a registry limit. There is no asset registry (DEFERRED), no FX (NOT_ADOPTED) and no second asset; amounts stay integers in that one asset. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery. The claim table `tests/read_model_claims.json` maps this route's case views to the pinned upstream draft `docs/contracts/READ_MODEL_QUERIES.md` `get_credit_advance` (checked by `scripts/read_model_claims_check.py`, label CLAIM_CONFORMANCE); the route itself is unchanged.
+- `GET /api/state`: process identity, `version`, synthetic fixtures, current F04 views, `terms` (a `{status, reason, terms_version, notes_source, note_sha256}` snapshot of the decision-note overlay, where `status` is `BOUND`, `PARTIAL` or `NOT_BOUND`, `reason` is null unless `NOT_BOUND`, and `terms_version` is the note's version or null), pinned source, `assets`, local CSRF token, capacity, workspace status and undecided capabilities. `assets` is an array of exactly one entry, the declared KRW AssetSpec `{namespace: "fiat", reference: "KRW", decimals: 0, max_atoms: 1000000000000}` (declared once in `capital/assets.py`; PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` section 3.6). `max_atoms` is the pinned FSM `MONEY_MAX` fixture bound, not a registry limit. There is no asset registry (DEFERRED), no FX (NOT_ADOPTED) and no second asset; amounts stay integers in that one asset. `version` is `__version__` from `capital/__init__.py`, the same value `--version` prints as `kix-capital <version>`. `durable` is `false` for the default memory process and `LOCAL_FILE_WORKSPACE` when `--workspace` is selected. That string is a development file label, not stage5 durable transaction recovery. The claim table `tests/read_model_claims.json` maps this route's case views to the pinned upstream draft `docs/contracts/READ_MODEL_QUERIES.md` `get_credit_advance` (checked by `scripts/read_model_claims_check.py`, label CLAIM_CONFORMANCE); the route itself is unchanged.
 - `POST /api/commands`: strict `{instance_id, operation_id, op, advance_id, args}` plus the optional `proposal_id` and the optional `asset`. `asset`, when present, must equal the declared KRW AssetSpec exactly (every field and its type; a bare `"KRW"`, a float or boolean in place of an integer, an extra or missing key all fail). Any other value is `400 ASSET_MISMATCH`, checked after the role check and `SESSION_CHANGED` and before the idempotency lookup, so a mismatch writes no journal entry and no receipt, leaves `state_digest` unchanged, and `GET /api/operations/{id}` still answers `UNKNOWN`. A body that carries the declared asset is applied exactly as one without it. `asset` is not echoed into the receipt. ID must start `sim-`; operation identity is immutable. `X-Capital-Token` from the same process and `Content-Type: application/json` required. The token is the role bound by `POST /api/session` (the process starts with the organizer token). Maximum request 8192 bytes; maximum retained operations 500 (demo resource bound, not financial policy).
 - `POST /api/session`: (opt-in `--authorizer fake-idp` also requires `Authorization: Bearer` from `scripts/fake_idp.py`; label `LOCAL_FAKE_IDP`, identity stays `NOT_BOUND`) strict `{role}` where `role` is `organizer`, `auditor`, `observer`, or `agent`. Requires a token already bound to some synthetic role, plus `Content-Type: application/json`. Returns the process-local loopback token for that role. The same role returns the same token. The `agent` role returns the agent token for the simulated QUERY/PROPOSE lane (`SIMULATED_AGENT_GRANT`); the response still reports `agent_grant: NOT_BOUND`, and that token is denied every GET and every command (`403 ROLE_FORBIDDEN`). It holds only the five `agent:*` lane permissions (`agent:query_grant`, `agent:query_subject`, `agent:propose_action`, `agent:withdraw_proposal`, `agent:propose_grant_change`), so it cannot call `POST /api/session` itself. This does not change `operation_count` or `state_digest`. It is self-selection on loopback, not authentication.
-- `GET /api/operations/{operation_id}?instance_id=…`: original ACCEPTED/REJECTED receipt, UNKNOWN if absent. An absent receipt never authorizes a retry. Session mismatch is 409.
+- `GET /api/operations/{operation_id}?instance_id=…`: original ACCEPTED/REJECTED receipt, UNKNOWN if absent. An absent receipt never authorizes a retry. Session mismatch is 409. The claim table `tests/readiness_claims.json` binds this route's stored-first-result and UNKNOWN semantics plus the loopback bind, lock and torn-file behaviors to the pinned `docs/contracts/READINESS_RUNTIME.md` boundary prose (`scripts/readiness_claims_check.py`, label CLAIM_CONFORMANCE, SIMULATED analogue — the upstream `readiness/` journal format is not vendored or implemented); the routes themselves are unchanged.
 - `GET /api/evidence`: read-only immutable settlement fixture values, per-view digest, source pin, missing live financial measures; no source cut or completeness invented. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`.
 - `GET /api/projection`: read-only local candidate. Permission `projection:read` (organizer and auditor; observer is forbidden). Omitted `mode` and `mode=simulation` project the accepted F04 journal plus the three immutable settlement views into `SIMULATION_FIXED_V1`. The envelope is `mode=LOCAL_PROJECTION_CANDIDATE`, `accounting_policy=SYNTHETIC_UNADOPTED`, `tax=NOT_BOUND`, `legal=NOT_BOUND`, `operating_ledger=NOT_BOUND`, `funds_executed=false`, `policy_adopted=false`, `workspace_mutated=false`. `cut` is the current `state_digest`. `mode=coa-candidate` returns the additive `CAPITAL-COA-V1` candidate (`mode=LOCAL_PROJECTION_COA_CANDIDATE`, chart `SIMULATION_FIXED_V2`, from `capital/coa.py`): 4-digit codes, dimensions (`asset`, `advance_id`, `claim_id`, `sim_day`, `chart_version`, `terms_version`) on each entry, KRW as the one declared AssetSpec, debit = credit per asset and `sim_day` in `balance_groups`, interest postings read from the overlay ledger (`1110` Dr / `4100` or `4110` Cr; after the accepted `default` the accrual goes to the `9700` memo with a candidate-only `9790` counter-memo and not to income), settlement claim face only in the `9100`/`9110` memo accounts, and `9150`/`9160` derived. A non-KRW asset is `ASSET_MISMATCH`. The labels stay `SYNTHETIC_UNADOPTED`, `tax=NOT_BOUND`, `legal=NOT_BOUND`, `operating_ledger=NOT_BOUND`, `policy_adopted=false`; it is not revenue-recognition adoption. The V1 response and the export manifest do not change. Any other mode, including `operating`, `ledger`, and `operating-ledger`, returns 400 `NOT_BOUND` and does not project. There is no POST. The handler reads copies only: receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This is not `fin-ledger-contract`, not revenue recognition, and not an operating ledger.
 - `GET /api/scenarios` and `/api/scenarios/{id}`: nine fixed F01–F03 fixtures, 35 replay steps with per-payee values, expected refusal and public conservation checks. Disposable books are separate from workspace state; GET does not append commands, receipts or reservations. No caller-provided policy or write endpoint. The two allocation orders and 500bps policy are explicit test fixtures, never a selected operating policy.
@@ -94,14 +224,14 @@ before verification. Never use fixture keys outside tests.
 - `GET /api/portfolio/snapshot`: requires `projection:read` and exactly one current `instance_id`. Unknown/duplicate query parameters return `INVALID_ARGUMENTS`; missing, blank or stale identity returns `SESSION_CHANGED`. Authorization runs first. The SIMULATED `KIX_CAPITAL_PORTFOLIO_SNAPSHOT_V1` response composes terms rollup, risk, covenants and forecast from detached inputs while holding the command lock. `LOCAL_DIAGNOSTIC` binds `state_digest`, `overlay_state_digest`, `sim_day`, `fixtures_digest`, `policy_inputs_digest` and `inputs_digest`; `snapshot_digest` binds the cut, assumptions, completeness and component bodies, excluding session ids, paths, timestamps and telemetry. Canonical JSON uses sorted keys, compact separators and ASCII escapes, with version tags. Complete means complete only in this local diagnostic scope. Only the in-process pinned producer, immutable built-in `FixtureViews`, loaded decision-note terms and healthy reconciled storage qualify. Gate-fake is explicitly `GATE_FAKE_UNSUPPORTED`; other unsupported producers, mutable fixtures, unbound/partial terms, damaged or mismatched storage and missing draw receipts return HTTP 200 `INCOMPLETE`, with reasons, explicit section markers and null unavailable sections/cut fields. No zero totals are fabricated. Terms rollup keeps default draw day 0 and captured sim day; risk, covenants and forecast keep recorded draw days. Forecast retains `EXPECTED_DAY_NOT_PROVIDED`. `NOT_APPLICABLE` rows and reserve/stress nonclaims remain visible. Identical calculation inputs have identical digests. Reads never save, accrue, reserve, journal, or execute funds. `authenticated_source_cut` stays `NOT_BOUND`; cross-process consistency, historical storage, UI changes and export-manifest changes are out of scope.
 - `GET /api/risk`: read-only SIMULATED portfolio risk analytics (`mode` `SIMULATED_RISK_ANALYTICS`, label `SIMULATED portfolio risk analytics — read-only, not a credit decision, not an accounting policy`; permission `projection:read`, so the observer and agent roles get `403 ROLE_FORBIDDEN`; no query string, no POST). It folds the accepted journal, the overlay clock (`sim_day`) and the `CAPITAL-TERMS-V1` note into integers only: `by_tier` and `maturity_buckets` (days to the standard maturity, `0-30`, `31-60`, `61-90`, `>90`; due-today and overdue exposure counts in `0-30`) and `overdue_aging` (`NOT_DUE`, `1-30`, `31-60`, `61-90`, `>90` days past maturity, `DEFAULTED`) each sum to the total outstanding, which `reconciliation` matches to the projection's advance outstanding; `concentration` gives `hhi_permille` (`sum(outstanding_b^2) * 1000 // total^2` over `beneficiary_role`) and utilization in permille against the U4 caps of `underwriting_depth`; `reserve.requirement_krw` is the sum over advances of `floor(outstanding * bps / 10000)` using the note's `reserve.provision_bps_of_outstanding` table (labeled not an accounting policy; `applied` false, nothing is booked); `stress` re-measures every `DRAWN` advance that has margin terms against the fixed integer shocks `[500, 1000, 2500, 5000]` bps of `eligible_face` and reports a non-decreasing `margin_call_count`, `called_outstanding_krw` and `shortfall_krw` per shock (hypothetical: no overlay entry, no receipt, `applied` false). `risk_digest` is a sha256 of the body without the envelope. Without a usable note the body is `NOT_BOUND` and carries no numbers. The bucket edges and the shocks are fixed by the node spec; every rate, cap and reserve weight is read from the note. Probability models, floats and external data are out of scope.
 - `POST /api/overlay/commands`: the only writer of `sim_day`. Strict `{instance_id, operation_id, op: "advance_day", from_sim_day, to_sim_day, reason}` (the wire name of the decision's `advance_sim_day`); integers are plain non-negative ints of at most 6 digits and `reason` is a non-empty string of at most 120 characters. Organizer only (`overlay:command`): the route gate runs before the body is read, so auditor, observer and agent get `403 ROLE_FORBIDDEN`. Checks run in this order: role, `workspace.status == ACTIVE` (else 503 with the status code), `instance_id` (`409 SESSION_CHANGED`), body shape and `operation_id`, idempotent replay (same body returns the stored receipt with `transport_duplicate: true`; a different body is `409 IDEMPOTENCY_CONFLICT`), terms gate (`400 NOT_BOUND` with `reason` `terms not bound`, or `terms version mismatch` when the recorded binding differs; nothing is written and nothing is accrued), `409 SIM_CLOCK_STALE` when `from_sim_day` is not the folded `sim_day`, `400 SIM_CLOCK_NOT_ADVANCING` (no rewind), `400 SIM_CLOCK_STEP` above the ADOPTED `max_step_days`, and `409 SIMULATION_CAPACITY` past `SIM_DAY_MAX`, the entry-count or entry-byte bounds, or `ENVELOPE_MAX_BYTES`. A volatile key (`created_at`, `saved_at`, `timestamp`, `timestamps`, or a nested `instance_id`) is `400 OVERLAY_VOLATILE_KEY` with nothing written. One atomic workspace save appends a `terms_binding` entry on first use, one `clock` entry, and one `interest_posting` entry per accruing advance. Interest is simple ACT/365 on the F04 `outstanding_exposure` (constant over the segment, because every command since the last tick happened at the folded `sim_day`) at the tier's `all_in_bps_annual` up to `draw_day + term_days` and at that plus `default_interest_add_bps_annual` after it, until the note's write-off day; rates are read from the note at runtime and stamped into each entry. Each posting is `floor(cumulative exact) - already posted` per bucket, so the sub-KRW remainder carries and the total always equals `floor(sum(outstanding * days) * bps / (10000 * 365))`. The draw day is the `sim_day` in force when the draw was journaled (`after_journal_index` of the draw). The F04 journal, `state_digest`, `operation_count` and receipts are never changed, and the FSM is never gated by the overlay. No agent can advance the clock; wall-clock, startup ticks and rewind do not exist. `actor` is `LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED`. The same route also takes `op: "post_repayment"` (CAPITAL_REPAYMENT_POSTING.md): strict `{instance_id, operation_id, op, advance_ref, at_sim_day, amount_krw, evidence_ref?, proposal_id?}`; unknown keys are `400 INVALID_COMMAND` and there is no client split, timestamp or payer identity. Checks run in this order: role, workspace ACTIVE, shape and ids, `operation_id` dedup (same body returns the stored receipt with `transport_duplicate: true`, any other body or a clock `operation_id` is `409 IDEMPOTENCY_CONFLICT`), proposal citation, terms gate (`400 NOT_BOUND`, or `409 REPAYMENT_TERMS_NOT_BOUND` before the first `advance_day` binding), `409 SIM_CLOCK_STALE` unless `at_sim_day` equals the folded `sim_day`, `404 UNKNOWN_ADVANCE`, `409 REPAYMENT_ADVANCE_STATE` (not drawn, or F04 refuses the repay), `400 REPAYMENT_AMOUNT` (zero with nothing held), then capacity (`409 SIMULATION_CAPACITY` for the amount, entries per advance and entry bytes read from the note plus the shared overlay bounds, `409 REPAYMENT_UNAPPLIED_CAP`). The split is `terms.allocate` over the posted dues in the note's order (the cash is `amount_krw` plus any held cash), interest is accumulated as an exact integer numerator over the denominator and each due is the floor minus what is paid, so no sub-KRW carry is lost. Only the principal portion reaches F04, as one pinned `repay` under the id `rp-` + the first 32 hex of `sha256("KIX_CAPITAL_REPAY_F04_V1|" + operation_id)`, in the same single workspace save and under the lock; a scratch copy of the machine takes the repay first, so a rejection leaves the overlay journal, receipts and `state_digest` untouched, and a failed save rolls the machine and receipts back. An interest-only posting never calls F04. A principal portion needs the in-process `PinnedFsmProducer` (else `409 REPAYMENT_PRODUCER_UNSUPPORTED`); a `DEFAULTED` or `CLOSED` F04 case takes interest only because the FSM is terminal; once a default anchor exists, the posting is permanently refused (including when sources are absent or exhausted and after write-off) `409 REPAYMENT_ADVANCE_STATE` (`reason` `RECOVERY_LEDGER_ONLY`) so post-default cash goes through the recovery ledger instead. Cash beyond the dues is held per advance as `SIM_UNAPPLIED_MEMO` and added to the next posting. The receipt carries `entry_no` (the 1-based overlay journal position, derived), the `allocation`, `f04` (`operation_id`, `receipt_ref`, or `null`), `unapplied_after_krw`, `close_gate`, `payment_basis` `UNVERIFIED_ASSERTED`; `f04_journal_written` is true only when a principal repay was issued. Replay and reload read the recorded entry and never call the producer. Amounts are operator-asserted, not bank observations; this is not a real payment, refund, waiver or write-off. The same route also takes the `overlay-recovery-writeoff` commands (`docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`, human operator only — an agent role gets `403 RECOVERY_AGENT_FORBIDDEN` before any receipt lookup): `post_recovery` `{instance_id, operation_id, op, advance_ref, at_sim_day, amount_krw, source_ref{claim_id,payee_label,source_cut}, quote_ref, approvals?, proposal_id?}` applies observed set-off cash through the decided waterfall (default interest then interest then principal) only under a live quote. Secondary-source recovery is refused with `409 RECOVERY_WATERFALL_ORDER` while any bound-claim source has unconsumed cash; the operator must exhaust primary sources first. This applies before and after write-off. Entries stamp the observed source quotes so replay enforces the same order. `post_writeoff` `{instance_id, operation_id, op, advance_ref, at_sim_day, approvals?, proposal_id?, setoff_declined_reason?}` records the platform write-off (`409 WRITEOFF_NOT_ELIGIBLE` before `default_sim_day + writeoff_days_after_default`, `409 WRITEOFF_SETOFF_AVAILABLE` when observed unconsumed set-off sources remain without `setoff_declined_reason`, `409 DEFAULT_DAY_UNKNOWN` for an unanchored historical default), and `record_acceleration` `{instance_id, operation_id, op, advance_ref, at_sim_day, event, approvals?, proposal_id?}` records a non-margin acceleration event (`BENEFICIARY_INSOLVENCY_NOTICE` or `EVIDENCE_FRAUD_FINDING`). `advance_day` additionally accepts an atomic `writeoff` directive (its own `operation_id`, `advance_ref`, `at_sim_day == to_sim_day`) folded inside the same save. Above `underwriting_depth.two_person_threshold_krw` (default amount basis: FSM outstanding principal; recovery: `amount_krw`; write-off: `writeoff_principal_krw`; recoveries on the same advance and `sim_day` are summed) two distinct `approver_label` values are required, else `409 TWO_PERSON_REQUIRED`. Other refusal codes: `409 RECOVERY_NOT_DEFAULTED`, `RECOVERY_EXCEEDS_CLAIM`, `RECOVERY_SOURCE_EXCEEDED`, `RECOVERY_QUOTE_STALE`. All entries are `SIMULATED` overlay-journal memos; the F04 journal and `state_digest` are untouched and a DEFAULTED case is never revived.
-- `GET /api/terms` and `GET /api/terms/{advance_id}?instance_id=&draw_day=&as_of_day=&expected_settlement_cash_day=`: read-only simulated overlay of ADOPTED entries in `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`. The label is `simulated overlay — not vendor FSM arithmetic, not an offer`. `mode` is `SIMULATED_OVERLAY`. Days are hypothetical query parameters and are not stored. The top-level `status` is one of `BOUND`, `PARTIAL`, `NOT_BOUND`. `BOUND` means every entry is ADOPTED and usable. `PARTIAL` means some entries are ADOPTED and usable while others are UNDETERMINED or NOT_BOUND, and the sections that depend on those entries report `NOT_BOUND`. `NOT_BOUND` means a missing note, a bad block, or no usable ADOPTED entry; it returns HTTP 200 with `terms not bound` and no numeric term fields. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This is not an offer, not underwriting, and not vendor FSM arithmetic. The zipapp does not bundle `docs/`, so `python3 dist/capital-<version>.pyz` reports `NOT_BOUND` until a release decision bundles the note. `build_release.py` is unchanged.
+- `GET /api/terms` and `GET /api/terms/{advance_id}?instance_id=&draw_day=&as_of_day=&expected_settlement_cash_day=`: read-only simulated overlay of ADOPTED entries in `docs/decisions/CAPITAL_FINANCIAL_TERMS.md`. The label is `simulated overlay — not vendor FSM arithmetic, not an offer`. `mode` is `SIMULATED_OVERLAY`. Days are hypothetical query parameters and are not stored. The top-level `status` is one of `BOUND`, `PARTIAL`, `NOT_BOUND`. `BOUND` means every entry is ADOPTED and usable. `PARTIAL` means some entries are ADOPTED and usable while others are UNDETERMINED or NOT_BOUND, and the sections that depend on those entries report `NOT_BOUND`. `NOT_BOUND` means a missing note, a bad block, or no usable ADOPTED entry; it returns HTTP 200 with `terms not bound` and no numeric term fields. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This is not an offer, not underwriting, and not vendor FSM arithmetic. The zipapp bundles the note and uses the same usability checks with `notes_source=BUNDLED_IN_ARTIFACT`.
 - `GET /api/terms/{advance_id}/allocation?instance_id=&as_of_day=&cash=&draw_day=&expected_settlement_cash_day=`: read-only repayment allocation quote on the same overlay. `instance_id`, `as_of_day`, and `cash` are required; `draw_day` defaults to `0` and `expected_settlement_cash_day` is optional. All of them are hypothetical query parameters and are not stored. The `interest` section carries the accrued contract interest as an exact rational (`ACT_365_FIXED` simple interest on current `outstanding_exposure`, tier from the draw receipt `settlement_gate`) and the default-interest bucket for days past `maturity_day`. Each bucket is floored to 1 KRW from its own exact rational; the unposted remainder stays accrued. The `allocation` section splits the hypothetical `cash` in the note's `repayment_allocation_order` (`DEFAULT_INTEREST` then `INTEREST` then `PRINCIPAL`) and reports per-bucket amounts, `unapplied_cash`, and the post-application `remaining` dues. `fsm_repay` is `{amount, sequence}` for the principal portion only, or `null` whenever that portion is 0 or the phase is not `DRAWN`; the pinned FSM is never invoked and its journal is untouched. `close_ready` is true only when the phase is `DRAWN` and the hypothetical payment would leave `principal_outstanding`, `interest_due`, and `default_interest_due` all at 0. A missing, empty, or unknown-token `repayment_allocation_order` fails closed: the `allocation` section is `NOT_BOUND` and no order is invented. PARTIAL and NOT_BOUND behavior mirrors the case overlay, including `terms not bound` with no numeric fields. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This is a quote preview, not a repayment, not an offer, and not vendor FSM arithmetic.
 - `GET /api/terms/{advance_id}/setoff?instance_id=&as_of_day=&draw_day=&expected_settlement_cash_day=`: read-only set-off and recovery proposal quote on the same overlay. `instance_id` and `as_of_day` are required; `draw_day` defaults to `0` and `expected_settlement_cash_day` is optional. All of them are hypothetical query parameters and are not stored. The quote applies the ADOPTED `collateral_execution` primary step (`SETOFF_AGAINST_BENEFICIARY_SETTLEMENT_DISTRIBUTION`) of the financial-terms note to the advance's bound immutable settlement view: `settlement_view` classifies each payee line by the settlement note's CAPITAL-ALLOC-V1 class table and counts only the lines that sit in the counterparty-proceeds class and are beneficiary-mapped through `additional_margin.beneficiary_payee_map`. `setoff_amount` is `min(outstanding_exposure, base_krw)` where `base_krw` is `max(0, distributed − recovery_due)` summed over those counted lines — cash under `recovery_due` is never counted and no cash is invented. `base_reason` is `ALLOCATION_OBSERVED`, `ALLOCATED_CASH_UNDER_RECOVERY`, or `ALLOCATION_NOT_OBSERVED` (a bound view with no distribution quotes 0, never an invented number). `capped_by` reports which side of the minimum bound. The `allocation` section splits the proposed amount in the note's `repayment_allocation_order` (`DEFAULT_INTEREST` then `INTEREST` then `PRINCIPAL`) through the same arithmetic as the repayment allocation quote; `fsm_repay` carries the principal portion only, or `null`. `execution_authority` echoes the note (`HUMAN_OPERATOR_TWO_PERSON; AI proposes only`) — the quote refuses to price when the adopted step is not set-off or the authority is not human. `route` is `FSM_REPAY` for `DRAWN`, `OVERLAY_RECOVERY_LEDGER` for `DEFAULTED`, `NOT_APPLICABLE` otherwise, and `post_default` is `OVERLAY_RECOVERY_LEDGER_NOT_IN_SCOPE`. PARTIAL and NOT_BOUND behavior mirrors the case overlay, including `terms not bound` with no numeric fields. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged; `proposal_only` is true, `applied`, `funds_executed`, `workspace_mutated` and `write_authorized` stay false, and the pinned FSM is never invoked. This is a proposal quote only — not an offer, not an execution, and not vendor FSM arithmetic.
-- `GET /api/terms/portfolio?instance_id=&as_of_day=&draw_day=&expected_settlement_cash_day=`: read-only portfolio rollup on the same overlay. `instance_id` and `as_of_day` are required; `draw_day` defaults to `0` and `expected_settlement_cash_day` is optional. All of them are hypothetical query parameters and are not stored — the rollup deliberately uses these hypothetical query days, so every evaluated row shares the query `draw_day` and `draw_day_source` says `QUERY_PARAMETER` or `DEFAULT`. The recorded clock is `GET /api/overlay`: its `sim_day` and per-advance `draw_day` (`advances[]`) come from the overlay ledger, and the rollup does not read them. The literal `/api/terms/portfolio` is matched before the `{advance_id}` fallthrough, so an unknown id such as `/api/terms/sim-missing` still answers `404 UNKNOWN_ADVANCE`. Each evaluated row carries `status: BOUND`, `advance_id`, `phase`, `tier` (`T1`/`T2`), `principal`, `draw_day`, `draw_day_source`, `term_days`, `term_source` (`standard`/`settlement_linked`), `maturity_day`, `days_past_maturity`, `contractual_days`, `default_days`, `contract_exact`/`contract_interest_krw`, `default_exact`/`default_interest_krw`, `exact`/`interest_krw` (exact rational strings, floored to 1 KRW per row), `annualized_all_in_bps` (exact rational string), and `cap_check` (`PASS`/`FAIL`) against `interest_rate.all_in_cost_cap_bps_annual` read from the note at runtime — the cap value is never copied into code, and the `cap` section cites it with `fees.policy` and `fee_schedule_version`. Non-evaluable rows (tier or principal not resolvable, or `interest_rate`/`fees`/`term` not ADOPTED) return only `status` (`NOT_APPLICABLE` or `NOT_BOUND`), `reason`, `advance_id` and `phase` with no numeric fields. The `totals` row sums the exact rationals first and floors once; `totals.cap_check` is `FAIL` when any evaluated row fails, `PASS` when all pass, and `NOT_APPLICABLE` when none are evaluated. A missing or unusable note returns `NOT_BOUND` / `terms not bound` with no `rows` or numbers (the zipapp does not bundle `docs/`). Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This rollup does not compute exposure buckets, concentration caps, reserve or refund-shock stress; read those from `GET /api/risk` (recorded `sim_day`, no query string). This is not an offer, not underwriting, and not vendor FSM arithmetic.
+- `GET /api/terms/portfolio?instance_id=&as_of_day=&draw_day=&expected_settlement_cash_day=`: read-only portfolio rollup on the same overlay. `instance_id` and `as_of_day` are required; `draw_day` defaults to `0` and `expected_settlement_cash_day` is optional. All of them are hypothetical query parameters and are not stored — the rollup deliberately uses these hypothetical query days, so every evaluated row shares the query `draw_day` and `draw_day_source` says `QUERY_PARAMETER` or `DEFAULT`. The recorded clock is `GET /api/overlay`: its `sim_day` and per-advance `draw_day` (`advances[]`) come from the overlay ledger, and the rollup does not read them. The literal `/api/terms/portfolio` is matched before the `{advance_id}` fallthrough, so an unknown id such as `/api/terms/sim-missing` still answers `404 UNKNOWN_ADVANCE`. Each evaluated row carries `status: BOUND`, `advance_id`, `phase`, `tier` (`T1`/`T2`), `principal`, `draw_day`, `draw_day_source`, `term_days`, `term_source` (`standard`/`settlement_linked`), `maturity_day`, `days_past_maturity`, `contractual_days`, `default_days`, `contract_exact`/`contract_interest_krw`, `default_exact`/`default_interest_krw`, `exact`/`interest_krw` (exact rational strings, floored to 1 KRW per row), `annualized_all_in_bps` (exact rational string), and `cap_check` (`PASS`/`FAIL`) against `interest_rate.all_in_cost_cap_bps_annual` read from the note at runtime — the cap value is never copied into code, and the `cap` section cites it with `fees.policy` and `fee_schedule_version`. Non-evaluable rows (tier or principal not resolvable, or `interest_rate`/`fees`/`term` not ADOPTED) return only `status` (`NOT_APPLICABLE` or `NOT_BOUND`), `reason`, `advance_id` and `phase` with no numeric fields. The `totals` row sums the exact rationals first and floors once; `totals.cap_check` is `FAIL` when any evaluated row fails, `PASS` when all pass, and `NOT_APPLICABLE` when none are evaluated. A missing or unusable note returns `NOT_BOUND` / `terms not bound` with no `rows` or numbers (also when a bundled input is absent or unusable). Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. This rollup does not compute exposure buckets, concentration caps, reserve or refund-shock stress; read those from `GET /api/risk` (recorded `sim_day`, no query string). This is not an offer, not underwriting, and not vendor FSM arithmetic.
 - `GET /api/terms/portfolio/forecast?instance_id=&expected_settlement_cash_day=`: read-only projected settlement and repayment cash ladder on the recorded overlay `sim_day` (`capital/forecast.py`; label `SIMULATED cash forecast — read-only ladder, not a payment schedule, not funds movement`, `mode` `SIMULATED_CASH_FORECAST`). `instance_id` is required; `expected_settlement_cash_day` is optional, and unlike sibling routes this endpoint rejects any other query key with `400 INVALID_ARGUMENTS`. Per drawn advance (overlay `draw_day`, tier from the accepted draw receipt gate) the ladder lists three legs: `SETTLEMENT_CASH_IN` on the expected settlement day (amount = outstanding principal under the `SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY` assumption; `day`/`bucket` are `null` with status `EXPECTED_DAY_NOT_PROVIDED` when the parameter is absent), `CONTRACT_INTEREST` at `maturity_day` (exact rational `outstanding * term_days * all_in_bps_annual / (10000 * ACT_365_FIXED)` — `NO_DEFAULT_CONTRACTUAL_SCHEDULE`), and `PRINCIPAL` at `maturity_day` (`NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`). With a settlement day given, `term_days` follows the note's settlement-linked clamp and `term_source` is `settlement_linked`; otherwise the standard term (`standard`). Legs are bucketed `0-7`, `8-30`, `31-60`, `61-90`, `91+` sim days ahead of `sim_day` (a day at or before `sim_day` counts as 0). Each bucket sums its legs' exact rationals per component (`settlement_exact`, `repayment_exact`, `expected_exact`) and floors `expected_cash_krw` once — legs are never floored individually, so the sum of bucket KRW can differ from the floor of the grand total by less than the number of non-empty buckets. The settlement leg is the funding event for the principal leg — the same KRW dated at settlement arrival — so `expected_exact` counts both events; `reconciliation.matched` is true when the repayment legs (`repayment_exact`) equal `outstanding_principal_krw` + `contract_interest_exact` exactly and the settlement legs equal outstanding principal when a day is given (`posted_accrued_interest_krw` is the overlay-posted memo, reported informationally). Advances with zero outstanding or no tier match return `status` `NOT_APPLICABLE` with a reason and no numeric fields; DEFAULTED advances are included on the contractual schedule under the `NO_DEFAULT` assumption. A missing or unusable note returns `NOT_BOUND` / `terms not bound` with no `advances`, `buckets` or `reconciliation` sections. Permission `projection:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. The endpoint writes nothing: receipts, `state_digest`, overlay entries and the workspace bytes stay unchanged. Probability weighting, discounting/NPV, FX and funds movement are out of scope. The seeded demo book forecast is byte-pinned in `tests/vectors/forecast_vectors.json`.
-- `GET /api/policy` and `GET /api/policy/simulation`: read-only simulated application of the allocation order in `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`. The label is `simulated policy application — not executed distribution, not bank movement`. `mode` is `SIMULATED_POLICY_APPLICATION`. There is no query string and no POST. The handler runs the pinned `SettlementMachine` on disposable books only. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. When `allocation_order` is `ADOPTED` and expressible, the response compares that derived order with the two fixture orders. When it is `UNDETERMINED`, `DEFERRED`, or `NOT_ADOPTED`, `outcome` is `POLICY_UNDECIDED`, `decided` is null, and only the fixture rows remain. A missing note is `NOT_BOUND` / `policy not bound`. Items with `fsm_expressible: false` (refund bearer, resale unwind, revenue participation, claim purchase, residual and late cash) are `UNSUPPORTED_BY_PINNED_FSM` with `computed: false` and no amounts. The settlement decision note asks for `SHADOW_NOT_APPLIED` shadow math on those items; this node does not compute them, because the pinned FSM cannot express them. Per `docs/decisions/CAPITAL_SHADOW_POLICY.md` (`shadow_math_stance.section_7_instruction`: `REASSIGNED_NOT_REVOKED`), that shadow arithmetic is reassigned to a separate Capital module (`shadow_module_ownership`: `capital/shadow.py` behind `ShadowPolicyPort`, served by `GET /api/policy/shadow`, described at the end of this bullet), which computes it under mode `SHADOW_NOT_APPLIED`, never applied to the pinned FSM. `policy_adopted` stays false. The two fixture orders and the 500 bps fixture policy stay comparison fixtures and are never an operating policy. Permission `projection:read`. The zipapp does not bundle `docs/`, so that run reports `NOT_BOUND`. `--policy-note PATH` points the port at another file. `build_release.py` is unchanged. `GET /api/policy/shadow` on the same dispatch is the separate read-only shadow computation for the five unsupported items: it evaluates the refund-bearer classes RC1–RC4 (RC5 routes to resale) on a frozen snapshot of the pinned `partial-after` view, the resale unwind cases RU1–RU3 on the settlement note's synthetic worked-example literals, single-claim revenue participation posting and claim-slice size and price on the shadow note's vectors (ratio, cap, advance rate and tier rate are read from the settlement and financial-terms notes at runtime), and the ordered UC1–UC4 partition of `undistributed_cash` on pinned `split-statement` and `late-cash` views, a disposable late-cash-after-acceptance replay and one synthetic overpayment literal. The label is `shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement`; `mode` is `SHADOW_NOT_APPLIED` and every result carries `applied_to_fsm`, `funds_executed`, `policy_adopted` and the other six flags constant false. Each item carries its pinned `UNSUPPORTED_BY_PINNED_FSM` verdict beside its shadow verdict; `revenue_participation`, `claim_purchase` and `residual_and_late_cash` carry `vectors` plus `deferred` rows; the multi-claim base, 90-day window, upward late cash, term end, slice registry, holder priority, impairment, aggregate caps, 180-day timer, D+1 batch and provider return stay `SHADOW_DEFERRED` with the note's unblock seam, and a vector missing an input is `SHADOW_INPUT_UNKNOWN`. Those predecessor slice deferral rows remain on the fixed vectors for reproducibility; the separate provisional claim-slice registry below implements local registry, holder priority, impairment and shared caps. A missing or unusable note (settlement, terms or shadow) reports `SHADOW_NOT_BOUND` without numbers (the zipapp case) with the same 200 read. Permission `projection:read`; observer receives `403 ROLE_FORBIDDEN`.
+- `GET /api/policy` and `GET /api/policy/simulation`: read-only simulated application of the allocation order in `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`. The label is `simulated policy application — not executed distribution, not bank movement`. `mode` is `SIMULATED_POLICY_APPLICATION`. There is no query string and no POST. The handler runs the pinned `SettlementMachine` on disposable books only. Receipts, reservations, `state_digest`, and `operation_count` stay unchanged. When `allocation_order` is `ADOPTED` and expressible, the response compares that derived order with the two fixture orders. When it is `UNDETERMINED`, `DEFERRED`, or `NOT_ADOPTED`, `outcome` is `POLICY_UNDECIDED`, `decided` is null, and only the fixture rows remain. A missing note is `NOT_BOUND` / `policy not bound`. Items with `fsm_expressible: false` (refund bearer, resale unwind, revenue participation, claim purchase, residual and late cash) are `UNSUPPORTED_BY_PINNED_FSM` with `computed: false` and no amounts. The settlement decision note asks for `SHADOW_NOT_APPLIED` shadow math on those items; this node does not compute them, because the pinned FSM cannot express them. Per `docs/decisions/CAPITAL_SHADOW_POLICY.md` (`shadow_math_stance.section_7_instruction`: `REASSIGNED_NOT_REVOKED`), that shadow arithmetic is reassigned to a separate Capital module (`shadow_module_ownership`: `capital/shadow.py` behind `ShadowPolicyPort`, served by `GET /api/policy/shadow`, described at the end of this bullet), which computes it under mode `SHADOW_NOT_APPLIED`, never applied to the pinned FSM. `policy_adopted` stays false. The two fixture orders and the 500 bps fixture policy stay comparison fixtures and are never an operating policy. Permission `projection:read`. The zipapp loads its bundled provisional notes and reports `BUNDLED_IN_ARTIFACT` provenance. `--policy-note PATH` points the port at another file. `GET /api/policy/shadow` on the same dispatch is the separate read-only shadow computation for the five unsupported items: it evaluates the refund-bearer classes RC1–RC4 (RC5 routes to resale) on a frozen snapshot of the pinned `partial-after` view, the resale unwind cases RU1–RU3 on the settlement note's synthetic worked-example literals, single-claim revenue participation posting and claim-slice size and price on the shadow note's vectors (ratio, cap, advance rate and tier rate are read from the settlement and financial-terms notes at runtime), and the ordered UC1–UC4 partition of `undistributed_cash` on pinned `split-statement` and `late-cash` views, a disposable late-cash-after-acceptance replay and one synthetic overpayment literal. The label is `shadow arithmetic — not applied to the pinned FSM, not an executed distribution, not a bank movement`; `mode` is `SHADOW_NOT_APPLIED` and every result carries `applied_to_fsm`, `funds_executed`, `policy_adopted` and the other six flags constant false. Each item carries its pinned `UNSUPPORTED_BY_PINNED_FSM` verdict beside its shadow verdict; `revenue_participation`, `claim_purchase` and `residual_and_late_cash` carry `vectors` plus `deferred` rows; the multi-claim base, 90-day window, upward late cash, term end, slice registry, holder priority, impairment, aggregate caps, 180-day timer, D+1 batch and provider return stay `SHADOW_DEFERRED` with the note's unblock seam, and a vector missing an input is `SHADOW_INPUT_UNKNOWN`. Those predecessor slice deferral rows remain on the fixed vectors for reproducibility; the separate provisional claim-slice registry below implements local registry, holder priority, impairment and shared caps. A missing or unusable note (settlement, terms or shadow) reports `SHADOW_NOT_BOUND` without numbers with the same 200 read. Permission `projection:read`; observer receives `403 ROLE_FORBIDDEN`.
 - `GET /api/readiness`: source-byte integrity and behavior-level mapping of all 20 requirements, local capabilities, missing decisions, upstream prerequisites and release authorization. No upstream node is marked complete. Source equality does not qualify an SDK or service. The `financial-contracts` blocker that cites `docs/decisions/CAPITAL_FINANCIAL_TERMS.md` is built from the live note row of `GET /api/decisions` (`<status> per <note> (<version>)`), not from a fixed string. When the notes are not bound it reads `NOT_BOUND per docs/decisions/CAPITAL_FINANCIAL_TERMS.md`. The group status stays `DECISION_REQUIRED` and `policy_adopted` stays false.
-- `GET /api/decisions`: read-only machine-readable index of the `capital-decision-v1` blocks in `docs/decisions/`. The label is `simulated decision index — local note summary, not an adoption`; `mode` is `READ_ONLY_DECISION_INDEX`. `rows` has one entry per note in `scripts/decision_ledger.py` order (notes cited by `docs/CAP_COVERAGE.md` first, then any other `docs/decisions/*.md`), each with `note`, `decision_id`, `status` (the block status, or `INVALID` / `PENDING` as the ledger reports them), `provisional` (the block's own flag, null when absent or not a boolean), `version` (the block's `version` or `*_version` string, null when it has none) and `entries`, the per-entry status map (`ADOPTED`, `UNDETERMINED`, `DEFERRED`, `NOT_ADOPTED`). No entry value, rate or amount is copied into the response. Parsing is the same code as `python3 scripts/decision_ledger.py`, which keeps its CLI output unchanged. `status` is `BOUND`, or `NOT_BOUND` with `reason` `decision notes not bound` and `rows` empty when `docs/` is not present (the `.pyz` bundles neither `docs/` nor `scripts/`); that body has no numeric fields. Permission `reference:read` (organizer, auditor and observer). The `agent` role receives `403 ROLE_FORBIDDEN`. There is no query string and no POST. The read does not change `state_digest` or `operation_count`. It reports what the notes say and adopts nothing.
+- `GET /api/decisions`: read-only machine-readable index of the `capital-decision-v1` blocks in `docs/decisions/`. The label is `simulated decision index — local note summary, not an adoption`; `mode` is `READ_ONLY_DECISION_INDEX`. `rows` has one entry per note in `scripts/decision_ledger.py` order (notes cited by `docs/CAP_COVERAGE.md` first, then any other `docs/decisions/*.md`), each with `note`, `decision_id`, `status` (the block status, or `INVALID` / `PENDING` as the ledger reports them), `provisional` (the block's own flag, null when absent or not a boolean), `version` (the block's `version` or `*_version` string, null when it has none) and `entries`, the per-entry status map (`ADOPTED`, `UNDETERMINED`, `DEFERRED`, `NOT_ADOPTED`). No entry value, rate or amount is copied into the response. Parsing is the same code as `python3 scripts/decision_ledger.py`, which keeps its CLI output unchanged. `status` is `BOUND` with a valid financial-terms anchor and available index, or `NOT_BOUND` with `reason` `decision notes not bound`. Available rows survive a missing or invalid anchor; missing expected rows stay `PENDING` with `NONE`/null provenance, and readable invalid notes stay `INVALID` with their actual source/hash. Unavailable index inputs produce empty `rows`; the body has no numeric fields. Permission `reference:read` (organizer, auditor and observer). The `agent` role receives `403 ROLE_FORBIDDEN`. There is no query string and no POST. The read does not change `state_digest` or `operation_count`. It reports what the notes say and adopts nothing.
 - `GET /api/export`: accepted journal, source pin, fixture digest, state digest and replay match. `durable` follows the same memory / `LOCAL_FILE_WORKSPACE` label as state. No import or resume endpoint. Not authenticated financial export, bank reconciliation, accounting evidence, or stage5 durable recovery. Permission `export:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. This v1 document is unchanged by the v2 manifest.
 - `GET /api/export/manifest`: read-only manifest. With an empty overlay journal it is format `KIX_CAPITAL_EXPORT_MANIFEST_V2`, byte-identical to before the overlay (`tests/golden/demo.json`). With a non-empty overlay it is `KIX_CAPITAL_EXPORT_MANIFEST_V3`: the seven sections plus `overlay` (part tag `overlaypart`; body `label` SIMULATED, `overlay_schema`, `sim_day`, `clock_source`, `terms_binding`, `entry_count`, `journal`, `state`, `overlay_state_digest`), and `reconciliation` gains the check `overlay_fold_digest_equals_persisted` and `scope.overlay_state_digest` (a mismatch makes the manifest `INCOMPLETE` with `RECONCILIATION_NOT_CLEAN`). `capital.verify` accepts both formats and rejects V3 without `overlay` and V2 with `overlay` as `SECTION_SET` (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2); `tests/golden/overlay_demo.json` pins the V3 `content_digest`. Signing is unchanged (the one `content_digest`; stage7 stays out of scope). Sections are `journal`, `receipts`, `projection`, `reconciliation`, `statement`, `fixtures`, and `source_pin`. The `source_pin` body carries the pinned `commit`, `repository`, `files`, `integrity` and the same one-entry `assets` array as `GET /api/state`. Each section object is `{sha256, body}` and `sha256` is SHA-256 of that body's canonical JSON (`sort_keys`, compact separators). `content_digest` is SHA-256 of canonical JSON of `content_material()` in `capital/export.py`, computed in three steps: (a) remove the top-level `content_digest` and `signature` fields; (b) strip `instance_id`, `created_at`, `saved_at`, `timestamp`, and `timestamps` at every depth; (c) recompute each section's `sha256` over its stripped `body` and substitute it for the stored value. The stored section `sha256` still covers the body as saved, so it can differ from the recomputed value. The verifier checks the stored value first (`SECTION_HASH_MISMATCH`), then the digest. `cursor`, `watermark`, and `source_cut` are JSON null and listed in `not_bound` with status `NOT_BOUND`. The same is true of an external key and authentication. `retention_policy` is an object of five named slots — `legal_dispute_hold`, `business_reconciliation`, `retry_support`, `memory_residency`, and `tax_accounting_records` — each `{owner, status}` with `status` `UNDETERMINED` or `DECISION_REQUIRED` per upstream R1 (kix-protocol PR #139) and `CAPITAL-RETENTION-PRIVACY-V1` in `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`. No slot carries a duration, bound, or timer; those values stay `NOT_BOUND` in the `not_bound` `retention_policy` row, and nothing deletes anything. `status` is `INCOMPLETE` when reconciliation is not `MATCHED` or the workspace is not `ACTIVE`. It is never reported `COMPLETE` in those cases. `COMPLETE` means only that the local sections were hashed on a matched, readable book. `stage7_authenticated_export` stays false. There is no import or resume route. Permission `export:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`.
 - `SignaturePort` (`capital/export.py`) is the adoption seam for a later stage7 authenticator. The default `UnsignedSigner` sets the signature to `NOT_BOUND`. `--dev-hmac` with `--workspace` opts into `DevHmacSigner`: one key file `WORKSPACE/export-dev.key`, created mode `0600`, labeled `DEV_ONLY`. The file starts with the ASCII label `DEV_ONLY` and is never returned in a response or log. A shared HMAC key is integrity only, not authentication. It is not an external key and not a credential. `python3 -m capital.verify FILE --key-file K` recomputes every section hash, the content digest, and the signature. The first mismatch is the reason (`SECTION_HASH_MISMATCH:<section>`, `CONTENT_DIGEST_MISMATCH`, or `SIGNATURE_MISMATCH`). An unsigned file verifies as signature `NOT_BOUND` without a key file.
@@ -128,6 +258,12 @@ Browser writes persist the pending request **before** one POST and use a Web Loc
 The idempotency fingerprint is `operation_id`, `op`, `advance_id`, and `args`. It does not include `instance_id`, `role`, `role_provenance`, `asset`, or observability counters. `asset` can carry only the one accepted value, so leaving it out of the fingerprint cannot hide a conflict, and replaying a stored operation with or without it returns the stored receipt. Repeating that command on the new instance returns the stored receipt with `transport_duplicate=true`, the original inner `instance_id`, and the original role label. A different payload for the same `operation_id` is `IDEMPOTENCY_CONFLICT`. Authorization still requires the current `instance_id`.
 
 ## Local unsigned zipapp
+
+Version 0.2.0 adds exactly nonrecursive, sorted `docs/decisions/*.md`, `docs/CAP_COVERAGE.md` and `scripts/decision_ledger.py` at their archive-root paths. Original bytes enter the manifest per-file SHA256 map. Tests, keysets, workspace files and other docs/scripts are excluded (the manifest-pinned vendor `test_mock_credit.py` remains). All inputs use `importlib.resources.files('capital').parent` Traversables and the same ledger parser as checkout.
+
+`notes_source` / `note_sha256` accompany terms status/detail/allocation, state terms, policy status/simulation, underwriting, and decision body/rows. Sources are `CHECKOUT`, `BUNDLED_IN_ARTIFACT`, `OVERRIDE_FILE`, `NONE`. Hashes cover actual loaded note bytes: terms/underwriting/state terms and the decision body anchor use `CAPITAL_FINANCIAL_TERMS.md`; policy uses `CAPITAL_SETTLEMENT_POLICY.md`; each decision row uses its named note. Existing policy/block digests are separate. Readable malformed inputs retain their source/hash; missing/unreadable inputs use `NONE`/null. Explicit `--terms-note` and `--policy-note` filesystem overrides are exclusive, including failure: they never fall back to bundled inputs. Consumer usability checks and provisional labels remain.
+
+A `.pyz` serves build-time note bytes and does not follow later checkout edits. Rebuild to use changed notes and compare their hashes with `RELEASE-MANIFEST.json`. The stdlib loopback smoke draws a synthetic advance, advances `sim_day`, checks note-derived nonzero accrual and rational remainder, restarts its temporary workspace, then checks the same overlay digest, receipt and policy provenance before finishing the repayment lifecycle.
 
 `scripts/build_release.py` writes `dist/capital-<version>.pyz` for a checkout-free local run. `<version>` is only `capital/__init__.py`. The archive mode is `LOCAL_SIMULATION_ARTIFACT` with `signed: false` and `published: false`. It is not a PyPI publish, not an external signature, and not a deployment. The export `SignaturePort` seam does not sign this zipapp. Publishing and deployment are not done here. Release notes live in `docs/RELEASES.md`.
 
@@ -418,3 +554,315 @@ Empty overlays omit both overlay cut keys under the adopted
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
+
+## Offline observation triage (SIMULATED)
+
+`python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`
+accepts exactly one explicit local regular file. It never reads an implicit workspace,
+fetches a URL, accepts an output path, posts captures, resolves conflicts, authenticates
+providers, records financial facts or retains new state. CAP-14/CAP-16 remain NOT_BOUND.
+
+Input has exactly `format: KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1`,
+`label: SIMULATED`, `facts: [...]`, `bindings: [...]`. Both lists are required and
+may be empty. Facts use the exact `capital.observation.normalize` schema including
+`provenance: SYNTHETIC_FIXTURE`; bindings have the four scope fields (`provider`,
+`account`, `environment`, `profile_version`) plus `operation`, `payment_key`, `order_id`.
+Contradictory bindings for a scoped operation are rejected. Equal repeated bindings
+are allowed. No timezone is inferred; null offsets remain null.
+
+Limits are 262,144 input bytes (also applied to canonical API input), 256 facts,
+256 bindings, 4,096 characters per string and nesting depth eight, root at depth one.
+These are diagnostic resource bounds, not recorded-financial-fact limits. The reader
+consumes at most the byte limit plus one; non-regular files, duplicate JSON keys at
+any depth, invalid UTF-8, BOM/NUL, nonstandard constants, floats, lone surrogates,
+excess nesting, numeric-parser failures and invalid shapes fail before calling fold.
+Errors on stderr are JSON with stable `error_code`, `label: SIMULATED`, `applied: false`
+and `funds_executed: false`. Exits: 0 report completed (including conflict/unmatched),
+1 `INVALID_INPUT` (including read failures), 2 `ARGUMENT_ERROR`,
+3 `ADAPTER_CONTRACT_ERROR` or `INTERNAL_ERROR`. Serialization completes before stdout
+is written. Output has sorted object keys, compact separators, UTF-8 and one newline.
+
+`capital.observation_triage.triage(facts, *, bindings, observation_port=None)` defaults
+to `LocalFakeObservation`, validates and detaches inputs, calls fold exactly once and
+rejects output inconsistent with the pinned local fold contract, including safety
+labels, event identity, digests, binding statuses, duplicate/conflict indices and order.
+The report format is `KIX_CAPITAL_OBSERVATION_TRIAGE_V1` with `label: SIMULATED`,
+`applied: false`, `funds_executed: false`, `applied_effects: []`,
+`binding_status: NOT_BOUND`, `semantic_conformance: false` and the existing
+`LOCAL_SYNTHETIC_JSON_SHA256_V1` identity profile.
+
+Groups follow first encounter and carry event identity, scoped key, fold status,
+separate first-variant fold binding status, delivery indices, comparison-only
+`reference_delivery_index`, stable reason codes/text, variants and conflicts.
+Every distinct normalized variant retains its digest and delivery indices, in
+first-encounter order. Each has a scoped-operation lookup, supplied binding (or null),
+status, explanation and payment/order mismatches. Every fold conflict, including a
+repeated conflicting variant, retains the delivery index and ordered
+`{field, reference_value, incoming_value}` differences in normalization field order.
+The first content is solely a comparison reference; no authoritative winner is chosen.
+A group stays CONFLICT even after an identical redelivery of the reference content.
+
+Top-level `deliveries` retains exact input order and all supplied transmission
+references. Each entry identifies its group and variant and preserves fold classification
+FIRST/DUPLICATE/CONFLICT. Reasons distinguish first observation, identical redelivery,
+changed transmission metadata and content conflict. `redelivery_reason_code` and
+`redelivery_explanation` additionally describe repeated conflicting variants without
+changing their CONFLICT fold classification. A reference-equal delivery may be classified
+DUPLICATE while its group remains CONFLICT. No transmission array is sorted.
+
+Investigation workflow: run the pinned example; follow delivery indices into groups;
+compare conflict fields against the comparison reference; inspect each variant's
+binding explanation; retain all unresolved variants. A MATCHED_FIXTURE label only
+means equality with an explicitly supplied synthetic binding. The diagnostic does
+not authorize or apply any financial operation. Named vectors in
+`tests/vectors/observation_triage/` are checked read-only with
+`python3 scripts/observation_triage_vectors.py --check`.
+
+## Offline event stress CLI
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json` is an offline
+stdlib entry point, without a new HTTP route. The `CAPITAL_EVENT_STRESS_V1` request
+contains `events` (`event_id`, nonempty `claim_refs` with exact `claim_id`,
+`trade_id`, `currency`) and independent `scenarios` (`scenario_id`, `event_id`,
+`kind=ADDITIONAL_OPEN_REFUND_KRW`, nonnegative integer
+`additional_open_refund_krw`). See README for a runnable request shape.
+
+One workspace byte capture is audited, hashed and restored through the existing
+read-only in-memory helper; a lock-protected `FrozenInputs` cut detaches all
+calculations. No filesystem locks, source mutations, postings or commands are
+issued. Event definitions, scenarios and member identities are canonically sorted.
+Duplicate/unknown/ambiguous memberships (including unselected events), malformed
+requests, and capacity overflow reject atomically. Invalid JSON encodings and
+non-integer shock amounts reject before calculation.
+
+`capital.event_stress.report_workspace(directory, request_bytes)` emits
+`KIX_CAPITAL_EVENT_STRESS_REPORT_V1`; `evaluate_detached(frozen, request_bytes)`
+is a pure local test/evaluation seam and does not assert an audit. Baseline and
+scenario rows include claim/refund/payee/rate/rounding witnesses, allocated drawn
+advance base/headroom/breach metrics, unique-claim eligible face, unique-advance
+exposure, event/portfolio deltas, and coverage. Unfinanced fixture claims stay in
+eligibility coverage without an invented rate. Shared collateral gets no guessed
+allocation. Unsupported dependent values and deltas are null. Baseline non-margin
+risk folds are retained unchanged; their existing relative-shock table is excluded.
+
+Exit 0: COMPLETE, including computed hypothetical breaches. Exit 1: REJECTED,
+UNAVAILABLE or PARTIAL; exit 2: argument misuse. Rejections contain diagnostics
+without financial results or scenario digests. All reports label SIMULATED,
+provisional=true, applied=false, funds_executed=false, workspace_mutated=false,
+production NOT_AUTHORIZED. Digests identify captured inputs and current loaded
+policies; historical policy authentication remains NOT_BOUND. No scenario search,
+optimization, financial execution, or rights verification is introduced.
+
+## Local upstream re-pin evidence
+
+`scripts/upstream_repin_check.py` is a stdlib, read-only local checker. All
+reports are SIMULATED / provisional and set `repin_performed:false`. Standalone
+`--check --root ROOT` consumes that root's adopted re-pin policy and checks its
+HOLD inventory. Comparison requires explicit `--baseline`, `--candidate` and
+`--evidence`; baseline policy is authoritative. The checkout running the checker
+supplies trusted parsers, AST inspection and the technical registry. Candidate
+code and evidence commands are never executed, nor is anything fetched.
+
+Candidate policy may retain the historical inventory or change only declared
+inventory SHAs to match movement records. Other edits to the eight entries
+(including status, scope, classes, cardinality and evidence obligations) fail.
+Separate governance review is needed for unsupported inventory/policy changes.
+No hash equality expands binding to unrelated tables. Contract-invariants
+registration remains the separate `upstream-repin-inventory-contract-invariants`
+follow-up, `PENDING_NOTE_REGISTRATION`.
+
+Inputs are directories, not Git refs. Caller-selected `baseline_id` and
+`candidate_id` identify snapshots; neither is authenticated. Content digests
+bind those labels to bytes: SHA256 of UTF-8 compact, sorted-key JSON mapping
+normalized relative paths to file SHA256, with JSON ASCII escaping (`ensure_ascii=True`). The inventory includes every regular
+file recursively under `capital/`, `scripts/`, `tests/`, `docs/`, and optional
+`source_material/`, plus existing root `README.md`, `AGENTS.md`, `package.json`,
+`package-lock.json`, `pyproject.toml`, `playwright.config.cjs`. Excluded components
+are `__pycache__`, `.pytest_cache`, `node_modules`, `test-results`,
+`playwright-report`, and `.pyc`/`.pyo` files. Build outputs, Git metadata and
+external evidence/logs are outside the inventory. Symlinks, escaping paths,
+duplicate JSON keys and non-normalized paths are rejected. Evidence and logs
+must be outside both source snapshots to avoid self-referential hashes.
+
+Evidence schema (`capital-upstream-repin-evidence-v1`):
+
+```json
+{
+  "schema": "capital-upstream-repin-evidence-v1",
+  "baseline_id": "SIMULATED caller-selected baseline",
+  "candidate_id": "SIMULATED caller-selected candidate",
+  "baseline_digest": "<content SHA256>",
+  "candidate_digest": "<content SHA256>",
+  "policy_digests": {"baseline": "<note SHA256>", "candidate": "<note SHA256>"},
+  "changes": [{
+    "surface": "vendor_pin or ai_draft_pin",
+    "old_sha": "<full baseline SHA>", "new_sha": "<full proposed SHA>",
+    "trigger": "<one of baseline policy triggers>",
+    "acceptance_basis": "<specific review basis>", "decision_maker": "<attribution>",
+    "consumer_impact": "<affected consumers>",
+    "compatibility_authority_analysis": "<compatibility and authority effects>",
+    "rollback": "<atomic verified rollback procedure>",
+    "artifacts": [{
+      "path": "<candidate-relative file>", "role": "<required_evidence role>",
+      "digest": "<file SHA256>", "method": "generator",
+      "procedure": "<regeneration procedure>", "result": "UNCHANGED_REGENERATED"
+    }],
+    "validation": [{
+      "check_id": "<registered command ID>", "argv": ["python3", "<script>", "<args>"],
+      "candidate_id": "SIMULATED caller-selected candidate",
+      "candidate_digest": "<content SHA256>", "exit_code": 0, "result": "PASS",
+      "logs": [{"path": "<relative to evidence directory>", "digest": "<log SHA256>"}]
+    }]
+  }],
+  "research_corrections": []
+}
+```
+
+This template uses placeholders and is not valid completed evidence. Use the
+Python API `load_policy`, `inspect_snapshot`, `required_evidence`,
+`compare_snapshots` to enumerate the required paths/roles and exact argv. Only
+`python3` is accepted as the normalized Python executable in records. Packaged
+smoke argv uses `build/acceptance-dist/capital-<candidate version>.pyz`, derived
+statically from candidate `capital/__init__.py`. Logs are UTF-8 and hash checked.
+Failed/skipped or contradictory records do not satisfy validation. Citation logs
+must show `CLAIM_DRIFT verified=N total=N` for the affected table, and local
+source headings/needles are inspected without running the candidate checker.
+
+Artifacts use `REGENERATED`, `UNCHANGED_REGENERATED`, or `SOURCE_INSPECTED`.
+Unchanged outputs still require procedure/result evidence. `method:manual`
+requires `claim_evidence` rows (`claim_id`, `source_path`, `source_digest`,
+`explanation`) and `independent_expectations` rows (`claim_id`, `expected`,
+`rationale`); for hand-maintained tables, producer checks and their test vectors, both lists must cover every claim of the corresponding table, without duplicate IDs. Source paths must match that claim and independent expectations must agree with the table. These surfaces require manual reconstruction evidence because they have no registered generator. Evidence claims
+are review material; their execution, independence and authority cannot be
+authenticated by this checker.
+
+| Movement | Required artifact closure |
+|---|---|
+| Either | Each policy-bound table with embedded check vectors (including CE1 input/expected), its implementation/checker and focused tests; all existing manifest/pack vectors and goldens; receipt/export/pack producers; README, handbook, integration, validation, requirements, seams/releases, decision bindings and docs-surface registry |
+| Vendor | All four vendor-bound tables, manifest and five vendor files, original source copies, finance vectors |
+| Citation | Agent table/implementation/test vectors, agent-bearing demo/journey goldens, receipt/export/pack evidence |
+
+The conservative shared golden set covers all existing goldens. Minimum
+artifact membership is the union of baseline and candidate paths, so deleting
+a required output cannot remove an obligation. Evidence may add artifacts but
+cannot remove the registered minimum. Original source files are copied to
+`source_material/<surface>/<source_doc>`; vendor sources also use manifest
+`source_prefix` and file paths. These are read-only inputs, honestly labelled if
+synthetic. Source/vendor bytes must match. No upstream checkout is modified.
+
+| Movement | Required command results (cumulative) |
+|---|---|
+| Either | Decision ledger/bindings, focused binding tests, full unittest discovery, docs-surface, focused re-pin tests, manifest/pack vectors; affected citation checks against explicit local sources |
+| Vendor | upstream/FSM/read-model/CE1 scripts with `--execute`, their focused tests, finance vectors; all nine acceptance stages |
+| Citation | agent script with `--execute`, focused tests; acceptance unit, upstream-claims, browser, packaged-smoke, seeded-demo, integrated-journeys; storage/vendor/node stages when those inputs change |
+
+Every command in each required acceptance stage is required, including seven
+upstream-claims commands, two unit commands, two storage commands when required,
+and both build and smoke results. Stage summaries alone do not satisfy this
+contract. Registry agreement is tested against trusted `scripts/acceptance.py`.
+These are completeness obligations, not commands run by the checker.
+
+Research provenance is reported separately with original note path/digest and
+`bases`/`기준:` source lines and SHA-bearing 기준 table rows. A correction requires a `research_corrections` row
+with `path`, ISO `date`, `reason`, `replacement_basis`, `original_digest`,
+`original_provenance`; deletion of historical notes is not accepted as a
+correction. The original provenance is retained in the comparison report.
+Ordinary note validation and the whole candidate binding fence still apply.
+
+Reports contain sorted findings, classifications, inspected hashes, separate
+research changes, missing artifact paths and missing validation IDs. Exit 0
+means `HOLD` or `EVIDENCE_COMPLETE` (completeness for review only); exit 1 means
+findings/invalid input; exit 2 means argument misuse. Approval, adoption and
+receipt authentication stay `NOT_BOUND`: the checker does not authenticate an
+adoption receipt or prove same-PR membership, regeneration execution, actual
+upstream source identity, or professional legal/tax review. Historical results
+are never substituted for candidate-bound evidence. Failed validation never
+causes an automatic pin switch; current pins remain unchanged by this node.
+
+## residual-obligations-report
+
+Offline stdlib API: `capital.residuals.report_workspace(directory) -> dict`;
+CLI: `python3 -m capital.residuals --workspace DIR`;
+`main(argv=None) -> int`. Read `workspace.json` once, pass those bytes to
+`audit.audit_workspace_bytes(raw, workspace=str(directory))`, strict-parse the
+same capture with `capital.verify.loads`, restore via `evidence.offline_service`,
+require ACTIVE, and close its observability in `finally`. Compose detached
+journals via `overlay.fold(entries, len(journal))`; never open `FileWorkspace`,
+lock, sign, save or connect. Emit `store.canonical_bytes(report) + b'\n'`.
+
+The exact envelope fields are `format` = `KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1`,
+`label` = `SIMULATED`, `mode` = `READ_ONLY_RESIDUAL_REGISTER`, `status` =
+`COMPLETE|INCOMPLETE|AUDIT_FAILED`, `reasons` (strings), `source`, `sections`,
+`interpretation` (fixed explanatory string), `authentication`, `actual_payments`,
+`legal_collectability` (each `NOT_BOUND`), `funds_executed`, `workspace_mutated`
+(both false). `source` has `workspace_sha256`, `payload_sha256`, `state_digest`,
+`overlay_state_digest`, `sim_day`, `audit`; unavailable values are null. The
+existing audit object is copied verbatim, including path and saved metadata.
+Determinism requires identical bytes, supplied path and local audit inputs;
+no new clock/session identifier enters output. `sections` is null on audit or
+restore failure. Exit 0 for COMPLETE, 1 otherwise, 2 for CLI argument misuse.
+
+| Section / declared population | Independent integer metrics (KRW) / reader |
+| --- | --- |
+| `closed_unpaid_interest`: all CLOSED advances | `interest_due_krw`, `default_interest_due_krw` / `overlay.advance_gate` |
+| `unapplied_cash`: all recorded F04 draws | `unapplied_cash_krw` / repayment fold |
+| `defaulted_unwritten`: DEFAULTED without folded write-off | `principal_krw`, `interest_krw`, `default_interest_krw`, `claim_krw` / `recovery.position` |
+| `post_writeoff_residual_claims`: folded write-offs | `residual_claim_krw` / `recovery.recovered` |
+| `impaired_slice_residuals`: IMPAIRED registry rows | `slice_face_krw`, `recourse_received_krw`, `served_krw`, `outstanding_krw`, `eligible_line_krw`, `shortfall_krw` / registry + `slices.derived` |
+
+Each section has exactly `rows`, `coverage` (`population`, `candidates`, `bound`,
+`not_bound`), `totals`, `reconciliation`. Each metric total has exactly
+`known_subtotal_krw`, `total_krw` (null if any unknown), `unknown_rows`.
+Reconciliation has `matched` (true/false/null) and `checks`, each with `id`,
+`status` (`MATCHED|MISMATCH|NOT_CHECKED`), `reason` (string/null). It checks known
+rows even in an incomplete section. Independent arithmetic checks entry cash
+conservation, posted interest minus payments, default anchor components minus
+recoveries, write-off residual minus unique late recoveries, and slice baseline,
+recourse, served, eligibility and shortfall formulas. A mismatch makes the
+report INCOMPLETE with `RECONCILIATION_FAILED`. No cross-category total is defined.
+
+Each row has exactly `advance_id`, `slice_id`, `claim_id`, `beneficiary_role`,
+`payee_label`, `holder_role` (string/null), `lifecycle_status`, `evidence_status`
+(`BOUND|NOT_BOUND`), `reasons`, `basis` (`RECORDED_FOLD|LAST_RECORDED_OBSERVATION`),
+`amounts` (the section's metrics, integer/null), `fold_values`, `remainders`,
+`references`. Rows sort by identity, references by journal/index. Each reference
+has exactly `journal` (`F04|OVERLAY`), zero-based `index`, `entry_id`, `kind`,
+`after_journal_index`, `sim_day` (last two integer/null). F04 logical dates are
+never invented. References resolve into the captured original journals, retaining
+all original evidence/quote/source references. Identical overlay IDs use their
+first occurrence, matching fold deduplication.
+
+`fold_values` contains detached existing objects or null, with exactly:
+`accrual` (overlay advance record: cumulative exact interest, posted integer
+interest, accrual days and existing recognition fields), `repayment` (per-advance
+paid default/contract interest, principal, unapplied cash and posting count),
+`recovery` (`recovery.recovered`: recovered principal, paid interest, written-off
+amount, residual claim and write-off day), `position` (`recovery.position`'s four
+components), `slice` (registry identity, policy, baseline, status and recourse),
+`derived` (`slices.derived`'s served, outstanding, eligibility, encumbrance,
+exposure, shortfall and advisory flags), `observation` (recorded bounded slice
+witness: `claim_view_sha`, refund face, fixture reclassification flag and mapped
+lines with face/outstanding/distributed/recovery_due). These retain their
+existing fold schemas; the report does not define substitute financial fields.
+`remainders` has `contract_subwon`, `default_subwon` as fraction strings/null,
+excluded from integer totals.
+
+Interest requires an actual accrual record. Cash requires a valid folded terms
+binding and per-advance accrual or repayment evidence; absence of repayment is
+zero recorded cash only within that coverage. Default claims also require their
+anchor. Missing evidence yields NOT_BOUND/null, including legacy workspaces;
+validated zero rows remain visible. An impaired slice uses the latest
+first-occurrence audited slice witness containing its claim; that witness must
+contain its payee line and the registry must have its recorded baseline.
+Never fall back to an older cut/current fixture or call `derived` with a missing
+line. The observation hash and supporting witness reference survive; later
+settlement evidence stays NOT_BOUND.
+
+COMPLETE means only the declared recorded population was audited and reconciled.
+Terminal FSM status does not establish extinguishment of every obligation.
+F04 outstanding exposure is never added to a residual claim for the same
+obligation; cash is never netted against other cases; slice shortfall is never
+added to outstanding. This reader decides no waiver, cash release, collection,
+slice write-off, legal collectability or accounting recognition. It changes no
+workspace, persistence format, statement classification, HTTP/UI or upstream
+readiness claim.
