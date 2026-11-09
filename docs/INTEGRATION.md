@@ -578,3 +578,109 @@ added to outstanding. This reader decides no waiver, cash release, collection,
 slice write-off, legal collectability or accounting recognition. It changes no
 workspace, persistence format, statement classification, HTTP/UI or upstream
 readiness claim.
+
+## Disposable UC3 hold replay CLI
+
+`capital.uc3_replay` provides `load_policy(*, hold_path=None,
+settlement_path=None, shadow_path=None)`, `evaluate_snapshot(snapshot, *,
+policy)`, `replay(snapshots, *, policy)` and `main(argv=None)`. The small
+`scripts/uc3_replay.py` entry point works from any directory. It offers mutually
+exclusive `--snapshot PATH|-`, `--replay PATH|-` (NDJSON complete snapshots),
+and `--check` (read-only comparison with `tests/vectors/uc3_replay.json`).
+Input is limited to 1 MiB per invocation. Exit codes: 0 computed/matching,
+1 refusal, unavailable policy or vector drift, 2 argument misuse. Output is
+sorted-key, compact ASCII JSON, one result per evaluated step. Parsing rejects
+duplicate JSON keys, NaN/Infinity, malformed JSON, invalid UTF-8 and excess bytes;
+the invocation is parsed before any financial result is emitted.
+
+A complete synthetic snapshot is:
+
+```json
+{
+  "scenario_id": "synthetic_uc3",
+  "claim_id": "claim_1",
+  "as_of_sim_day": 190,
+  "classification": {
+    "confirmed_cash": 140,
+    "undistributed_cash": 140,
+    "refund_outstanding": 0,
+    "pg_adjustment_outstanding": 0,
+    "reclassified": true,
+    "obligations": [
+      {"face": 140, "distributed": 0, "cancelled_unpaid": 140, "outstanding": 0}
+    ]
+  },
+  "arrivals": [
+    {"tranche_id": "A", "source_fact_id": "fact_A", "arrival_sim_day": 10, "amount_krw": 100, "currency": "KRW"},
+    {"tranche_id": "B", "source_fact_id": "fact_B", "arrival_sim_day": 189, "amount_krw": 40, "currency": "KRW"}
+  ],
+  "proposal_requests": [
+    {"proposal_id": "P1", "operator_label": "synthetic_operator", "action": "REVIEW_ELIGIBLE_HELD_CASH", "tranche_ids": ["A"]}
+  ]
+}
+```
+
+All object shapes are closed. Identifiers are case-sensitive
+`[A-Za-z0-9_-]{1,64}`; currency is exactly KRW. Monetary fields are nonnegative
+integers, arrivals strictly positive, and booleans are never integers. The
+obligations list is nonempty and each row reconciles face against distributed,
+cancelled and outstanding amounts. The unchanged `capital.shadow.uc_partition`
+also checks confirmed/distributed/undistributed reconciliation. Admission requires
+reclassification, zero outstanding obligations/refunds/PG adjustments, confirmed
+cash no greater than total faces, only UC3 cash, and unique arrivals summing to
+that cash. Positive PG adjustments and overpayment are refused; no predecessor
+classification is broadened. The replay's representation ceiling is
+9,007,199,254,740,991; every input to the unchanged partition must also fit its
+1,000,000,000,000 domain. Exceeding either bound is `SHADOW_INCONSISTENT`, with
+no calculated amounts or proposals.
+
+Policy loads through `capital.resources.read_note`, with exclusive overrides
+and raw-byte SHA256/source plus canonical-block SHA256 provenance. The six
+ADOPTED UC3 entries, settlement `residual_and_late_cash`, and five shadow
+entries (`shadow_math_stance`, `shadow_module_ownership`,
+`shadow_label_vocabulary`, `rounding_and_tiebreak_rules`,
+`revshare_claim_purchase_deferral`) must be usable and supported. The hold
+duration comes from settlement `suspense_period_days` and must agree with
+UC3 `hold_days`; the admission limits come from `replay_capacity_bounds`.
+Unavailable, malformed, non-adopted or contradictory entries yield
+`SHADOW_NOT_BOUND` without amounts or proposals. The UC3 note implements only
+temporal projection; existing shadow deferral vectors remain unchanged.
+
+Each arrival owns its immutable anchor. Eligibility is inclusive at arrival
+plus the loaded duration. Exact duplicate arrivals collapse; contradictory
+tranche/source identities reject the whole snapshot, with lexical diagnostics.
+Arrivals sort by day then tranche; obligations sort by their four monetary
+fields. Each replay preserves one scenario and claim, nondecreasing days and
+all accepted cash facts. A removed or corrected arrival rejects the step and
+stops the replay. Earlier historical comparisons or corrections use a separate
+disposable evaluation. Late delivery retains the original synthetic arrival day.
+
+Every successful event trace includes tranche/source identities, reason,
+`shadow_amount_krw`, `shadow_held_krw`, `eligible_sim_day`, temporal state and
+proposal references. On day 190 in the example, A is eligible and B remains
+ineligible until day 369; all 140 synthetic KRW remain held. An explicit
+`CONTINUE_HOLD` or `REVIEW_ELIGIBLE_HELD_CASH` request selects nonempty, distinct,
+known whole tranches. Review requires every selection to be eligible; continued
+hold never resets anchors. Exact repeated requests collapse, conflicting
+proposal IDs reject the snapshot, and proposals sort by ID with sorted
+selections. Proposal fields include selected full amounts, eligibility days,
+policy references, as-of day and the full snapshot SHA256, `PROPOSED_ONLY`,
+`SIMULATED`, and `executionAuthorized=false`. The digest covers normalized
+classification, identity, arrivals, day and actual policy provenance; it excludes
+requests. Any changed fact/day/policy produces a different applicability digest.
+There is no approval or proposal-submission endpoint.
+
+Conservation reports unique input = held + executed disposition (always zero),
+and held = eligible held + ineligible held. Proposals are independent alternatives;
+their individual `shadow_proposed_disposition_krw` amounts are never summed as
+payments or reservations and never reduce holds. Successful and refused results
+retain the closed SHADOW status vocabulary, `SHADOW_NOT_APPLIED`, provisional
+SIMULATED disclosure and all nine false shadow authority flags, including
+`funds_executed=false` and `workspace_mutated=false`.
+
+This is a disposable in-memory evaluator: no wall clock, timer, automatic
+proposal/disposition, workspace/FSM command, persistent overlay, external-fact
+ingestion, D+1 batch, provider return, participation accounting or cash release.
+Operator labels are synthetic attribution, not authentication. Legal/tax terms
+remain working assumptions pending professional review; no upstream binding or
+production authority is claimed.
