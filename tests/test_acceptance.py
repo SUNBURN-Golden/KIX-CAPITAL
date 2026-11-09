@@ -47,13 +47,15 @@ class AcceptanceTests(unittest.TestCase):
             commands['upstream-claims'][0][1:],
             ['scripts/upstream_claims_check.py', '--execute'],
         )
-        self.assertEqual(len(commands['upstream-claims']), 6)
+        self.assertEqual(len(commands['upstream-claims']), 7)
         self.assertEqual(commands['upstream-claims'][3][1:],
                          ['scripts/ce1_claims_check.py', '--execute'])
         self.assertEqual(commands['upstream-claims'][4][1:],
                          ['scripts/adapter_identity_claims_check.py', '--execute'])
         self.assertEqual(commands['upstream-claims'][5][1:],
                          ['scripts/lifecycle_claims_check.py', '--execute'])
+        self.assertEqual(commands['upstream-claims'][6][1:],
+                         ['scripts/readiness_claims_check.py', '--execute'])
         self.assertEqual(commands['node-check'][0][1:], ['--check', 'capital/static/app.js'])
         self.assertEqual(commands['browser'][0], ['npm', 'run', 'test:browser'])
         self.assertEqual(commands['packaged-smoke'][0][1:], ['scripts/build_release.py', '--out', 'build/acceptance-dist'])
@@ -158,6 +160,31 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(acceptance.parse_journeys(text), summary)
         self.assertIsNone(acceptance.parse_journeys('SIM_JOURNEYS {not json}\n'))
         self.assertIsNone(acceptance.parse_journeys(line))
+
+    def test_documented_divergences_are_counted_separately_and_do_not_hide_failures(self):
+        for passed, failed, divergences, expected_status in (
+                (11, 0, 2, 'passed'),
+                (10, 1, 2, 'failed'),
+                (11, 0, 1, 'failed'),
+                (11, 0, 3, 'failed')):
+            with self.subTest(passed=passed, failed=failed, divergences=divergences):
+                line = (f'CLAIM_CONFORMANCE passed={passed} total=13 failed={failed} '
+                        f'documented_divergences={divergences}')
+                stage = {
+                    'id': 'upstream-claims', 'kind': 'upstream-claims', 'timeout': 20,
+                    'commands': [[sys.executable, '-c', f'print({line!r})']],
+                }
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / 'evidence.json'
+                    code = acceptance.execute_plan(
+                        [stage], root=ROOT, evidence_path=path, required=('upstream-claims',))
+                    data = json.loads(path.read_text())
+                result = data['stages'][0]
+                self.assertEqual(result['status'], expected_status)
+                self.assertEqual(code, 0 if expected_status == 'passed' else 1)
+                self.assertEqual(result['passed'], passed)
+                self.assertEqual(result['documented_divergences'], divergences)
+                self.assertEqual(result['test_count']['failed'], failed)
 
     def test_unknown_inject_target_exits_two(self):
         self.assertEqual(acceptance.main(['--inject-fail', 'not-a-stage', '--evidence', '/tmp/unused-acceptance.json']), 2)

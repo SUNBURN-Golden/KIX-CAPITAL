@@ -101,7 +101,7 @@ python3 scripts/acceptance.py
 
 합격·불합격 문장은 [수용 점검표](ACCEPTANCE_KO.md)에 있다. 그 점검표를 사람이 채우기 전에는 수용이 아니다.
 
-`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `storage-conformance` 단계도 벡터 discovery 다음에 `python3 -m unittest tests.test_crash_replay -v`를 둘째 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute`, `python3 scripts/ce1_claims_check.py --execute`, `python3 scripts/adapter_identity_claims_check.py --execute`, `python3 scripts/lifecycle_claims_check.py --execute` 여섯 명령을 순서대로 실행한다. FSM 계약 클레임 표(`tests/fsm_contract_claims.json`)는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하고, 단독 명령 `python3 scripts/fsm_contract_claims_check.py --execute`로도 돌린다. 그 표는 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`다.
+`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `storage-conformance` 단계도 벡터 discovery 다음에 `python3 -m unittest tests.test_crash_replay -v`를 둘째 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute`, `python3 scripts/ce1_claims_check.py --execute`, `python3 scripts/adapter_identity_claims_check.py --execute`, `python3 scripts/lifecycle_claims_check.py --execute`, `python3 scripts/readiness_claims_check.py --execute` 일곱 명령을 순서대로 실행한다. FSM 계약 클레임 표(`tests/fsm_contract_claims.json`)는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하고, 단독 명령 `python3 scripts/fsm_contract_claims_check.py --execute`로도 돌린다. 그 표는 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`고 일곱 번째 명령은 `python3 scripts/readiness_claims_check.py --execute`다.
 
 결정 노트 색인:
 
@@ -701,6 +701,17 @@ python3 scripts/lifecycle_claims_check.py --execute
 보고서 형식은 `KIX_CAPITAL_LOAD_REPORT_V1`이고 라벨은 `LOCAL_EXPLORATION`이다. 예정 도착시각(`scheduled_at_ms`)과 서비스 시간(`service_ms`)을 따로 기록하고 new-success·replay·reject·conflict·capacity를 클래스별로 세어 최근접 순위 백분위를 낸다 — 클래스를 절대 섞지 않는다. 입력 fingerprint, python, OS, CPU 정보만 담고 토큰은 쓰지 않는다. 매 실행 뒤 하네스는 저널 길이가 new-success 수와 같고, replay가 새 저널 없이 저장 receipt를 돌려주며, conflict와 capacity가 아무것도 쓰지 않고, 마지막 `state_digest`가 저널 재생과 같음을 확인한다. SLO나 TPS 주장은 없고 **이 보고서는 production 성능 증거가 아니다**. `smoke`는 unittest 안에서 임계값 없이 돌고, `full`은 수동 실행이며 출력은 커밋하지 않는 `build/` 아래에 둔다. 병합은 JunTae가 한다.
 
 <!-- /handbook-section -->
+<!-- handbook-section:readiness-runtime-claims -->
+
+### readiness-runtime-claims
+
+`tests/readiness_claims.json`(`KIX_CAPITAL_READINESS_CLAIMS_V1`, 라벨 `CLAIM_CONFORMANCE`, pinned_sha `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일, 13행)은 pinned `docs/contracts/READINESS_RUNTIME.md`의 준비 런타임 경계 산문을 Capital 루프백 facade와 옵트인 `LOCAL_FILE_WORKSPACE` 파일 작업공간에 비춰 고정한 클레임 표다. upstream `readiness/` 저널 래퍼(`journal.v1` 파일, `KIXRDY01` 헤더, 길이·정규화 JSON·CRC32 레코드)는 vendor하지도 구현하지도 않고, Capital의 단일 파일 작업공간을 그 경계 규칙의 analogue로만 관찰한다 — 저널 형식 부합 주장이 아니다. 각 행은 고정 문서의 절·needle·`pinned_sha`를 인용하고 `surface`로 관찰 표면을 명시하며 `capital/readiness_claims.py`의 `readiness.*` 검사 하나를 살아 있는 루프백 서버에서 부른다: 127.0.0.1 전용 bind와 비루프백 Host 거절(403 `LOOPBACK_HOST_REQUIRED`), 같은 `operation_id` 재전송의 저장된 첫 결과 반환과 저널 1회 적용, 읽기가 저널·receipt·canonical state·workspace 바이트를 늘리지 않음, 디렉터리 잠금 경합의 `WORKSPACE_LOCKED` 닫힘(upstream `JOURNAL_LOCKED`의 analogue — 코드 이름이 다르다), SIMULATED 잠금 불가 storage-port 오류(`WORKSPACE_LOCKED`) 뒤 fail-closed(503과 `degraded` health; OS 잠금 유실 탐지는 주장하지 않음), SIMULATED 전송 유실의 `UNKNOWN`·`retry_authorized` false·재전송 없음, FSM `durable` false와 `durableAcrossRestart` analogue 부재, `보류` 항목의 `NOT_BOUND` 유지. `python3 scripts/readiness_claims_check.py --execute`가 `CLAIM_CONFORMANCE passed=11 total=13 failed=0 documented_divergences=2`을 낸다. 결과는 SIMULATED이지 SEMANTIC_CONFORMANCE도 채택도 아니다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인하고, `--protocol-dir`가 없으면 `--execute`를 실행해도 인용 drift는 `SKIPPED`이고 인용 검증 통과가 아니다. `tests/test_readiness_claims.py`가 표 검증·변이·드리프트·단계 배치를 시험한다.
+
+두 행은 통과가 아니라 `DOCUMENTED_DIVERGENCE`로 기록된다. 첫째, upstream은 찢긴 쓰기의 꼬리만 버리고 체크섬이 맞는 앞선 레코드를 재생하지만 Capital은 찢긴 꼬리를 버리지 않고 파일 전체를 WORKSPACE_UNREADABLE로 닫는다 — 단일 파일 작업공간에는 부분 프레임 재생 경로가 없으므로 실패 쪽으로 닫고, 앞선 상태를 조용히 부분 복원하지 않는다. 둘째, upstream은 응답 전 내구 기록 완료를 요구하지만 Capital은 receipt를 persist 전에 메모리에 저장하므로 저장 실패 뒤 조회는 메모리의 ACCEPTED receipt를 돌려준다 — 503으로 성공은 반환하지 않지만 조회 결과는 upstream의 record-first 의미와 어긋난다. 각 행은 `divergent` 관측과 이 절 안의 근거 needle 재확인(`note_cited`)을 함께 고정하며, Capital이 divergence를 없애면 그 행은 실패한다.
+
+수용 사다리의 `upstream-claims` 단계는 이제 명령을 일곱 실행한다. 첫째가 `scripts/upstream_claims_check.py --execute`(87행), 둘째가 `scripts/agent_claims_check.py --execute`(94행), 셋째가 `scripts/read_model_claims_check.py --execute`(39행), 넷째가 `scripts/ce1_claims_check.py --execute`(49행), 다섯째가 `scripts/adapter_identity_claims_check.py --execute`(30행), 여섯째가 `scripts/lifecycle_claims_check.py --execute`(12행), 일곱째가 `scripts/readiness_claims_check.py --execute`(13행)다. 단계의 `passed`와 `total`은 일곱 표의 `CLAIM_CONFORMANCE` 줄을 합한 값이다. 87+94+39+49+30+12+13=324행이고 label은 그대로 `CLAIM_CONFORMANCE`다. 이 노드의 두 `DOCUMENTED_DIVERGENCE`(`documented_divergences=2`)는 passed에 더하지 않고 따로 센다. 앞선 절들의 옛 열거와 합계(다섯·여섯 명령, 282·311)는 표가 적었을 때의 기록이며 고치지 않는다. CAP-11(내구 거래·inbox/outbox)과 CAP-16(exact producer/SDK tuple)은 이 표에서도 계속 NOT_BOUND다. 이 표는 vendor 핀 `7481b0e`의 새 소비 범위로 리핀 정책 §3.1의 소비자 명시(대상 경로·소비 범위·검사·binding)를 표 헤더의 `pin_class`·`consumption_scope`에 담는다; `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`의 `bound_tables` 인벤토리 등록은 그 노트 소유자의 다음 갱신에서 이루어지며 이 노드는 노트를 갱신하지 않는다.
+
+<!-- /handbook-section -->
 
 <!-- handbook-section:artifact-docs-bundling -->
 
@@ -786,5 +797,92 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 `tests/vectors/http/`는 loopback 서버에 보내는 비정상 원시 요청 76건을 바이트로 고정한 코퍼스다. 각 파일은 요청 바이트(`request_b64`, 자리표시자 `__PORT__`·`__TOKEN__`만 치환)와 고정된 결과(`expect.status`, `expect.code`, 응답 접두·표지)를 담고, `tests/test_http_hostile.py`가 in-process `make_server(0)`에 replay한다. 매건 뒤에 `state_digest`·`operation_count` 불변과 `GET /api/health` 200을 다시 확인하고, 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다.
 
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+## 오프라인 합성 이벤트 스트레스
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json`은 캡처한
+`workspace.json` 한 개를 감사하고 표준 출력으로 정규 JSON 보고서를 만든다.
+README의 `CAPITAL_EVENT_STRESS_V1` 예제를 사용한다. 이벤트 구성원은 정확한
+claim_id/trade_id/currency로 지정하며 각 시나리오는 같은 기준 캡처에서 독립적으로
+시작한다. 추가 미결 환불 금액은 구성 채권마다 한 번만 적용된다.
+
+채권별 적격 액면과 환불·수취인·반올림 증거, 인출별 기준/충격 차입기준·여유액·가상
+마진 위반, 이벤트/포트폴리오 증감 및 계산 범위를 확인한다. 인출별 채권 문맥은
+NON_ADDITIVE이므로 합산하지 않는다. 외부 구성 채권과 미금융 픽스처도 채권 범위에
+남는다. 미금융 채권에 금리나 차입 권한을 만들지 않는다. 공유 배분·환불 매핑·보유자·
+슬라이스 의미가 미확정이면 해당 값과 종속 합계는 null이다. PARTIAL은 전체 안전을
+뜻하지 않는다. 잘못된 구성원이나 용량 초과는 전체 요청을 거절한다.
+
+COMPLETE는 종료 0(가상 위반도 포함), PARTIAL/UNAVAILABLE/REJECTED는 종료 1,
+인수 오류는 종료 2다. 입력·정책·요청 해시로 계산 자료를 구분하지만 과거 정책 인증은
+NOT_BOUND다. 모든 값은 SIMULATED/provisional이며 applied=false,
+funds_executed=false, workspace_mutated=false, production NOT_AUTHORIZED다.
+원본 파일·원장·시계는 바뀌지 않으며 실제 지급·환불·권리확인이나 검색 최적화가 아니다.
+`python3 scripts/event_stress_vectors.py --check`로 합성 고정 벡터를 검증한다.
+
+### Local upstream re-pin evidence / 로컬 리핀 증거
+
+```sh
+python3 scripts/upstream_repin_check.py --check --root .
+python3 scripts/upstream_repin_check.py --baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json
+```
+
+정책 권위는 `docs/decisions/CAPITAL_UPSTREAM_REPINS.md`의 여덟 ADOPTED 항목이다.
+단독 검사는 지정 root의 HOLD 목록을, 비교는 명시한 baseline의 정책을 소비한다.
+후보는 정책 범위·증거 의무를 줄일 수 없다. `EXECUTABLE_VENDOR`는 manifest와
+vendor 바이트, `EXECUTABLE_CITATION`은 지정 인용 소비자를 구속한다.
+`RESEARCH_BASELINE`은 별도 역사 출처이며 실행 핀에 맞춰 일괄 치환하지 않는다.
+정정은 원래 출처와 digest, 날짜·이유·대체 근거를 함께 남긴다.
+
+증거 JSON과 해시된 로컬 로그는 두 snapshot 밖에 둔다. 후보 전체 digest와
+각 영향 표·벡터·골든·현행 참조 문서·binding의 재생성 증거 및 등록된 명령별
+결과가 필요하다. 같은 바이트 결과에도 재생성 증거가 필요하며, 수동 재구성은
+주장별 source 근거와 독립 기대값이 필요하다. 인용 검사는 명시한 로컬
+source_material 자료를 대상으로 성공해야 한다. `SKIPPED`는 성공이 아니다.
+checker는 네트워크·pin 전환·복구·후보 코드 실행을 수행하지 않는다.
+
+`HOLD`는 현행 유지, `EVIDENCE_COMPLETE`는 검토용 완전성이다. 결과는
+`SIMULATED` / provisional이며 checker **does not authenticate an adoption receipt**.
+승인·채택·seam·영수증 인증은 계속 `NOT_BOUND`다. exit 0은 HOLD 또는 증거 완전,
+exit 1은 findings/입력 오류, exit 2는 인자 오류다. 상세 입력 계약은
+[INTEGRATION.md](INTEGRATION.md#local-upstream-re-pin-evidence)를 따른다.
+`upstream-repin-inventory-contract-invariants`의 `PENDING_NOTE_REGISTRATION`은
+별도 후속이며 이 checker가 범위를 확장하지 않는다.
+
+<!-- handbook-section:residual-obligations-report -->
+
+### residual-obligations-report
+
+`python3 -m capital.residuals --workspace DIR`는 `workspace.json`을 한 번만
+캡처하고 동일 바이트를 오프라인 감사한 뒤 메모리로 복원하여
+`KIX_CAPITAL_RESIDUAL_OBLIGATIONS_V1` canonical JSON을 출력한다. Python stdlib만
+사용하며 `SIMULATED` / `READ_ONLY_RESIDUAL_REGISTER`이다. 저장·잠금·회수 실행은 없다.
+
+FSM 종결은 모든 의무의 소멸을 뜻하지 않는다. 원금 상환 후 CLOSED여도 미지급
+계약/연체이자 또는 미배정 현금이 남을 수 있다. DEFAULTED와 상각은 회수 후 잔존
+청구권의 소멸을 증명하지 않으며 IMPAIRED 슬라이스에도 잔액이 남을 수 있다.
+`closed_unpaid_interest`, `unapplied_cash`, `defaulted_unwritten`,
+`post_writeoff_residual_claims`, `impaired_slice_residuals`를 각각 조회한다.
+
+행은 케이스/슬라이스 신원, 종결 상태, 기존 fold 값, 원본 저널의 인덱스/ID를
+보존한다. 각 금액 열은 독립적으로 대사·합산하며 총괄 합계는 없다. 미배정 현금으로
+다른 케이스를 상계하지 않고 F04 노출을 동일 잔존 청구권에 더하지 않으며 슬라이스
+shortfall과 outstanding을 더하지 않는다. 원 미만 유리수는 합계에서 제외한다.
+
+증거 부족은 0이 아닌 `NOT_BOUND`/null이다. 금액별 알려진 소계와 미확인 행 수를
+함께 표시하며 확인된 0행도 보존한다. 슬라이스는 해당 claim이 포함된 마지막 기록
+witness만 사용하고 payee 줄·baseline이 없으면 과거 witness나 현재 fixture로
+대체하지 않는다. `claim_view_sha`와 witness 참조를 보존하며 이후 정산은 `NOT_BOUND`다.
+
+`COMPLETE`는 선언된 기록 모집단의 감사·대사 완료만 뜻한다. 인증·전체 정산 이력·실제
+지급을 보장하지 않는다. 금액 증거 누락이나 대사 불일치는 `INCOMPLETE`, 감사/복원
+실패는 `AUDIT_FAILED` 및 sections null이다. 종료 코드는 각각 0, 1, 인자 오류 2다.
+동일 파일 바이트·입력 경로·로컬 감사 입력이면 출력도 동일하며 감사의 기존 경로와
+saved_at/saved_by_instance는 그대로 남긴다.
+
+면제, 환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식은 결정하지
+않는다. 새 영속 포맷·명세서 재분류·외부 호출·HTTP/UI 변경도 없다.
 
 <!-- /handbook-section -->

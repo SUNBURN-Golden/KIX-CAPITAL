@@ -32,3 +32,10 @@
 | CAP-18 | 선택적 토큰 담보·보상 | `TL` | NOT_AUTHORIZED | upstream, not adopted. coin lock 결정이 없고 토큰 호출 코드가 없다. |
 | CAP-19 | AI 운영·권한·최소공개 | `CAPITAL-AUTH-BOUNDARY` | NOT_BOUND | 로컬 합성 역할과 SIMULATED QUERY/PROPOSE 픽스처가 있다. 제안은 HUMAN_PENDING이고 effects_executed는 false다. IdP·KYC·AgentGrant/ActionPermit은 upstream, not adopted. |
 | CAP-20 | 접근성·통합 수용 | `acceptance-suite` | SIMULATED | 자동 검증만이다. 브라우저 여정은 `journeys-portfolio`에도 있다. 사람 수용은 PENDING이고 실서비스 출시는 승인되지 않았다. `#desk` 운영 데스크(`POST /api/overlay/commands` sim_day 제어, 사례 타임라인, 서버가 사유를 붙인 다음 작업)의 브라우저 검증도 `tests/browser/operator-desk.spec.cjs`에 있다. 자동 검증이며 사람 수용이 아니다. |
+
+`event-stress-report` extends CAP-01/CAP-04/CAP-08/CAP-20 locally with an audited,
+detached offline claim shock report (`capital/event_stress.py`,
+`tests/test_event_stress.py`). Policy: docs/decisions/CAPITAL_EVENT_STRESS.md;
+implementation mapping: docs/decisions/CAPITAL_EVENT_STRESS_BINDING.md.
+Both remain provisional SIMULATED. Shared allocation and historical policy
+authentication remain NOT_BOUND; no production permission or financial posting.
