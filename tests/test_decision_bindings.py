@@ -140,6 +140,24 @@ class BindingTests(unittest.TestCase):
                                     for binding in row['bindings']))
         self.assertEqual(found, set(consumed))
 
+    def test_repin_policy_promotions_have_discovered_consumers_and_behavioral_tests(self):
+        rows = checker.ledger.build_index(ROOT / 'docs/decisions', [])
+        found = checker.discover_consumers(checker.inventory(ROOT, []), rows)
+        policy_rows = [row for row in self.data['entries']
+                       if row['decision_id'] == 'upstream-repin-policy-decision']
+        self.assertEqual(len(policy_rows), 8)
+        behavior_tests = ast.parse((ROOT / 'tests/test_upstream_repin_check.py').read_text())
+        test_names = {node.name for node in ast.walk(behavior_tests) if isinstance(node, ast.FunctionDef)}
+        for row in policy_rows:
+            self.assertEqual(row['bindings'], [
+                {'kind': 'module', 'path': 'scripts/upstream_repin_check.py', 'status': 'CONSUMED'},
+                {'kind': 'test_module', 'path': 'tests/test_upstream_repin_check.py', 'status': 'CONSUMED'}])
+            self.assertIn((row['decision_id'], row['entry'], 'scripts/upstream_repin_check.py'), found)
+            self.assertTrue(any(row['entry'] in name for name in test_names), row['entry'])
+        # Unrelated policy consumers and the deferred inventory registration stay separate.
+        self.assertFalse(any(row['entry'] == 'contract_invariants' for row in policy_rows))
+        self.assertEqual(self.findings(), [])
+
     def test_missing_entry(self):
         self.data['entries'].pop()
         self.assertDrift('ADOPTED entry lacks binding')
