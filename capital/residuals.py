@@ -111,10 +111,12 @@ def _unbound(row, *reasons):
     row['reasons'].extend(reasons)
 
 
-def _advance_rows(service, state, journal, entries, rows, expected):
+def _advance_rows(service, state, journal, entries, rows, expected, advance_ids=None):
     drawn = {e['advance_id'] for e in journal if e['op'] == 'draw'}
     ids = {e['advance_id'] for e in journal}
     ids.update(state.get('recovery', {}).get('advances', {}))
+    if advance_ids is not None:
+        ids.intersection_update(advance_ids)
     for ref in sorted(ids):
         case = service.machine.view(ref)
         phase = case['phase']
@@ -231,13 +233,25 @@ def _slice_rows(state, entries, rows, expected):
         expected[category][sid] = independent
 
 
-def _compose(service, state, journal, entries):
+def compose_sections(service, state, journal, entries, *, advance_ids=None):
+    """Compose detached folds, selecting advances before reconciliation.
+
+    Selection covers advance categories only; claim slices are outside that
+    scope and their section is omitted. The default retains all five sections.
+    Inputs are read without saving or issuing service commands.
+    """
     rows = {c: [] for c in METRICS}
     expected = {c: {} for c in METRICS}
     entries = list(_unique(entries))
-    _advance_rows(service, state, journal, entries, rows, expected)
-    _slice_rows(state, entries, rows, expected)
-    return {c: _section(c, rows[c], expected[c]) for c in METRICS}
+    _advance_rows(service, state, journal, entries, rows, expected, advance_ids)
+    if advance_ids is None:
+        _slice_rows(state, entries, rows, expected)
+    return {c: _section(c, rows[c], expected[c]) for c in METRICS
+            if advance_ids is None or c != 'impaired_slice_residuals'}
+
+
+def _compose(service, state, journal, entries):
+    return compose_sections(service, state, journal, entries)
 
 
 def report_workspace(directory):
