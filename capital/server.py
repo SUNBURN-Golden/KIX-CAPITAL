@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from capital import __version__
+from capital.limits import MAX_REQUEST_BYTES
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
     COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES, Principal,
@@ -421,7 +422,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             if len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding'):
                 raise ApiError('INVALID_LENGTH')
             length = int(lengths[0])
-            if not 0 < length <= 8192:
+            if not 0 < length <= MAX_REQUEST_BYTES:
                 raise ApiError('BODY_TOO_LARGE', 413)
             self.connection.settimeout(3)
             try:
@@ -588,9 +589,9 @@ def main():
     parser.add_argument('--workspace', default=None,
                         help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
     parser.add_argument('--terms-note', default=None,
-                        help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Not bundled in the zipapp.')
+                        help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Exclusive override of the bundled decision note; no fallback on failure.')
     parser.add_argument('--policy-note', default=None,
-                        help='Decision note for the simulated policy application. A missing note reports policy not bound. Not bundled in the zipapp.')
+                        help='Decision note for the simulated policy application. A missing note reports policy not bound. Exclusive override of the bundled decision note; no fallback on failure.')
     signing = parser.add_mutually_exclusive_group()
     signing.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')

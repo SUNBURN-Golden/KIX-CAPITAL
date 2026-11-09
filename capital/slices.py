@@ -9,6 +9,7 @@ import copy
 import re
 
 from capital import overlay, recovery
+from capital.resources import note_path
 from capital.terms import read_decision_block
 from capital.underwriting import BPS_SCALE
 
@@ -47,14 +48,14 @@ def labels():
 
 
 def load_policy(terms, note=None):
-    block = read_decision_block(overlay.default_note_path(NOTE) if note is None else note)
+    block = read_decision_block(note_path(NOTE) if note is None else note)
     values = {name: overlay._adopted(block, name) for name in ITEMS}
     if any(v is None for v in values.values()):
         return None
     items = getattr(terms, 'items', {})
     if any(items.get(k, {}).get('mark') != 'ADOPTED' for k in ('underwriting_depth', 'additional_margin', 'interest_rate')):
         return None
-    purchase = overlay._adopted(read_decision_block(overlay.default_note_path('CAPITAL_SETTLEMENT_POLICY.md')), 'claim_purchase')
+    purchase = overlay._adopted(read_decision_block(note_path('CAPITAL_SETTLEMENT_POLICY.md')), 'claim_purchase')
     if purchase is None:
         return None
     depth = items['underwriting_depth']['value']
