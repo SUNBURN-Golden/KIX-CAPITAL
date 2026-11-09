@@ -99,6 +99,12 @@ def _package_entries(root: Path) -> tuple[str, str, dict[str, bytes]]:
             raise BuildError(f'vendor hash mismatch: {rel}')
         entries[f'capital/vendor/{rel}'] = vendor_files[rel]
     entries['capital/vendor/manifest.json'] = manifest_bytes
+    # Exact authorized top-level policy inputs; preserve their original bytes.
+    for path in sorted((root / 'docs' / 'decisions').iterdir(), key=lambda p: p.name):
+        if path.is_file() and path.name.endswith('.md'):
+            entries[f'docs/decisions/{path.name}'] = path.read_bytes()
+    for name in ('docs/CAP_COVERAGE.md', 'scripts/decision_ledger.py'):
+        entries[name] = (root / name).read_bytes()
     entries['__main__.py'] = b'from capital.server import main\nmain()\n'
     return version, commit, entries
 

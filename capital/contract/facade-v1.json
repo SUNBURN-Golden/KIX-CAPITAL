@@ -2122,7 +2122,9 @@
       "required": [
         "status",
         "reason",
-        "terms_version"
+        "terms_version",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "status": {
@@ -2143,6 +2145,21 @@
             "string",
             "null"
           ]
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -2160,7 +2177,9 @@
         "instance_id",
         "observed_state_digest",
         "status",
-        "reason"
+        "reason",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -2205,6 +2224,21 @@
             "string",
             "null"
           ]
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -2601,7 +2635,9 @@
         "status",
         "reason",
         "items",
-        "sections"
+        "sections",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -2699,6 +2735,21 @@
               ]
             }
           }
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -2725,7 +2776,9 @@
         "collateral",
         "borrowing_base",
         "reserve_provision",
-        "not_applied"
+        "not_applied",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -2807,6 +2860,21 @@
               "$ref": "#/definitions/terms_unbound_section"
             }
           ]
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -2831,7 +2899,9 @@
         "collateral",
         "borrowing_base",
         "reserve_provision",
-        "not_applied"
+        "not_applied",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -2890,6 +2960,21 @@
         },
         "not_applied": {
           "$ref": "#/definitions/terms_unbound_section"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -3085,7 +3170,9 @@
         "interest",
         "allocation",
         "fsm_repay",
-        "close_ready"
+        "close_ready",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -3154,6 +3241,21 @@
         },
         "close_ready": {
           "type": "boolean"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -3176,7 +3278,9 @@
         "interest",
         "allocation",
         "fsm_repay",
-        "close_ready"
+        "close_ready",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -3229,6 +3333,21 @@
         },
         "close_ready": {
           "const": false
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -3996,7 +4115,9 @@
         "workspace_mutated",
         "write_authorized",
         "instance_id",
-        "observed_state_digest"
+        "observed_state_digest",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -4048,6 +4169,21 @@
         },
         "observed_state_digest": {
           "type": "string"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -4276,7 +4412,9 @@
         "comparison",
         "order_freeze",
         "unsupported",
-        "upstream_fsm_change_requests"
+        "upstream_fsm_change_requests",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -4351,6 +4489,21 @@
         },
         "upstream_fsm_change_requests": {
           "$ref": "#/definitions/policy_upstream_requests"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -6557,7 +6710,9 @@
         "failed_check",
         "proposal",
         "inputs_digest",
-        "sim_day"
+        "sim_day",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -6673,6 +6828,21 @@
         },
         "sim_day": {
           "type": "integer"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -6696,7 +6866,9 @@
         "candidate",
         "decided_by_role",
         "kyc_executed",
-        "underwriting_executed"
+        "underwriting_executed",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -6752,6 +6924,21 @@
         },
         "underwriting_executed": {
           "const": false
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -7506,7 +7693,9 @@
         "status",
         "provisional",
         "version",
-        "entries"
+        "entries",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "note": {
@@ -7538,6 +7727,21 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -7554,7 +7758,9 @@
         "workspace_mutated",
         "write_authorized",
         "instance_id",
-        "observed_state_digest"
+        "observed_state_digest",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -7589,6 +7795,21 @@
         },
         "observed_state_digest": {
           "type": "string"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -7605,7 +7826,9 @@
         "workspace_mutated",
         "write_authorized",
         "instance_id",
-        "observed_state_digest"
+        "observed_state_digest",
+        "notes_source",
+        "note_sha256"
       ],
       "properties": {
         "label": {
@@ -7624,8 +7847,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/decision_row"
-          },
-          "maxItems": 0
+          }
         },
         "funds_executed": {
           "const": false
@@ -7641,6 +7863,21 @@
         },
         "observed_state_digest": {
           "type": "string"
+        },
+        "notes_source": {
+          "enum": [
+            "CHECKOUT",
+            "BUNDLED_IN_ARTIFACT",
+            "OVERRIDE_FILE",
+            "NONE"
+          ]
+        },
+        "note_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
