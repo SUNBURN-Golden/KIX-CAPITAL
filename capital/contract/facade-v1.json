@@ -450,6 +450,11 @@
     {
       "code": "SCENARIO_UNKNOWN",
       "status": 400
+    },
+    {
+      "code": "CASE_BRIEF_UNAVAILABLE",
+      "status": 200,
+      "description": "Uniform local case brief denial, including boundary, authorization and projection failures."
     }
   ],
   "commands": {
@@ -1817,6 +1822,25 @@
       "request": {
         "$ref": "#/definitions/agent_subject_request"
       }
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/query_case",
+      "operationId": "local_agent_query_case",
+      "dispatch": "/api/agent/query_case",
+      "kind": "api",
+      "response": {
+        "$ref": "#/definitions/agent_case_response"
+      },
+      "errors": [
+        "CASE_BRIEF_UNAVAILABLE"
+      ],
+      "permission": "agent:query_case",
+      "request": {
+        "$ref": "#/definitions/agent_case_request"
+      },
+      "failureStatus": 200,
+      "coverage": "CAPITAL_LOCAL_EXTENSION"
     },
     {
       "method": "POST",
@@ -5382,7 +5406,8 @@
             "agent:propose_action",
             "agent:query_subject",
             "agent:withdraw_proposal",
-            "agent:propose_grant_change"
+            "agent:propose_grant_change",
+            "agent:query_case"
           ],
           "properties": {
             "command:submit": {
@@ -5464,6 +5489,9 @@
               "$ref": "#/definitions/permission_decision"
             },
             "agent:propose_grant_change": {
+              "$ref": "#/definitions/permission_decision"
+            },
+            "agent:query_case": {
               "$ref": "#/definitions/permission_decision"
             }
           }
@@ -17710,6 +17738,196 @@
           "type": "boolean"
         }
       }
+    },
+    "agent_case_request": {
+      "type": "object",
+      "required": [
+        "grant_id",
+        "subject"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string",
+          "pattern": "[0-9a-f]{32}"
+        },
+        "subject": {
+          "type": "object",
+          "required": [
+            "case_id",
+            "beneficiary_id"
+          ],
+          "properties": {
+            "case_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9_-]{1,64}"
+            },
+            "beneficiary_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9_-]{1,64}"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_case_unavailable": {
+      "type": "object",
+      "required": [
+        "status",
+        "code"
+      ],
+      "properties": {
+        "status": {
+          "const": "UNAVAILABLE"
+        },
+        "code": {
+          "const": "CASE_BRIEF_UNAVAILABLE"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_case_brief": {
+      "type": "object",
+      "required": [
+        "schema",
+        "mode",
+        "subject",
+        "facts",
+        "provenance",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "CAPITAL_CASE_BRIEF_V1"
+        },
+        "mode": {
+          "const": "SIMULATED"
+        },
+        "subject": {
+          "type": "object",
+          "required": [
+            "case_id",
+            "beneficiary_id",
+            "claim_id",
+            "advance_id"
+          ],
+          "properties": {
+            "case_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9_-]{1,64}"
+            },
+            "beneficiary_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9_-]{1,64}"
+            },
+            "claim_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9_-]{1,64}"
+            },
+            "advance_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9_-]{1,64}"
+            }
+          },
+          "additionalProperties": false
+        },
+        "facts": {
+          "type": "object",
+          "required": [
+            "beneficiary_claim_outstanding_krw",
+            "beneficiary_refund_exposure_krw",
+            "advance_principal_outstanding_krw"
+          ],
+          "properties": {
+            "beneficiary_claim_outstanding_krw": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "beneficiary_refund_exposure_krw": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "advance_principal_outstanding_krw": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "required": [
+            "policy_id",
+            "brief_sha256"
+          ],
+          "properties": {
+            "policy_id": {
+              "const": "CAPITAL_AGENT_CASE_DISCLOSURE_V1"
+            },
+            "brief_sha256": {
+              "type": "string",
+              "pattern": "[0-9a-f]{64}"
+            }
+          },
+          "additionalProperties": false
+        },
+        "authority": {
+          "type": "object",
+          "required": [
+            "real_authentication",
+            "execution_authority",
+            "production"
+          ],
+          "properties": {
+            "real_authentication": {
+              "const": "NOT_BOUND"
+            },
+            "execution_authority": {
+              "const": "NOT_BOUND"
+            },
+            "production": {
+              "const": "NOT_AUTHORIZED"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_case_response": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/agent_case_brief"
+        },
+        {
+          "$ref": "#/definitions/agent_case_unavailable"
+        }
+      ]
     }
   }
 }

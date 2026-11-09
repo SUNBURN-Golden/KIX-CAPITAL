@@ -152,7 +152,10 @@ class ShapeTests(unittest.TestCase):
             role = 'organizer' if cell['caller'] == 'no-token' else cell['caller']
             permission = row['permission']
             expect = cell['expect']
-            if permission is None:
+            if cell['route'] == '/api/agent/query_case':
+                self.assertEqual(cell['outcome'], 'ALLOW' if cell['caller'] == 'agent' else 'DENY', where)
+                self.assertEqual(expect, {'status': 200, 'body': {'status': 'UNAVAILABLE', 'code': 'CASE_BRIEF_UNAVAILABLE'}}, where)
+            elif permission is None:
                 self.assertEqual((cell['outcome'], expect), ('PUBLIC', {'status': 200}), where)
             elif cell['method'] == 'POST' and cell['caller'] == 'no-token':
                 self.assertEqual(cell['outcome'], 'DENY', where)
@@ -170,7 +173,7 @@ class ShapeTests(unittest.TestCase):
 
     def test_agent_lane_is_reachable_only_by_agent(self):
         lane = [cell for cell in self.table['cells'] if cell['route'].startswith('/api/agent/')]
-        self.assertEqual(len(lane), 6 * len(CALLERS))
+        self.assertEqual(len(lane), 7 * len(CALLERS))
         for cell in lane:
             self.assertEqual(cell['outcome'] == 'ALLOW', cell['caller'] == 'agent', cell)
         for cell in self.table['cells']:
@@ -498,6 +501,9 @@ class LiveMatrixTests(LiveBase):
         self.assertEqual(status, expect['status'], (where, raw[:200]))
         if kind.startswith('application/json'):
             body = json.loads(raw)
+            if 'body' in expect:
+                self.assertEqual(body, expect['body'], where)
+                return
             for key, value in expect.items():
                 if key != 'status':
                     self.assertEqual(body.get(key), value, (where, key))
@@ -551,7 +557,7 @@ class LiveMatrixTests(LiveBase):
                 'proposal_id': 'sim-matrix-lane-change'},
         }
         paths = (
-            '/api/agent/query_grant', '/api/agent/query_subject', '/api/agent/propose_action',
+            '/api/agent/query_grant', '/api/agent/query_subject', '/api/agent/query_case', '/api/agent/propose_action',
             '/api/agent/withdraw_proposal', '/api/agent/propose_grant_change', '/api/agent/execute')
         for path in paths:
             row = self.routes[('POST', path)]
@@ -580,8 +586,11 @@ class LiveMatrixTests(LiveBase):
                 status, _kind, raw = self.send(
                     'POST', path, self.token_headers(role), bodies.get(path, row['body']))
                 body = json.loads(raw)
-                self.assertEqual((status, body['error'], body['permission']),
-                                 (403, 'ROLE_FORBIDDEN', row['permission']), (role, path))
+                if path == '/api/agent/query_case':
+                    self.assertEqual((status, body), (200, {'status': 'UNAVAILABLE', 'code': 'CASE_BRIEF_UNAVAILABLE'}))
+                else:
+                    self.assertEqual((status, body['error'], body['permission']),
+                                     (403, 'ROLE_FORBIDDEN', row['permission']), (role, path))
         after = self.writes()
         self.assertEqual(after['receipts'], before['receipts'])
         self.assertEqual(after['digest'], before['digest'])

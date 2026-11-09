@@ -150,7 +150,7 @@ class HandbookTests(unittest.TestCase):
         table = json.loads((ROOT / 'tests' / 'auth_matrix.json').read_text(encoding='utf-8'))
         routes = [row['route'] for row in table['routes']
                   if row['method'] == 'POST' and row['route'].startswith('/api/agent/')]
-        self.assertEqual(len(routes), 6)
+        self.assertEqual(len(routes), 7)
         for route in routes:
             self.assertIn(f'`POST {route}`', section, route)
         agent_row = next(line for line in section.splitlines()

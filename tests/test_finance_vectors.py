@@ -755,8 +755,8 @@ class FacadeReadModelVectorTests(unittest.TestCase):
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 48)
-        self.assertEqual(len(left_out), 12)
+        self.assertEqual(len(self.contract['routes']), 49)
+        self.assertEqual(len(left_out), 13)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
         # A POST command path may share a path with a GET read; only the GET rows are kept.

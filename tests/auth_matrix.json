@@ -60,6 +60,7 @@
     "agent": [
       "agent:query_grant",
       "agent:query_subject",
+      "agent:query_case",
       "agent:propose_action",
       "agent:withdraw_proposal",
       "agent:propose_grant_change"
@@ -398,6 +399,18 @@
         "now": 1,
         "surface": "capital:offer",
         "subject": "sim-matrix"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_case",
+      "permission": "agent:query_case",
+      "body": {
+        "grant_id": "00000000000000000000000000000000",
+        "subject": {
+          "case_id": "sim-mtx",
+          "beneficiary_id": "fixture-organizer"
+        }
       }
     },
     {
@@ -2101,6 +2114,71 @@
     },
     {
       "method": "POST",
+      "route": "/api/agent/query_case",
+      "caller": "organizer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 200,
+        "body": {
+          "status": "UNAVAILABLE",
+          "code": "CASE_BRIEF_UNAVAILABLE"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_case",
+      "caller": "auditor",
+      "outcome": "DENY",
+      "expect": {
+        "status": 200,
+        "body": {
+          "status": "UNAVAILABLE",
+          "code": "CASE_BRIEF_UNAVAILABLE"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_case",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 200,
+        "body": {
+          "status": "UNAVAILABLE",
+          "code": "CASE_BRIEF_UNAVAILABLE"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_case",
+      "caller": "agent",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200,
+        "body": {
+          "status": "UNAVAILABLE",
+          "code": "CASE_BRIEF_UNAVAILABLE"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/agent/query_case",
+      "caller": "no-token",
+      "outcome": "DENY",
+      "expect": {
+        "status": 200,
+        "body": {
+          "status": "UNAVAILABLE",
+          "code": "CASE_BRIEF_UNAVAILABLE"
+        }
+      }
+    },
+    {
+      "method": "POST",
       "route": "/api/agent/propose_action",
       "caller": "organizer",
       "outcome": "DENY",
@@ -3429,6 +3507,56 @@
       "name": "GET on a POST-only route",
       "method": "GET",
       "path": "/api/agent/query_subject",
+      "token": "none",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_case",
+      "token": "organizer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_case",
+      "token": "auditor",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_case",
+      "token": "observer",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_case",
+      "token": "agent",
+      "expect": {
+        "status": 404,
+        "error": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "GET on a POST-only route",
+      "method": "GET",
+      "path": "/api/agent/query_case",
       "token": "none",
       "expect": {
         "status": 404,

@@ -11,9 +11,10 @@ import uuid
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
 from capital import coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif
+from capital import agent_brief
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
-    AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
+    AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_QUERY_CASE, AGENT_WITHDRAW,
     DEFAULT_ROLE, OP_PERMISSIONS, OVERLAY_COMMAND, PROVENANCE as ROLE_PROVENANCE,
     ROLES, UNLABELED, Principal, require, LocalRoleAuthorizer,
 )
@@ -133,6 +134,8 @@ class CapitalService:
         self.shadow = shadow if shadow is not None else DecisionNoteShadow()
         self.decision_index = decisions if decisions is not None else DecisionIndex()
         self.agent_lane = AgentLane(self.terms)
+        self.agent_brief_policy = agent_brief.DisclosurePolicy()
+        self.agent_case_grants = agent_brief.GrantRegistry(self.instance_id, self.agent_brief_policy)
         self.observability = observability or Observability()
         self.receipts = {}
         self.case_fixtures = {}
@@ -1040,6 +1043,30 @@ class CapitalService:
                         'settlement_gate': preview['credit']['settlement_gate']}
             except CreditError as exc:
                 return {**result, 'outcome': 'WOULD_REJECT', 'reason': exc.code}
+
+    def issue_agent_case_grant(self, subject, claim_id, advance_id):
+        """Host-only explicit SIMULATED fixture setup; no HTTP management route."""
+        with self.lock:
+            return self.agent_case_grants.issue(subject, claim_id, advance_id)
+
+    def revoke_agent_case_grant(self, grant_id):
+        with self.lock:
+            self.agent_case_grants.revoke(grant_id)
+
+    def set_agent_logical_period(self, period):
+        with self.lock:
+            self.agent_case_grants.set_period(period)
+
+    def agent_query_case(self, body, role=DEFAULT_ROLE):
+        with self.lock:
+            try:
+                if role != 'agent':
+                    raise agent_brief.Unavailable()
+                require(self.authorizer, Principal(role), AGENT_QUERY_CASE)
+                grant = self.agent_case_grants.authorize(body, self.instance_id, self.agent_lane)
+                return agent_brief.build(self, grant)
+            except Exception:
+                return self.agent_brief_policy.denial()
 
     def agent_query(self, body, role=DEFAULT_ROLE):
         with self.lock:

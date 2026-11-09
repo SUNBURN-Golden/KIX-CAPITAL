@@ -57,6 +57,11 @@ def validate(value, schema, root=None, path='$'):
         kinds = expected if type(expected) is list else [expected]
         if not any(_is_type(value, kind) for kind in kinds):
             raise SchemaError(path, f'type {expected} got {type(value).__name__}')
+    if type(value) is int:
+        if 'minimum' in schema and value < schema['minimum']:
+            raise SchemaError(path, 'minimum')
+        if 'maximum' in schema and value > schema['maximum']:
+            raise SchemaError(path, 'maximum')
     if type(value) is dict and ('properties' in schema or 'additionalProperties' in schema or 'required' in schema):
         _object(value, schema, root, path)
     if type(value) is list and 'items' in schema:

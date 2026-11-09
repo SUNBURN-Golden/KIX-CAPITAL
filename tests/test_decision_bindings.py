@@ -78,6 +78,13 @@ class BindingTests(unittest.TestCase):
                 {'kind': 'module', 'path': 'capital/recovery.py', 'status': 'CONSUMED'},
                 {'kind': 'test_module', 'path': 'tests/test_recovery.py', 'status': 'CONSUMED'}])
 
+    def test_agent_disclosure_has_seven_consumed_module_bindings(self):
+        rows = [row for row in self.data['entries'] if row['decision_id'] == 'agent-case-disclosure-decision']
+        self.assertEqual(len(rows), 7)
+        for row in rows:
+            self.assertEqual(row['bindings'], [
+                {'kind': 'module', 'path': 'capital/agent_brief.py', 'status': 'CONSUMED'}])
+
     def test_closeout_policy_has_built_consumers(self):
         expected = {
             'check_wiring': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},
