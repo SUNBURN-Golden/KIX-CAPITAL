@@ -17,6 +17,38 @@ DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement �
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
 
+## draw-order-rehearsal
+
+범위 권위는 이 노드의 사용자 작업 지시(2026-11-03, KIX Capital program node
+`draw-order-rehearsal`: “Rehearse competing draw orders and explain their portfolio
+consequences”)다. 새 정책 위임이나 allocation priority 채택이 아니다.
+`capital/draw_order.py` / `tests/test_draw_order.py`는 명시적 workspace 캡처를
+감사하고 APPROVED advance 2–4개 모든 순열을 독립 메모리 서비스에서 기존
+underwriting/command 경로로 리플레이한다. 중복·미등록·부적격 선택은 실행 전
+거절한다. 원천 read는 한 번이고 source lock/write·network·signing key는 없다.
+
+CLI는 `python3 -m capital.draw_order --workspace DIR --advance sim-a --advance sim-b`.
+`KIX_CAPITAL_DRAW_ORDER_REHEARSAL_V1` canonical JSON+newline에는 SIMULATED,
+감사·입력 해시, policy_inputs, baseline, orderings, 각 단계 직전 U1–U6 기록,
+실제 영수증/API 오류, claim 예약·advance/slice 노출 전/후/증감, 전체 최종 risk,
+순서별 결과 변형·재무 측정값 차이가 들어간다. advisory 실패와 강제 거절을 분리한다.
+기존 risk fold와 advance별 내림 준비금 계산을 그대로 쓰며 sim_day는 고정한다.
+정상 거절을 포함한 완료 exit 0, 입력/정책 부족·불완전 리플레이 exit 1, 인수 오류
+exit 2다. UNKNOWN은 재전송하지 않고 해당 순열을 중단한다. 과거 UNKNOWN이
+영속 증거 없이 발생했는지는 알 수 없다고 명시한다.
+
+숫자는 비교 시점 기존 잠정 입력만 사용한다. 출처는 금융조건
+`CAPITAL_FINANCIAL_TERMS.md`, slice 등록부 `CAPITAL_CLAIM_SLICE_REGISTRY.md`와
+그 settlement sizing 입력 `CAPITAL_SETTLEMENT_POLICY.md`, recovery
+`CAPITAL_DEFAULT_RECOVERY.md`, bounds의 `CAPITAL_OVERLAY_STATE.md`,
+`CAPITAL_OVERLAY_DIGEST_EXPORT.md`, `CAPITAL_REPAYMENT_POSTING.md`다.
+순서 보존 terms 항목·status/provenance·bounds·slice/recovery·가정을 함께 해시한다.
+인증·역사 정책·준비금 재원은 NOT_BOUND. 추천 순서·자동 승인·실행 batch·새 lending
+policy·시계 전진·준비금 기장·vendor 변경은 제외한다. participation window 및
+event stress와 범위가 다르다. 독립 산술 fixtures는 unittest 안에 두고 새 vectors는
+추가하지 않는다. 세부 계약은 [INTEGRATION.md](INTEGRATION.md), 실제 실행 결과는
+[VALIDATION.md](VALIDATION.md)를 참조한다.
+
 ## portfolio-aging-migrations
 
 `capital/portfolio_migrations.py` / `tests/test_portfolio_migrations.py`:

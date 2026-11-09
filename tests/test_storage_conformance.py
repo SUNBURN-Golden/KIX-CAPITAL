@@ -5,13 +5,15 @@ Passing these vectors is a local gate. It is not SEMANTIC_CONFORMANCE.
 CAP-11 stays NOT_BOUND.
 """
 import importlib.util
+import copy
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from capital.store import FileWorkspace, InMemoryStorage
+from capital.store import FileWorkspace, InMemoryStorage, WorkspaceError, envelope, canonical_bytes
+from capital import overlay
 
 _SPEC = importlib.util.spec_from_file_location(
     'storage_conformance', Path(__file__).resolve().with_name('storage_conformance.py'))
@@ -20,6 +22,45 @@ _SPEC.loader.exec_module(conformance)
 
 
 class StorageVectorTests(unittest.TestCase):
+    def test_seeded_memory_factory_passes(self):
+        from capital.service import CapitalService
+        service = CapitalService()
+        self.addCleanup(service.observability.close)
+        service._persist()
+        document = service.storage.load()
+        self.assertEqual(conformance.run_command_sequences(
+            [lambda: InMemoryStorage.from_envelope(document)], seeds=[conformance.BASE_SEED]),
+            (conformance.BASE_SEED,))
+
+    def test_seeded_legacy_and_v2_roundtrip_detach_and_subsequent_save(self):
+        for legacy in (True, False):
+            document = envelope('seed', {'SIMULATED': [1]}, overlay.empty_section())
+            if legacy:
+                del document['envelope_version']
+                del document['overlay']
+            original = copy.deepcopy(document)
+            with mock.patch.object(InMemoryStorage, 'save', side_effect=AssertionError('no seed save')):
+                storage = InMemoryStorage.from_envelope(document)
+            self.assertEqual(canonical_bytes(storage.load()), canonical_bytes(original))
+            document['payload']['SIMULATED'].append(2)
+            loaded = storage.load()
+            loaded['payload']['SIMULATED'].append(3)
+            self.assertEqual(storage.load(), original)
+            storage.writer_instance = 'rehearsal'
+            storage.save({'next': True})
+            self.assertEqual(storage.load()['payload'], {'next': True})
+            self.assertEqual(storage.load()['envelope_version'], 2)
+
+    def test_seed_rejects_bad_envelope_and_overlay_checksums(self):
+        for section in ('payload', 'overlay'):
+            document = envelope('seed', {'SIMULATED': []})
+            if section == 'payload':
+                document['payload']['SIMULATED'].append('tampered')
+            else:
+                document['overlay']['overlay_state']['sim_day'] = 1
+            with self.assertRaises(WorkspaceError):
+                InMemoryStorage.from_envelope(document)
+
     def test_memory_factory_passes(self):
         conformance.run_storage_vectors(InMemoryStorage)
 

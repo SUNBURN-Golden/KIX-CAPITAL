@@ -162,6 +162,19 @@ class InMemoryStorage(StoragePort):
     def __init__(self):
         self._document = None
 
+    @classmethod
+    def from_envelope(cls, document):
+        """Seed detached, verified envelope bytes without saving or rewrapping.
+
+        Envelope validation belongs here; journal semantics remain the service's
+        responsibility, just as for load(). Legacy records stay legacy until save.
+        """
+        detached = copy.deepcopy(document)
+        verify_document(detached)
+        storage = cls()
+        storage._document = detached
+        return storage
+
     def load(self):
         if self._document is None:
             return None

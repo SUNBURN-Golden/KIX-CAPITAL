@@ -4531,6 +4531,114 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## draw-order-rehearsal — builder verification (2026-11-03)
+
+Implemented `capital.draw_order` and a supported detached
+`InMemoryStorage.from_envelope` factory. The CLI audits one explicit capture,
+preflights 2–4 distinct APPROVED selections and every deterministic operation ID,
+then runs all 2/6/24 permutations in independent memory services. Steps retain
+preceding U1–U6 records, accepted/rejected receipts or API errors, claim reservation
+and advance/slice exposure movements. Final risk uses the existing full-portfolio
+fold. All results are SIMULATED; authentication, historical policy provenance and
+reserve funding remain NOT_BOUND. There is no recommended order, new lending
+policy, allocation priority, live batch, source write/lock, signing or network.
+
+The hand-calculated cases are 60,000/50,000 competing draws on a 100,000 face
+(winning reserves 900/750), a 10,000,000 existing slice with 20,000,000/25,000,000
+draws (winning reserves 300,000/375,000), two beneficiaries at 101 each
+(exposure 202, HHI 500 permille, reserve 2), and a partially repaid existing
+advance at day 61 (whole-book exposure 6,202, reserve 1,502). The tests preserve
+F04's original reservation after partial repayment rather than treating it as
+outstanding principal. Synthetic fixtures are embedded in unittest modules;
+no standalone vectors or docs-surface inventory entries were added.
+
+Design adjustments: the expanded policy object also retains `terms.items_json`
+to hash nested iteration order (including reserve bucket order), alongside
+`ordered_items`. Collision preflight includes overlay IDs as well as F04 keys
+and receipts. Selected prospective margin inputs are checked with existing
+service/terms helpers before commands; final input coverage is checked again.
+No new financial/legal values or consequential product decisions were needed.
+
+The inherited root `DECISION_REQUIRED.md` is preserved as historical evidence.
+Its baseline blocker does not apply here: both HEAD and local `origin/main` are
+`8ab3d954bd732aa80351d580d703500ebf50dcc5`, and the unchanged
+`test_v1_and_golden_files_are_untouched` passes. No protected byte guard was
+weakened. All five vendor SHA256 pins match, and the five references, manifest,
+legacy export, decision notes, `.aiops/`, CI and package/Playwright configuration
+remain byte-identical to HEAD.
+
+Verification iterations, including failures:
+
+- `python3 -m unittest tests.test_draw_order -v`: first run 22 tests,
+  three failures and one error. Corrected fixture expectations to the existing
+  85% T1 borrowing base, retained post-repayment reservation and allowed T2
+  unbound draw; corrected the mocked key loader name.
+- `python3 -m unittest tests.test_draw_order tests.test_storage_conformance -v`:
+  intermediate 32/32 and 34/34 passes; after two further cases, one test setup
+  error (missing `TransportLost` operation ID) was corrected. Final 36/36 pass
+  in 21.009 s. No existing assertion was removed or weakened.
+- `npm run test:browser`: initial exit 1 because a global Playwright CLI lacked
+  the `test` command. `npm ci --offline --ignore-scripts` installed the three
+  repository-pinned cached development packages, exit 0. The unchanged suite
+  then passed 76/76 in 2.0 min using the isolated loopback command below.
+- `python3 -m unittest discover -s tests -v`: the first run was invalidated by
+  builder source edits during execution: 1,327/1,329 passed in 287.129 s. The
+  in-process/subprocess JSON test saw different module revisions and the fold
+  file guard detected the edited test source/cache. A concurrent targeted
+  `python3 -m unittest tests.test_fold_fuzz.FoldFuzzTests.test_checker_independent_replays_reload_all_seeds_across_hash_seeds -v`
+  also failed its file guard when the other unit process changed an import
+  cache. Those runs are not claimed as passes. Source was frozen, caches were
+  prepared with `python3 -m compileall -q capital tests scripts`, and the full
+  acceptance ladder was rerun alone.
+
+Browser and acceptance commands use `unshare -Urn -- bash -c 'ip link set lo up
+&& exec COMMAND'`. This isolates loopback services without changing browser tests,
+ports, assertions or committed runner configuration. Every server started by these
+checks is managed and stopped by its test runner. No jobs were detached.
+
+The first frozen-source full ladder completed **eight of nine stages**. Unit
+ran 1,331 tests in 309.936 s with one error: the existing fake-IDP live fixture's
+daemon request thread was still writing its event log while temporary-directory
+cleanup removed it (`OSError: Directory not empty`). All new draw-order tests,
+the fold file guard and the legacy byte guard passed. Storage conformance 22,
+vendor seven, upstream claims 322 (+ two documented divergences), browser 76,
+packaged smoke eleven, seeded demo one and all six SIMULATED journeys passed;
+node syntax also passed. Failed evidence is retained under
+`build/draw-order-rehearsal/acceptance-first.{json,log}`.
+
+A necessary CI-harness deviation sets `daemon_threads = False` on the server
+instance in `tests/test_fake_idp.py` so its existing `server_close()` joins
+request handlers before removing their event log/workspace. No application
+behavior or assertion changed. The resulting command
+`python3 -m unittest tests.test_draw_order tests.test_storage_conformance tests.test_fake_idp -v`
+passed all **65 tests in 27.284 s** before another full-ladder run on frozen
+source.
+
+Final measured results (ladder subprocess commands are also recorded verbatim in
+the evidence JSON):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest tests.test_draw_order tests.test_storage_conformance -v` | Exit 0; 36 passed, 21.009 s. |
+| `python3 -m unittest tests.test_draw_order tests.test_storage_conformance tests.test_fake_idp -v` | Exit 0; 65 passed, 27.284 s. |
+| `python3 -m unittest discover -s tests -v` (final ladder unit command) | Exit 0; **1,331 passed**, 317.806 s; byte guards and fold/determinism checks pass. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 273 artifacts / nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0, both standalone and final ladder. Pending anchors are not implementation. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed, both standalone and final ladder. |
+| `python3 -m compileall -q capital` | Exit 0. Also prepared import caches with `python3 -m compileall -q capital tests scripts` before the first frozen ladder. |
+| `node --check capital/static/app.js` | Exit 0, both standalone and final ladder. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; 76 passed in 2.0 min standalone. Final ladder browser command also passed 76 in 2.2 min. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` (final run) | Exit 0; **all nine stages pass**: unit 1,331, storage/crash conformance 22, vendor 7, upstream claims 322 passes + 2 documented divergences / 324 evaluated, node syntax, Chromium 76, packaged smoke 11, seeded demo 1, integrated-journeys 6. Evidence `ok: true`, vendor hashes verified. These are local SIMULATED observations, not integrated qualification. |
+| Inline Python SHA256/HEAD preservation check; `git diff --check` | Exit 0; all five manifest pins match; protected files remain unchanged; no whitespace errors. |
+
+Final ladder evidence is `build/acceptance-evidence.json`, copied with its log to
+`build/draw-order-rehearsal/acceptance-final.{json,log}`. That ignored directory
+also retains the initial failed full unit log, concurrent fold-check failure,
+intermediate/final narrow logs, offline npm setup log and standalone browser log.
+No builder server remains running. No commit, push, PR, issue, comment, external
+post, upstream edit, real provider call or funds movement occurred. Work is left
+uncommitted on `agent/capital-draw-order-rehearsal` for supervisor review.
+
 ## observation-triage-cli
 
 Implemented offline SIMULATED observation diagnostics with a bounded stdlib API/CLI,
@@ -4870,3 +4978,56 @@ deployment or Protocol/Commerce modification occurred. No CI, test or assertion
 was weakened. The only initial verification issue was the focused-test invocation
 recorded above; the documented discovery command and both complete discovery runs
 pass without changing the test.
+
+## Draw order rehearsal — conflict-fix round 1 (2026-11-09)
+
+Resolved the supervisor-started merge of incoming main
+`5405d9ed870e563e7e2aca8f4b65f7b037db0474` into reviewed draw-order head
+`f30c373b2e107cda8fd63614e827a1721a5e2408`. Combined both complete additions in
+`README.md`, `docs/CAPITAL_REQUIREMENTS_KO.md`, `docs/INTEGRATION.md` and this
+validation history. Every nonblank line from both parents survives. The merged
+handbook retains both features without a manual conflict. Draw rehearsal,
+detached storage restoration and their reviewed tests remain unchanged; main's
+event-stress, observation-triage, residual, migration and re-pin code and tests
+survive unchanged. No implementation fix or weakened assertion was needed.
+
+The combined package and covered test counts trigger the adopted
+`CAPITAL-CLOSEOUT-REGEN-V1` procedure. Ran the complete acceptance ladder, then
+regenerated only `tests/vectors/closeout_digest.json` and its embedded copy in
+`tests/vectors/finance_vectors.json` with their existing generators. Compared
+with incoming main, only the package hash, unit count (1,416 -> 1,445) and
+storage-conformance count (19 -> 22) change. All other finance groups are
+unchanged. A second complete acceptance run passes and its projected evidence
+byte-matches the regenerated digest. No historical results were summed or
+artifacts hand-edited.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_draw_order tests.test_storage_conformance -v` | Exit 0; 36 passed in 21.312s. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py --evidence build/draw-order-merge-verification/acceptance-first.json'` | Exit 0; all nine stages passed: unit 1,445 (515.405s), storage 22, vendor seven, claims 322 passes plus two documented divergences / 324 evaluated rows, node syntax, Chromium 76, packaged smoke 11, seed one, journeys six. |
+| `python3 scripts/closeout_digest.py --write --evidence build/draw-order-merge-verification/acceptance-first.json`; `python3 scripts/finance_vectors.py --write` | Both exit 0; generated 4,582-byte closeout and 101,112-byte finance pack from clean first-pass evidence. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py --evidence build/draw-order-merge-verification/acceptance-second.json'` | Exit 0; all nine stages passed again with identical covered counts and digests. Unit 1,445 (509.953s), storage 22, vendor seven, claims 322 plus two documented divergences, Chromium 76, smoke 11, seed one and journeys six. |
+| `python3 scripts/closeout_digest.py --check-evidence --evidence build/draw-order-merge-verification/acceptance-second.json` | Exit 0; fresh evidence byte-matches the 4,582-byte digest. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 276 artifacts / nine stages. |
+| `python3 scripts/{closeout_digest,finance_vectors,pack_vectors,manifest_vectors,event_stress_vectors,observation_triage_vectors,decision_bindings}.py --check` (each separately); `python3 scripts/decision_ledger.py` | All exit 0; standalone/embedded closeout copies agree; finance, nine pack files, 19 manifest files, three event-stress cases and triage corpus reproduce. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. Import caches were also prepared before running suites sequentially. |
+| Both-parent preservation and stdlib SHA256 checks | All five vendor locks match; references, manifest, legacy export and historical root `DECISION_REQUIRED.md` equal both parents. `.aiops/` and CI unchanged. Both complete documentation histories and implementations retained. |
+| `git ls-files -u`; tracked conflict-marker scan; `git diff --check`; `git diff --cached --check` | No unmerged entries or tracked conflict markers; whitespace checks pass. |
+
+The measured package SHA256 is
+`eb4b44c2703f3e3b455f1b1c7a2352fc56acce18f803e5f57a4e3fedef9d256e`.
+Generated artifact SHA256 values are
+`767d776df8b7320501045dfa70874fab2f52bc44b5cdccde533344f3ea388b4a`
+for the standalone closeout and
+`01f207ad2b6190f6ef177bd7de0ae545ef8b847ade96e76c86f7780d5652fca6`
+for the finance pack. Logs and both evidence files are retained under ignored
+`build/draw-order-merge-verification/`.
+
+Both full runs use the unchanged browser configuration and installed Chromium
+headless shell in isolated loopback networking. Evidence is local `SIMULATED`,
+`funds_executed:false`, and not production or upstream qualification. No source
+change occurred during either run. All resolutions and regenerated artifacts
+are staged; the merge is left uncommitted for the supervisor. No abort, commit,
+push, rebase, reset, external post, Protocol/Commerce modification, credential,
+real financial execution or deployment occurred. No consequential product
+decision was required.
