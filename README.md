@@ -429,3 +429,19 @@ change or external call. See [the contract](docs/INTEGRATION.md#residual-obligat
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
+
+Disposable UC3 hold replay: `tests/vectors/uc3_replay.json` pins synthetic
+arrival, boundary, conflict, capacity and operator-review evidence. Run
+`python3 scripts/uc3_replay.py --check` to compare it without rewriting it.
+The CLI uses complete synthetic snapshots (schema and a copyable example in
+[INTEGRATION](docs/INTEGRATION.md)); it writes canonical JSON to stdout:
+
+```sh
+python3 scripts/uc3_replay.py --snapshot /tmp/uc3-snapshot.json
+python3 scripts/uc3_replay.py --replay /tmp/uc3-snapshots.ndjson
+python3 scripts/uc3_replay.py --snapshot - < /tmp/uc3-snapshot.json
+```
+
+All results are provisional/SIMULATED and `SHADOW_NOT_APPLIED`, with
+`funds_executed=false`. Cash stays held even when eligible or proposed for
+review. This command has no persistent workspace, provider or release port.

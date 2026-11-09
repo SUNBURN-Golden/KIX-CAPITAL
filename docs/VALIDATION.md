@@ -1,5 +1,132 @@
 # Validation scope
 
+## UC3 hold-clock replay — conflict-fix round 1
+
+2026-11-09, node `uc3-hold-clock-replay`, branch
+`agent/capital-uc3-hold-clock-replay`. Resolved the supervisor's in-progress
+merge of `origin/main` without committing it. All verification is local and
+SIMULATED/provisional; no real funds or external authority is claimed.
+
+Both parent versions of each conflicted file are retained in order:
+`docs/VALIDATION.md` preserves the complete UC3 and main validation histories;
+`scripts/docs_surface.py` registers UC3 replay, observation triage and event
+stress vectors together. The merged README retains their check commands.
+No additional runtime or test changes were needed, and no tests or CI checks
+were weakened.
+
+| Verification | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,434 tests passed in 453.939s; log `/tmp/uc3-merge-unittest.log`. |
+| `python3 -m unittest discover -s tests -p test_uc3_replay.py -v` | Exit 0; 18 tests passed; log `/tmp/uc3-merge-focused.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/uc3_replay.py --check` | Exit 0; 19 pinned cases match; `SHADOW_NOT_APPLIED`, `funds_executed=false`. |
+| `python3 scripts/event_stress_vectors.py --check` | Exit 0; 3 synthetic cases match. |
+| `python3 scripts/observation_triage_vectors.py --check` | Exit 0; SIMULATED, NOT_BOUND, applied=false, funds_executed=false. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references valid. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 277 artifacts, 9 stages. |
+| `npm run test:browser -- --config="$(cat /tmp/uc3-merge-browser-path)"` | Exit 0; all 76 Chromium tests passed in 2.0m; log `/tmp/uc3-merge-browser.log`. |
+| Python SHA256 and parent-byte comparison | All five vendored reference hashes match the `7481b0e` manifest. Manifest, legacy export, shadow arithmetic and historical root `DECISION_REQUIRED.md` match both parents and `origin/main`; `.aiops/` has no diff. |
+| Parent-content comparison | Every original line of both conflicted files remains in order from both parents. |
+
+Default browser ports 8765–8767 were occupied by existing listeners. The
+untracked temporary config at
+`/tmp/uc3-merge-browser-4w6oxc_s/playwright.config.cjs` loads the unchanged
+repository config and changes only test/output paths, server working directories,
+the disposable demo workspace and four loopback ports (37731, 37017, 41935,
+54377). Tests, assertions, one-worker scheduling and server lifecycle are
+unchanged. Installed Chromium headless shell launched successfully; no package
+installation was needed. Existing services were left untouched.
+
+## UC3 hold-clock replay — builder verification
+
+2026-11-05, node `uc3-hold-clock-replay`, branch
+`agent/capital-uc3-hold-clock-replay`, baseline HEAD
+`343f4255acf5fc612eb1de9649d334fe2e930910`.
+All evidence is local SIMULATED/provisional evaluation; no real payment,
+provider, identity, upstream adoption or production authority is claimed.
+
+Implemented a complete disposable evaluator and CLI, 18 focused tests and a
+19-case pinned replay vector. The adopted policy is loaded through the existing
+note loader with raw/canonical provenance; no numeric hold-duration fallback
+exists. Every accepted projection reconciles unique arrivals to held UC3 cash,
+keeps execution at zero, and treats proposals as independent alternatives.
+The unchanged partition still refuses monetary inputs above 10^12, even though
+the replay representation limit is larger. Positive PG adjustments and
+overpayment remain outside the admitted UC3-only scope.
+
+Builder-executed verification commands and results (redirection retained where
+used; logs are disposable files under `/tmp`):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_uc3_replay.py' -v` | Exit 0; 18 tests passed on final focused run |
+| `python3 -m unittest discover -s tests -p 'test_shadow*.py' -v` | Exit 0; 57 tests passed |
+| `python3 scripts/uc3_replay.py --check` | Exit 0; all 19 pinned cases match; SHADOW_COMPUTED, SHADOW_NOT_APPLIED, funds_executed false |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references valid; all twelve dependencies registered for module and focused test; predecessor consumers retained |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 274 artifacts, 9 stages |
+| `python3 -m unittest discover -s tests -p 'test_coverage.py' -v` | Exit 0; 7 tests passed; CAP-04/11/20 first status tokens preserved |
+| `python3 -m unittest discover -s tests -p 'test_release.py' -v > /tmp/uc3-release.log 2>&1` | Exit 0; 14 tests passed, including reproducible builds, packaged resource checks and stopped-server smoke journey |
+| `python3 -m unittest discover -s tests -v > /tmp/uc3-unittest-final.log 2>&1` | Exit 0; 1,346 tests passed in 365.360 seconds |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 tests passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm ci` | Exit 0; 3 locked dev packages installed; audit reported 0 vulnerabilities |
+| `npm run test:browser -- --config=/tmp/uc3-playwright.config.cjs > /tmp/uc3-browser-isolated.log 2>&1` | Exit 0; all 76 tests passed in 2.0 minutes, after the unittest job finished |
+| `git diff --exit-code HEAD -- capital/vendor/ capital/shadow.py capital/export.py docs/CAP_COVERAGE.md docs/decisions/ .aiops/` | Exit 0; protected tracked files unchanged |
+| `python3` SHA256/manifest verification heredoc | Exit 0; all five manifest hashes matched file bytes; manifest bytes matched `git show HEAD:capital/vendor/manifest.json` |
+| `python3` binding/vector inventory heredoc | Exit 0; 133 binding rows sorted uniquely by decision/entry; enumerated all 19 vector cases |
+| `git diff --check` | Exit 0 |
+
+Failures observed and resolved, with the commands actually run:
+
+- First `python3 -m unittest discover -s tests -p 'test_uc3_replay.py' -v`:
+  exit 1, 18 tests with 30 failed assertions. Twenty-eight assertions selected
+  the final provenance reference instead of the overridden note; one identifier
+  fixture accidentally exceeded the source-fact limit while testing a valid
+  64-byte tranche ID. Those fixtures/assertions were corrected. The remaining
+  failure caught a real implementation bug: retained facts were copied after
+  generator yield, allowing caller mutation while suspended. Copying before
+  yield fixes it, with the regression assertion retained. Repeated focused
+  runs passed all 18 tests.
+- `python3 -m unittest discover -s tests -v > /tmp/uc3-unittest.log 2>&1`:
+  exit 1, 1,346 tests, two failures. The package resource fence disallows
+  `Path(__file__)` inside Capital modules; the vector path now uses the existing
+  `ARCHIVE_ROOT` resource locator. The coverage mutation test requires an absent
+  CAP-20 status token to stay detectable; the new capability prose was moved to
+  the capability column, preserving the original status cells. Both focused
+  suites and the full 1,346-test rerun passed without weakening either fence.
+- `npm run test:browser > /tmp/uc3-browser.log 2>&1`: exit 1 before tests,
+  because unrelated pre-existing services owned ports 8765 and 8766. They were
+  left untouched. A temporary config requires the unchanged repository config,
+  remaps only its four loopback ports/URLs to 18765–18768, and sets absolute
+  test/output/server-working directories for execution from `/tmp`.
+- `npm run test:browser -- --config /tmp/uc3-playwright.config.cjs > /tmp/uc3-browser-retry.log 2>&1`:
+  exit 1, 75 passed and one local-server startup timeout in the existing
+  auditor-evidence V3 test.
+- `npm run test:browser -- --config /tmp/uc3-playwright.config.cjs --project workspace tests/browser/auditor-evidence-desk.spec.cjs --grep 'V3 overlay'`:
+  exit 1 from argument parsing; Playwright's variadic `--project` also consumed
+  the test path. The corrected invocation was
+  `npm run test:browser -- --config=/tmp/uc3-playwright.config.cjs --project=workspace --grep='V3 overlay' tests/browser/auditor-evidence-desk.spec.cjs > /tmp/uc3-browser-focused.log 2>&1`:
+  exit 0, one test passed.
+- `npm run test:browser -- --config=/tmp/uc3-playwright.config.cjs > /tmp/uc3-browser-final.log 2>&1`:
+  exit 1, 75 passed and a different server-readiness failure in the existing
+  unbound terms-overlay test. The complete suite was rerun after the unittest
+  job finished, without changing assertions, timeouts or retry policy; all
+  76 tests passed as recorded above.
+
+The temporary browser adaptation is the only verification deviation. It keeps
+all tests, projects, assertions, one-worker scheduling, server lifecycle and
+loopback restriction. The repository browser config and CI are unchanged.
+No implementation scope or policy deviation was needed. No persistent UC3
+command, ingestion, D+1 batching, provider return, participation accounting,
+actual cash release, wall-clock timer, HTTP route or UI was added. CAP coverage
+statuses were not promoted. No commit, push, PR, issue or external comment was
+made. Final process inspection confirmed no Capital server started by these
+checks remained running; unrelated listeners were left intact.
+
 ## Offline event stress report — local builder verification
 
 2026-11-03, branch `agent/capital-event-stress-report`. All calculations and
