@@ -109,6 +109,37 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_repin_checker_operational_boundary(self):
+        for path in (README, HANDBOOK):
+            text = path.read_text(encoding='utf-8')
+            for needle in ('python3 scripts/upstream_repin_check.py --check --root .',
+                           '--baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json',
+                           'CAPITAL_UPSTREAM_REPINS.md', 'EXECUTABLE_VENDOR', 'EXECUTABLE_CITATION',
+                           'RESEARCH_BASELINE', 'EVIDENCE_COMPLETE', 'NOT_BOUND',
+                           'does not authenticate an adoption receipt', 'SIMULATED',
+                           'upstream-repin-inventory-contract-invariants', 'PENDING_NOTE_REGISTRATION'):
+                self.assertIn(needle, text, (path, needle))
+
+    def test_bundled_policy_runtime_is_documented_with_provenance_and_override_failure(self):
+        handbook = HANDBOOK.read_text(encoding='utf-8')
+        start = handbook.index('<!-- handbook-section:artifact-docs-bundling -->')
+        section = handbook[start:handbook.index('<!-- /handbook-section -->', start)]
+        for word in ('### artifact-docs-bundling', 'docs/decisions/*.md',
+                     'docs/CAP_COVERAGE.md', 'scripts/decision_ledger.py',
+                     'RELEASE-MANIFEST.json', 'notes_source', 'note_sha256',
+                     'CAPITAL_FINANCIAL_TERMS.md', 'CAPITAL_SETTLEMENT_POLICY.md',
+                     'CHECKOUT', 'BUNDLED_IN_ARTIFACT', 'OVERRIDE_FILE', 'NONE',
+                     'PENDING', 'INVALID', '--terms-note', '--policy-note',
+                     'signed:false', 'published:false', 'sim_day'):
+            self.assertIn(word, section)
+        for path in (README, ROOT / 'docs' / 'INTEGRATION.md', HANDBOOK,
+                     ROOT / 'docs' / 'RELEASES.md'):
+            text = path.read_text(encoding='utf-8')
+            self.assertIn('note_sha256', text, path)
+            self.assertIn('빌드 시점' if path in (README, HANDBOOK) else 'build-time', text, path)
+            self.assertNotIn('zipapp does not bundle', text, path)
+            self.assertNotIn('zipapp은 `docs/`를 담지 않아', text, path)
+
     def test_readme_links_the_three_docs(self):
         readme = README.read_text(encoding='utf-8')
         for doc in DOCS:
@@ -248,6 +279,7 @@ class HandbookTests(unittest.TestCase):
         text = (Path(__file__).resolve().parent.parent / 'docs' / 'OPERATOR_HANDBOOK_KO.md').read_text(encoding='utf-8')
         self.assertEqual(text.count('<!-- handbook-section:'), text.count('<!-- /handbook-section -->'))
         needed = {
+            'advance-case-dossier': ('GET /api/cases/{advance_id}/dossier', 'dossier_digest', 'SIMULATED', 'NOT_BOUND', 'CASE_NOT_FOUND', 'tests/test_dossier.py'),
             'shadow-refund-resale': ('SHADOW_NOT_APPLIED', 'SHADOW_DEFERRED'),
             'caps-binding-fixtures': ('CAPITAL-DEMO-BOOK-V1', 'portfolio_cap_krw'),
             'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),
@@ -314,6 +346,13 @@ class HandbookTests(unittest.TestCase):
                 'capital/ce1_claims.py', 'capital/store.py',
                 '--protocol-dir', 'SKIPPED', 'tests/test_ce1_claims.py',
                 'upstream-claims'),
+            'readiness-runtime-claims': (
+                'tests/readiness_claims.json', 'KIX_CAPITAL_READINESS_CLAIMS_V1',
+                'scripts/readiness_claims_check.py --execute', 'CLAIM_CONFORMANCE',
+                'READINESS_RUNTIME', 'DOCUMENTED_DIVERGENCE',
+                'WORKSPACE_UNREADABLE', 'LOCAL_FILE_WORKSPACE',
+                'capital/readiness_claims.py', '--protocol-dir', 'SKIPPED',
+                'NOT_BOUND', 'tests/test_readiness_claims.py', 'upstream-claims'),
         }
         for name, words in needed.items():
             start = text.index(f'<!-- handbook-section:{name} -->')
@@ -334,9 +373,12 @@ class HandbookTests(unittest.TestCase):
         self.assertLess(
             unit_commands.index(next(c for c in unit_commands if 'discover' in c)),
             unit_commands.index(fence[0]))
-        self.assertEqual(len(upstream_commands), 6)
+        self.assertEqual(len(upstream_commands), 7)
         for argv in upstream_commands:
-            self.assertIn('--execute', argv)
+            if 'scripts/read_model_claims_check.py' in argv:
+                self.assertNotIn('--execute', argv)
+            else:
+                self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
         for doc in (README.read_text(encoding='utf-8'),
                     HANDBOOK.read_text(encoding='utf-8')):
@@ -351,6 +393,7 @@ class HandbookTests(unittest.TestCase):
             self.assertEqual(positions, sorted(positions))
             self.assertIn('추가 명령', doc)
             self.assertIn('네 번째', doc)
+            self.assertIn('일곱 번째', doc)
             self.assertIn('tests/test_fsm_contract_claims.py', doc)
             self.assertIn('SKIPPED', doc)
 

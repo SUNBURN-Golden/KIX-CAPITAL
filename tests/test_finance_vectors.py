@@ -198,6 +198,7 @@ INSTANCE_BOUND_SECTIONS = ['receipts', 'projection', 'reconciliation', 'statemen
 SHA256 = re.compile(r'[0-9a-f]{64}')
 # Every GET api route of the facade contract, in contract order: path -> response definitions.
 FACADE_READS = [
+    ('/api/cases/{advance_id}/dossier', ['case_dossier']),
     ('/api/portfolio/snapshot', ['portfolio_snapshot']),
     ('/api/state', ['state']),
     ('/api/scenarios', ['scenario_list']),
@@ -219,6 +220,9 @@ FACADE_READS = [
     ('/api/preview/{advance_id}', ['preview']),
     ('/api/underwrite/{advance_id}', ['underwrite']),
     ('/api/operations/{operation_id}', ['accepted_receipt', 'rejected_receipt', 'unknown_operation']),
+    ('/api/read/credit_advance/{id}', ['read_credit_advance']),
+    ('/api/read/credit_claim/{id}', ['read_credit_claim']),
+    ('/api/read/settlement/{id}', ['read_settlement']),
     ('/api/export', ['export_v1']),
     ('/api/export/manifest', ['manifest']),
     ('/api/export/facts', ['facts_page']),
@@ -747,14 +751,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_thirty_five_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 35)
+    def test_exactly_the_thirty_nine_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 39)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 47)
+        self.assertEqual(len(self.contract['routes']), 51)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
@@ -772,6 +776,8 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(self.by_path['/api/statement']['permission'], 'statement:read')
         self.assertEqual(self.by_path['/api/reconciliation']['permission'], 'reconciliation:read')
         self.assertEqual(self.by_path['/api/export/manifest']['permission'], 'export:read')
+        self.assertEqual(self.by_path['/api/cases/{advance_id}/dossier']['permission'], 'projection:read')
+        self.assertEqual(self.by_path['/api/cases/{advance_id}/dossier']['operation_id'], 'local_case_dossier')
 
     def test_definition_digests_are_recomputed_from_the_contract_file(self):
         definitions = self.contract['definitions']

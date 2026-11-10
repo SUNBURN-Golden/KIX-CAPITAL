@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from capital import __version__
+from capital.limits import MAX_REQUEST_BYTES
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
     COMMAND_SUBMIT, DEFAULT_ROLE, OVERLAY_COMMAND, PROVENANCE, ROLES, Principal,
@@ -44,7 +45,9 @@ GET_DISPATCH = (
     ('/api/policy', True, 'policy'),
     ('/api/preview/', True, 'preview'),
     ('/api/underwrite/', True, 'underwrite'),
+    ('/api/cases/', True, 'cases'),
     ('/api/operations/', True, 'operation'),
+    ('/api/read/', True, 'read'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
     ('/api/export/facts', False, 'export_facts'),
@@ -373,6 +376,15 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 route.path.rsplit('/', 1)[-1], instance, principal.role,
                 sim_day=sim_day or 0, amount=amount))
 
+        def _get_cases(self, route, principal):
+            match = re.fullmatch(r'/api/cases/([^/]+)/dossier', route.path)
+            if match is None:
+                raise ApiError('NOT_FOUND', 404)
+            params = parse_qs(route.query, keep_blank_values=True)
+            if set(params) - {'instance_id'} or len(params.get('instance_id', [])) > 1:
+                raise ApiError('INVALID_ARGUMENTS')
+            return self.reply(200, service.dossier(match[1], params.get('instance_id', [''])[0]))
+
         def _get_export(self, route, principal):
             return self.reply(200, service.export())
 
@@ -402,6 +414,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_health(self, route, principal):
             return self.reply(200, service.health())
 
+        def _get_read(self, route, principal):
+            # Exactly <kind>/<id>. A bare kind, an unknown kind or an extra segment is
+            # 404: the draft's list_* queries and paging are UNDETERMINED upstream.
+            parts = route.path[len('/api/read/'):].split('/')
+            if len(parts) != 2:
+                raise ApiError('NOT_FOUND', 404)
+            return self.reply(200, service.read_query(parts[0], parts[1]))
+
         def _get_operation(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
             return self.reply(200, service.operation(route.path.rsplit('/', 1)[-1], instance))
@@ -411,7 +431,7 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             if len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding'):
                 raise ApiError('INVALID_LENGTH')
             length = int(lengths[0])
-            if not 0 < length <= 8192:
+            if not 0 < length <= MAX_REQUEST_BYTES:
                 raise ApiError('BODY_TOO_LARGE', 413)
             self.connection.settimeout(3)
             try:
@@ -578,9 +598,9 @@ def main():
     parser.add_argument('--workspace', default=None,
                         help='Opt-in local JSON workspace directory. Default is process memory. Not stage5 durable transactions.')
     parser.add_argument('--terms-note', default=None,
-                        help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Not bundled in the zipapp.')
+                        help='Decision note for the simulated terms overlay. A missing note reports terms not bound. Exclusive override of the bundled decision note; no fallback on failure.')
     parser.add_argument('--policy-note', default=None,
-                        help='Decision note for the simulated policy application. A missing note reports policy not bound. Not bundled in the zipapp.')
+                        help='Decision note for the simulated policy application. A missing note reports policy not bound. Exclusive override of the bundled decision note; no fallback on failure.')
     signing = parser.add_mutually_exclusive_group()
     signing.add_argument('--dev-hmac', action='store_true',
                         help='Opt-in DEV_ONLY HMAC integrity key at WORKSPACE/export-dev.key (mode 0600). Integrity only, not authentication. Not an external key.')

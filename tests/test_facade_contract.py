@@ -199,6 +199,7 @@ class FacadeContractTests(unittest.TestCase):
         closed = command('close', 'sim-journey', {}, 'j-close-2')
         self.assertEqual(closed['result']['credit']['phase'], 'CLOSED')
         reads = [
+            ('GET', f'/api/cases/sim-journey/dossier?instance_id={instance}', '/api/cases/{advance_id}/dossier', None),
             ('GET', '/api/evidence', '/api/evidence', None),
             ('GET', '/api/projection', '/api/projection', None),
             ('GET', '/api/terms', '/api/terms', None),
@@ -217,6 +218,9 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', f'/api/preview/sim-journey?instance_id={instance}', '/api/preview/{{advance_id}}', None),
             ('GET', f'/api/underwrite/sim-journey?instance_id={instance}&sim_day=0', '/api/underwrite/{{advance_id}}', None),
             ('GET', f'/api/operations/j-offer?instance_id={instance}', '/api/operations/{{operation_id}}', None),
+            ('GET', '/api/read/credit_advance/sim-journey', '/api/read/credit_advance/{id}', None),
+            ('GET', '/api/read/credit_claim/sim-committed', '/api/read/credit_claim/{id}', None),
+            ('GET', '/api/read/settlement/sim-committed', '/api/read/settlement/{id}', None),
             ('GET', '/api/export', '/api/export', None),
             ('GET', '/api/export/manifest', '/api/export/manifest', None),
             ('GET', f'/api/export/facts?instance_id={instance}', '/api/export/facts', None),

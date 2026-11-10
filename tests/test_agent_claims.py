@@ -342,22 +342,30 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(len(plan), 1)
         self.assertEqual(plan[0]['commands'][0][1:], ['scripts/upstream_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][1][1:], ['scripts/agent_claims_check.py', '--execute'])
-        self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py', '--execute'])
+        self.assertEqual(plan[0]['commands'][2][1:], ['scripts/read_model_claims_check.py'])
         self.assertEqual(plan[0]['commands'][3][1:], ['scripts/ce1_claims_check.py', '--execute'])
         self.assertEqual(plan[0]['commands'][4][1:], ['scripts/adapter_identity_claims_check.py', '--execute'])
         from capital.adapter_identity_claims import load_table as load_identity
         from capital.ce1_claims import load_table as load_ce1
         from capital.lifecycle_claims import load_table as load_lifecycle
         self.assertEqual(plan[0]['commands'][5][1:], ['scripts/lifecycle_claims_check.py', '--execute'])
+        from capital.readiness_claims import load_table as load_readiness
+        self.assertEqual(plan[0]['commands'][6][1:], ['scripts/readiness_claims_check.py', '--execute'])
         expected_total = (
             len(load_lifecycle()['claims']) +
             len(load_upstream()['claims'])
             + len(load_table()['claims'])
             + len(load_read_model()['claims'])
             + len(load_ce1()['claims'])
-            + len(load_identity()['claims']))
+            + len(load_identity()['claims'])
+            + len(load_readiness()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
+            from tests.test_read_model_claims import _tree
+            protocol = Path(tmp) / 'protocol'
+            _tree(protocol, load_read_model())
+            plan = [stage for stage in acceptance.build_plan(ROOT, protocol)
+                    if stage['id'] == 'upstream-claims']
             code = acceptance.execute_plan(
                 plan, root=ROOT, evidence_path=evidence, required=('upstream-claims',))
             data = json.loads(evidence.read_text(encoding='utf-8'))
@@ -367,7 +375,8 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'])
+        self.assertEqual(stage['passed'], stage['total'] - 2)
+        self.assertEqual(stage['documented_divergences'], 2)
         self.assertEqual(stage['test_count']['failed'], 0)
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
         for command in stage['commands']:

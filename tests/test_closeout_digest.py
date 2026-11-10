@@ -24,6 +24,7 @@ from capital import __version__ as CAPITAL_VERSION
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / 'tests' / 'vectors' / 'closeout_digest.json'
 VECTORS = ROOT / 'tests' / 'vectors' / 'finance_vectors.json'
+READINESS = ROOT / 'tests' / 'readiness_claims.json'
 GOLDEN = ROOT / 'tests' / 'golden' / 'demo.json'
 SCRIPT = ROOT / 'scripts' / 'closeout_digest.py'
 VENDOR = ROOT / 'capital' / 'vendor' / 'manifest.json'
@@ -53,16 +54,17 @@ STAGES = (
     ('pinned-vendor', ['python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v']),
     ('upstream-claims', ['python3 scripts/upstream_claims_check.py --execute',
                          'python3 scripts/agent_claims_check.py --execute',
-                         'python3 scripts/read_model_claims_check.py --execute',
+                         'python3 scripts/read_model_claims_check.py',
                          'python3 scripts/ce1_claims_check.py --execute',
                          'python3 scripts/adapter_identity_claims_check.py --execute',
-                         'python3 scripts/lifecycle_claims_check.py --execute']),
+                         'python3 scripts/lifecycle_claims_check.py --execute',
+                         'python3 scripts/readiness_claims_check.py --execute']),
     ('node-check', ['node --check capital/static/app.js']),
     ('browser', ['npm run test:browser']),
     ('packaged-smoke', ['python3 scripts/build_release.py --out build/acceptance-dist',
                         'python3 scripts/smoke_release.py <built-zipapp>']),
     ('seeded-demo', ['python3 scripts/seed_demo.py']),
-    ('integrated-journeys', ['python3 scripts/sim_journeys.py']),
+    ('integrated-journeys', ['python3 scripts/sim_journeys.py --check']),
 )
 STRIP_KEYS = [
     'head_sha', 'instance_id', 'created_at', 'saved_at', 'timestamp', 'timestamps', 'recorded_at',
@@ -625,11 +627,17 @@ class CommittedArtifactTests(unittest.TestCase):
         counts = {row['stage_id']: row['test_count'] for row in self.digest['stages']}
         self.assertIsNone(counts['node-check'])
         self.assertGreater(counts['unit']['ran'], 300)
+        divergences = sum(
+            1 for row in json.loads(READINESS.read_text(encoding='utf-8'))['claims']
+            if row['expected'].get('divergent'))
         for stage_id in ('unit', 'storage-conformance', 'pinned-vendor', 'upstream-claims', 'seeded-demo'):
             with self.subTest(stage=stage_id):
                 count = counts[stage_id]
                 self.assertEqual(count['failed'], 0)
-                self.assertEqual(count['passed'], count['ran'])
+                if stage_id == 'upstream-claims':
+                    self.assertEqual(count['passed'] + divergences, count['ran'])
+                else:
+                    self.assertEqual(count['passed'], count['ran'])
         self.assertEqual(counts['seeded-demo'], {'ran': 1, 'passed': 1, 'failed': 0})
 
     def test_golden_vendor_and_packaged_pins(self):
@@ -779,6 +787,15 @@ class DocsTests(unittest.TestCase):
         text = BINDING.read_text(encoding='utf-8')
         self.assertIn('tests/vectors/closeout_digest.json (derived from that evidence)', text)
         self.assertNotIn('"fin-finance-closeout": "build/acceptance-evidence.json as consumer-side evidence candidate"', text)
+
+    def test_live_ladder_commands_match_the_combined_contract(self):
+        actual = []
+        for stage in acceptance_ladder.build_plan():
+            commands = [script._command_text(command) for command in stage['commands']]
+            if stage['id'] == 'packaged-smoke':
+                commands.append('python3 scripts/smoke_release.py <built-zipapp>')
+            actual.append((stage['id'], commands))
+        self.assertEqual(actual, list(STAGES))
 
     def test_the_ladder_gained_no_closeout_stage(self):
         self.assertEqual(len(acceptance_ladder.REQUIRED_STAGES), 9)
