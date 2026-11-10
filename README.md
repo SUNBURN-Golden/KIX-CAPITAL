@@ -218,6 +218,7 @@ python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
 python3 scripts/compat_preflight.py --check
+python3 -m unittest discover -s tests -p test_port_composition.py -v
 python3 scripts/forecast_vectors.py --check
 python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
@@ -225,6 +226,17 @@ npm ci
 npx playwright install chromium
 npm run test:browser
 ```
+
+`tests/test_port_composition.py` composes `LOCAL_FAKE_IDP` session binding,
+the compatibility preflight factory and `LOCAL_FAKE_GATE` through the real
+loopback HTTP facade. Its local `CLAIM_CONFORMANCE` evidence uses only
+SIMULATED commands and READ_ONLY_FIXTURE inputs, without either upstream
+checkout. Identity, authentication and producer adoption remain `NOT_BOUND`;
+passing these tests is not SEMANTIC_CONFORMANCE. Coverage includes F04 lifecycle
+commands, authorized reads, rejected synthetic credentials, hostile gate replies,
+first-result replay/conflict behavior and explicit unsupported-operation refusals.
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for boundaries and
+[docs/VALIDATION.md](docs/VALIDATION.md) for builder results.
 
 한 명령 수용 사다리는 위 검사에 패키지 스모크와 시드 데모를 더합니다. 사람 수용 결정은 포함하지 않습니다.
 

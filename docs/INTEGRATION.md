@@ -557,6 +557,61 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+## Fake port composition
+
+`tests/test_port_composition.py` runs with Python stdlib and repository-local
+fixtures only; neither Protocol nor Commerce checkouts are required. Each
+scenario constructs an owned `LOCAL_FAKE_GATE` with
+`make_preflighted_fake_producer`, injects it and a fixed-clock
+`FakeIdpAuthorizer` into the real Capital facade, binds only `127.0.0.1` on
+ephemeral ports, and shuts down both servers. Memory storage is used.
+
+The preflight checks the committed compatibility bundle before constructing the
+producer or starting the gate. A tuple or referenced-byte mismatch raises
+`PreflightRejected`. A match reports byte agreement `MATCHED`, profile
+`BOOTSTRAP`, semantic consumption `HOLD` and adoption `NOT_BOUND`.
+
+`GET /api/state` supplies the bootstrap local token. `POST /api/session` sends
+that token, a synthetic bearer token, and its matching role in the JSON body.
+Only session binding validates the fake bearer: expired and wrong-audience
+tokens return `401 IDP_TOKEN_INVALID`, and a claim/body role mismatch returns
+`403 ROLE_MISMATCH`, without issuing a role token or submitting a producer
+command. Later requests use the issued loopback token. Role-header mismatches
+and read-only-role commands are denied before producer submission. Bootstrap
+organizer access remains available; no command-time bearer validation, expiry
+revocation or production authentication is claimed.
+
+The suite executes the existing F04 lifecycle vector over HTTP and checks
+organizer receipt provenance, operation lookup, one gate submission per command,
+and `{operationId, actor, action, body}` mapping with matching nested operation
+IDs. `actor` remains unauthenticated. Bound auditor and observer reads and agent
+denials follow the permission catalog; allowed catalog responses agree and
+contain no tokens. Reads leave canonical state, journal, receipts, case mappings,
+overlay entries and saved business state unchanged.
+
+The existing hostile-reply corpus is replayed through this composition, including
+its pinned timeout/delay values and intentional direct-gate conflict POST.
+Gate 5xx returns `502 GATE_FAILED`; malformed JSON returns `502 INVALID_JSON`.
+Drop-before, drop-after and timeout return HTTP 200 `UNKNOWN` with
+`retry_authorized: false`. Each command is submitted once. Malformed, drop-after
+and timeout cases can leave an accepted gate receipt while facade lookup stays
+`UNKNOWN`; repeated reads neither reconcile that result nor resend the command.
+Accepted and domain-rejected replays keep their first result after later state
+changes and return `transport_duplicate: true` without another submission.
+Conflicting bodies preserve the original receipts and journal.
+
+With valid draw and existing decision-note terms setup, principal-bearing overlay
+`post_repayment` retains `409 REPAYMENT_PRODUCER_UNSUPPORTED`. Facts export
+retains `503 COHERENT_SNAPSHOT_UNSUPPORTED`; portfolio snapshot returns
+`INCOMPLETE` with `GATE_FAKE_UNSUPPORTED`. These paths neither replace the HTTP
+producer nor construct an in-process fallback, and do not mutate business state.
+
+This suite provides local `CLAIM_CONFORMANCE` evidence only. `LOCAL_FAKE_IDP`
+and `LOCAL_FAKE_GATE` are SIMULATED adapters over READ_ONLY_FIXTURE inputs.
+Identity, authentication and producer adoption remain `NOT_BOUND`;
+`semantic_conformance` and `funds_executed` stay false on their existing surfaces.
+It does not qualify upstream semantics, remote identity, SDK adoption, distributed
+durability or HTTP-producer overlay repayment support.
 ## Offline observation triage (SIMULATED)
 
 `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`
