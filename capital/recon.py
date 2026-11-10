@@ -33,6 +33,9 @@ CHECK_IDS = (
 COA_CHECK_IDS = (
     'coa_candidate_totals_vs_v1',
     'interest_ledger_vs_projection',
+    'payment_ledger_vs_projection',
+    'recovery_ledger_vs_projection',
+    'writeoff_ledger_vs_projection',
 )
 
 NOT_BOUND_GAPS = (
@@ -208,7 +211,7 @@ def _coa_labels():
 
 
 def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error, overlay_entries):
-    """The two COA candidate checks. A failed projection is a mismatch, never a repair."""
+    """The additive COA candidate checks. A failed projection is a mismatch, never a repair."""
     if restore_error is not None:
         return [_check(check_id, False, 'replay') for check_id in COA_CHECK_IDS]
     evidence = [copy.deepcopy(fixture_rows[key]) for key in sorted(fixture_rows)]
@@ -218,9 +221,15 @@ def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
     except ProjectionError as exc:
         return [_check(check_id, False, exc.code) for check_id in COA_CHECK_IDS]
     return [
-        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base), 'coa_vs_v1_totals'),
+        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base, overlay_entries), 'coa_vs_v1_totals'),
         _check('interest_ledger_vs_projection', coa.interest_matches_ledger(candidate, overlay_entries),
                'interest_vs_overlay_fold'),
+        _check('payment_ledger_vs_projection', coa.payments_match_ledger(candidate, overlay_entries),
+               'payment_vs_overlay_fold'),
+        _check('recovery_ledger_vs_projection', coa.recoveries_match_ledger(candidate, overlay_entries),
+               'recovery_vs_overlay_fold'),
+        _check('writeoff_ledger_vs_projection', coa.writeoffs_match_ledger(candidate, overlay_entries),
+               'writeoff_vs_overlay_fold'),
     ]
 
 
