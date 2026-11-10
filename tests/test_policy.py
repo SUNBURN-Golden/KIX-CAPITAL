@@ -390,7 +390,7 @@ class PolicyHttpTests(unittest.TestCase):
 
 
 class PolicyZipappTests(unittest.TestCase):
-    def test_zipapp_reports_not_bound(self):
+    def test_zipapp_reports_bundled_policy(self):
         spec = importlib.util.spec_from_file_location('build_release', ROOT / 'scripts' / 'build_release.py')
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -407,7 +407,7 @@ class PolicyZipappTests(unittest.TestCase):
             )
             proc = subprocess.run([sys.executable, '-c', code, str(pyz)], capture_output=True, text=True, check=False)
             self.assertEqual(proc.returncode, 0, proc.stderr)
-            self.assertEqual(proc.stdout.splitlines(), ['False', 'NOT_BOUND', 'policy not bound'])
+            self.assertEqual(proc.stdout.splitlines(), ['True', 'DECIDED', 'None'])
             self.assertTrue(default_note_path().is_file())
 
 

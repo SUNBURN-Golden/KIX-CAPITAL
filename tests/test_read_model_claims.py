@@ -355,13 +355,16 @@ class ReadModelClaimsTests(unittest.TestCase):
         from capital.ce1_claims import load_table as load_ce1
         from capital.lifecycle_claims import load_table as load_lifecycle
         self.assertEqual(plan[0]['commands'][5][1:], ['scripts/lifecycle_claims_check.py', '--execute'])
+        from capital.readiness_claims import load_table as load_readiness
+        self.assertEqual(plan[0]['commands'][6][1:], ['scripts/readiness_claims_check.py', '--execute'])
         expected_total = (
             len(load_lifecycle()['claims']) +
             len(load_upstream()['claims'])
             + len(load_agent()['claims'])
             + len(load_table()['claims'])
             + len(load_ce1()['claims'])
-            + len(load_identity()['claims']))
+            + len(load_identity()['claims'])
+            + len(load_readiness()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
             code = acceptance.execute_plan(
@@ -373,7 +376,8 @@ class ReadModelClaimsTests(unittest.TestCase):
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'])
+        self.assertEqual(stage['passed'], stage['total'] - 2)
+        self.assertEqual(stage['documented_divergences'], 2)
         self.assertEqual(stage['test_count']['failed'], 0)
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
         for command in stage['commands']:

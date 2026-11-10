@@ -64,6 +64,7 @@ _STAGE_ANCHOR = 'stage id'
 # one prose sentence that names them — the generated matrix repeats those
 # names and is stripped before the search.
 ROUTE_NEEDLES = {
+    ('GET', '/api/cases/'): ('`GET /api/cases/{advance_id}/dossier',),
     ('GET', '/api/state'): ('- `GET /api/state`:',),
     ('GET', '/api/permissions'): ('- `GET /api/permissions`:',),
     ('GET', '/api/scenarios'): ('`GET /api/scenarios` and `/api/scenarios/{id}`',),
@@ -114,6 +115,9 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'observation_triage/': ('tests/vectors/observation_triage/', 'scripts/observation_triage_vectors.py --check'),
+    'event_stress.json': ('tests/vectors/event_stress.json', 'scripts/event_stress_vectors.py --check'),
+    'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
     'manifest/': ('tests/vectors/manifest/', 'scripts/manifest_vectors.py --check'),
@@ -126,6 +130,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/closeout_digest.json', 'scripts/closeout_digest.py --check'),
     'gate_faults.json': (
         'tests/vectors/gate_faults.json', 'scripts/gate_faults.py --check'),
+    'compat/': (
+        'tests/vectors/compat/', 'scripts/compat_preflight.py --check'),
     'forecast_vectors.json': (
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'risk_scenarios.json': (
@@ -153,6 +159,8 @@ CLAIM_NEEDLES = {
         'e2313ab473ea1b5a7b5b9246a564749188c1c2c8',
         'citation SKIPPED',
     ),
+    'tests/readiness_claims.json': ('tests/readiness_claims.json',),
+    'scripts/readiness_claims_check.py': ('scripts/readiness_claims_check.py',),
 }
 
 

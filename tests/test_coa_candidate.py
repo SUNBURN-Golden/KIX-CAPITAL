@@ -206,12 +206,21 @@ class V1UnchangedTests(unittest.TestCase):
         probe = self._git('rev-parse', '--verify', '-q', 'origin/main')
         if probe.returncode == 0:
             base = 'origin/main'
-            guarded = self._git('diff', '--name-only', base, '--',
+            # New decision notes (status A) are allowed: an added note never rewrites a
+            # reviewed one. Modified, deleted or renamed guarded files still fail.
+            guarded = self._git('diff', '--name-only', '--diff-filter=MDRTCUXB', base, '--',
                                 *[name for name in self.GUARDED if name not in
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
-            self.assertEqual(guarded.stdout.split(), [])
+            changed = guarded.stdout.split()
+            clarification = 'docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md'
+            if clarification in changed:
+                # Adopted supervisor clarification: pin the entire reviewed note.
+                self.assertEqual(hashlib.sha256((ROOT / clarification).read_bytes()).hexdigest(),
+                                 'a87f5f3cde492ac31c4d90a3c785a827c067e9c066dbed15027f3b53e3672103')
+                changed.remove(clarification)
+            self.assertEqual(changed, [])
             # Also preserve the closeout binding note against the incoming reviewed
             # commit during a merge, when HEAD still points at the old branch tip.
             binding_note = 'docs/decisions/CAPITAL_UPSTREAM_BINDING.md'
