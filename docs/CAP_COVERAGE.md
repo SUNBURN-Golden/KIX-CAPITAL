@@ -42,3 +42,9 @@ Unknown inputs never become zero; positive residual slice occupancy is unsupport
 Beneficiary minima require complete evaluation except validated zero. Portfolio
 minima cover assessed cases only. Ordinary risk responses and fixed shocks remain
 unchanged. Legal/tax assumptions remain pending professional review.
+`event-stress-report` extends CAP-01/CAP-04/CAP-08/CAP-20 locally with an audited,
+detached offline claim shock report (`capital/event_stress.py`,
+`tests/test_event_stress.py`). Policy: docs/decisions/CAPITAL_EVENT_STRESS.md;
+implementation mapping: docs/decisions/CAPITAL_EVENT_STRESS_BINDING.md.
+Both remain provisional SIMULATED. Shared allocation and historical policy
+authentication remain NOT_BOUND; no production permission or financial posting.

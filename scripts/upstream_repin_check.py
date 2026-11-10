@@ -20,6 +20,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 NOTE = 'docs/decisions/CAPITAL_UPSTREAM_REPINS.md'
+READ_MODEL_NOTE = 'docs/decisions/CAPITAL_READ_MODEL_QUERY_PIN.md'
 SCHEMA = 'capital-upstream-repin-evidence-v1'
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 FOLDERS = ('capital', 'scripts', 'tests', 'docs', 'source_material')
@@ -131,8 +132,32 @@ def load_policy(root):
         raise ValueError('wrong policy decision_id')
     if any(entry['status'] != 'ADOPTED' for entry in values.values()):
         raise ValueError('required policy is not ADOPTED; separate policy review required')
+    amendment_raw = safe_path(root, READ_MODEL_NOTE).read_bytes()
+    errors, _ = ledger['validate_note_bytes'](amendment_raw, READ_MODEL_NOTE)
+    if errors:
+        raise ValueError('; '.join(errors))
+    amendment = ledger['extract_blocks'](amendment_raw.decode())[0]
+    entries = amendment['entries']
+    registration = entries['read_model_query_pin']
+    if (amendment['decision_id'] != 'read-model-query-pin-decision'
+            or registration['status'] != 'ADOPTED'):
+        raise ValueError('read-model query pin registration is not ADOPTED')
+    record = registration['value']
+    if (record['surface'] != 'read_model_draft_pin' or record['previous_surface'] != 'vendor_pin'
+            or record['pin']['class'] != 'EXECUTABLE_CITATION'
+            or record['pin']['vendored'] is not False
+            or record['pin']['bound_tables'] != ['tests/read_model_claims.json']
+            or record['source_doc'] != 'docs/contracts/READ_MODEL_QUERIES.md'
+            or record['assessment'] != 'HOLD'):
+        raise ValueError('unsupported read-model query pin registration')
+    values = copy.deepcopy(values)
+    values['read_model_query_pin'] = copy.deepcopy(registration)
+    inventory = values['executable_pin_inventory']['value']
+    inventory['vendor_pin']['bound_tables'].remove('tests/read_model_claims.json')
+    inventory['read_model_draft_pin'] = record['pin']
+    values['current_pin_assessment']['value']['read_model_draft_pin'] = record['assessment']
     return {'entries': values, 'values': {k: v['value'] for k, v in values.items()},
-            'digest': digest(raw), 'block': block}
+            'digest': digest(raw + b'\0' + amendment_raw), 'block': block}
 
 
 def pins(policy):
@@ -166,10 +191,10 @@ def policy_contract(policy):
             or drift['inventory_order'] != 'sorted_unique_decision_id_entry'
             or assessment['research_head_is_automatic_replacement']
             or assessment['historical_validation_is_current_head_evidence']
-            or any(value != 'HOLD' for key, value in assessment.items() if key.startswith(('vendor_pin_', 'ai_draft_pin_')))):
+            or any(value != 'HOLD' for key, value in assessment.items() if key.startswith(('vendor_pin_', 'ai_draft_pin_', 'read_model_draft_pin')))):
         raise ValueError('unsupported policy contract; separate policy review required')
     declared = pins(policy)
-    if set(declared) != {'vendor_pin', 'ai_draft_pin'}:
+    if set(declared) != {'vendor_pin', 'ai_draft_pin', 'read_model_draft_pin'}:
         raise ValueError('unsupported pin inventory; separate policy review required')
     tables = [table for pin in declared.values() for table in pin['bound_tables']]
     if (len(tables) != len(set(tables)) or set(tables) != {f'tests/{s}_claims.json' for s in STEMS}
@@ -305,6 +330,8 @@ def validation_registry():
         'manifest-vectors': [py, 'scripts/manifest_vectors.py', '--check'],
         'pack-vectors': [py, 'scripts/pack_vectors.py', '--check'],
         'finance-vectors': [py, 'scripts/finance_vectors.py', '--check'],
+        'auth-matrix': [py, 'scripts/auth_matrix.py', '--check'],
+        'read-model-queries': unit + ['-p', 'test_read_model_queries.py', '-v'],
     }
     for stem in STEMS:
         registry['claims:' + stem] = [py, f'scripts/{stem}_claims_check.py', '--execute']
@@ -314,7 +341,7 @@ def validation_registry():
         'storage-conformance': [unit + ['-p', 'test_storage_conformance.py', '-v'],
                                 [py, '-m', 'unittest', 'tests.test_crash_replay', '-v']],
         'pinned-vendor': [[py, '-m', 'unittest', 'discover', '-s', 'capital/vendor/credit_advance_f04', '-p', 'test_mock_credit.py', '-v']],
-        'upstream-claims': [[py, f'scripts/{stem}_claims_check.py', '--execute'] for stem in
+        'upstream-claims': [[py, f'scripts/{stem}_claims_check.py'] + ([] if stem == 'read_model' else ['--execute']) for stem in
                             ('upstream', 'agent', 'read_model', 'ce1', 'adapter_identity', 'lifecycle', 'readiness')],
         'node-check': [['node', '--check', 'capital/static/app.js']],
         'browser': [['npm', 'run', 'test:browser']],
@@ -355,13 +382,20 @@ def required_evidence(policy, surface, baseline, candidate):
                  'README.md', 'docs/OPERATOR_HANDBOOK_KO.md', 'docs/INTEGRATION.md',
                  'docs/VALIDATION.md', 'docs/CAPITAL_REQUIREMENTS_KO.md',
                  'docs/SEAMS.md', 'docs/RELEASES.md',
-                 'tests/decision_bindings.json', 'scripts/docs_surface.py'):
+                 'tests/decision_bindings.json', 'scripts/docs_surface.py', NOTE, READ_MODEL_NOTE):
         add(path, 'current-reference-or-binding' if path.startswith(('docs/', 'README', 'tests/decision')) else 'receipt-export-pack')
     checks = {'decision-ledger', 'decision-bindings', 'focused-bindings', 'full-unit',
               'docs-surface', 'focused-repin', 'manifest-vectors', 'pack-vectors'}
     for table in pin['bound_tables']:
         stem = Path(table).stem.removesuffix('_claims')
         checks.update(('claims:' + stem, 'test:' + stem, 'citation:' + stem))
+    if surface == 'read_model_draft_pin':
+        for path in ('capital/server.py', 'capital/auth.py', 'capital/contract/facade-v1.json',
+                     'scripts/auth_matrix.py', 'tests/auth_matrix.json',
+                     'tests/test_read_model_queries.py', 'tests/test_read_model_surface_claims.py',
+                     'tests/vectors/finance_vectors.json'):
+            add(path, 'read-model-query-surface')
+        checks.update(('finance-vectors', 'auth-matrix', 'read-model-queries'))
     vendor = 'manifest' in pin
     if vendor:
         manifest = read_json(safe_path(candidate, pin['manifest']))
@@ -526,6 +560,8 @@ def compare_snapshots(baseline, candidate, evidence, *, log_root):
         expected = copy.deepcopy(policy['entries'])
         for surface, sha in proposed.items():
             expected['executable_pin_inventory']['value'][surface]['sha'] = sha
+            if surface == 'read_model_draft_pin':
+                expected['read_model_query_pin']['value']['pin']['sha'] = sha
         if json.dumps(cand_policy['entries'], sort_keys=True) not in (
                 json.dumps(policy['entries'], sort_keys=True), json.dumps(expected, sort_keys=True)):
             result['findings'].append('candidate policy governance changed beyond declared inventory SHA replacements')
