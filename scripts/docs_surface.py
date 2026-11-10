@@ -91,6 +91,11 @@ ROUTE_NEEDLES = {
     ('GET', '/api/preview/'): ('`GET /api/preview/{advance_id}',),
     ('GET', '/api/underwrite/'): ('`GET /api/underwrite/{advance_id}',),
     ('GET', '/api/operations/'): ('`GET /api/operations/{operation_id}',),
+    ('GET', '/api/read/'): (
+        '`GET /api/read/credit_advance/{id}`',
+        '`GET /api/read/credit_claim/{id}`',
+        '`GET /api/read/settlement/{id}`',
+    ),
     ('GET', '/api/export'): ('- `GET /api/export`:',),
     ('GET', '/api/export/manifest'): ('- `GET /api/export/manifest`:',),
     ('GET', '/api/export/facts'): ('- `GET /api/export/facts`:',),
@@ -115,6 +120,8 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'observation_triage/': ('tests/vectors/observation_triage/', 'scripts/observation_triage_vectors.py --check'),
+    'event_stress.json': ('tests/vectors/event_stress.json', 'scripts/event_stress_vectors.py --check'),
     'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
@@ -157,6 +164,8 @@ CLAIM_NEEDLES = {
         'e2313ab473ea1b5a7b5b9246a564749188c1c2c8',
         'citation SKIPPED',
     ),
+    'tests/readiness_claims.json': ('tests/readiness_claims.json',),
+    'scripts/readiness_claims_check.py': ('scripts/readiness_claims_check.py',),
 }
 
 
