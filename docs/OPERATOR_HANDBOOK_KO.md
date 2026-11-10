@@ -604,7 +604,7 @@ workspace의 정산 뷰는 바꿀 수 없다. 그곳에서는 `checked` true, `t
 
 `T04-sim`(38단계)은 `python3 -m capital.server --workspace TMP` 하위 프로세스 위의 감사인 경로다. 데모 장부(`scripts/seed_demo.py`의 고정 operation id 스물한 건, `SETTLEMENT_NOT_COMMITTED`로 거절되는 draw 포함)를 HTTP로 다시 넣고 `state_digest`가 `tests/golden/demo.json` 핀과 같은지 본다. organizer가 `POST /api/session`으로 `auditor`를 결합하면, auditor 토큰으로 `/api/overlay`·`/api/risk`·`/api/terms/portfolio`·`/api/reconciliation`을 읽고 `/api/export/manifest`로 `KIX_CAPITAL_EXPORT_MANIFEST_V3`(status `COMPLETE`, signature `UNSIGNED`/`NOT_BOUND`)를 받아 파일로 쓴다. 그 파일을 `python3 -m capital.verify FILE`가 하위 프로세스로 다시 검사하고, `python3 -m capital.verify --workspace DIR`가 살아 있는 작업공간을 잠금 없이 읽기 전용으로 감사한다(`OFFLINE_WORKSPACE_AUDIT`, 열 개 검사 `MATCHED`, `writes` false, `stage5_durable_transactions` `NOT_BOUND`). auditor 토큰의 `advance_day`와 `POST /api/commands`는 `403 ROLE_FORBIDDEN`이고 observer 토큰은 manifest를 받지 못한다.
 
-둘 다 `label`은 `SIMULATED`, `funds_executed`와 `integrated`는 false이며 T01–T06 자격 주장이 아니다. 실제 증적 주장도 아니다. 핀은 `tests/golden/journey_t03_sim.json`과 `tests/golden/journey_t04_sim.json`이고 어긋나거나 없으면 1로 끝난다. 의도한 변경일 때만 `python3 scripts/sim_journeys.py --update-golden`으로 다시 쓴다. `scripts/acceptance.py`의 `integrated-journeys` 단계는 네 여정을 돌리고 evidence의 `stages[*].journeys.items`에 넷의 단계 수·`SIMULATED` 라벨·digest를 싣는다.
+둘 다 `label`은 `SIMULATED`, `funds_executed`와 `integrated`는 false이며 T01–T06 자격 주장이 아니다. 실제 증적 주장도 아니다. 핀은 `tests/golden/journey_t03_sim.json`과 `tests/golden/journey_t04_sim.json`이고 어긋나거나 없으면 1로 끝난다. 의도한 변경일 때만 `python3 scripts/sim_journeys.py --update-golden`으로 다시 쓴다. `scripts/acceptance.py`의 `integrated-journeys` 단계는 여덟 여정을 돌리고 evidence의 `stages[*].journeys.items`에 각 여정의 단계 수·`SIMULATED` 라벨·digest를 싣는다.
 
 <!-- /handbook-section -->
 
@@ -828,6 +828,31 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 
 <!-- /handbook-section -->
 
+
+## repayment-recovery-journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs eight Capital-local journeys in the
+existing `integrated-journeys` stage: T03-sim–T06-sim and N1-sim–N4-sim.
+N3-sim adds day-15 interest-only payment, day-30 remaining interest plus principal,
+advisory CLEAR and a separate explicit close. N4-sim records human default at the
+adopted eligibility day, bounded recovery, write-off at default day plus the adopted
+90-day delay (one-day-early refusal), and late recovery. Independent integer/Fraction
+oracles check allocations, carry, residual claim and the interest stop day. Reserve
+absorption is zero with `NOT_BOUND`; F04 stays DEFAULTED/NOTED after default.
+
+Pins: `tests/golden/journey_n3_sim.json`, `tests/golden/journey_n4_sim.json`.
+Both file-workspace restarts preserve recorded posting receipts, N3's linked F04
+receipt, original journals and both digests. Explicit bounded duplicate and conflicting
+identity probes produce no second economic effect; older no-retry assertions remain.
+Both verify V3 manifests, read-only workspace audits and complete facts chains with
+page limit 3, plus truncation/tamper refusal using existing offline verifiers.
+N4's `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` uses ScenarioReplaySource and the
+existing recovery distribution helper. The disposable settlement book is closed before
+the ordinary server reopens immutable `READ_ONLY_FIXTURE` inputs for audit/export.
+That cut describes the reopened fixture context; it does not attest persistence of the
+disposable settlement book or authenticated recovery cash. `funds_executed`,
+`integrated` and `qualification_claimed` remain false. COA payment postings and
+allowance mechanics are outside these journeys. Human acceptance boxes remain pending.
 ## 오프라인 합성 이벤트 스트레스
 
 `python3 scripts/event_stress.py --workspace DIR --spec events.json`은 캡처한

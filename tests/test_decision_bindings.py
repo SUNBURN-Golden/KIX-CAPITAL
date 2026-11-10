@@ -78,6 +78,14 @@ class BindingTests(unittest.TestCase):
                 {'kind': 'module', 'path': 'capital/recovery.py', 'status': 'CONSUMED'},
                 {'kind': 'test_module', 'path': 'tests/test_recovery.py', 'status': 'CONSUMED'}])
 
+    def test_servicing_journeys_declare_their_independent_terms_oracle(self):
+        for entry in ('interest_rate', 'term', 'default_loss_treatment'):
+            row = next(row for row in self.data['entries']
+                       if row['decision_id'] == 'financial-terms-decision' and row['entry'] == entry)
+            for kind, path in (('module', 'scripts/sim_journeys.py'),
+                               ('test_module', 'tests/test_sim_journeys.py')):
+                self.assertIn({'kind': kind, 'path': path, 'status': 'CONSUMED'}, row['bindings'])
+
     def test_closeout_policy_has_built_consumers(self):
         expected = {
             'check_wiring': {'scripts/closeout_digest.py', 'tests/test_closeout_digest.py'},

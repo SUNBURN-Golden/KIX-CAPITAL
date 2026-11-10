@@ -557,6 +557,31 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+
+## repayment-recovery-journeys (SIMULATED)
+
+`python3 scripts/sim_journeys.py --check` runs eight Capital-local journeys in the
+existing `integrated-journeys` stage: T03-sim–T06-sim and N1-sim–N4-sim.
+N3-sim adds day-15 interest-only payment, day-30 remaining interest plus principal,
+advisory CLEAR and a separate explicit close. N4-sim records human default at the
+adopted eligibility day, bounded recovery, write-off at default day plus the adopted
+90-day delay (one-day-early refusal), and late recovery. Independent integer/Fraction
+oracles check allocations, carry, residual claim and the interest stop day. Reserve
+absorption is zero with `NOT_BOUND`; F04 stays DEFAULTED/NOTED after default.
+
+Pins: `tests/golden/journey_n3_sim.json`, `tests/golden/journey_n4_sim.json`.
+Both file-workspace restarts preserve recorded posting receipts, N3's linked F04
+receipt, original journals and both digests. Explicit bounded duplicate and conflicting
+identity probes produce no second economic effect; older no-retry assertions remain.
+Both verify V3 manifests, read-only workspace audits and complete facts chains with
+page limit 3, plus truncation/tamper refusal using existing offline verifiers.
+N4's `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` uses ScenarioReplaySource and the
+existing recovery distribution helper. The disposable settlement book is closed before
+the ordinary server reopens immutable `READ_ONLY_FIXTURE` inputs for audit/export.
+That cut describes the reopened fixture context; it does not attest persistence of the
+disposable settlement book or authenticated recovery cash. `funds_executed`,
+`integrated` and `qualification_claimed` remain false. COA payment postings and
+allowance mechanics are outside these journeys. Human acceptance boxes remain pending.
 ## Offline observation triage (SIMULATED)
 
 `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`
