@@ -220,6 +220,20 @@ class V1UnchangedTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256((ROOT / clarification).read_bytes()).hexdigest(),
                                  'a87f5f3cde492ac31c4d90a3c785a827c067e9c066dbed15027f3b53e3672103')
                 changed.remove(clarification)
+            # command-reason-trail: the two adopted notes below carry the scoped,
+            # dated operator_reason amendment authorized for this node. Only these
+            # exact reviewed bytes may differ from main; any other note change,
+            # deletion or rename still fails the guard.
+            reason_notes = {
+                'docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md':
+                    '3e23cbf1a09d6c09a504e7e722561e4d94b5086690cce759ea357253ba385049',
+                'docs/decisions/CAPITAL_REPAYMENT_POSTING.md':
+                    'b2581059084cd8ecf1b04b9af211ddbe7caa01b48456c761b5e1b30894ed17df',
+            }
+            for note, pinned_sha in reason_notes.items():
+                if note in changed:
+                    self.assertEqual(hashlib.sha256((ROOT / note).read_bytes()).hexdigest(), pinned_sha)
+                    changed.remove(note)
             self.assertEqual(changed, [])
             # Also preserve the closeout binding note against the incoming reviewed
             # commit during a merge, when HEAD still points at the old branch tip.
@@ -230,11 +244,11 @@ class V1UnchangedTests(unittest.TestCase):
             self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
             self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
-        # Preserve the exact reviewed overlay bytes from a5b2e2d5b5ecfa820462298cf075cbc223ee60f0,
-        # rather than main's earlier overlay. Export, V1 projection and vendor remain pinned to main.
+        # command-reason-trail extends this reviewed baseline with the optional operator_reason
+        # payload/receipt handling only; export, V1 projection and vendor remain pinned to main.
         overlay_bytes = (ROOT / 'capital/overlay.py').read_bytes()
         self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
-                         '96542b38a60d00a2454038f496e5654efff05c7e80be92592070c15323eb5780')
+                         '8874a13abc7cefd689fa9079c877261c6695430b44acd195fbe3045378a36a03')
         # Claim slices add only these three exact dispatch extensions. Keep the
         # reviewed recovery byte guard on every remaining byte, as well as the
         # live exact-byte guard above; no legacy fold is exempted.
@@ -250,7 +264,7 @@ class V1UnchangedTests(unittest.TestCase):
             self.assertEqual(overlay_bytes.count(extension), 1)
             overlay_bytes = overlay_bytes.replace(extension, original)
         self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
-                         '26c8fcdbe6074e39ff3ad1344d92e9575597ee3ab60baf0a21eed17c55d724dd')
+                         'f97d3990a4da4ae017ec2797b9884b7e54d3343cb8af5e110aea92ff71675efc')
         ports_ref = 'origin/main' if probe.returncode == 0 else 'HEAD'
         ports_base = self._git('show', f'{ports_ref}:capital/ports.py')
         self.assertEqual(ports_base.returncode, 0, ports_base.stderr)

@@ -927,5 +927,45 @@ class LiveServerTests(unittest.TestCase):
         self.assertEqual((status, f04['outcome']), (200, 'ACCEPTED'))
 
 
+
+class OperatorReasonRepaymentTests(unittest.TestCase):
+    def test_reason_validation_roundtrip_and_entry_byte_boundary(self):
+        from tests.test_capital import OperatorReasonTests
+        service = drawn(1)
+        for reason in OperatorReasonTests.invalid:
+            before = whole(service)
+            error = refused(self, lambda: pay(service, 'reason-pay', 100, operator_reason=reason))
+            self.assertEqual((error.status, error.code), (400, 'INVALID_REASON'))
+            self.assertEqual(whole(service), before)
+        for reason in ['x', 'x' * 200, '<b>x</b>']:
+            service = drawn(1)
+            request = body(service, 'reason-pay', 1, operator_reason=reason)
+            contract = facade_schema.load_contract()
+            facade_schema.validate(request, contract['definitions']['overlay_repayment_request'], contract)
+            receipt = service.overlay_command(request)
+            self.assertEqual(receipt['operator_reason'], reason)
+            facade_schema.validate(receipt, contract['definitions']['overlay_repayment_receipt'], contract)
+            self.assertEqual(overlay.operation_receipt(service.overlay_entries, 'reason-pay')['operator_reason'], reason)
+            self.assertTrue(service.overlay_command(request)['transport_duplicate'])
+            self.assertEqual(refused(self, lambda: pay(service, 'reason-pay', 1)).code, 'IDEMPOTENCY_CONFLICT')
+        # Calculate the actual canonical length; backslash escaping also consumes capacity.
+        service = drawn(1)
+        pay(service, 'reason-pay', 100, operator_reason='x')
+        entry = service.overlay_entries[-1]
+        remaining = 1024 - overlay.entry_size(entry) + 1
+        reason_at_bound = '\\' * (remaining // 2) + 'x' * (remaining % 2)
+        self.assertTrue(1 <= len(reason_at_bound) < 200)
+        service = drawn(1)
+        pay(service, 'reason-pay', 100, operator_reason=reason_at_bound)
+        self.assertEqual(overlay.entry_size(service.overlay_entries[-1]), 1024)
+        for reason in [reason_at_bound + 'x', '\\' * 200]:
+            service = drawn(1)
+            before = whole(service)
+            with mock.patch.object(service.producer, 'apply', wraps=service.producer.apply) as apply:
+                error = refused(self, lambda: pay(service, 'reason-pay', 100, operator_reason=reason))
+                self.assertEqual((error.code, error.detail['bound']), ('SIMULATION_CAPACITY', 'REPAYMENT_ENTRY_MAX_BYTES'))
+                apply.assert_not_called()
+            self.assertEqual(whole(service), before)
+
 if __name__ == '__main__':
     unittest.main()

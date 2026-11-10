@@ -432,3 +432,27 @@ test('a stale preview response for a case the operator left is dropped', async (
     await expect(page.locator('#desk-next-help')).toContainText('sim-unbound');
   });
 });
+
+test('operator reasons from F04, clock and repayment render as text in the timeline', async ({page, request}) => {
+  await withServer(8922, async base => {
+    const state = await (await request.get(base + '/api/state')).json();
+    const headers = {'X-Capital-Token': state.local_token};
+    const operator_reason = '<b>x</b>';
+    const commands = [
+      ['/api/commands', {op:'repay', advance_id:'sim-unbound', args:{amount:1, sequence:1}}],
+      ['/api/overlay/commands', {op:'advance_day', from_sim_day:0, to_sim_day:1, reason:'SIMULATED test'}],
+      ['/api/overlay/commands', {op:'post_repayment', advance_ref:'sim-unbound', at_sim_day:1, amount_krw:1}],
+    ];
+    for (const [index, [route, body]] of commands.entries()) {
+      const response = await request.post(base + route, {headers, data:{...body, instance_id:state.instance_id, operation_id:'desk-reason-'+index, operator_reason}});
+      expect(response.ok(), await response.text()).toBe(true);
+    }
+    await page.goto(base + '/?case=sim-unbound#desk');
+    await expect(page.locator('#desk-timeline-rows tr')).not.toHaveCount(0);
+    const reasonCells = page.locator('#desk-timeline-rows tr td:nth-child(6)').filter({hasText:operator_reason});
+    await expect(reasonCells).toHaveCount(3);
+    await expect(reasonCells).toHaveText([operator_reason, operator_reason, operator_reason]);
+    await expect(page.locator('#desk-timeline-rows b')).toHaveCount(0);
+    await expect(page.locator('#desk-timeline-rows tr td:nth-child(5)')).not.toContainText(['operator_reason']);
+  });
+});

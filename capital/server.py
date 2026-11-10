@@ -529,6 +529,8 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
                 claim = None
+                # Deny agents before service validation (including operator_reason);
+                # organizer context is validated before idempotency or any apply.
                 if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
                     body = self.read_json()
                     from capital.slices import COMMANDS as slice_commands

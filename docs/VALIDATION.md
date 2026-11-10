@@ -5428,3 +5428,53 @@ The measured package SHA256 is
 The merge remains staged and uncommitted for the supervisor. No commit, push,
 abort, rebase, reset, external post, real provider call, financial execution,
 real credential use, deployment, upstream modification or protected-path edit occurred.
+
+## command-reason-trail — builder verification (2026-11-10)
+
+Optional `operator_reason` (printable ASCII 0x20–0x7E, 1–200 characters) on
+organizer `POST /api/commands` and overlay `advance_day` / `post_repayment`.
+Invalid values return 400 `INVALID_REASON` before idempotency or any apply;
+agents are denied before validation. F04 receipts carry it outside the journal
+fingerprint (a changed reason on replay is 409 `IDEMPOTENCY_CONFLICT`), overlay
+clock/repayment entries and reconstructed receipts carry it as an optional
+payload key counted inside the unchanged byte bounds (envelope and
+`REPAYMENT_ENTRY_MAX_BYTES`, checked before any producer call). Reason-free
+commands produce byte-identical receipts and entries; `tests/golden/demo.json`,
+`capital/export.py`, the five SHA256-locked vendor files and `.aiops/` are
+unchanged. Both desks render it via text nodes only; the agent lane cannot set
+it. Offline audit reports an `operator_reasons` count/digest block when reasons
+exist and the evidence pack covers reasons through verbatim manifest sections.
+
+Two adopted decision notes carry the supervisor-authorized dated amendments:
+`CAPITAL_REPAYMENT_POSTING.md` (optional command/entry field) and
+`CAPITAL_ACCOUNTS_TAX_LEGAL.md` (`operator_reason` named under the existing
+rule-bound reason-label PII posture; no personal data in free text).
+`tests/test_coa_candidate.py` was repinned in the scoped way the supervisor
+directed: only the two note hashes and the `capital/overlay.py` reviewed
+baseline moved; export, vendor, golden and all fold guards are unchanged.
+`tests/vectors/finance_vectors.json` differs from main only inside the
+`facade_read_model` group; the nine pack vectors differ only in the two amended
+`note_sha256` rows, the decisions-section hash and `content_digest`.
+
+All results are local SIMULATED fixtures on loopback only; `funds_executed=false`.
+No commit, push, PR, issue, comment, external post, real provider call,
+credential, deployment or Protocol/Commerce change occurred.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,492 tests passed in 466.631 s, including the new operator-reason cases in `test_capital.py`, `test_overlay.py`, `test_repayment_posting.py`, `test_workspace_audit.py`, `test_evidence_pack.py` and `test_operator_desk.py`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 37 routes, 276 artifacts, 9 stages. |
+| `python3 scripts/decision_ledger.py` | Exit 0. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; regenerated container matches; diff versus main is confined to `facade_read_model`. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/workspace_vectors.py --check`; `python3 scripts/manifest_vectors.py --check` | All exit 0; pack drift is only the two amended note SHA256 rows, the decisions-section hash and `content_digest`. |
+| `npm ci --prefer-offline` | Exit 0; restored the pinned `@playwright/test` 1.58.2 dev dependency in this fresh worktree. No lockfile change. |
+| `npm run test:browser` (first attempt) | Failed before tests: port 8765 was already bound by an unrelated long-running process outside this worktree. Not retried on the shared loopback. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 78 Chromium tests passed in 1.8 min inside an isolated loopback namespace, including the two new literal-reason specs. No server left running. |
+| `git diff --stat origin/main -- capital/vendor capital/export.py .aiops tests/golden` | Empty; all byte-guarded surfaces identical to main. |
+
+The worktree began with an earlier interrupted attempt; its implementation was
+reviewed against the node plan, kept, and completed here. The full suite was
+run once to green after review; no test, guard or CI assertion was weakened.

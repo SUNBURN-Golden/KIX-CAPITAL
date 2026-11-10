@@ -433,3 +433,5 @@ change or external call. See [the contract](docs/INTEGRATION.md#residual-obligat
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
+
+Optional `operator_reason` records free-form organizer context on F04 and clock/repayment commands; both desks show it as text and offline audit/evidence-pack digests cover it. No personal data; not authentication or approval evidence.

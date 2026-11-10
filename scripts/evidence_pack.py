@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+
 """Write or verify an offline audit evidence pack. SIMULATED / LOCAL_ONLY.
+
+Optional operator_reason context is included verbatim in export_manifest receipts
+and overlay entries, and in the workspace_audit operator_reasons digest. Section
+hashes cover this context; it is not authentication or approval evidence.
 
 `--workspace DIR --out DIR` reads DIR/workspace.json bytes directly (no lock,
 no write, no repair) and writes OUT/evidence-pack.json: export manifest,
