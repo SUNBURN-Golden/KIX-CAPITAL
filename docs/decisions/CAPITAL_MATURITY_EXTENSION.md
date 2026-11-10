@@ -14,7 +14,7 @@
 
 위임 원문: “금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해.”
 
-결정자 표기는 요청된 위임 메타데이터다. 이번 개정에서 Claude CLI 실행이나 모델 전환을 검증했다는 뜻은 아니다. 근거는 supervisor pack과 제공 리뷰다. 법률·회계상 효력과 이자 인식은 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`다. upstream 채택·영수증·운영 권한을 주장하지 않는다.
+결정자 표기는 요청된 위임 메타데이터다. 이번 개정에서 Claude CLI 실행이나 모델 전환을 검증했다는 뜻은 아니다. 최초 근거는 supervisor pack과 제공 리뷰다. 2026-11-10 fix round 3에서는 병합 HEAD `7f41d46`의 선행 금융 조건·부도 회수 결정과 리핀 정책을 직접 확인했다. 법률·회계상 효력과 이자 인식은 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`다. upstream 채택·영수증·운영 권한을 주장하지 않는다.
 
 `ADOPTED`는 로컬 잠정 제품 정책이며 구현 완료가 아니다. 일곱 항목 모두 ADOPTED이고 구현 소유자는 `maturity-extension-command`다.
 
@@ -41,13 +41,26 @@
 - `docs/SEAMS.md`, `docs/VALIDATION.md`: 로컬 검증과 upstream 채택을 구분한다. 결과는 `SIMULATED`이며 SEMANTIC_CONFORMANCE를 주장하지 않는다.
 - `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`: 법률·회계 관련 사항은 전문가 검토 전 작업 가정이다.
 
-요청된 **kix-protocol `CREDIT_ADVANCE_F04` §5 open items**를 금융 정책 미정 사항의 상위 참조로 인용한다. 원문이 pack에 없으므로 정확한 문구·항목명은 `UNDETERMINED`이며 소유자는 `maturity-extension-command`다. 이는 supervisor 제공 참조이며 F04 계약·FSM 채택이나 변경이 아니다. Protocol README와 `AUTHORITY_MODEL_1.md`의 제공되지 않은 내용은 근거로 사용하지 않는다.
+**kix-protocol `docs/contracts/CREDIT_ADVANCE_F04.md` §5 open items** 중 이자·수수료·APR·기간·상환 일정·연체·손실 귀속·상각을 상위 공백으로 인용한다. 2026-11-10에 읽기 전용 Protocol 체크아웃의 역사적 연구 기준 `6dfb03a` 원문을 `git show`로 확인했다. §5.1의 `interest-apr-schedule` 목 경계는 금융 값을 정의하지 않으므로 아래 정책은 Capital의 잠정 오버레이 결정이다. F04 계약·FSM 채택이나 변경이 아니다.
+
+[CAPITAL_UPSTREAM_REPINS.md](CAPITAL_UPSTREAM_REPINS.md) §3.3 `research_baseline_rule`에 따라 위 `bases`의 역사적 연구 출처를 보존한다. §3.4 `repin_trigger_procedure`·§3.6 `claim_table_regeneration_rule`에 따라 연구 기준 확인이나 Capital main 병합만으로 실행 핀을 옮기지 않는다. 이 개정은 vendor 다섯 파일·manifest와 Protocol·Commerce를 변경하지 않는다.
 
 ## 3. 항목별 결정
 
 공통 기호: `d0`는 인출일, `M`은 연장 직전 예정 만기, `E`는 명령일, `k`는 요청 연장일, `M' = M+k`, `G`는 TERMS 유예일이다. 날짜·일수는 정수 논리 일 `sim_day`다. 명령은 현재 논리 일에 기록하며 시계를 움직이지 않는다.
 
-`CAPITAL-TERMS-V1`의 **선지급당 1회, 최대 30일, 총기간 180일 하드캡, HUMAN_OPERATOR 승인, 연장 수수료 0**을 변경 없이 인용한다. 유예 10일과 기존 비율·승인 임계는 pack의 선행 결정 인용을 따른다. TERMS 정본은 직접 열지 않았다. 소비자는 정본에서 값을 로드하며 설명용 숫자를 별도 설정값으로 복사하지 않는다.
+직접 확인한 [CAPITAL_FINANCIAL_TERMS.md](CAPITAL_FINANCIAL_TERMS.md) §3.1–§3.5와 `capital-decision-v1` 정본 `CAPITAL-TERMS-V1`의 **선지급당 1회, 최대 30일, 총기간 180일 하드캡, HUMAN_OPERATOR 승인, 연장 수수료 0**을 변경 없이 인용한다. 소비자는 정본에서 값을 로드하며 설명용 숫자를 별도 설정값으로 복사하지 않는다. 아래 경로는 해당 블록의 `entries` 기준이다.
+
+| 적용 값 | 정본 경로 |
+|---|---|
+| 1회·30일·180일·사람 승인 | `term.value.extension.{count_max,days_max,hard_cap_total_days,approval}` |
+| 10일 유예 | `term.value.grace_days_after_maturity` |
+| 원 만기 산식 | `term.value.{settlement_linked_rule,settlement_slack_days,min_term_days,max_term_days,standard_term_days}` |
+| 연장 수수료 0 | `fees.value.extension_fee_bps` |
+| 인출 티어 고정·계약 금리·연체 가산·총비용 상한 | `interest_rate.value` |
+| 2인 승인 임계 | `underwriting_depth.value.two_person_threshold_krw` |
+
+[CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md) §4.1과 `entries.acceleration_interest_rebase.value`의 가속 만기·연체 시작·부도 적격일·가속 후 연장 금지를 적용한다. 이미 ADOPTED인 값을 미정으로 돌리지 않는다.
 
 ### 3.1 `extension_eligibility_window` — ADOPTED
 
@@ -84,7 +97,7 @@
 정산 연동 산식은 원 만기를 정한다. 연장 명령은 산식을 재실행하거나 정산일 변경을 자동 반영하지 않는다.
 
 - `k_min = max(1, E−M)`
-- `k_max = max(0, min(TERMS.extension.days_max, TERMS.extension.hard_cap_total_days−(M−d0)))`
+- `k_max = max(0, min(TERMS.term.extension.days_max, TERMS.term.extension.hard_cap_total_days−(M−d0)))` (`TERMS`는 정본 `entries.*.value`를 읽은 값)
 - 허용 범위: 정수 `k`에 대해 `k_min ≤ k ≤ k_max`
 
 최대 30일·총기간 180일이라는 TERMS 값을 유지한다. 범위 밖 요청은 `409 EXTENSION_CAP_EXCEEDED`와 `min_admissible_extension_days`, `max_admissible_extension_days`를 반환한다. 최소가 최대보다 크면 가능한 연장이 없다. 자동 절사·원 만기 수정·새 인출 처리는 없다. 소유자는 `maturity-extension-command`다.
@@ -130,7 +143,7 @@
 
 `authority = {role: HUMAN_OPERATOR, approvals: [{approver_label}], proposal_id?}`다. 승인 라벨은 중복 제거·정렬한다. 명령 시점 실효 원금이 TERMS의 `two_person_threshold_krw`를 초과하면 서로 다른 사람 두 명, 이하이면 한 명이 승인한다. 실패·재생을 합산해 승인 금액을 부풀리지 않는다. 로컬 라벨은 인증이 아니다.
 
-`terms_refs`는 `terms_version`, 사용 노트의 `note_sha256`, 적용한 연장·유예·금리·승인 조항의 정본 참조를 기록한다. 정확한 조항 경로는 정본에서 확인한다. AI 제안은 `MATURITY_EXTENSION_CANDIDATE`, `executionAuthorized=false`이며 운영자의 별도 명령이 있어야 사실을 기록한다.
+`terms_refs`는 `terms_version`, 사용 노트의 `note_sha256`, 적용한 연장·유예·금리·승인 조항의 정본 참조(§3의 경로)를 기록한다. AI 제안은 `MATURITY_EXTENSION_CANDIDATE`, `executionAuthorized=false`이며 운영자의 별도 명령이 있어야 사실을 기록한다.
 
 서버가 날짜·원금·티어·보존액을 산출한다. 금액은 정수 KRW, 날짜·일수는 정수다. 자유 텍스트·개인정보·wall-clock 필드를 추가하지 않는다. 파생 부도일·금리 구간·잔여 여유일은 재생 시 계산한다.
 
@@ -343,19 +356,19 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
 - **문서·파싱·조회:** 저장 경로는 `docs/decisions/CAPITAL_MATURITY_EXTENSION.md`다. 블록은 하나이며 일곱 ADOPTED 항목에 귀속·날짜·CAP·근거·소유자가 있다. 제공 리뷰는 이전 문서의 파싱과 pack 노출을 확인했다. 이번 최종 바이트의 파싱·`GET /api/decisions` 노출은 저장 후 검증한다.
 - **TERMS·증거:** 1회·30일·180일·사람 승인·수수료 0을 유지한다. §3.7과 JSON이 소비 노드와 필수 엔트리 필드를 지정한다.
 - **바인딩:** 제공 리뷰에 따르면 `tests/decision_bindings.json`의 일곱 항목은 `PENDING_CONSUMER`, `consumer_node: maturity-extension-command`로 등록되어 있다. 이 상태를 유지하고 최종 저장 후 `python3 scripts/decision_bindings.py --check`를 실행한다.
-- **리뷰 차단 사항:** 루트 `DECISION_REQUIRED.md`는 다른 노드의 혼입 산출물이므로 이 노드의 최종 변경 묶음에서 제외해야 한다. 지적을 수용한다. 다만 해당 파일은 이번 허용 수정 범위 밖이고 유일한 산출물은 supervisor가 저장할 본 문서이므로, 이 응답에서 삭제하거나 삭제 완료를 주장하지 않는다. **Supervisor의 혼입 제거·확인이 차단 해소 조건**이다. BLOCK을 독립 검토 미완료로 해석했던 이전 문구는 철회한다.
+- **역사적 요청 문서:** 현재 사용자 지시에 따라 루트 `DECISION_REQUIRED.md`를 편집·삭제하지 않는다. 과거 요청 문서의 존재를 이번 ADOPTED 잠정 정책의 재결정 조건으로 삼지 않는다. 이번 수정 범위는 본 노트·binding 목록·pack 벡터다.
 
 ## 6. Open risks
 
-- TERMS 정본의 정확한 조항 경로, 오버레이 물리적 직렬화 적합성, F04 §5 원문은 `UNDETERMINED`다. 사유는 pack 부재이며 소유자는 `maturity-extension-command`다. 확정한 금융 정책을 다시 `DECISION_REQUIRED`로 돌리는 사유는 아니다.
+- TERMS 정본 조항과 F04 §5 원문은 이번 개정에서 직접 확인했다. 새 `MATURITY_EXTENSION` 직렬화·폴드·명령은 `PENDING_CONSUMER`이며 소유자는 `maturity-extension-command`다. §3.7의 기존 공통 엔트리 형태와 미래 확장을 구분하며 구현 완료를 주장하지 않는다.
 - 연체이자 보존의 법적 효력·회계 인식은 전문가 검토 전이다. 소유자는 `accounts-tax-legal-decision` 후속 검토다.
 - 명령일 발생분·부분 상환·같은 날 명령 순서는 소비 노드가 기존 발생 관행과 함께 검증한다.
 - 승인 라벨·해시·로컬 재생 성공은 인증이나 대외 채무 변경 효력을 입증하지 않는다.
 
 ## 7. 후속 작업
 
-1. **Supervisor:** 본 문서를 저장하고 다른 노드의 루트 `DECISION_REQUIRED.md` 추가를 최종 변경 묶음에서 제외한다. 일곱 pending 앵커를 유지하고 문서 변경에 영향받는 pack 산출물을 갱신한다.
+1. **Supervisor:** 일곱 pending 앵커를 유지하고 문서 변경에 영향받는 pack 산출물을 정본 생성기로 갱신한다. 루트 `DECISION_REQUIRED.md`는 이번 지시에 따라 보존한다.
 2. **검증 담당:** 최종 저장 바이트에 대해 `python3 scripts/decision_bindings.py --check`, 결정 파서·API 조회, `python3 scripts/docs_surface.py --check` 결과와 허용 변경 범위를 확인한다. 제공 리뷰의 이전 확인과 후속 실행 결과를 구분한다.
 3. **`maturity-extension-command`:** 적격 창 양 끝, 마지막 유예일·첫 부도 적격일, 180일 경계, 미해결 마진콜, 가속 전후, 부분 상환, 경쟁 명령·재생·충돌, 승인 임계·agent 거절, 시계 점프와 일별 진행의 동등성을 검증한다. 새 벡터는 기존 등록 규칙을 따른다.
 
-이번 산출물은 결정 문서다. 코드·FSM 변경, 실자금 실행, commit·push·게시, 파일 삭제 또는 검사 재실행의 완료를 주장하지 않는다.
+이번 산출물은 결정 문서다. 코드·FSM 변경, 실자금 실행, commit·push·게시 또는 파일 삭제를 수행하지 않는다. 현재 작업 트리의 로컬 검증 결과는 builder의 최종 증거 표로 보고하며 과거 리뷰 결과와 구분한다.
