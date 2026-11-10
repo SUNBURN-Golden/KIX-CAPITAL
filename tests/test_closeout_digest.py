@@ -47,7 +47,8 @@ acceptance_ladder = _load('acceptance_for_closeout', ROOT / 'scripts' / 'accepta
 # Written by hand: the acceptance ladder and the exact command texts per stage.
 STAGES = (
     ('unit', ['python3 -m unittest discover -s tests -v',
-              'python3 scripts/decision_bindings.py --check']),
+              'python3 scripts/decision_bindings.py --check',
+              'python3 scripts/finance_properties.py --seeds 200 --check']),
     ('storage-conformance', ['python3 -m unittest discover -s tests -p test_storage_conformance.py -v',
                              'python3 -m unittest tests.test_crash_replay -v']),
     ('pinned-vendor', ['python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v']),
@@ -786,6 +787,15 @@ class DocsTests(unittest.TestCase):
         text = BINDING.read_text(encoding='utf-8')
         self.assertIn('tests/vectors/closeout_digest.json (derived from that evidence)', text)
         self.assertNotIn('"fin-finance-closeout": "build/acceptance-evidence.json as consumer-side evidence candidate"', text)
+
+    def test_live_ladder_commands_match_the_combined_contract(self):
+        actual = []
+        for stage in acceptance_ladder.build_plan():
+            commands = [script._command_text(command) for command in stage['commands']]
+            if stage['id'] == 'packaged-smoke':
+                commands.append('python3 scripts/smoke_release.py <built-zipapp>')
+            actual.append((stage['id'], commands))
+        self.assertEqual(actual, list(STAGES))
 
     def test_the_ladder_gained_no_closeout_stage(self):
         self.assertEqual(len(acceptance_ladder.REQUIRED_STAGES), 9)

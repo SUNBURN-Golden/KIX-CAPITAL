@@ -76,6 +76,7 @@ def build_plan(root=None, protocol_dir=None):
             'commands': [
                 [py, '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
                 [py, 'scripts/decision_bindings.py', '--check'],
+                [py, 'scripts/finance_properties.py', '--seeds', '200', '--check'],
             ],
         },
         {
