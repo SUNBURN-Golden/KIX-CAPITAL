@@ -172,3 +172,15 @@ F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산�
 결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
 Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
 검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
+
+Refund frontier evidence (CAP-01/03/04/08/09/12): `capital/refund_frontier.py`,
+`tests/test_refund_frontier.py`, `tests/vectors/refund_frontier.json` and
+`python3 scripts/refund_frontier_vectors.py --check`. SIMULATED/provisional,
+read-only integer additional refunds on distinct mapped physical lines; existing
+`margin.measure` predicate and frozen draw terms. Binary search is bounded by
+integer bit length and checked against the adopted exact inverse. Exhaustive
+Cartesian synthetic allocations independently verify minima and rounding plateaus.
+Unknown inputs never become zero; positive residual slice occupancy is unsupported.
+Beneficiary minima require complete evaluation except validated zero. Portfolio
+minima cover assessed cases only. Ordinary risk responses and fixed shocks remain
+unchanged. Legal/tax assumptions remain pending professional review.

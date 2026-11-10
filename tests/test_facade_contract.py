@@ -65,6 +65,16 @@ class FacadeContractTests(unittest.TestCase):
         cls.server.server_close()
         cls.worker.join(timeout=2)
 
+    def test_refund_frontier_is_optional_on_both_risk_envelopes(self):
+        for name in ('risk_bound', 'risk_not_bound'):
+            definition = self.doc['definitions'][name]
+            self.assertIn('refund_frontier', definition['properties'])
+            self.assertNotIn('refund_frontier', definition['required'])
+        route = self.route('GET', '/api/risk')
+        self.assertEqual(route['query'], ['refund_frontier', 'instance_id'])
+        self.assertIn('SESSION_CHANGED', route['errors'])
+        self.assertIn('INVALID_ARGUMENTS', route['errors'])
+
     def request(self, method, path, body=None, token=None):
         headers = {}
         payload = None

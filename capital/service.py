@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif
+from capital import coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, refund_frontier, risk, risk_whatif
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -2415,6 +2415,106 @@ class CapitalService:
             finally:
                 if before != (self._frozen(), self.case_fixtures, self.terms.__dict__, self.overlay_bounds):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def _refund_frontier_inputs(self):
+        """Caller holds lock. Exact local producers only; no adapter fallback calls.
+
+        This cut includes every journal draw, even when its mapping or receipt is
+        missing. It never uses the legacy subject filters, which drop diagnostics.
+        """
+        from capital.producer import FixtureViews
+        from capital.protocol import CreditMachine
+        if (type(self.producer) is not PinnedFsmProducer
+                or type(self.producer.machine) is not CreditMachine
+                or type(self.fixtures) not in (FixtureViews, margin.ScenarioReplaySource)
+                or type(self.terms) is not DecisionNoteTermsPolicy
+                or type(self.projection_port) is not SimulationProjection):
+            raise self._overlay_not_bound('COHERENT_SNAPSHOT_UNSUPPORTED')
+        state = json.loads(self.producer.canonical_state())
+        entries = copy.deepcopy(self.overlay_entries)
+        try:
+            folded = overlay.fold(entries)
+        except (ValueError, KeyError, TypeError, overlay.OverlayError):
+            folded = None
+        cases = {r['advance_id']: r for r in state['cases']}
+        mutable = type(self.fixtures) is margin.ScenarioReplaySource
+        subjects = []
+        for index, draw in enumerate(state['journal']):
+            if draw['op'] != 'draw':
+                continue
+            key = draw['advance_id']
+            case = cases.get(key, {})
+            fixture_id = self.case_fixtures.get(key)
+            view = self.fixtures.rows.get(fixture_id) if type(fixture_id) is str else None
+            claim = copy.deepcopy(view.get('claim')) if type(view) is dict else None
+            record = self.receipts.get(draw['idempotency_key'])
+            stored = record.get('receipt') if type(record) is dict else None
+            stored = stored if type(stored) is dict else {}
+            try:
+                gate = stored['result']['credit']['settlement_gate'] if stored.get('outcome') == 'ACCEPTED' else None
+            except (KeyError, TypeError):
+                gate = None
+            gate = gate if type(gate) is str and gate.strip() else None
+            day = overlay.draw_day_for(entries, index) if folded is not None else None
+            terms = self.terms.margin_terms(case, claim, gate=gate, draw_day=day,
+                                            refund_after_draw=mutable) if gate and day is not None else None
+            subjects.append({'advance_id': key, 'case': case, 'claim': claim, 'gate': gate,
+                             'draw_day': day, 'principal': case.get('outstanding_exposure'),
+                             'margin': terms, 'mapping_valid': fixture_id == case.get('claim_id'),
+                             'writeoff': any(e.get('kind') == 'WRITEOFF' and
+                                             e.get('payload', {}).get('advance_id') == key for e in entries)})
+        subjects.sort(key=lambda row: row['advance_id'].encode('utf-8'))
+        claim_ids = {s['case'].get('claim_id') for s in subjects if s['case'].get('claim_id')}
+        registry = refund_frontier.registry_evidence(entries, folded, claim_ids)
+        policy = refund_frontier.load_policy()
+        data = {'subjects': subjects, 'registry': registry, 'policy': policy,
+                'workspace': margin.SOURCE_DISPOSABLE if mutable else margin.SOURCE_FIXTURE,
+                'capture': {'canonical_state': state, 'mappings': copy.deepcopy(self.case_fixtures),
+                            'overlay_entries': entries, 'terms_items': self.terms.items,
+                            'terms_items_json': json.dumps(self.terms.items, separators=(',', ':')),
+                            'terms_provenance': self.terms.note,
+                            'fixtures': copy.deepcopy(self.fixtures.rows),
+                            'projection_ids': sorted(self.fixtures.projection_ids),
+                            'terms_version': self.terms.version, 'terms_top': self.terms.top,
+                            'terms_reason': self.terms.reason, 'overlay_bounds': self.overlay_bounds,
+                            'sim_day': folded['sim_day'] if folded is not None else None}}
+        # raw_bytes are provenance at load time, not JSON input. The digest is retained.
+        data['capture']['terms_provenance'] = {k: v for k, v in self.terms.note.items()
+                                              if k != 'raw_bytes'}
+        return refund_frontier.FrozenInputs.capture(data)
+
+    def risk_refund_frontier(self, instance_id):
+        """Opt-in read; identity and all financial inputs captured under one lock."""
+        with self.lock:
+            if not instance_id or instance_id != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            frozen = self._refund_frontier_inputs()
+            data = frozen.detached()
+            capture = data['capture']
+            # Rebuild the loaded policy with original iteration order; no live reads
+            # occur during numerical evaluation or legacy risk composition.
+            terms = DecisionNoteTermsPolicy.__new__(DecisionNoteTermsPolicy)
+            terms.items = json.loads(capture['terms_items_json'])
+            terms.version, terms.top, terms.reason = (capture['terms_version'], capture['terms_top'], capture['terms_reason'])
+            subjects = data['subjects']
+            usable = (capture['sim_day'] is not None and capture['overlay_bounds'] is not None
+                      and terms._ready(*_OVERLAY_TERMS) and risk.usable(terms)
+                      and all(type(s['claim']) is dict and s['mapping_valid'] and s['gate']
+                              and s['claim'].get('claim_id') == s['case'].get('claim_id')
+                              and s['margin'] is not None and bool(s['margin']['payees'])
+                              and margin.eligible_face(s['claim'], s['margin']['payees']) is not None
+                              and refund_frontier.nonnegative(s['principal']) for s in subjects))
+            if usable:
+                projected = SimulationProjection().project(
+                    capture['canonical_state']['journal'],
+                    [capture['fixtures'][k] for k in capture['projection_ids']])
+                outstanding = sum(r['outstanding'] for r in projected['read_model']['advances'])
+                body = risk.build(subjects, subjects, terms=terms, sim_day=capture['sim_day'],
+                                  projection_outstanding_krw=outstanding)
+            else:
+                body = risk.not_bound(terms.version, capture['sim_day'], reason='FRONTIER_LEGACY_INPUTS_INCOMPLETE')
+            body['refund_frontier'] = refund_frontier.build(frozen)
+            return self._terms_envelope(body)
 
     def risk(self):
         """Read-only portfolio risk analytics. Nothing is accrued, journaled or written here."""

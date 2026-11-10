@@ -1726,9 +1726,20 @@
         "SESSION_REQUIRED",
         "ROLE_FORBIDDEN",
         "READ_ONLY_INVARIANT",
-        "NOT_BOUND"
+        "NOT_BOUND",
+        "INVALID_ARGUMENTS",
+        "SESSION_CHANGED"
       ],
-      "permission": "projection:read"
+      "permission": "projection:read",
+      "query": [
+        "refund_frontier",
+        "instance_id"
+      ],
+      "query_contract": {
+        "opt_in": "refund_frontier=1",
+        "when_present": "exactly one refund_frontier=1, exactly one nonblank current instance_id, no other parameters; authorization first; missing/blank/stale identity SESSION_CHANGED; malformed or duplicate parameters INVALID_ARGUMENTS",
+        "when_absent": "legacy query handling unchanged"
+      }
     },
     {
       "method": "GET",
@@ -13582,7 +13593,10 @@
           "type": "string"
         },
         "sim_day": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "terms_version": {
           "type": [
@@ -13613,6 +13627,9 @@
         },
         "observed_state_digest": {
           "type": "string"
+        },
+        "refund_frontier": {
+          "$ref": "#/definitions/refund_frontier"
         }
       }
     },
@@ -13722,6 +13739,9 @@
         },
         "observed_state_digest": {
           "type": "string"
+        },
+        "refund_frontier": {
+          "$ref": "#/definitions/refund_frontier"
         }
       }
     },
@@ -18053,6 +18073,735 @@
         },
         "matched": {
           "type": "boolean"
+        }
+      }
+    },
+    "frontier_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "payee_label",
+        "attribution_source",
+        "outstanding_krw",
+        "refund_open_krw",
+        "eligible_krw"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "payee_label": {
+          "type": "string"
+        },
+        "attribution_source": {
+          "type": "string"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "refund_open_krw": {
+          "type": "integer"
+        },
+        "eligible_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "frontier_allocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "payee_label",
+        "refund_krw"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "payee_label": {
+          "type": "string"
+        },
+        "refund_krw": {
+          "type": "integer"
+        }
+      }
+    },
+    "frontier_measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible_face_krw",
+        "advance_rate_bps",
+        "base_krw",
+        "outstanding_krw",
+        "headroom_krw",
+        "breach"
+      ],
+      "properties": {
+        "eligible_face_krw": {
+          "type": "integer"
+        },
+        "advance_rate_bps": {
+          "type": "integer"
+        },
+        "base_krw": {
+          "type": "integer"
+        },
+        "outstanding_krw": {
+          "type": "integer"
+        },
+        "headroom_krw": {
+          "type": "integer"
+        },
+        "breach": {
+          "type": "boolean"
+        }
+      }
+    },
+    "frontier_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "status",
+        "reason",
+        "evaluation"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "BREACH_FRONTIER_KRW",
+            "ALREADY_BREACHED_ZERO_SHOCK",
+            "FRONTIER_UNDEFINED_NO_OUTSTANDING",
+            "NOT_COMPUTED_TERMINAL",
+            "NOT_COMPUTED_MISSING_INPUTS",
+            "NOT_COMPUTED_UNSUPPORTED_EVALUATION",
+            "NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP",
+            "NOT_COMPUTED_SLICE_ENCUMBRANCE",
+            "NOT_COMPUTED_INCOMPLETE_SCOPE",
+            "NOT_COMPUTED_WORKSPACE_SCOPE"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evaluation": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/frontier_measurement"
+            }
+          ]
+        }
+      }
+    },
+    "frontier_witness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frontier_krw",
+        "selected_advance_id",
+        "allocation",
+        "predecessor_allocation",
+        "advance_evaluations_at_frontier",
+        "advance_evaluations_at_predecessor",
+        "evaluation_complete",
+        "affected_advance_ids"
+      ],
+      "properties": {
+        "frontier_krw": {
+          "type": "integer"
+        },
+        "selected_advance_id": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/frontier_allocation"
+          }
+        },
+        "predecessor_allocation": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/frontier_allocation"
+              }
+            }
+          ]
+        },
+        "advance_evaluations_at_frontier": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/frontier_evaluation"
+          }
+        },
+        "advance_evaluations_at_predecessor": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/frontier_evaluation"
+              }
+            }
+          ]
+        },
+        "evaluation_complete": {
+          "type": "boolean"
+        },
+        "affected_advance_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "frontier_margin_terms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payees",
+        "advance_rate_bps"
+      ],
+      "properties": {
+        "payees": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "advance_rate_bps": {
+          "type": "integer"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "tier_id": {
+          "type": "string"
+        },
+        "cure_window_days": {
+          "type": "integer"
+        },
+        "cure_options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "grace_days": {
+          "type": "integer"
+        },
+        "maturity_day": {
+          "type": "integer"
+        },
+        "terms_version": {
+          "type": "string"
+        }
+      }
+    },
+    "frontier_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "claim_id",
+        "beneficiary_role",
+        "phase",
+        "writeoff",
+        "outstanding_krw",
+        "gate",
+        "draw_day",
+        "margin_terms",
+        "input_binding",
+        "lines",
+        "domain_max_krw",
+        "witness",
+        "status",
+        "outcome",
+        "reason",
+        "frontier_krw"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "beneficiary_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "phase": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "writeoff": {
+          "type": "boolean"
+        },
+        "outstanding_krw": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "gate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "draw_day": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "margin_terms": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/frontier_margin_terms"
+            }
+          ]
+        },
+        "input_binding": {
+          "enum": [
+            "BOUND",
+            "NOT_BOUND"
+          ]
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/frontier_line"
+          }
+        },
+        "domain_max_krw": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "witness": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/frontier_witness"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "BREACH_FRONTIER_KRW",
+            "ALREADY_BREACHED_ZERO_SHOCK",
+            "FRONTIER_UNDEFINED_NO_OUTSTANDING",
+            "NOT_COMPUTED_TERMINAL",
+            "NOT_COMPUTED_MISSING_INPUTS",
+            "NOT_COMPUTED_UNSUPPORTED_EVALUATION",
+            "NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP",
+            "NOT_COMPUTED_SLICE_ENCUMBRANCE",
+            "NOT_COMPUTED_INCOMPLETE_SCOPE",
+            "NOT_COMPUTED_WORKSPACE_SCOPE"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "FIRST_BREACH",
+            "ALREADY_BREACHED",
+            "NO_BREACH_IN_DOMAIN",
+            "EXCLUDED",
+            "UNAVAILABLE",
+            "UNSUPPORTED"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frontier_krw": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "frontier_beneficiary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beneficiary_role",
+        "advance_ids",
+        "status",
+        "outcome",
+        "frontier_krw",
+        "evaluation_complete",
+        "witness"
+      ],
+      "properties": {
+        "beneficiary_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "advance_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "enum": [
+            "BREACH_FRONTIER_KRW",
+            "ALREADY_BREACHED_ZERO_SHOCK",
+            "FRONTIER_UNDEFINED_NO_OUTSTANDING",
+            "NOT_COMPUTED_TERMINAL",
+            "NOT_COMPUTED_MISSING_INPUTS",
+            "NOT_COMPUTED_UNSUPPORTED_EVALUATION",
+            "NOT_COMPUTED_AMBIGUOUS_LINE_OWNERSHIP",
+            "NOT_COMPUTED_SLICE_ENCUMBRANCE",
+            "NOT_COMPUTED_INCOMPLETE_SCOPE",
+            "NOT_COMPUTED_WORKSPACE_SCOPE"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "FIRST_BREACH",
+            "ALREADY_BREACHED",
+            "NO_BREACH_IN_DOMAIN",
+            "EXCLUDED",
+            "UNAVAILABLE",
+            "UNSUPPORTED"
+          ]
+        },
+        "frontier_krw": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "evaluation_complete": {
+          "type": "boolean"
+        },
+        "witness": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/frontier_witness"
+            }
+          ]
+        }
+      }
+    },
+    "frontier_registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlay_journal_digest",
+        "overlay_journal_count",
+        "fold_success",
+        "capture_complete",
+        "section_present",
+        "queried_claim_ids",
+        "lookups"
+      ],
+      "properties": {
+        "overlay_journal_digest": {
+          "type": "string"
+        },
+        "overlay_journal_count": {
+          "type": "integer"
+        },
+        "fold_success": {
+          "type": "boolean"
+        },
+        "capture_complete": {
+          "type": "boolean"
+        },
+        "section_present": {
+          "type": "boolean"
+        },
+        "queried_claim_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lookups": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "canonical_row_json",
+                "row_digest"
+              ],
+              "properties": {
+                "canonical_row_json": {
+                  "type": "string"
+                },
+                "row_digest": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "frontier_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace",
+        "scope",
+        "financial_inputs_digest",
+        "capture_digest",
+        "registry",
+        "policy"
+      ],
+      "properties": {
+        "workspace": {
+          "enum": [
+            "SIMULATED_DISPOSABLE_BOOK",
+            "READ_ONLY_FIXTURE"
+          ]
+        },
+        "scope": {
+          "const": "SERVICE_MANAGED_MUTATIONS_ONLY"
+        },
+        "financial_inputs_digest": {
+          "type": "string"
+        },
+        "capture_digest": {
+          "type": "string"
+        },
+        "registry": {
+          "$ref": "#/definitions/frontier_registry"
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reason",
+            "notes_source",
+            "note_sha256"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "BOUND",
+                "NOT_BOUND",
+                "UNSUPPORTED"
+              ]
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes_source": {
+              "type": "string"
+            },
+            "note_sha256": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "refund_frontier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "hypothetical",
+        "applied",
+        "margin_call_recorded",
+        "default_eligibility_changed",
+        "journal_written",
+        "funds_executed",
+        "policy_adopted",
+        "status",
+        "provisional",
+        "cases",
+        "beneficiaries",
+        "portfolio",
+        "coverage",
+        "source",
+        "inputs_digest",
+        "result_digest"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "hypothetical": {
+          "const": true
+        },
+        "applied": {
+          "const": false
+        },
+        "margin_call_recorded": {
+          "const": false
+        },
+        "default_eligibility_changed": {
+          "const": false
+        },
+        "journal_written": {
+          "const": false
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "status": {
+          "const": "PROVISIONAL_PRODUCT_DECISION"
+        },
+        "provisional": {
+          "const": true
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/frontier_case"
+          }
+        },
+        "beneficiaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/frontier_beneficiary"
+          }
+        },
+        "portfolio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "frontier_krw",
+            "evaluation_complete",
+            "witness"
+          ],
+          "properties": {
+            "scope": {
+              "const": "ASSESSED_CASES_ONLY"
+            },
+            "frontier_krw": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evaluation_complete": {
+              "type": "boolean"
+            },
+            "witness": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/frontier_witness"
+                }
+              ]
+            }
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "assessed_ids",
+            "excluded_ids",
+            "unavailable_ids",
+            "unsupported_ids",
+            "affected_ids"
+          ],
+          "properties": {
+            "assessed_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "excluded_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unavailable_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unsupported_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "affected_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "source": {
+          "$ref": "#/definitions/frontier_source"
+        },
+        "inputs_digest": {
+          "type": "string"
+        },
+        "result_digest": {
+          "type": "string"
         }
       }
     }

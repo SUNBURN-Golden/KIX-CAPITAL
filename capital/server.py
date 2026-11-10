@@ -346,7 +346,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             return self.reply(200, service.overlay_state(lookup))
 
         def _get_risk(self, route, principal):
-            return self.reply(200, service.risk())
+            params = parse_qs(route.query, keep_blank_values=True)
+            if 'refund_frontier' not in params:
+                return self.reply(200, service.risk())
+            if (set(params) - {'refund_frontier', 'instance_id'}
+                    or params['refund_frontier'] != ['1']
+                    or any(len(v) != 1 for v in params.values())):
+                raise ApiError('INVALID_ARGUMENTS')
+            return self.reply(200, service.risk_refund_frontier(params.get('instance_id', [''])[0]))
 
         def _get_portfolio_snapshot(self, route, principal):
             params = parse_qs(route.query, keep_blank_values=True)

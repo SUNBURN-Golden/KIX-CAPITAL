@@ -122,6 +122,7 @@ ROUTE_NEEDLES = {
 VECTOR_NEEDLES = {
     'observation_triage/': ('tests/vectors/observation_triage/', 'scripts/observation_triage_vectors.py --check'),
     'event_stress.json': ('tests/vectors/event_stress.json', 'scripts/event_stress_vectors.py --check'),
+    'refund_frontier.json': ('tests/vectors/refund_frontier.json', 'scripts/refund_frontier_vectors.py --check'),
     'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
