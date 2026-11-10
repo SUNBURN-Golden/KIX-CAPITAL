@@ -17,6 +17,58 @@ DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement �
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
 
+## portfolio-aging-migrations
+
+`capital/portfolio_migrations.py` / `tests/test_portfolio_migrations.py`:
+`python3 -m capital.portfolio_migrations --before SNAPSHOT_A --after SNAPSHOT_B`는
+기존 `portfolio_compare.compare_workspaces()`를 유일한 호환성 게이트로 한 번
+호출한다. 기존 비교 출력은 변경하지 않고 별도 결정적
+`KIX_CAPITAL_PORTFOLIO_MIGRATIONS_V1` 보고서를 추가한다. 포트폴리오 및 합성
+beneficiary_role별 연체/워치 상태 전이 행렬에 인출 건수, 전후 원금, 양수 원금
+건수를 담는다. 행·열·전체 합계는 양 끝점 및 수익자별 합계와 대사한다.
+
+전체 인출을 포함하므로 종결·원금 0도 존재하는 행이다. `ABSENT_BEFORE`와
+`ABSENT_AFTER`는 끝점 부재이며 상환을 의미하지 않는다. 시계만 변경한 연체,
+부분 원금 감소, default, 종결, 신규 인출을 수기 기대값으로 검증한다.
+손상·비호환 입력은 집계하지 않고 `NON_COMPARABLE`, `matrices: null`을 반환한다.
+대사 실패도 행렬을 숨긴다. 테스트는 입력 바이트·모드·이름 불변, 쓰기·잠금 없음,
+호환성 위임, 결정성, 종료 코드 및 수익자별 합산을 검증한다.
+
+결과는 `SIMULATED` 관측 전이이며 historical_policy_provenance/authentication/
+common_ownership/actual_payments는 계속 `NOT_BOUND`다. 전이 확률·신용 점수·인과
+추론·이력 DB·예측 변경·portfolio-cashflow-desk·HTTP/UI는 범위 밖이다.
+운영 준비도 주장은 변경하지 않는다. 계약은 `docs/INTEGRATION.md`, 실제 실행
+결과는 `docs/VALIDATION.md`를 참조한다.
+
+## portfolio-history-comparison
+
+`capital/portfolio_compare.py` / `tests/test_portfolio_compare.py`:
+`python3 -m capital.portfolio_compare --before SNAPSHOT_A --after SNAPSHOT_B`는
+명시한 두 디렉터리의 `workspace.json`을 각각 한 번 읽고 같은 바이트로 오프라인
+감사·메모리 복원을 수행한다. 기존 risk/covenant 계산을 재실행하여 advance별·합성
+beneficiary_role별 노출, 만기/연체, 준비금 요구량, watch 상태·사유의 관측 차이를
+결정적 `KIX_CAPITAL_PORTFOLIO_COMPARISON_V1` JSON으로 출력한다. 입력 해시와
+순서가 고정된 비교 가능성 사유, 합계·증감 대사를 포함하며 입력 트리에 쓰거나
+잠금을 잡지 않는다. 결과는 `SIMULATED`다.
+
+필수 정책 6개(`interest_rate`, `term`, `default_loss_treatment`, `reserve`,
+`additional_margin`, `underwriting_depth`)가 모두 존재하고 사용 가능한 ADOPTED여야
+한다. 빈 장부나 BOUND 표시만으로 완전성을 대신하지 않는다.
+실제 임시 결정 노트를 읽는 회귀 테스트도 빈 장부·인출 장부 양쪽에서 필수 항목별
+검증 실패를 확인한다. 해시가 같아도 사용 불가 정책은 비교할 수 없다. 적용 대상 tier의
+margin cure/rate/payee 입력도 필요하다. fixture/policy 입력 해시 및 fixture
+profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix 호환,
+기존 advance 매핑·draw gate 안정성, 기록된 terms binding 호환을 요구한다.
+추가 overlay는 이전 F04 journal 끝 이후에만 위치해야 한다. 불일치 시
+`NON_COMPARABLE`, `changes: null`(exit 1), 성공 exit 0, 인수 오류 exit 2다.
+
+차이는 after-before이며 준비금은 advance별 기존 정수 내림 계산이다. 실제 지급,
+인과관계, 파일의 인증된 공통 소유권은 추론하지 않는다. 비교 시점 로컬 정책을
+사용하므로 historical_policy_provenance/authentication/common_ownership/actual_payments는
+`NOT_BOUND`다. reserve funding/coverage도 `NOT_BOUND`이며 준비금을 기장하지 않는다.
+자동 수집·import·예측·what-if·영속 이력 DB·새 회계정책은 범위 밖이다.
+계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
+
 ## 권위와 전체 범위
 
 사용자의 2026-10-07 지시는 Capital을 `SUNBURN-Golden/KIX-CAPITAL`에 구현하며 KIX Protocol의 큰 청사진을 따르라는 것이다. 따라서 과거 Finance 후보의 “새 저장소 없음/화면은 Commerce” 토폴로지는 이번 **Capital 로컬 개발 위치**에 적용하지 않는다. 그것이 후보 금융 정책 채택·AIOPS 신규 프로그램 생성·upstream 노드 완료·운영 권한 확대를 뜻하지는 않는다. Protocol·Commerce는 수정하지 않는다.
@@ -81,3 +133,44 @@ CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
 `sql-projection-crosscheck`의 추가 로컬 증적: `python3 -m capital.sql_audit FILE`은 먼저 evidence pack 해시를 검증한 다음 stdlib SQLite `:memory:`에서 별도로 표현한 SQL로 원금·청구 액면·수취인 액면·환불 보존과 V1 차변/대변을 비교한다. CAP-12는 KRW의 정확한 정수·10^12 개별 금액 한도와 signed-int64 사전 예산 검증, CAP-13은 `SIMULATION_FIXED_V1`의 거래 헤더(빈 거래 포함)·기장·계정 합계 비교, CAP-14는 해시를 다시 맞춘 산술 오류·중복 source event를 구분하는 테스트, CAP-15는 입력/pack/manifest/section digest와 검사별 결과를 추가한다. V2/V3를 지원하되 V3 오버레이는 해시만 확인하고 회계 검사는 `NOT_CHECKED`다. 결과는 `SIMULATED / LOCAL_ONLY / SYNTHETIC_UNADOPTED`, `funds_executed:false`이며 기존 upstream·stage5/6/7 차단점은 그대로다. 원관측 인증·독립 외부 보증·제공자 인증 완전성·운영 회계 채택을 주장하지 않는다. 영속 DB·COA 지급/상각·세무 처리·실제 자금 실행은 범위 밖이다.
+
+## 합성 관측 조사 CLI 확장
+
+`python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`은
+명시한 로컬 합성 파일과 바인딩만 읽고 기존 ObservationPort fold를 한 번 호출한다.
+전달 순서와 모든 내용 변형을 보존하며 동일 재전달, 전송 메타데이터 변경,
+내용 충돌, 바인딩 불일치, 미매칭을 설명한다. 첫 내용은 비교 기준일 뿐 권위 있는
+승자가 아니며 충돌을 해결하거나 금융 사실로 기록하지 않는다. 각 변형의 scoped
+operation 조회와 payment/order 차이를 별도로 제시한다. 입력 크기·개수·문자열·깊이
+제한과 엄격 JSON 파싱을 적용하며 오류 종료 코드는 INTEGRATION 문서에 고정한다.
+결과는 항상 SIMULATED / applied=false / funds_executed=false 이며 CAP-14와 CAP-16은
+NOT_BOUND다. HTTP 전송, 실 제공자 payload, 인증, 영속 상태, 워크스페이스 변경은
+범위 밖이다. `python3 scripts/observation_triage_vectors.py --check`는 합성 벡터를
+읽기 전용으로 검증하며 upstream semantic conformance를 주장하지 않는다.
+
+### event-stress-report (CAP-04, CAP-08, CAP-20)
+
+`capital/event_stress.py`와 `scripts/event_stress.py`는 감사된 단일 워크스페이스의
+분리 입력에서 명시적 합성 이벤트별 절대 미결 환불 증가를 평가한다. 공유 채권 충격은
+한 번이며 적격 액면은 채권별, 노출은 인출별로 한 번 계산한다. 기준 약정은 고정하고
+미지원 배분/환불/보유자/슬라이스 의미의 종속 값과 합계는 null로 보고한다. 외부 구성
+채권도 범위에 남으며 부분 결과는 전체 안전 판단이 아니다. 누락 정책은 UNAVAILABLE,
+잘못된 구성원·상한 초과는 원자적 REJECTED다. 입력/정책 해시 및 계산 증거를 제공하며
+SIMULATED, funds_executed=false, 원본 불변을 유지한다. 온라인 경로·최적화·금융
+전표는 추가하지 않는다. 검증: `tests/test_event_stress.py`, `tests/vectors/event_stress.json`.
+
+## residual-obligations-report — 로컬 기록 잔존 의무 조회
+
+`capital/residuals.py`의 오프라인 stdlib CLI는 감사된 workspace의 기존 상환·회수·
+슬라이스 fold를 메모리에서 읽어 종결 후 미지급 이자, 미배정 현금, 상각 전 부도
+청구권, 상각 후 잔존 청구권, IMPAIRED 슬라이스 잔액을 각각 표시한다. FSM의
+CLOSED/DEFAULTED는 모든 의무 소멸의 근거가 아니다. 각 금액은 독립 대사하고
+F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산을 하지 않는다.
+금액 증거 누락은 `NOT_BOUND`/null이며 COMPLETE는 선언된 기록 모집단의 감사·대사
+완료만 뜻한다. 최신 기록 slice witness 이후의 정산 이력은 보장하지 않는다.
+
+이 기능은 `SIMULATED` / `READ_ONLY_RESIDUAL_REGISTER` 로컬 보고 확장이다. 면제,
+환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식 또는 실제 지급을
+결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
+Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
+검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.

@@ -115,6 +115,8 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'observation_triage/': ('tests/vectors/observation_triage/', 'scripts/observation_triage_vectors.py --check'),
+    'event_stress.json': ('tests/vectors/event_stress.json', 'scripts/event_stress_vectors.py --check'),
     'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
@@ -157,6 +159,8 @@ CLAIM_NEEDLES = {
         'e2313ab473ea1b5a7b5b9246a564749188c1c2c8',
         'citation SKIPPED',
     ),
+    'tests/readiness_claims.json': ('tests/readiness_claims.json',),
+    'scripts/readiness_claims_check.py': ('scripts/readiness_claims_check.py',),
 }
 
 
