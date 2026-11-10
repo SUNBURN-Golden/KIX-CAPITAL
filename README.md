@@ -57,6 +57,24 @@ payments remain `NOT_BOUND`. No reserve is booked; reserve funding/coverage rema
 are out of scope. See `tests/test_portfolio_compare.py`, `docs/INTEGRATION.md` and
 `docs/VALIDATION.md` for the contract and actual verification evidence.
 
+## Offline synthetic observation investigation
+
+Run `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`.
+The stdlib CLI reads one explicit local regular file, calls `ObservationPort` once,
+and prints deterministic diagnostic JSON. Follow the top-level delivery indices in
+supplied order, find their groups and variants, then inspect normalized conflict
+fields and each variant's explicit scoped-operation binding. Identical redelivery
+and changed transmission metadata have separate reasons. Keep every conflicting
+variant unresolved: the first content is a comparison reference only.
+
+The pinned example and named cases live under `tests/vectors/observation_triage/`;
+run `python3 scripts/observation_triage_vectors.py --check` to check them read-only.
+Reports remain SIMULATED, applied=false, funds_executed=false and NOT_BOUND;
+conflicts and unmatched observations exit 0. Invalid input exits 1, argument
+misuse 2, adapter/internal failure 3. There is no posting, resolution command,
+authentication, financial recording or workspace mutation. See
+`docs/INTEGRATION.md` for input limits and the report contract.
+
 ## Synthetic provider observation fold
 
 `tests/vectors/provider_facts.json` pins synthetic identity cases. Run
@@ -167,7 +185,8 @@ python3 scripts/smoke_release.py dist/capital-0.2.0.pyz
 - 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_CASH_FORECAST`). 오버레이 원장의 `sim_day`·인출일과 `CAPITAL-TERMS-V1`을 접어 날짜가 박힌 세 레그(`SETTLEMENT_CASH_IN` 예상 정산 입금일, `CONTRACT_INTEREST` 만기, `PRINCIPAL` 만기)를 건별로 보여 주고 0-7/8-30/31-60/61-90/91+ sim 일 버킷으로 묶습니다. 버킷마다 정확한 유리수 합을 한 번만 1원에 내리고, 상환 레그는 미상환 원금+만기 계약 이자와 대사(`reconciliation.matched`)합니다. 가정(`SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`, `NO_DEFAULT_CONTRACTUAL_SCHEDULE`, `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`)은 SIMULATED 표시이고, 확률 가중·할인/NPV·FX·자금 이동은 범위 밖입니다. `instance_id`·`expected_settlement_cash_day` 외의 질의 인자는 `400 INVALID_ARGUMENTS`이고 노트가 쓸 수 없으면 `NOT_BOUND`에 숫자가 없습니다. 읽기는 아무것도 쓰지 않습니다. 시드 데모 장부의 예측은 `tests/vectors/forecast_vectors.json`에 바이트로 고정되고 `python3 scripts/forecast_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - 가상 시나리오(`GET /api/risk/scenarios`, `GET /api/risk/scenarios/{id}`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_WHATIF`). 고정 네 가지(`largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`)가 `GET /api/risk`와 `GET /api/risk/covenants`의 같은 정수 입력을 깊은 복사로 받아 하나의 가정만 적용해 다시 접습니다. `reconciliation`이 시나리오 합계를 라이브 `GET /api/risk`로 되맞추고(`matched`), `applied`·`enforced`는 항상 거짓입니다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 쓸 수 없으면 숫자 없는 `NOT_BOUND`이고, 저널·오버레이 항목·receipt·예약은 변하지 않습니다. 시드 데모 장부의 응답은 `tests/vectors/risk_scenarios.json`에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - AI 위임 클레임 표(`tests/agent_claims.json`)와 실행 스크립트(`scripts/agent_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/AI_DELEGATION_AUTHORITY.md`(kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232`)의 클레임 문자열·절·needle을 인용하고, `capital/agent_claims.py`의 검사가 SIMULATED agent lane을 loopback facade로 실행합니다. 표의 `HUMAN_PENDING`은 초안 `PROPOSED` 메모 단계의 Capital 라벨이고, 실행 거절 `EXECUTE_AUTHORITY_DISABLED`(403)는 초안의 항상 거절 `attempt_execution`을 반영합니다. organizer 명령은 pending `proposal_id`를 receipt에 인용으로 새기고 메모를 실행하지 않습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 두 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다. `ai_delegation_mock.py`는 vendor하지 않고 ActionPermit·EXECUTE·인가 변경은 범위 밖입니다.
-- 읽기 모델 클레임 표(`tests/read_model_claims.json`)와 실행 스크립트(`scripts/read_model_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/READ_MODEL_QUERIES.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 `get_credit_advance`(§2.12)·`get_credit_claim`(§2.13)·비변경 술어(§8)를 인용하고 `capital/read_model_claims.py`의 검사가 기존 읽기 표면을 loopback facade로 실행합니다. 매핑은 어댑터로 명시합니다: `get_credit_advance`는 `GET /api/state`의 case 뷰(그대로 `CreditMachine.view` dict)에, `get_credit_claim`은 in-process `CreditMachine.view_claim`에 대응하고, `GET /api/evidence`는 §2.11 정산 claim 객체라 대응하지 않습니다. upstream 쿼리 이름을 구현하지 않고 경로도 추가하지 않습니다. 모든 검사는 §8 비변경 가드(canonical_state·저널 길이·오버레이 digest·operation_count) 아래 읽기를 실행해 변경이 있으면 그 클레임이 실패합니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 세 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
+- 읽기 모델 질의 클레임 표(`tests/read_model_claims.json`, `KIX_CAPITAL_READ_MODEL_CLAIMS_V1`)와 실행 스크립트(`scripts/read_model_claims_check.py`). `GET /api/read/credit_advance/{id}`, `/api/read/credit_claim/{id}`, `/api/read/settlement/{id}`는 kix-protocol `244595db1524cbb1a01148baa07d6d28cd1b8dc6`의 초안 `docs/contracts/READ_MODEL_QUERIES.md`(0.1) §2.11–2.13 질의를 본뜬 읽기 전용 로컬 소비자 리허설입니다. 본문은 기존 view dict 그대로이고 §3 봉투(`read_schema_version` `0.1`, `query_digest`, `fixture_mode` `REFERENCE_IN_MEMORY`, `accepted_through`)만 감쌉니다. 권한은 `projection:read`이며 observer와 agent는 403이고, 가시성 클래스는 상류에서 UNDETERMINED이므로 응답이 `visibility_enforced: false`라고 적습니다. `list_*`·페이지·`ReadObservationV1` 필드는 만들지 않았습니다. 각 행은 키 집합(25·51·24개)과 항상 거짓 플래그를 초안에 고정하고, 드리프트 검사는 `--protocol-dir` 체크아웃의 작업 트리에서 절 단위로 키 목록을 다시 읽습니다. `--protocol-dir` 없이는 행을 실행하지 않고 `SKIPPED`이며 통과가 아닙니다. `upstream-claims` 수용 단계가 이 스크립트를 세 번째 명령으로 실행하고, 건너뛴 사실을 evidence의 `skipped`에 남깁니다. SIMULATED이며 읽기 모델이 아닙니다.
+
 - CE1 클레임 표(`tests/ce1_claims.json`)와 실행 스크립트(`scripts/ce1_claims_check.py`). 각 행은 고정된 upstream 규격 `docs/CANONICAL_ENCODING_V1.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일)의 바이트 규칙 절·needle·pinned_sha를 인용하고 `capital/ce1_claims.py`의 `ce1.*` 검사 하나를 부릅니다. 입력 게이트가 중복 키·비표준 상수(NaN·Infinity)·범위 밖 정수·비ASCII 키 등을 해시 전에 거절하고, ASCII 입력은 Capital canonical 바이트와 domain-tag digest 프레이밍을 재계산해 인용된 규칙과 대조합니다. 비ASCII 이스케이프 차이(`ensure_ascii`)는 실패가 아닌 `DOCUMENTED_DIVERGENCE` 행으로 기록하고 `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.4의 stage-7 정렬 근거를 다시 확인합니다. 인코더 동작 변경은 없습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 네 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
 - 준비 런타임 경계 클레임 표(`tests/readiness_claims.json`)와 실행 스크립트(`scripts/readiness_claims_check.py`). 각 행은 고정된 upstream 경계 문서 `docs/contracts/READINESS_RUNTIME.md`(kix-protocol `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, vendor 핀과 동일 — 같은 SHA의 새 소비 범위로서 표 헤더가 `pin_class`·`consumption_scope`를 명시합니다)의 절·needle·pinned_sha를 인용하고 `capital/readiness_claims.py`의 `readiness.*` 검사 하나를 살아 있는 루프백 서버에서 부릅니다. upstream `readiness/` 저널 형식(`journal.v1`, `KIXRDY01`, CRC32 레코드)은 vendor·구현하지 않고 Capital의 `LOCAL_FILE_WORKSPACE` 단일 파일 작업공간을 그 경계 규칙의 analogue로만 관찰합니다. 찢긴 꼬리 부분 복원 부재와 저장 실패 뒤 메모리 `ACCEPTED` receipt 조회 두 행은 `DOCUMENTED_DIVERGENCE`로 기록하고 운영 핸드북 절의 근거 needle을 다시 확인합니다. 13행 중 `passed=11`, `documented_divergences=2`로 별도 집계하며 divergence는 pass에 넣지 않습니다. 잠금 불가 오류는 SIMULATED storage-port 주입이고 OS 잠금 유실 탐지를 주장하지 않습니다. 인용 drift는 `--execute` 사용 여부와 관계없이 `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아닙니다. `upstream-claims` 수용 단계가 이 스크립트를 일곱 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다.
 - Contract invariant claims (`tests/contract_invariants.json`, `capital/contract_invariants.py`, `scripts/contract_invariants_check.py --execute`). Six `CLAIM_CONFORMANCE` rows bind Capital analogues of INV-1..INV-5 to pinned kix-protocol `7481b0e` `docs/contracts/CONTRACT_INVARIANTS.md` §3. Twelve pinned stdlib-random seeds exercise the real facade, concurrent duplicate ids, shared-face draws on large synthetic fixtures, capacity refusals, overlay days and local reopen; a loopback sequence and the crash-matrix SIGKILL boundary run when loopback is available. `--check` detects seed/reply drift; `--protocol-dir PATH` reads citation needles only; missing checkout is `SKIPPED`, restricted sockets are `SKIPPED_LOOPBACK`, neither is a pass. Command receipt canonical bytes retain the original instance; `inv.3.overlay_projection` is a `DOCUMENTED_DIVERGENCE` excluding rebuilt instance/digest envelope fields while checking the initial folded digest. This is `SIMULATED`, no Rust kernel execution or semantic profile, and not an `upstream-claims` stage command. Pin consumer declaration is `PENDING_NOTE_REGISTRATION`: follow-up **upstream-repin-inventory-contract-invariants** adds this table to binding-note §3.2 `bound_tables`, §3.6 default impact list, and a `decision_bindings` test_module record for `tests/test_contract_invariants.py`.
@@ -215,7 +234,7 @@ python3 scripts/acceptance.py
 
 결과는 커밋하지 않는 `build/acceptance-evidence.json`입니다. 명령, 종료 코드, 테스트 수, HEAD SHA, 도구 버전, vendor 해시, golden digest가 들어 있습니다. 단계가 실패하거나 빠지면 0이 아닌 코드로 끝납니다. CI는 매 HEAD에서 이 명령을 실행하고 evidence 파일을 올립니다. `storage-conformance` 단계는 `run_storage_vectors(factory)`로 메모리와 `LOCAL_FILE_WORKSPACE`를 같은 벡터에 통과시킨다. 그 통과는 SEMANTIC_CONFORMANCE가 아니고 CAP-11은 `NOT_BOUND`다. `upstream-claims` 단계의 라벨은 `CLAIM_CONFORMANCE`다. 프로토콜 체크아웃이 없으면 `scripts/upstream_claims_check.py`와 `scripts/agent_claims_check.py`, `scripts/read_model_claims_check.py`, `scripts/ce1_claims_check.py`, `scripts/adapter_identity_claims_check.py`, `scripts/lifecycle_claims_check.py`, `scripts/readiness_claims_check.py`의 인용 검증은 `SKIPPED`이며 그 상태는 통과가 아니다.
 
-`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py --execute`, `python3 scripts/ce1_claims_check.py --execute`, `python3 scripts/adapter_identity_claims_check.py --execute`, `python3 scripts/lifecycle_claims_check.py --execute`, `python3 scripts/readiness_claims_check.py --execute` 일곱 명령을 순서대로 실행한다. `python3 scripts/fsm_contract_claims_check.py --execute`는 `capital/vendor/manifest.json`의 다섯 vendored 파일을 먼저 맞춘 뒤 `tests/fsm_contract_claims.json`의 고정 클레임을 vendored `CreditMachine`/`SettlementMachine`으로 실행해 `CLAIM_CONFORMANCE`를 찍는다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인하고 실제 연동이 아니다. 이 검사는 unit discovery 안의 `tests/test_fsm_contract_claims.py`로도 실행되며 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`고 일곱 번째 명령은 `python3 scripts/readiness_claims_check.py --execute`다.
+`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py` (`--protocol-dir` 없이는 행 SKIPPED), `python3 scripts/ce1_claims_check.py --execute`, `python3 scripts/adapter_identity_claims_check.py --execute`, `python3 scripts/lifecycle_claims_check.py --execute`, `python3 scripts/readiness_claims_check.py --execute` 일곱 명령을 순서대로 실행한다. `python3 scripts/fsm_contract_claims_check.py --execute`는 `capital/vendor/manifest.json`의 다섯 vendored 파일을 먼저 맞춘 뒤 `tests/fsm_contract_claims.json`의 고정 클레임을 vendored `CreditMachine`/`SettlementMachine`으로 실행해 `CLAIM_CONFORMANCE`를 찍는다. `--protocol-dir`는 인용된 절과 needle만 읽기 전용으로 확인하고 실제 연동이 아니다. 이 검사는 unit discovery 안의 `tests/test_fsm_contract_claims.py`로도 실행되며 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`고 일곱 번째 명령은 `python3 scripts/readiness_claims_check.py --execute`다.
 
 `python3 scripts/seed_demo.py`는 고정 operation id로 종결·미이행·거절·취소·UNBOUND·정산 대기 케이스를 만듭니다. `tests/golden/demo.json`은 여섯 케이스의 `phase`·`settlement_gate`(`cases`), `state_digest`, 투영 합계, manifest `content_digest`, 그리고 읽기 전용 위험 분석의 `risk` 블록(`sim_day` 0, 미상환·준비금 요구액·HHI·`risk_digest`)을 고정합니다. instance id와 시각은 넣지 않습니다. 값이 달라지면 실패하고, 핀을 고치려면 `python3 scripts/seed_demo.py --update-golden`이 필요합니다. 금액은 합성 fixture 단위입니다.
 
@@ -325,6 +344,40 @@ adapters return `NOT_BOUND`, with null row containers and no invented capacity.
 See [integration contract](docs/INTEGRATION.md) and the
 [shared-cap operator procedure](docs/OPERATOR_HANDBOOK_KO.md#shared-cap-utilization).
 Focused verification: `python3 -m unittest tests.test_shared_caps -v`.
+### Offline synthetic event stress
+
+`python3 scripts/event_stress.py --workspace DIR --spec events.json` audits the
+single captured `DIR/workspace.json` and emits canonical JSON. It reads no live
+route and writes neither workspace nor financial postings. Example request:
+
+```json
+{"format":"CAPITAL_EVENT_STRESS_V1","events":[{"event_id":"E1","claim_refs":[{"claim_id":"sim-committed","trade_id":"sim-trade-sim-committed","currency":"KRW"}]}],"scenarios":[{"scenario_id":"S1","event_id":"E1","kind":"ADDITIONAL_OPEN_REFUND_KRW","additional_open_refund_krw":100}]}
+```
+
+Every independent scenario raises each distinct member claim's open refund once.
+Baseline terms, rates, exposure and logical day stay fixed. Claim witnesses show
+membership, source digest, mapped payees, refund increment and integer floor
+arithmetic; advance context is NON_ADDITIVE. Eligible face covers unique captured
+fixture claims, including outside/unfinanced claims. Borrowing base, headroom
+and hypothetical breaches cover recorded drawn advances with proven allocation.
+Unfinanced claims acquire no rate or borrowing permission. Shared reservations,
+unresolved slices/holders and unsupported refund mappings retain null dependent
+metrics and explicit coverage. Reports never assert portfolio safety.
+
+All outputs are `SIMULATED`, provisional, `applied=false`, `funds_executed=false`,
+`workspace_mutated=false`, production `NOT_AUTHORIZED`. Input, financial policy,
+event policy, implementation mapping, and raw/normalized request digests are
+included; historical policy authentication remains `NOT_BOUND`. `COMPLETE` exits
+0 (including a hypothetical breach); `PARTIAL`, `UNAVAILABLE`, and `REJECTED`
+exit 1; CLI argument misuse exits 2. Invalid requests reject atomically without
+financial results. The effective payload cap is the lower of the adopted event
+policy and shared 8,192-byte request bound. Other lower existing capacities apply.
+
+The mapping and supported domain are documented in
+[CAPITAL_EVENT_STRESS_BINDING.md](docs/decisions/CAPITAL_EVENT_STRESS_BINDING.md).
+The deterministic synthetic input/report corpus is `tests/vectors/event_stress.json`;
+`python3 scripts/event_stress_vectors.py --check` checks its bytes read-only.
+Regenerate intentionally with `python3 scripts/event_stress_vectors.py --write`.
 
 ### Local upstream re-pin evidence checker
 
@@ -334,7 +387,10 @@ ADOPTED provisional entries in
 It classifies only the declared vendor and five claim-table surfaces as
 `EXECUTABLE_VENDOR` or `EXECUTABLE_CITATION`. Historical decision sources stay
 `RESEARCH_BASELINE`; equal SHA strings do not expand the inventory. Today's
-vendor and citation pins remain `HOLD`.
+vendor and citation pins remain `HOLD`. The read-model draft at `244595d` is
+registered independently by
+[CAPITAL_READ_MODEL_QUERY_PIN.md](docs/decisions/CAPITAL_READ_MODEL_QUERY_PIN.md);
+its claims are separate from the locked vendor surface.
 
 For a hypothetical local comparison:
 
