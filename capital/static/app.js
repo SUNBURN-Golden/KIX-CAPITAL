@@ -141,6 +141,7 @@ async function loadDiagnostics(next){
 }
 let refreshInFlight=false,refreshDone=Promise.resolve();
 function refresh(){
+ invalidatePaymentPreview();paymentNeedsRefresh=true;
  refreshInFlight=true;
  const task=(async()=>{try{await refreshCore();}finally{refreshInFlight=false;}})();
  refreshDone=task.catch(()=>{});
@@ -170,6 +171,7 @@ async function refreshCore(){
  const portfolio=await loadPortfolio(next);
  const riskView=await loadRisk(next);
  const deskView=deskOpen()?await loadDesk(next,riskView,evidence,diagnostics.recon):null;
+ paymentNeedsRefresh=false;
  state=next;deskData=deskView;renderProjection(projection);renderReconciliation(diagnostics.recon);renderStatement(diagnostics.statement);renderTerms(terms);renderPortfolio(portfolio);renderRisk(riskView);renderPolicy(policyView);resolveSelection();render();renderDesk();void loadDeskCase();void loadCaseTerms();void loadCaseSetoff();void loadCaseUnderwrite();void loadCandidateUnderwrite();
 }
 const OVERLAY_LABEL='simulated overlay — not vendor FSM arithmetic, not an offer';
@@ -556,7 +558,7 @@ async function writeFenced(path,makeBody,validate,applied){
  try{await navigator.locks.request('kix-capital-writer',{ifAvailable:true},async lock=>{
  if(!lock){notice('다른 탭의 명령이 진행 중입니다. 결과를 확인한 후 계속하세요.',true);return;}
  readPending();if(pending||writesBlocked()){fence();return;}
- const body=makeBody();
+ let body;try{body=makeBody();}catch{notice('미리보기가 바뀌었습니다. 새로고침 후 다시 미리보기하세요.',true);return;}
  try{savePending(body);fence();const receipt=await request(path,{method:'POST',headers:{'Content-Type':'application/json','X-Capital-Token':state.local_token},body:JSON.stringify(body)});validate(receipt,body);savePending(null);applied(receipt,body);}
  catch(error){if(error.knownRejection){try{savePending(null);}catch{}notice(`요청 거절: ${errors[error.message]||error.message}`,true);}else notice('요청 결과 UNKNOWN. 자동 재시도하지 않습니다. 원 요청 결과를 조회하세요.',true);}
  finally{try{await refresh();}catch{notice('현재 상태를 조회하지 못했습니다. 서버 연결을 확인하세요.',true);}}
@@ -681,6 +683,7 @@ function deskFence(){
  $('desk-refresh').disabled=busy;$('desk-case').disabled=busy;
  $('desk-days').disabled=blocked;$('desk-advance').disabled=blocked;
  document.querySelectorAll('#desk-actions button').forEach(button=>{button.disabled=blocked;});
+ paymentFence();
 }
 async function deskAdvance(){
  const gate=deskAdvanceState();
@@ -721,9 +724,9 @@ function timelineRows(manifest,c){
  const overlay=manifest.sections.overlay?manifest.sections.overlay.body.journal:[];
  overlay.forEach((entry,n)=>{
   const payload=entry.payload||{};
-  const own=payload.advance_id===c.advance_id,global=entry.kind==='clock'||entry.kind==='terms_binding';
+  const own=payload.advance_id===c.advance_id||payload.advance_ref===c.advance_id,global=entry.kind==='clock'||entry.kind==='terms_binding';
   if(!own&&!global)return;
-  const detail=Object.entries(payload).filter(([key,value])=>key!=='advance_id'&&['string','number','boolean'].includes(typeof value)).map(([key,value])=>`${key}=${value}`).join(' · ');
+  const detail=`operation_id=${entry.overlay_id} · `+Object.entries(payload).filter(([key,value])=>key!=='advance_id'&&['string','number','boolean'].includes(typeof value)).map(([key,value])=>`${key}=${value}`).join(' · ')+(payload.allocation?` · recorded allocation=${JSON.stringify(payload.allocation)}`:'');
   rows.push({key:[entry.after_journal_index,0,n],cells:[`@${entry.after_journal_index}`,own?'오버레이':'오버레이 · 전역',String(entry.sim_day),entry.kind,detail]});
  });
  rows.sort((a,b)=>a.key[0]-b.key[0]||a.key[1]-b.key[1]||a.key[2]-b.key[2]);
@@ -736,6 +739,139 @@ function paintDeskTimeline(c){
  note.textContent=`${c.advance_id} · 행 ${rows.length}건 · F04 저널과 오버레이를 같은 순서 기준(after_journal_index)으로 합쳤습니다. 오버레이 이벤트는 같은 위치의 F04 행 앞에 옵니다.`;
  body.replaceChildren(...rows.map(row=>{const tr=document.createElement('tr');tr.dataset.source=row.cells[1];for(const value of row.cells)tr.append(textElement('td',value));return tr;}));
 }
+
+// Repayment desk: server values only. No quote is treated as a posting promise.
+let paymentPreview=null,paymentEpoch=0,paymentLoading=false,paymentNeedsRefresh=true,paymentDraftCase=null;
+const paymentDrafts=new Map(),paymentReceipts=new Map();
+const paymentInteger=value=>Number.isSafeInteger(value)&&value>=0;
+const paymentRef=/^[A-Za-z0-9._:-]{1,64}$/;
+function paymentCaseKey(){return JSON.stringify([state?.instance_id,selected]);}
+function paymentRow(){return deskData?.overlay?.advances?.find(row=>row.advance_id===selected);}
+function paymentIdentity(){
+ const overlay=deskData?.overlay,row=paymentRow();
+ return JSON.stringify([state?.instance_id,selected,$('desk-payment-amount').value,$('desk-payment-evidence').value,state?.state_digest,overlay?.overlay_state_digest,overlay?.sim_day,row?.draw_day]);
+}
+function invalidatePaymentPreview(){
+ paymentEpoch++;paymentPreview=null;paymentLoading=false;
+ $('desk-payment-quote').hidden=true;
+ $('desk-payment-status').textContent='새로고침·입력·사례 변경 후 서버 미리보기가 필요합니다.';
+}
+function paymentGate(){
+ const overlay=deskData?.overlay,row=paymentRow();
+ if(!can('overlay:command'))return permissionReason('overlay:command');
+ if(paymentNeedsRefresh)return '현재 상태 새로고침이 필요합니다.';
+ if(!overlay||overlay.status!=='BOUND'||overlay.workspace_status!=='ACTIVE')return 'BOUND 조건과 ACTIVE 작업공간이 필요합니다.';
+ if(!overlay.terms_binding||overlay.terms_binding.status!=='BOUND'||overlay.terms_binding_matches!==true||overlay.terms_binding.terms_version!==overlay.terms_version)return 'REPAYMENT_TERMS_NOT_BOUND · 먼저 명시적으로 sim_day를 진행해 조건을 연결하세요. 자동 진행하지 않습니다.';
+ if(!row||!paymentInteger(row.draw_day))return '선택 사례의 기록된 인출일이 없습니다.';
+ if(!/^[1-9]\d*$/.test($('desk-payment-amount').value)||!Number.isSafeInteger(Number($('desk-payment-amount').value)))return '양의 정수 모의 금액을 입력하세요.';
+ const evidence=$('desk-payment-evidence').value;
+ if(evidence&&!paymentRef.test(evidence))return '합성 evidence_ref 형식을 확인하세요.';
+ return '';
+}
+function paymentFence(){
+ const blocked=busy||!!pending||writesBlocked()||!can('overlay:command');
+ for(const id of ['desk-payment-amount','desk-payment-evidence'])$(id).disabled=blocked;
+ $('desk-payment-preview').disabled=blocked||paymentLoading||!!paymentGate();
+ $('desk-payment-post').disabled=blocked||!!paymentGate()||!paymentPreview||paymentPreview.identity!==paymentIdentity();
+}
+function paymentQuoteValid(body,context){
+ const split=body?.allocation;
+ return body?.instance_id===context.instance&&body.advance_id===context.advance&&body.observed_state_digest===context.digest
+  &&body.mode==='SIMULATED_OVERLAY'&&body.label===OVERLAY_LABEL&&body.provisional===true&&body.status==='BOUND'
+  &&body.terms_version===context.terms&&body.funds_executed===false&&body.workspace_mutated===false&&body.write_authorized===false
+  &&body.interest?.status==='BOUND'&&split?.status==='BOUND'&&paymentInteger(body.principal)
+  &&['interest_due_krw','default_interest_due_krw'].every(key=>paymentInteger(body.interest[key]))
+  &&['to_default_interest','to_interest','to_principal','unapplied_cash'].every(key=>paymentInteger(split[key]))
+  &&['default_interest_due','interest_due','principal_outstanding'].every(key=>paymentInteger(split.remaining?.[key]))
+  &&typeof body.close_ready==='boolean'&&(body.fsm_repay===null||paymentInteger(body.fsm_repay?.amount)&&paymentInteger(body.fsm_repay?.sequence));
+}
+function paymentCoreValid(receipt,body){
+ return receipt?.operation_id===body.operation_id&&receipt.op==='post_repayment'&&receipt.outcome==='APPLIED'
+  &&receipt.advance_ref===body.advance_ref&&receipt.at_sim_day===body.at_sim_day&&receipt.sim_day===body.at_sim_day&&receipt.amount_krw===body.amount_krw
+  &&['evidence_ref','proposal_id'].every(key=>receipt[key]===body[key])
+  &&paymentInteger(receipt.entry_no)&&receipt.entry_no>0&&paymentInteger(receipt.unapplied_before_krw)&&paymentInteger(receipt.unapplied_after_krw)
+  &&['default_interest_krw','interest_krw','principal_krw','unapplied_after_krw'].every(key=>paymentInteger(receipt.allocation?.[key]))
+  &&receipt.allocation.unapplied_after_krw===receipt.unapplied_after_krw
+  &&['CLEAR','INTEREST_DUE','UNAPPLIED_HELD'].includes(receipt.close_gate?.status)
+  &&['default_interest_due_krw','interest_due_krw','unapplied_cash_krw'].every(key=>paymentInteger(receipt.close_gate[key]))
+  &&receipt.payment_basis==='UNVERIFIED_ASSERTED'&&receipt.basis==='SIM_REPAY_MEMO'
+  &&(receipt.f04===null||typeof receipt.f04?.operation_id==='string'&&receipt.f04.operation_id.length>0&&typeof receipt.f04?.receipt_ref==='string'&&receipt.f04.receipt_ref.length>0)
+  &&(receipt.allocation.principal_krw>0)===(receipt.f04!==null);
+}
+function validatePaymentReceipt(receipt,body){
+ if(!paymentCoreValid(receipt,body)||receipt.instance_id!==body.instance_id||receipt.label!==MEMO_LABEL
+  ||receipt.role!=='organizer'||receipt.role_provenance!=='SYNTHETIC_LOCAL_ROLE'||receipt.clock_source!=='SIM_LOGICAL_CLOCK'
+  ||receipt.funds_executed!==false||receipt.economic_finality_claimed!==false||typeof receipt.transport_duplicate!=='boolean'
+  ||receipt.f04_journal_written!==(receipt.f04!==null))throw Error('INVALID_REPAYMENT_RECEIPT');
+}
+function validatePaymentLookup(view,body){
+ if(view?.instance_id!==body.instance_id||view.mode!=='SIMULATED_OVERLAY'||view.label!==MEMO_LABEL
+  ||view.funds_executed!==false||view.workspace_mutated!==false||view.write_authorized!==false
+  ||!paymentCoreValid(view.operation,body))throw Error('UNKNOWN');
+}
+function rememberPaymentReceipt(receipt,body){
+ paymentReceipts.set(JSON.stringify([body.instance_id,body.advance_ref]),receipt);
+ invalidatePaymentPreview();renderPayment();
+}
+function renderPayment(){
+ const key=paymentCaseKey();
+ if(paymentDraftCase!==key){
+  paymentDraftCase=key;const draft=paymentDrafts.get(key)||{amount:'',evidence:''};
+  $('desk-payment-amount').value=draft.amount;$('desk-payment-evidence').value=draft.evidence;invalidatePaymentPreview();
+ }
+ if(paymentPreview&&paymentPreview.identity!==paymentIdentity())invalidatePaymentPreview();
+ $('desk-payment-controls').hidden=!can('overlay:command');
+ const row=paymentRow();
+ $('desk-payment-dues').textContent=row?`기록된 dues · default_interest=${row.default_interest_due_krw} · interest=${row.interest_due_krw} · principal=${row.principal_outstanding_krw} · held=${row.unapplied_cash_krw} · draw_day=${row.draw_day} · sim_day=${deskData.overlay.sim_day}`:'기록된 상환 대상 없음';
+ $('desk-payment-gate').textContent=`현재 advisory close_gate=${JSON.stringify(row?.close_gate??'NOT_BOUND')} · close_ready=${row?.close_ready??'NOT_BOUND'} · 자동 종결 없음`;
+ const entries=deskData?.manifest?.sections.overlay?.body.journal;
+ $('desk-payment-records').replaceChildren(...(entries||[]).filter(entry=>entry.kind==='repayment'&&entry.payload.advance_ref===selected).map(entry=>{
+  const p=entry.payload,a=p.allocation,tr=document.createElement('tr');
+  for(const value of [`${entry.overlay_id} · ${entry.sim_day}`,p.amount_krw,a.default_interest_krw,a.interest_krw,a.principal_krw,`${p.unapplied_before_krw} → ${a.unapplied_after_krw} · SIM_UNAPPLIED_MEMO`,`${p.evidence_ref??'—'} · ${p.f04_operation_id??'F04 없음'} · ${p.f04_receipt_ref??'—'}`])tr.append(textElement('td',String(value)));
+  return tr;
+ }));
+ const receipt=paymentReceipts.get(key);
+ $('desk-payment-receipt').hidden=!receipt;
+ $('desk-payment-receipt').textContent=receipt?JSON.stringify(receipt,null,2):'';
+ $('desk-payment-receipt-note').textContent=receipt?`기록된 receipt · entry_no=${receipt.entry_no} · advisory close_gate=${receipt.close_gate.status} · UNVERIFIED_ASSERTED`:entries?'서버 기록 내역입니다. 마지막 응답 receipt는 명시적 기록 또는 결과 조회 후 표시합니다.':'기록 내역 조회 불가 · 새로고침하세요.';
+ if(!paymentPreview&&!paymentLoading)$('desk-payment-status').textContent=paymentGate()||'입력을 확인하고 서버 미리보기 후 명시적으로 기록하세요.';
+ paymentFence();
+}
+for(const id of ['desk-payment-amount','desk-payment-evidence'])$(id).addEventListener('input',()=>{
+ paymentDrafts.set(paymentCaseKey(),{amount:$('desk-payment-amount').value,evidence:$('desk-payment-evidence').value});
+ invalidatePaymentPreview();renderPayment();
+});
+$('desk-payment-preview').onclick=async()=>{
+ if(busy||pending||writesBlocked()||paymentLoading||paymentGate())return;
+ invalidatePaymentPreview();const epoch=paymentEpoch,identity=paymentIdentity(),overlay=deskData.overlay,row=paymentRow();
+ const context={instance:state.instance_id,advance:selected,digest:state.state_digest,terms:overlay.terms_version};
+ paymentLoading=true;paymentFence();$('desk-payment-status').textContent='가정 배정 조회 중 · SIMULATED';
+ try{
+  const query=new URLSearchParams({instance_id:context.instance,draw_day:String(row.draw_day),as_of_day:String(overlay.sim_day),cash:$('desk-payment-amount').value});
+  const body=await request(`/api/terms/${encodeURIComponent(selected)}/allocation?${query}`);
+  if(epoch!==paymentEpoch||identity!==paymentIdentity())return;
+  if(!paymentQuoteValid(body,context))throw Error('INVALID_ALLOCATION');
+  paymentPreview={identity,body};
+  const tr=document.createElement('tr');for(const key of ['to_default_interest','to_interest','to_principal','unapplied_cash'])tr.append(textElement('td',number(body.allocation[key])));
+  $('desk-payment-quote-rows').replaceChildren(tr);$('desk-payment-quote').hidden=false;
+  $('desk-payment-remaining').textContent=JSON.stringify(body.allocation.remaining,null,2);
+  $('desk-payment-proposals').textContent=`가정 proposal only · fsm_repay=${JSON.stringify(body.fsm_repay)} · close_ready=${body.close_ready}`;
+  $('desk-payment-status').textContent='가정 미리보기 확인 · 실제 기록 배정 보장 아님 · 명시적 기록 버튼으로 한 번 제출';
+ }catch{if(epoch===paymentEpoch)$('desk-payment-status').textContent='미리보기 응답을 확인하지 못했습니다. 기록을 허용하지 않습니다. 새로고침 후 다시 확인하세요.';}
+ finally{if(epoch===paymentEpoch){paymentLoading=false;paymentFence();}}
+};
+$('desk-payment-post').onclick=async()=>{
+ if(busy||pending||writesBlocked()||paymentGate()||!paymentPreview||paymentPreview.identity!==paymentIdentity())return;
+ if(!navigator.locks){storageBlocked=true;fence();notice('안전한 탭 간 명령 잠금이 필요합니다.',true);return;}
+ const preview=paymentPreview;
+ await writeFenced('/api/overlay/commands',()=>{
+  if(paymentGate()||paymentPreview!==preview||preview.identity!==paymentIdentity())throw Error('PREVIEW_CHANGED');
+  const body={instance_id:state.instance_id,operation_id:'desk-repay-'+crypto.randomUUID(),op:'post_repayment',advance_ref:selected,at_sim_day:deskData.overlay.sim_day,amount_krw:Number($('desk-payment-amount').value)};
+  if($('desk-payment-evidence').value)body.evidence_ref=$('desk-payment-evidence').value;
+  invalidatePaymentPreview();return body;
+ },validatePaymentReceipt,(receipt,body)=>{rememberPaymentReceipt(receipt,body);notice('모의 상환 기록 · SIMULATED · UNVERIFIED_ASSERTED · close_gate는 자문이며 자동 종결하지 않습니다.');});
+};
+
 function paintDeskAudit(c){
  const panel=$('desk-audit');
  panel.hidden=currentRole()!=='auditor'||state?.auth.role!=='auditor'||!!deskData?.forbidden;
@@ -787,6 +923,7 @@ function renderDesk(){
  if([...select.options].map(option=>option.value).join()!==ids.join())select.replaceChildren(...ids.map(id=>{const option=textElement('option',id);option.value=id;return option;}));
  if(selected)select.value=selected;
  paintDeskOverlay();
+ renderPayment();
  paintDeskTimeline(state.cases.find(item=>item.advance_id===selected));
  const commandsAllowed=can('overlay:command')||Object.entries(state.auth.permissions).some(([name,item])=>name.startsWith('command:')&&item.allowed);
  $('desk-commands').hidden=!commandsAllowed;
@@ -856,6 +993,7 @@ function clearMatching(original){
 }
 $('recover').onclick=()=>pendingAction(async original=>{
  try{
+  if(original.op==='post_repayment'){const view=await request(`/api/overlay?operation_id=${encodeURIComponent(original.operation_id)}`);validatePaymentLookup(view,original);clearMatching(original);rememberPaymentReceipt(view.operation,original);notice('원 상환 기록을 찾았습니다. 재전송하지 않았습니다. SIMULATED · UNVERIFIED_ASSERTED');await refresh();return;}
   if(original.op==='advance_day'){const view=await request(`/api/overlay?operation_id=${encodeURIComponent(original.operation_id)}`);validateOverlayLookup(view,original);clearMatching(original);notice('원 sim_day 요청은 서버에 반영되어 있습니다. 같은 요청을 다시 보내지 않았습니다.');await refresh();return;}
   const receipt=await request(`/api/operations/${encodeURIComponent(original.operation_id)}?instance_id=${encodeURIComponent(original.instance_id)}`);validateReceipt(receipt,original);clearMatching(original);showReceipt(receipt);await refresh();}
  catch{notice('원 요청 결과를 확정할 수 없습니다. UNKNOWN과 쓰기 차단을 유지합니다.',true);}
@@ -864,7 +1002,7 @@ $('new-session').onclick=()=>pendingAction(async original=>{
  try{await refresh();if(original.instance_id!==state.instance_id){clearMatching(original);notice(fileWorkspaceActive()?'이전 세션 결과는 UNKNOWN입니다. 복원된 작업공간을 사용합니다. 이전 요청을 재전송하지 않았습니다.':'이전 세션 결과는 UNKNOWN입니다. 새 프로세스의 빈 시뮬레이션을 사용합니다. 이전 요청을 재전송하지 않았습니다.',true);}}
  catch{notice('현재 세션을 확인하지 못해 이전 대기 기록을 유지합니다.',true);}
 });
-window.addEventListener('storage',event=>{if(event.key===storageKey){readPending();fence();}});
+window.addEventListener('storage',event=>{if(event.key===storageKey){readPending();invalidatePaymentPreview();paymentNeedsRefresh=true;fence();}});
 let readinessData, scenarioData, scenarioEpoch=0;
 function renderReadiness(){
  if(!readinessData)return;

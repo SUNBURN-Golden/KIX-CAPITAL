@@ -4985,6 +4985,66 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## repayment-posting-desk builder verification (2026-10-30)
+
+Implemented the `#desk` repayment panel on `agent/capital-repayment-posting-desk`.
+It reads server allocation quotes, explicitly posts one simulated repayment via
+the existing writer fence, renders recorded allocations and advisory close_gate,
+and recovers UNKNOWN only through explicit receipt lookup. Amounts remain
+UNVERIFIED_ASSERTED; synthetic evidence and SIM_UNAPPLIED_MEMO are labeled.
+The quote remains hypothetical and can diverge from posting after earlier
+payments or held cash. No posting-equivalent preview or financial policy was
+invented. No scope or product decision deviation was required.
+
+Actual verification commands and measured results:
+
+| Command | Result |
+|---|---|
+| `npm ci --ignore-scripts` | Exit 0; three packages installed; four audited, zero vulnerabilities. No dependency or lockfile change. |
+| `node --check capital/static/app.js` | Exit 0, including the final source. |
+| `python3 -m unittest tests.test_operator_desk -v` | Initial six passed; final seven passed after adding the repayment guard. |
+| `python3 -m unittest tests.test_operator_desk tests.test_repayment_posting -v` | Exit 0; 53 passed, repeated after implementation updates. Final combined run: 61.664 s. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 273 artifacts / nine stages. No vector or registry changes. |
+| `npm run test:browser -- tests/browser/repayment-desk.spec.cjs --project=workspace` | Initial attempt exited 1 before tests: configured port already occupied. The existing listener was left alone. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- tests/browser/repayment-desk.spec.cjs --project=workspace'` | Initial isolated run: nine passed, three failed (timeline omitted operation ID; cross-tab test used a stale snapshot; role test omitted the required token). Corrected implementation/test setup. Next: 11 passed, one initial readiness-wait failure; waiter now checks visible controls and completed initial refresh. Then 12/12 passed. Expanded coverage: 15/15 passed in 26.4 s. Final confirmation after explicitly waiting for delayed response completion: **15/15 passed in 22.8 s**, exit 0. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,303 passed** in 334.018 s, including the legacy byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **91 passed** in 3.0 min. Existing browser suite plus all 15 repayment cases; final delayed-response synchronization is also covered by the focused confirmation above. |
+| `python3 scripts/build_release.py --out dist` and `python3 scripts/build_release.py --out dist2` | Both exit 0; identical SHA256 `3cd306a1e18847f87e57c8db765e57372db7fdbced41b7a4bb71249b172d51cc`. |
+| `cmp dist/capital-*.pyz dist2/capital-*.pyz` | Exit 0; byte-identical packages. |
+| `python3 scripts/smoke_release.py dist/capital-*.pyz` | Exit 0; all 11 named packaged smoke checks passed, including bundled accrual and restart receipts. |
+| `python3 -c 'import hashlib,json; from pathlib import Path; p=Path("capital/vendor"); m=json.loads((p/"manifest.json").read_text()); assert len(m["files"])==5; assert all(hashlib.sha256((p/n).read_bytes()).hexdigest()==h for n,h in m["files"].items()); print("PASS: five vendor SHA256 locks match")'` | Exit 0; all five vendor SHA256 locks match. A separate byte comparison against HEAD also matched all five files and manifest.json. |
+| `git diff --exit-code HEAD -- capital/vendor capital/export.py .aiops` | Exit 0; all unchanged. |
+| `git diff --check` | Exit 0. |
+
+The network namespace is an environment-only deviation for the pre-existing
+port collision; no test configuration, server boundary, CI gate or assertion
+was weakened. Chromium was available. The focused suite uses disposable local
+file workspaces and loopback servers, terminated in finally blocks. Captures
+at 1280px and 375px are under `test-results/repayment-desk/`; the mobile capture
+was inspected and the existing timeline scroll region given a minimum table
+width to keep references readable. Completed run logs are retained locally in
+ignored `build/repayment-posting-desk/`.
+
+Coverage includes interest-only (no F04 write), partial principal, excess held
+cash, default-interest allocation, subsequent quote/receipt divergence, explicit
+keyboard posting, double activation, shared locks and storage events, lost
+responses before/after application and reload, invalid receipt/lookup data,
+stale session/clock and failed refresh, draft/role/case invalidation, read-only
+auditor/observer behavior, agent-token denial and literal hostile-text rendering.
+All are local SIMULATED observations; no provider or payment verification,
+real money, Protocol/Commerce edit, external post, commit or push occurred.
+
+Final CI ladder confirmation:
+
+| Command | Result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 0; **9/9 stages passed**, `build/acceptance-evidence.json` has `ok=true`, vendor hashes verified. Unit 1,303; storage/crash conformance 19; pinned vendor seven; upstream claims 322 passes plus two documented divergences / 324 evaluated, zero failures; node check passed; final browser 91; packaged smoke 11; seeded demo one; integrated local SIMULATED journeys six. |
+
+The ladder reran the full browser suite with the final delayed-response checks.
+Its log and a copy of the JSON evidence are retained under ignored
+`build/repayment-posting-desk/`. No test server was retained.
 ## observation-triage-cli
 
 Implemented offline SIMULATED observation diagnostics with a bounded stdlib API/CLI,

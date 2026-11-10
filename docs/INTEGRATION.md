@@ -557,6 +557,38 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+### Repayment desk UI · SIMULATED / UNVERIFIED_ASSERTED
+
+The `#desk` panel reuses `GET /api/terms/{advance_id}/allocation` with recorded
+overlay draw_day, current sim_day and entered cash. It validates the instance,
+advance, F04 digest, terms version, simulation flags and numeric section values.
+The preview snapshot also includes the overlay digest, draft amount and optional
+synthetic evidence_ref. Input, case, role or refresh changes invalidate it; late
+responses cannot authorize posting. The quote is hypothetical (constant current
+principal), not posting-equivalent after payment history or held cash. Recorded
+dues appear beside it; JavaScript performs no financial allocation arithmetic.
+
+An organizer explicitly submits `post_repayment` to the existing
+`POST /api/overlay/commands`, using advance_ref, at_sim_day, amount_krw and
+optional evidence_ref (`[A-Za-z0-9._:-]{1,64}`). No allocation, timestamp, sequence
+or proposal_id is sent. Matching bound terms, ACTIVE workspace, a fresh preview
+and overlay:command permission are required. Before the first explicit clock
+advance, `REPAYMENT_TERMS_NOT_BOUND` is explained without advancing automatically.
+The existing `kix-capital-writer` lock and `kix-capital-pending-v1` record protect
+all commands. The complete command is saved before POST. UNKNOWN stays blocked
+through reload/refresh; only explicit `GET /api/overlay?operation_id=...` lookup
+of a matching receipt clears it. Lookup validates the receipt core separately
+from the POST role/transport envelope. Transport failures, malformed receipts
+and mismatched identities retain pending. Known stale-session/clock rejection
+requires successful refresh and another explicit preview; there is no retry.
+
+The panel displays server-recorded allocation, held cash before/after, entry_no,
+synthetic evidence, F04 references and advisory close_gate. `UNVERIFIED_ASSERTED`
+is not verified payment. `SIM_UNAPPLIED_MEMO` cannot be released or refunded by
+this panel. close_gate is advisory and does not alter close policy or cause
+automatic close. Auditors see read-only server records; observers receive no
+repayment reads or controls, and agent tokens cannot submit payments. No new
+endpoints, money movement, payment verification or financial formulas are added.
 ## Offline observation triage (SIMULATED)
 
 `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`

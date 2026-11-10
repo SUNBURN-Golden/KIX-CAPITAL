@@ -330,6 +330,27 @@ with all hashes rebuilt cannot be detected. No source authority, signing, import
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
 
+### Operator repayment desk · SIMULATED
+
+At `#desk`, an organizer selects a drawn case, enters an `UNVERIFIED_ASSERTED`
+amount and optional synthetic `evidence_ref`, selects **서버 배정 미리보기**, then
+explicitly selects **모의 상환 명시적 기록** once. A prior explicit sim_day advance
+must have bound the terms (`REPAYMENT_TERMS_NOT_BOUND` otherwise). Preview uses
+recorded draw_day and sim_day, independently of the hypothetical day fields.
+It is a hypothetical constant-principal quote, **not a guaranteed posting
+allocation**: accumulated ledger dues, prior payments and held cash can change
+what posting records. All allocation amounts come from the server.
+
+The desk shows recorded default interest, interest, principal, held cash,
+synthetic evidence, F04 references and the receipt. `SIM_UNAPPLIED_MEMO` is a
+held memo; the desk cannot release or refund it. Advisory `close_gate` and quote
+`close_ready` never automatically close a case or change the existing close
+policy. Auditor records are read-only; observer and agent sessions cannot post.
+On UNKNOWN, the persisted operation blocks further commands across tabs and
+reloads. Use the explicit receipt lookup; refresh alone does not resolve UNKNOWN
+and no automatic retry occurs. Stale session/clock errors require a successful
+refresh and a fresh explicit preview. The direct F04 repayment flow remains
+available separately. Browser coverage: `tests/browser/repayment-desk.spec.cjs`.
 ### Offline synthetic event stress
 
 `python3 scripts/event_stress.py --workspace DIR --spec events.json` audits the
