@@ -247,7 +247,7 @@ CAP-02와 CAP-03의 잠정 값은 `docs/decisions/CAPITAL_SETTLEMENT_POLICY.md`�
 | `command:reconcile` | 허용 | 거절 | 거절 | 거절 | 토큰 필요 | `POST /api/commands` (op `reconcile`) |
 | `state:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/state` |
 | `reference:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/permissions`, `GET /api/scenarios[/…]`, `GET /api/readiness`, `GET /api/decisions` |
-| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…`, `GET /api/cases/…`, `GET /api/read/…` |
+| `projection:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/evidence`, `GET /api/projection`, `GET /api/terms[/…]`, `GET /api/overlay`, `GET /api/overlay/slices`, `GET /api/portfolio/snapshot`, `GET /api/risk`, `GET /api/risk/shared-caps`, `GET /api/risk/covenants`, `GET /api/risk/scenarios[/…]`, `GET /api/policy[/…]`, `GET /api/preview/…`, `GET /api/underwrite/…`, `GET /api/cases/…`, `GET /api/read/…` |
 | `receipt:read` | 허용 | 허용 | 허용 | 거절 | 허용 | `GET /api/operations/…` |
 | `export:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/export`, `GET /api/export/manifest`, `GET /api/export/facts`, `GET /api/export/facts/schema` |
 | `reconciliation:read` | 허용 | 허용 | 거절 | 거절 | 허용 | `GET /api/reconciliation` |
@@ -799,6 +799,38 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 `tests/vectors/http/`는 loopback 서버에 보내는 비정상 원시 요청 76건을 바이트로 고정한 코퍼스다. 각 파일은 요청 바이트(`request_b64`, 자리표시자 `__PORT__`·`__TOKEN__`만 치환)와 고정된 결과(`expect.status`, `expect.code`, 응답 접두·표지)를 담고, `tests/test_http_hostile.py`가 in-process `make_server(0)`에 replay한다. 매건 뒤에 `state_digest`·`operation_count` 불변과 `GET /api/health` 200을 다시 확인하고, 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다.
 
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:shared-cap-utilization -->
+### shared-cap-utilization
+
+`GET /api/risk/shared-caps`는 기존 공유 한도의 읽기 전용 SIMULATED 보고서다.
+`projection:read` 권한의 organizer/auditor 및 기본 organizer GET만 허용한다.
+observer/agent는 `403 ROLE_FORBIDDEN`, 쿼리 인자는 `400 INVALID_ARGUMENTS`다.
+`advance_principal_krw`는 F04 미상환 원금이며 `/api/risk`의 advance-only 합계는
+유지된다. OPEN/IMPAIRED의 서비스·구상 수령 차감 후 잔여 액면만
+`counted_slice_face_krw`에 포함한다. PROPOSED/RESOLVED/VOID는 0이다.
+합계 `combined_policy_exposure_krw`는 `CONSERVATIVE_SLICE_FACE_POLICY_MEASURE`
+(보수적 정책 지표)이며 매입가격·회계노출·가용현금과 구별한다. 담보 기초의
+encumbrance는 별도 지표다. 기존 beneficiary/portfolio cap에서 합계를 차감한
+`remaining_capacity_krw`는 음수일 수 있다. 한도와 같으면 PASS, 1원 초과면 FAIL이다.
+`utilization_permille`는 합계 × 1000 // cap이다. 여유 한도는 실행 권한이 아니다.
+
+`KIX_CAPITAL_SHARED_CAPS_V1` 응답의 `cut`에서 state_digest,
+overlay_state_digest, fixtures_digest, policy_inputs_digest, inputs_digest 및
+sim_day를 확인한다. 서비스 잠금 안에서 한 번 캡처하며 읽기로 영수증·두 저널·파일을
+변경하지 않는다. 정책 누락/불일치, 손상된 저장소, 가변 fixture 또는 미지원 adapter는
+`NOT_BOUND`와 null beneficiaries/portfolio로 표시한다. 진단 digest는 유지될 수 있다.
+`authenticated_source_cut:NOT_BOUND`는 외부 인증된 스냅샷을 뜻하지 않는다.
+SHADOW_NOT_APPLIED, SIMULATION_ONLY_NOT_OFFERED_V1, title_transferred:false,
+legal_effect:NOT_ASSESSED, policy_adopted:false, funds_executed:false를 유지한다.
+새 대출 한도·집행 변경·준비금 전기·slice lifecycle UI는 범위 밖이다.
+
+검증: tests/test_shared_caps.py::SharedCapsTests.test_all_lifecycle_states_agree_with_registry_and_u4
+검증: tests/test_shared_caps.py::SharedCapsTests.test_exact_cap_and_one_won_over_match_admission_and_candidate_u4
+검증: tests/test_shared_caps.py::SharedCapsTests.test_read_only_file_workspace_and_damaged_storage
+검증: tests/test_shared_caps.py::SharedCapsTests.test_reader_writer_cuts_are_entirely_before_or_after
 
 <!-- /handbook-section -->
 

@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif
+from capital import coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif, shared_caps
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -2414,6 +2414,37 @@ class CapitalService:
                     return portfolio_snapshot.finish(body)
             finally:
                 if before != (self._frozen(), self.case_fixtures, self.terms.__dict__, self.overlay_bounds):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
+    def shared_caps(self):
+        """One lock-held read of existing shared-cap policy; never persist."""
+        with self.lock:
+            body = shared_caps.diagnostic()
+            if (type(self.producer) is not PinnedFsmProducer
+                    or not callable(getattr(self.producer, 'snapshot_inputs', None))):
+                return shared_caps.not_bound(body, 'COHERENT_SNAPSHOT_UNSUPPORTED')
+            if type(self.terms) is not DecisionNoteTermsPolicy:
+                return shared_caps.not_bound(body, 'FROZEN_TERMS_UNSUPPORTED')
+            try:
+                captured = self.producer.snapshot_inputs()
+            except ValueError as exc:
+                return shared_caps.not_bound(body, str(exc))
+            before = (self._frozen(), copy.deepcopy(self.case_fixtures), copy.deepcopy(self.fixtures.__dict__),
+                      copy.deepcopy(self.terms.__dict__), copy.deepcopy(self.overlay_bounds), copy.deepcopy(self.slice_policy))
+            try:
+                frozen = portfolio_snapshot.FrozenInputs.capture(
+                    captured, self.receipts, self.case_fixtures, self.overlay_entries, self.terms, self.overlay_bounds)
+                policy = copy.deepcopy(self.slice_policy)
+                body = shared_caps.captured_diagnostic(frozen, policy)
+                error = portfolio_snapshot.storage_health(self.storage, self.workspace_status, frozen.detached())
+                if error:
+                    return shared_caps.not_bound(body, error)
+                return shared_caps.build(frozen, policy)
+            except (CreditError, ValueError, KeyError, TypeError, ArithmeticError, AttributeError):
+                return shared_caps.not_bound(body, 'CAPTURE_RECONCILIATION_FAILED')
+            finally:
+                if before != (self._frozen(), self.case_fixtures, self.fixtures.__dict__,
+                              self.terms.__dict__, self.overlay_bounds, self.slice_policy):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
     def risk(self):
