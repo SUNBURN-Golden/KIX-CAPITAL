@@ -364,6 +364,11 @@ class ReadinessClaimsTests(unittest.TestCase):
             + len(load_table()['claims']))
         with tempfile.TemporaryDirectory() as tmp:
             evidence = Path(tmp) / 'acceptance-evidence.json'
+            from tests.test_read_model_claims import _tree
+            protocol = Path(tmp) / 'protocol'
+            _tree(protocol, load_read_model())
+            plan = [stage for stage in acceptance.build_plan(ROOT, protocol)
+                    if stage['id'] == 'upstream-claims']
             code = acceptance.execute_plan(
                 plan, root=ROOT, evidence_path=evidence, required=('upstream-claims',))
             data = json.loads(evidence.read_text(encoding='utf-8'))

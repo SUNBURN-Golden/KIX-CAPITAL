@@ -109,6 +109,17 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_repin_checker_operational_boundary(self):
+        for path in (README, HANDBOOK):
+            text = path.read_text(encoding='utf-8')
+            for needle in ('python3 scripts/upstream_repin_check.py --check --root .',
+                           '--baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json',
+                           'CAPITAL_UPSTREAM_REPINS.md', 'EXECUTABLE_VENDOR', 'EXECUTABLE_CITATION',
+                           'RESEARCH_BASELINE', 'EVIDENCE_COMPLETE', 'NOT_BOUND',
+                           'does not authenticate an adoption receipt', 'SIMULATED',
+                           'upstream-repin-inventory-contract-invariants', 'PENDING_NOTE_REGISTRATION'):
+                self.assertIn(needle, text, (path, needle))
+
     def test_bundled_policy_runtime_is_documented_with_provenance_and_override_failure(self):
         handbook = HANDBOOK.read_text(encoding='utf-8')
         start = handbook.index('<!-- handbook-section:artifact-docs-bundling -->')
@@ -364,7 +375,10 @@ class HandbookTests(unittest.TestCase):
             unit_commands.index(fence[0]))
         self.assertEqual(len(upstream_commands), 7)
         for argv in upstream_commands:
-            self.assertIn('--execute', argv)
+            if 'scripts/read_model_claims_check.py' in argv:
+                self.assertNotIn('--execute', argv)
+            else:
+                self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
         for doc in (README.read_text(encoding='utf-8'),
                     HANDBOOK.read_text(encoding='utf-8')):

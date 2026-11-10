@@ -134,6 +134,15 @@ class MutatedDocTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('POST /api/agent/query_grant', err)
 
+    def test_triage_vector_readme_needles_are_required(self):
+        for needle in docs_surface.VECTOR_NEEDLES['observation_triage/']:
+            with self.subTest(needle=needle):
+                tmp, copy = _mutated_copy(README, lambda text: text.replace(needle, 'REMOVED'))
+                self.addCleanup(tmp.cleanup)
+                code, _, err = _run(['--check', '--readme', str(copy)])
+                self.assertEqual(code, 1)
+                self.assertIn(needle, err)
+
     def test_missing_readme_bullet_fails_naming_the_artifact(self):
         tmp, copy = _mutated_copy(
             README, lambda text: _drop_line(text, 'tests/vectors/finance_vectors.json'))
