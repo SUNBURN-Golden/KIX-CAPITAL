@@ -132,6 +132,26 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
+
+## N5-sim shared-source 로컬 증거
+
+`scripts/sim_journeys.py::run_n5`, `tests/test_sim_journeys.py::SharedSourceJourneyTests`,
+`tests/golden/journey_n5_sim.json`은 다음 행의 좁은 합성 증거를 추가한다.
+
+전체 행 완료·준비도 승격 없이 다음 증거만 추가된다.
+
+- `CAP-03`: 기존 HTTP offer/approve/bind/draw/default와 overlay 원 receipt 연결.
+- `CAP-04`: 환불 impairment, holder 우선 서비스·해소 후 공제 유지, recourse/recovery 양 순서 공유 source 보존.
+- `CAP-08`: 활성 slice 이중 등록과 두 lane source 초과 거절; 독립 관측 산술로 현금 초과 사용 없음.
+- `CAP-10`: GET 원 receipt와 entry 대조; 거절 ID는 UNKNOWN, 재게시 없음; 저널·receipt·예약·digest 불변.
+- `CAP-19`: agent의 여섯 slice 명령 및 post_recovery는 403, 상태 변화 없음.
+- `CAP-20`: 기존 integrated-journeys 단계에 결정론적 N5 pin 추가, Capital-local 일곱 여정.
+
+변경 가능한 ScenarioReplaySource는 disposable 장부 전용이며 워크스페이스
+READ_ONLY_FIXTURE는 불변이다. SIMULATED / SHADOW_NOT_APPLIED,
+funds_executed false, integrated false, qualification_claimed false를 유지한다.
+준비금 NOT_BOUND, 변경 소스 영속성·인증된 두 번째 승인·다중 수취인·실제 실행·upstream
+적합성·사람 수용은 주장하지 않는다.
 ## 합성 관측 조사 CLI 확장
 
 `python3 scripts/observation_triage.py --input tests/vectors/observation_triage/input.json`은

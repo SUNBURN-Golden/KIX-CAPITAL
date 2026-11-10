@@ -7,7 +7,7 @@
 ## Capital-local 추가 여정 (SIMULATED)
 
 `python3 scripts/sim_journeys.py --check`는 `integrated-journeys` 단계에서 기존
-T03-sim–T06-sim과 N1-sim, N2-sim을 모두 검사한다. N 이름은 Capital-local이며
+T03-sim–T06-sim과 N1-sim, N2-sim, N5-sim 일곱 여정을 모두 검사한다. N 이름은 Capital-local이며
 upstream T-rung 의미나 자격을 주장하지 않는다. `funds_executed: false`,
 `integrated: false`, `qualification_claimed: false`를 유지한다.
 
@@ -20,6 +20,18 @@ upstream T-rung 의미나 자격을 주장하지 않는다. `funds_executed: fal
   실행하지 않았다는 뜻이다. auditor는 receipt와 journal을 대조하고 manifest와
   workspace를 offline 검증한다. 변조된 citation은 검증 실패해야 한다.
   고정 증거: `tests/golden/journey_n2_sim.json`.
+- N5-sim: 별도 disposable loopback 장부 두 개에서 slice recourse → advance recovery,
+  반대 순서를 비교한다. holder 서비스·SERVED_IN_FULL 뒤에도 공제가 유지되고,
+  합성 환불 impairment, stale quote, 이중 등록·source 초과, agent의 여섯 slice
+  명령과 post_recovery 거절을 HTTP 원 receipt·overlay entry·불변 snapshot으로 검사한다.
+  고정 증거: `tests/golden/journey_n5_sim.json`.
+
+N5의 변경 가능한 `ScenarioReplaySource` 정산 이벤트는
+`SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` / `DISPOSABLE_BOOK_ONLY`다.
+워크스페이스의 불변 `READ_ONLY_FIXTURE`를 변경하거나 변경 소스의 영속성을 주장하지 않는다.
+슬라이스는 `SHADOW_NOT_APPLIED`, 회수는 SIMULATED recorded posting, 준비금은
+`NOT_BOUND`다. 합성 승인자 이름은 인증된 두 번째 승인자가 아니다.
+새 배분 정책·다중 수취인·제공자 호출·실자금 실행은 없다.
 
 실자금·외부 제공자·인증은 없고 제안 자체는 프로세스 메모리 메모다.
 

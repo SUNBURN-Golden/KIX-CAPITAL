@@ -88,8 +88,8 @@ this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
 ## Capital-local named journeys (SIMULATED)
 
-`python3 scripts/sim_journeys.py --check` runs all six named synthetic journeys in
-acceptance's `integrated-journeys` stage. N1-sim and N2-sim are Capital-local names,
+`python3 scripts/sim_journeys.py --check` runs all seven named synthetic journeys in
+acceptance's `integrated-journeys` stage. N1-sim, N2-sim and N5-sim are Capital-local names,
 not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
 `integrated: false`, and `qualification_claimed: false`.
 
@@ -100,6 +100,21 @@ not upstream T-rung semantics or qualification. All retain `funds_executed: fals
   citation-bearing receipt (`effects_executed: false` for the agent), and auditor
   receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
   Pin: `tests/golden/journey_n2_sim.json`.
+- N5-sim: holder-first shared-source conservation with slice recourse before advance
+  recovery and the reverse, each on its own disposable loopback book. Synthetic
+  refund impairment, stale quotes, duplicate slice admission, source overruns and
+  all seven agent write refusals are checked against HTTP receipts and journals.
+  Pin: `tests/golden/journey_n5_sim.json`. Run only this journey with
+  `python3 scripts/sim_journeys.py --journey N5-sim --check`.
+
+N5's changing `ScenarioReplaySource` exists only for the disposable in-process
+journey. Settlement events are `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` /
+`DISPOSABLE_BOOK_ONLY`; this makes no persistence claim for changing sources.
+Workspace fixtures remain immutable `READ_ONLY_FIXTURE`. Slice entries remain
+`SIMULATED` / `SHADOW_NOT_APPLIED`, recovery is a simulated recorded posting,
+`funds_executed: false`, `integrated: false`, `qualification_claimed: false`;
+reserve binding is `NOT_BOUND`. Synthetic approver labels are unauthenticated
+simulation controls. No provider, bank, KYC or real funds are involved.
 
 No real funds, providers or authentication; proposals remain process-memory memos.
 

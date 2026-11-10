@@ -4985,6 +4985,125 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## slice-shared-source-journey — N5-sim (2026-10-31)
+
+Implemented on `agent/capital-slice-shared-source-journey`, starting at
+`c4114c751ea149865493bd3c734bc5d3c423ae2e`. Local tools: Python 3.13.5,
+Node v20.19.2, npm 11.21.1. These are local runs on an uncommitted worktree,
+not GitHub CI, independent review, human acceptance or upstream qualification.
+
+The design fits the existing interfaces without runtime/API, policy, contract,
+closeout-generator or decision-note changes. N5-sim has two separate disposable
+`ScenarioReplaySource` / `PinnedFsmProducer` / loopback server books and a
+105-step deterministic pin. Each derives synthetic cash C = threshold // 5
+(10,000,000 KRW) and holder face H = C // 4 (2,500,000 KRW) from existing
+terms; no financial terms are introduced. A served and resolved holder retains
+H before recourse/recovery compete for C-H. The first lane eventually consumes
+5,000,000 KRW and the other 2,500,000 KRW; reversing the order reverses those
+lane totals. Independent arithmetic uses settlement observations, opening
+baselines and accepted entries rather than production availability helpers.
+
+Eighteen accepted overlay commands correlate HTTP responses, original GET
+receipts and manifest entries. Each of 24 refusals checks both journals, receipt
+collections, reservations, operation count, fixture digest and both state
+digests before/after; absent refused receipts remain UNKNOWN. Both fresh source
+overruns stay below their lane's outstanding claim. The no-replay audit covers
+52 distinct operation IDs. Focused tests also corrupt availability quotes and
+accepted totals to check that the independent conservation assertion fails.
+
+Settlement events alone are `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` /
+`DISPOSABLE_BOOK_ONLY`. Changing sources make no persistence claim; workspace
+fixtures remain immutable `READ_ONLY_FIXTURE`. Slices retain `SIMULATED` /
+`SHADOW_NOT_APPLIED`; recovery remains a simulated recorded posting with no
+funds execution. The evidence keeps `integrated:false`,
+`qualification_claimed:false`, applicable false execution flags and reserve
+`NOT_BOUND`. Approver labels are unauthenticated synthetic controls. No provider,
+new allocation policy, multi-payee model or production execution is introduced.
+
+Plan adjustments: existing recourse quotes expose the holder deduction through
+availability rather than a `slice_held_krw` field; recovery exposes that field.
+Exhaustion retains a zero-available recourse quote and omits the recovery quote.
+Recovery POST responses add a common overlay label whereas original GET receipts
+retain `SIMULATED`; correlation explicitly allows only that label-envelope
+difference. These are existing API shapes, not runtime changes. All six earlier
+journey goldens are preserved. No consequential decision was needed. A later closeout-pin test correction is
+documented below.
+
+Commands below were actually run from the repository root. Logs and raw
+acceptance evidence stay ignored under `build/`; generated closeout/vector files
+are refreshed only from passing acceptance evidence.
+
+| Command | Actual result |
+|---|---|
+| `python3 scripts/sim_journeys.py --journey N5-sim --update-golden` | Five development invocations: first four exited 1 while integrating existing shapes (synthetic advance ID prefix, absent recourse holder field, absent recovery shadow flags, recovery receipt label envelope); fifth exited 0 and wrote only the new N5 pin. |
+| `python3 scripts/sim_journeys.py --journey N5-sim --check` | Exit 0; 105 steps; digest `15990d10d208e4c7929074a8793f14ffbac922a84051545e8a3e8533e3c5d90a`. |
+| `python3 -m unittest tests.test_sim_journeys tests.test_claim_slices tests.test_acceptance tests.test_docs_surface -v` | Exit 0; 88 tests in 33.885s. Log: `build/node-shared-source/narrow.log`. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. N5 name/path registered; no new vectors paths. |
+| `python3 scripts/sim_journeys.py --check` | Exit 0; seven pins match: T03 22, T04 38, T05 35, T06 33, N1 16, N2 18, N5 105 steps. Log: `build/node-shared-source/journeys.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests in 0.001s. Log: `build/node-shared-source/vendor.log`. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 -m unittest discover -s tests -v` (first run) | Exit 1; 1,306 tests in 334.891s, two failures. The supplemental requirements evidence table duplicated CAP IDs; the coverage guard requires each canonical CAP row exactly once. Converted only the new mappings to prose bullets and kept the guard intact. Log: `build/node-shared-source/unit-first.log`. |
+| `python3 -m unittest tests.test_coverage tests.test_decisions_surface -v` | Exit 0; 26 tests in 3.142s after the prose-only requirements fix. |
+| `python3 -m unittest discover -s tests -v` (rerun) | Exit 0; 1,306 tests in 316.064s. Log: `build/node-shared-source/unit.log`. |
+| `npm run test:browser` (first two attempts) | Both exited 1 before tests: absent local Playwright test runner, then an unrelated pre-existing crawler listening on 127.0.0.1:8765. The crawler was identified read-only and left untouched. |
+| `npm ci --ignore-scripts` | Exit 0; installed the three lockfile-pinned browser-tooling packages; no tracked dependency changes. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && ip addr show lo'` | Exit 0; verified a fresh network namespace with loopback up, allowing unchanged browser config/ports and no interference with the crawler. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && npm run test:browser'` | Exit 0; all 76 Chromium tests passed (1.8m), unchanged config and tests. Log: `build/node-shared-source/browser.log`. |
+
+Verification environment adjustment: an unrelated crawler already owns the
+repository's default browser port. Browser and acceptance commands therefore run
+inside fresh user/network namespaces with loopback enabled. This changes no
+tracked CI or test configuration, skips no stage, makes no external network
+available, and leaves the pre-existing crawler untouched. Browser-managed servers
+terminate at the end of their run. `npm ci --ignore-scripts` installed existing
+lockfile-pinned tooling only; package files remain unchanged.
+
+| Command | Further actual result |
+|---|---|
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && python3 scripts/acceptance.py'` (initial acceptance attempt) | Exit 1; eight stages passed; browser 74 passed / two failed. Desk trace records a screenshot exceeding the existing 30s test timeout; portfolio observed UNBOUND while waiting for BOUND. No closeout/vector artifact was regenerated from this failed evidence. Saved as `build/node-shared-source/acceptance-failed.json` with traces copied under the same ignored directory. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && npm run test:browser -- --project=workspace tests/browser/operator-desk.spec.cjs tests/browser/portfolio.spec.cjs'` | Exit 0; all 17 affected-file tests passed unchanged (55.4s). No test, timeout, browser config or runtime change; the failures did not reproduce. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && python3 scripts/acceptance.py'` (passing source pass) | Exit 0; all nine stages passed; `ok:true`, `label:SIMULATED`, `funds_executed:false`. Counts: unit 1,306; storage 19; vendor 7; upstream 322 passed / 324 total with two documented divergences; browser 76; packaged smoke 11; seeded demo 1; integrated journeys 7. Saved passing raw evidence: `build/node-shared-source/acceptance-first.json`. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0; 4,582 bytes generated from the passing source pass. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; 101,112 bytes generated; structural comparison with HEAD shows only the embedded `closeout_digest` group changed. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && python3 scripts/acceptance.py'` (first final-tree attempt) | Exit 1; browser 76/76 and all other stages passed except unit (1,305 passed / one failed). Regeneration exposed a stale hand-maintained command expectation in `tests/test_closeout_digest.py::STAGES`: it omitted the `--check` already used by the acceptance runner. Saved evidence: `build/node-shared-source/acceptance-second-failed.json`. |
+| `python3 -m unittest tests.test_closeout_digest tests.test_finance_vectors tests.test_acceptance -v` | Exit 0; 123 tests in 4.861s after aligning that exact expected command with the existing acceptance runner. The exact-equality guard remains intact. No generator, CI, runtime or golden changes. |
+
+Additional plan deviation: the refresh required the one-line hand-maintained
+`tests/test_closeout_digest.py::STAGES` correction above, a file not named in the
+original implementation list. No assertions were removed or broadened. Test
+count and all covered closeout fields remain unchanged by that correction; the
+final acceptance rerun must still match the previously generated artifact.
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && python3 scripts/acceptance.py'` (final rerun) | Exit 0; all nine stages passed again with the same counts as the passing source pass: 1,306 unit, 19 storage, 7 vendor, 322 upstream passed plus two documented divergences, 76 browser, 11 packaged smoke, 1 seeded demo and 7 journeys. `ok:true`, `SIMULATED`, `funds_executed:false`, `integrated:false`, qualification not claimed. Saved as `build/node-shared-source/acceptance-second.json`. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0; all covered fields match the first-pass-derived artifact, 4,582 bytes. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; canonical digest is valid and embedded identically in finance vectors. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101,112 bytes match. |
+| `python3 scripts/docs_surface.py --check` (final sequence) | Exit 0; 36 routes, 273 artifacts, nine stages. |
+
+Final read-only hygiene commands: `python3 build/node-shared-source/check_preservation.py`
+and `git diff --check` both exit 0. The local audit verifies all five vendor SHA256
+locks and byte equality with HEAD for those files, manifest, legacy export and
+all six prior journey goldens, plus no CI/`.aiops/` changes or unmerged entries.
+The only finance vector group changed is the generated `closeout_digest` group.
+No server from this task remains running; the unrelated pre-existing crawler on
+8765 remains untouched. No commit, push, PR, issue, comment or external post was
+made. All passing evidence remains local and SIMULATED; this is not production
+readiness, real execution, upstream completion or human product acceptance.
+
+Re-verification on the same uncommitted tree (builder second pass, 2026-10-31):
+`python3 scripts/sim_journeys.py --journey N5-sim --check` and `--check` exit 0
+(seven pins, N5 105 steps); the narrow four-module suite exits 0 (88 tests);
+`python3 -m unittest discover -s tests` exits 0 (1,306 tests, 369.5s). The first
+acceptance rerun inside a fresh user/network namespace exited 1 at the browser
+stage (71/76; five `acceptedClick` REJECTED receipts under host load), matching
+the earlier transient pattern; a standalone `npm run test:browser` rerun passed
+76/76 (1.9m) unchanged, and the next acceptance rerun passed all nine stages
+(`ok:true`, `SIMULATED`, `funds_executed:false`). `closeout_digest.py
+--check-evidence/--check`, `finance_vectors.py --check` and `docs_surface.py
+--check` all match that fresh passing evidence. No artifact was regenerated from
+the failed evidence; no test, timeout or configuration was changed. The foreign
+crawler on 127.0.0.1:8765 remains untouched and no server from this work
+remains running.
 ## observation-triage-cli
 
 Implemented offline SIMULATED observation diagnostics with a bounded stdlib API/CLI,
@@ -5428,3 +5547,51 @@ The measured package SHA256 is
 The merge remains staged and uncommitted for the supervisor. No commit, push,
 abort, rebase, reset, external post, real provider call, financial execution,
 real credential use, deployment, upstream modification or protected-path edit occurred.
+
+## slice-shared-source-journey — conflict-fix round 2 (2026-11-10)
+
+Combined reviewed branch HEAD `22e4fae` with supervisor-provided `origin/main`
+`a791651` in the existing merge. The two conflicts were generated artifacts:
+`tests/vectors/closeout_digest.json` and its containing finance vector pack.
+The finance generator retains main's expanded read-model contract and route
+coverage. The closeout generator records fresh measured acceptance results for
+the merged tree, including all seven journeys; historical test counts are not
+added together. Main's default read-model command remains explicitly SKIPPED
+without a Protocol checkout; a separate read-only checkout verification records
+113/113 claims and 113/113 citations, without attributing those rows to the
+default acceptance run.
+
+The N5 implementation, focused tests and 105-step golden remain byte-identical
+to reviewed HEAD, including both disposable command orderings, holder-first
+cash accounting, stale quotes, double-use and source-overrun refusals. All nine
+incoming files under `capital/` remain byte-identical to `origin/main`. Both
+documentation histories and the seven-journey acceptance wiring survive.
+All evidence remains SIMULATED, `funds_executed:false`, `integrated:false`,
+with no qualification or changing-source persistence claim. Browser acceptance
+uses an isolated user/network namespace with only loopback enabled; unrelated
+services on the shared browser ports are left untouched. No checks, guards,
+timeouts or CI configuration were weakened.
+
+| Command / evidence | Measured result |
+| --- | --- |
+| Focused journey, slice, acceptance, docs-surface, finance and closeout unittest modules | 205 passed in 37.681s; `build/merge-round2-focused.log`. |
+| `python3 scripts/sim_journeys.py --journey N5-sim --check` | Exit 0; 105 steps; unchanged digest `15990d10d208e4c7929074a8793f14ffbac922a84051545e8a3e8533e3c5d90a`. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && python3 scripts/acceptance.py --evidence build/merge-round2-acceptance.json'` | Exit 0; all nine stages passed; raw evidence `ok:true`, `SIMULATED`, `funds_executed:false`, `integrated:false`; log `build/merge-round2-acceptance.log`. |
+| `python3 -m unittest discover -s tests -v` inside acceptance | 1,462 passed in 502.966s; zero failures or skips. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven passed standalone and in acceptance. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `npm run test:browser` inside isolated acceptance | 76 Chromium tests passed; existing configuration and assertions unchanged. |
+| Remaining acceptance stages | Storage 19; upstream 283 passed / 285 total with two documented divergences and read-model checker separately SKIPPED; packaged smoke 11; seeded demo one; all seven journey pins match. |
+| `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; 113/113 claims and 113/113 citations; read-only reference checkout. |
+| Pack, manifest, event-stress, observation-triage and upstream-repin checks | Exit 0; nine pack files, 19 manifest files and three event-stress cases match; triage PASS; re-pin HOLD with no findings. |
+| `python3 scripts/closeout_digest.py --write --evidence build/merge-round2-acceptance.json`; `python3 scripts/finance_vectors.py --write` | Regenerated 4,572-byte closeout and 102,318-byte finance container from the passing merged-tree run; retained main's 39 read-model GET routes. |
+| Closeout `--check-evidence` against that run and `--check`; finance `--check`; docs-surface `--check` | All exit 0; standalone and embedded bytes agree; 37 dispatch routes, 276 artifacts, nine stages. |
+| `python3 -m unittest tests.test_closeout_digest tests.test_finance_vectors -v` after regeneration | 115 passed in 3.682s; `build/merge-round2-regenerated.log`. |
+| Preservation audit | All seven non-closeout finance groups equal main; five vendor SHA256 locks and manifest unchanged; legacy export and `.aiops/` unchanged; historical root decision state inherited from main without edits. |
+
+The measured package SHA256 remains main's
+`4b108a62d9caf1336fa79cc562f53147e7bd33d5598316c32a5beb41e9890644`.
+Only fresh measured unit and journey counts change main's closeout evidence;
+no runtime code changed during this conflict resolution. The merge is left
+resolved and uncommitted for the supervisor. No abort, commit, push, rebase,
+reset, external post, real provider call, credential use or deployment occurred.
