@@ -97,6 +97,8 @@ def verify_manifest(document, key=None, key_error=None, *, keyset=None, keyset_e
             state = overlay.fold(body['journal'], len(journal))
             recovery.validate_links(body['journal'], journal)
             slices.validate_links(body['journal'], journal, sections['fixtures']['body'].get('rows', {}))
+            from capital.observation_record import validate_links as validate_observations
+            validate_observations(body['journal'], journal, sections['fixtures']['body'].get('rows', {}))
             if body['state'] != state or body['overlay_state_digest'] != overlay.state_digest(state):
                 raise ValueError('overlay fold differs')
         except (ValueError, KeyError, TypeError, ArithmeticError):

@@ -33,6 +33,9 @@ CHECK_IDS = (
 COA_CHECK_IDS = (
     'coa_candidate_totals_vs_v1',
     'interest_ledger_vs_projection',
+    'payment_ledger_vs_projection',
+    'recovery_ledger_vs_projection',
+    'writeoff_ledger_vs_projection',
 )
 
 NOT_BOUND_GAPS = (
@@ -164,6 +167,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         _check('fixtures_digest', fixtures_ok, 'fixture_face'),
     ]
     overlay_digest = None
+    observation_check = None
     if overlay_entries:
         # Conditional on a non-empty overlay (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
         overlay_ok, overlay_digest, overlay_detail = overlay_fold_check(
@@ -180,12 +184,20 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
                 validate_slice_links(overlay_entries, journal, settlement_source)
         except ValueError:
             overlay_ok, overlay_detail = False, 'claim_slice_link'
+        if overlay_ok:
+            try:
+                from capital.observation_record import capture_check
+                observation_check = capture_check(overlay_entries, journal, settlement_source)
+            except ValueError:
+                overlay_ok, overlay_detail = False, 'observation_link'
         checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
     if coa_port is not None:
         checks.extend(_coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
                                   overlay_entries or []))
     unknown = _unknowns(receipts, journal, probe_operation_id)
     status = 'MATCHED' if all(row['status'] == 'MATCHED' for row in checks) else 'RECON_MISMATCH'
+    if observation_check is not None:
+        checks.append(observation_check)
     report = _envelope(
         instance_id=instance_id, status=status, replay_matched=replay_ok, entry_count=len(journal),
         cut=state_digest, fixtures_digest=fixtures_digest, operation_capacity=operation_capacity,
@@ -208,7 +220,7 @@ def _coa_labels():
 
 
 def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error, overlay_entries):
-    """The two COA candidate checks. A failed projection is a mismatch, never a repair."""
+    """The additive COA candidate checks. A failed projection is a mismatch, never a repair."""
     if restore_error is not None:
         return [_check(check_id, False, 'replay') for check_id in COA_CHECK_IDS]
     evidence = [copy.deepcopy(fixture_rows[key]) for key in sorted(fixture_rows)]
@@ -218,9 +230,15 @@ def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
     except ProjectionError as exc:
         return [_check(check_id, False, exc.code) for check_id in COA_CHECK_IDS]
     return [
-        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base), 'coa_vs_v1_totals'),
+        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base, overlay_entries), 'coa_vs_v1_totals'),
         _check('interest_ledger_vs_projection', coa.interest_matches_ledger(candidate, overlay_entries),
                'interest_vs_overlay_fold'),
+        _check('payment_ledger_vs_projection', coa.payments_match_ledger(candidate, overlay_entries),
+               'payment_vs_overlay_fold'),
+        _check('recovery_ledger_vs_projection', coa.recoveries_match_ledger(candidate, overlay_entries),
+               'recovery_vs_overlay_fold'),
+        _check('writeoff_ledger_vs_projection', coa.writeoffs_match_ledger(candidate, overlay_entries),
+               'writeoff_vs_overlay_fold'),
     ]
 
 
