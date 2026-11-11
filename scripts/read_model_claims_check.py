@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Run pinned read-model claim checks, and optionally read a protocol checkout.
+"""Run pinned READ_MODEL_QUERIES claim rows against a protocol checkout.
 
-With no --protocol-dir, drift status is SKIPPED. SKIPPED is not a success.
---protocol-dir reads cited headings and needles and does not write the tree.
---execute maps the read-model claim table onto the existing loopback read
-surfaces. Results are SIMULATED. This is CLAIM_CONFORMANCE.
+The rows cite kix-protocol 244595d (READ_MODEL_QUERIES draft 0.1). With no
+--protocol-dir the rows are SKIPPED: they are not run and nothing is reported
+as passed. With --protocol-dir the script runs every row over the in-process
+loopback facade (SIMULATED, CLAIM_CONFORMANCE) and then checks each citation
+and the section 2.11 to 2.13 key lists against that checkout, reading it
+without writing. The drift check reads the checkout's working tree, not the
+pinned commit. --execute runs the rows alone, for a local table check.
 """
 from __future__ import annotations
 
@@ -23,7 +26,7 @@ from capital.read_model_claims import ClaimTableError, check_protocol, load_tabl
 def _print_skipped():
     print('SKIPPED')
     print(json.dumps(
-        {'drift': 'not-run', 'label': 'CLAIM_CONFORMANCE', 'status': 'SKIPPED'},
+        {'drift': 'not-run', 'label': 'CLAIM_CONFORMANCE', 'rows': 'not-run', 'status': 'SKIPPED'},
         sort_keys=True,
     ))
 
@@ -46,20 +49,18 @@ def main(argv=None) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     code = 0
-    if args.execute:
-        result = run_claims(table)
-        failed = result['failed']
+    result = run_claims(table)
+    print(
+        f"CLAIM_CONFORMANCE passed={result['passed']} total={result['total']} "
+        f"failed={len(result['failed'])}"
+    )
+    for row in result['failed']:
         print(
-            f"CLAIM_CONFORMANCE passed={result['passed']} total={result['total']} "
-            f"failed={len(failed)}"
+            f"FAIL {row['id']} observed={row['observed']!r} expected={row['expected']!r}",
+            file=sys.stderr,
         )
-        for row in failed:
-            print(
-                f"FAIL {row['id']} observed={row['observed']!r} expected={row['expected']!r}",
-                file=sys.stderr,
-            )
-        if not result['ok']:
-            code = 1
+    if not result['ok']:
+        code = 1
     if protocol_dir is not None:
         report = check_protocol(protocol_dir, table)
         print(f"CLAIM_DRIFT verified={report['verified']} total={report['total']}")
