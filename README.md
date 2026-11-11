@@ -316,6 +316,29 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
 
+Recorded provider-capture assertions are implemented under
+[CAPITAL_OBSERVATION_RECORD.md](docs/decisions/CAPITAL_OBSERVATION_RECORD.md).
+`POST /api/overlay/commands` accepts `op: "record_external_fact"` from the
+organizer only (agent `403 FACT_AGENT_FORBIDDEN`, other roles
+`403 FACT_ROLE_FORBIDDEN`), folding `PROVIDER_PAYMENT_CAPTURE` facts into
+`state.observations` keyed by fact id with a derived `ACTIVE`/`SUPERSEDED`
+status. Every fact is a constant `SIMULATED` + `UNVERIFIED_ASSERTED` +
+`funds_executed: false` + `provider_call_made: false` assertion — never a
+provider/bank/chain confirmation and never reconciliation or set-off cash.
+Recording enforces `operation_id` dedup (`409 FACT_IDEMPOTENCY_CONFLICT`),
+clock CAS (`409 SIM_CLOCK_STALE`), the note's bounds (`409 SIMULATION_CAPACITY`
+scope `external_facts`, `409 FACT_SUPERSEDE_DEPTH`), claim existence
+(`409 FACT_CLAIM_UNKNOWN`) and the volatile/personal-key ban
+(`400 OVERLAY_VOLATILE_KEY`). `GET /api/reconciliation` gains the conditional
+check `recorded_captures_vs_claim_face` (`MATCH`/`ASSERTED_MISMATCH`/`NO_FACTS`,
+diagnostic `OBSERVED_FACT_MISMATCH` only) only while observations exist; the
+offline workspace auditor computes the same row. Facts move no money, never
+gate the FSM or shadow derivations, and appear only inside the V3 `overlay`
+manifest section — `demo.json` and `overlay_empty.json` stay byte-identical.
+The seeded disposable demo pins `tests/golden/overlay_observations.json`:
+`python3 scripts/seed_overlay_observations.py` checks it, `--write`
+regenerates explicitly.
+
 
 ### Cursor-paginated facts (SIMULATED)
 
