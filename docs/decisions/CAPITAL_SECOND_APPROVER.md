@@ -117,6 +117,7 @@ Do not add a second login, signature widget or pending-approval queue. Browser a
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-10",
   "provisional": true,
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "consumers": [
     "overlay-recovery-writeoff",
     "claim-slice-registry",
