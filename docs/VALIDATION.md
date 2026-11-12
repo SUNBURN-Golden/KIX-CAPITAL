@@ -5748,3 +5748,109 @@ staged and unstaged whitespace checks, unchanged protected bytes, and preservati
 of both parents' exclusive paths. The three conflict resolutions and this
 validation record are staged. The supervisor owns the uncommitted merge; no
 commit, push, abort, rebase or reset was performed.
+
+
+### 2026-11-12 — loss-allowance-postings (SIMULATED, uncommitted builder)
+
+Implemented the adopted CAPITAL-LOSS-ALLOWANCE-V2 / ALLOWANCE_CANDIDATE_V2
+candidate: ordered 1190/5100 deltas, complete population/cut/policy evidence,
+reserve-pool memo and allowance_vs_risk_reserve. Seed allowance and risk both
+recompute to 30,750 KRW. Two T1 advances of 66 KRW independently give allowance
+0, portfolio floor 1, risk 0 and delta +1 (MISMATCH). V2 releases once before
+existing gross write-off; post-writeoff recovery leaves allowance zero.
+
+Compatibility interpretation follows the design and adopted V2 decision:
+existing 4300/5200 postings stay POSTED. The node adds no new recovery/write-off
+source; ALLOWANCE can post only 1190/5100. Existing risk semantics remain pinned:
+acceleration/refund evidence can be incomplete (NOT_BOUND), while overlay
+principal reductions/write-offs can produce a valid MISMATCH. No new vector
+files, pack changes, upstream edits, policy decisions, external calls, commits
+or GitHub actions were needed. All amounts are synthetic; provisional policy
+adoption is not operational accounting or professional legal/tax approval.
+
+Commands actually run (from this node worktree; redirected logs are under /tmp):
+
+| Command | Observed result |
+| --- | --- |
+| `PYTHONPATH=tests python3 -m unittest test_coa_candidate test_coa_payment_writeoff -q` | Initial run: 43 tests, 30 errors from a missing assets import. Next: 54 tests, 7 failures/4 schema errors from old status/dimension expectations and missing check schema alternative. One edit introduced a SyntaxError, fixed immediately. Final rerun: 54 passed. Byte guards were retained. |
+| `PYTHONPATH=tests python3 -m unittest test_allowance -q` | Initial 20 tests: 4 failures/2 errors exposed invalid test fixture IDs/event names, write-off prerequisite, evidence population comparison and incomplete risk coverage. Corrected fixtures/assertions; all 20 passed. |
+| `PYTHONPATH=tests python3 -m unittest test_allowance test_coa_candidate test_coa_payment_writeoff test_workspace_audit test_risk -q` | First 116 passed; after additional negative/schema cases, all 119 passed (23.393s). |
+| `python3 scripts/finance_vectors.py --write` | Regenerated existing finance_vectors.json (102,920 bytes) for the additive facade response schema. |
+| `python3 scripts/decision_bindings.py --check` | Passed; seven allowance entries now have actual consuming code/test bindings. |
+| `python3 scripts/docs_surface.py --check` | Passed: 37 routes, 276 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check` | Passed, 102,920 bytes reproduce. |
+| `python3 scripts/pack_vectors.py --check` | Passed, nine existing files unchanged. |
+| `python3 scripts/workspace_vectors.py --check` | Passed, six files. |
+| `python3 scripts/manifest_vectors.py --check` | Passed, 19 files. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci` | Exit 0, installed three locked packages; zero audit vulnerabilities. Chromium was already available locally. |
+| `python3 scripts/seed_demo.py --workspace /tmp/loss-allowance-review.20cUTV` | Passed; unchanged state digest a8609033… and V1 content digest 2f71dab1…; debit=credit=385,000. Directory was created with mktemp. |
+| `python3 -m capital.verify --workspace /tmp/loss-allowance-review.20cUTV` | Exit 0, six default checks, no lock or writes. |
+| `python3 -m capital.verify --workspace /tmp/loss-allowance-review.20cUTV --mode coa-candidate` | Exit 0, twelve checks; allowance=target=risk=30,750, MATCH, delta=0. |
+| `python3 scripts/build_release.py --out /tmp/loss-allowance-dist` and `--out /tmp/loss-allowance-dist2`; `cmp /tmp/loss-allowance-dist/capital-*.pyz /tmp/loss-allowance-dist2/capital-*.pyz`; `python3 scripts/smoke_release.py /tmp/loss-allowance-dist/capital-*.pyz` | Both builds and comparison passed; all eleven packaged smoke probes passed. Final acceptance also rebuilds the final source. |
+| Inline Python byte comparison with git HEAD for vendor/export/overlay/ports/projection/demo and root decision state | Passed for all six vendor files including manifest and all protected files. First attempted guard assumed the historical root decision file existed; it is absent in this worktree and HEAD. Corrected guard verifies unchanged presence/absence. demo.json SHA256 c575e407c98913b53da47871e89ca31acc53382fdd9be7c45a9afb1cb522f3cc. |
+| `git diff --check` | Passed. |
+
+Full suite, browser and acceptance results are appended below after completion.
+
+
+Additional final-source artifact checks:
+
+| Command | Result |
+| --- | --- |
+| `python3 scripts/build_release.py --out /tmp/loss-allowance-final-dist` and `--out /tmp/loss-allowance-final-dist2`; `cmp /tmp/loss-allowance-final-dist/capital-*.pyz /tmp/loss-allowance-final-dist2/capital-*.pyz` | Exit 0; identical final-source artifacts SHA256 135138d90de2a8d0e92f0cfb487992ec46f9a11d26abe50afea4cb3649ab5b83. |
+| From `/tmp`: `PYTHONPATH=/tmp/loss-allowance-final-dist/capital-0.2.0.pyz python3 -m capital.verify --workspace /tmp/loss-allowance-review.20cUTV --mode coa-candidate` | Exit 0, packaged policy/resources work: MATCH, target 30,750. |
+
+
+| Completed browser command | Result |
+| --- | --- |
+| `npm run test:browser` | Exit 0; all 77 Playwright Chromium cases passed (7.3m). Playwright-managed loopback servers stopped on completion. |
+
+
+The first `python3 scripts/acceptance.py --evidence build/loss-allowance-acceptance.json`
+run overlapped the standalone suite/browser run. Its unit stage hit the existing
+900-second timeout (exit 124; no assertion failure reported). The already-failed
+orchestrator was then stopped (exit 143) together with its active child process
+group to avoid redundant work. No passing evidence is claimed for that run.
+A subsequent full ladder uses an isolated temporary directory on /dev/shm;
+no timeout, stage requirement, test, or CI configuration is relaxed.
+
+
+| Full standalone command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,551 tests passed (2,159.959s on this filesystem/host). No failures or skips. |
+| Final focused rerun: `PYTHONPATH=tests python3 -m unittest test_allowance test_coa_candidate test_coa_payment_writeoff test_workspace_audit test_risk -q` | Exit 0; 119 passed (31.584s), including an explicit assertion that post-draw rebinding is rejected. |
+| `git rev-list --left-right --count HEAD...origin/main` | 0 / 0: no baseline/branch drift requiring integration. |
+
+
+#### Completion results — 2026-11-13 KST
+
+| Final command / stage | Observed result |
+| --- | --- |
+| `TMPDIR=/dev/shm/loss-allowance-ci.Om7BXW python3 scripts/acceptance.py --evidence build/loss-allowance-acceptance-isolated.json` | Exit 1, overall ok=false. Unit stage hit the unchanged 900s deadline while progressing through existing load-harness tests; repeated browser stage hit the unchanged 600s deadline after 58 completed cases. Output tails report timeouts, not assertion failures. This aggregate run is **not** claimed as a pass. |
+| Acceptance storage-conformance commands | Passed 19 checks (storage plus crash replay). |
+| Acceptance pinned-vendor stage | Passed seven tests. |
+| Acceptance upstream-claims stage | 283 passed plus two documented divergences / 285; external read-model citation command was explicitly SKIPPED because no protocol checkout was supplied, never counted as passed. |
+| Acceptance JavaScript syntax stage | Exit 0. |
+| Acceptance packaged-smoke stage | All eleven probes passed on the final artifact. |
+| Acceptance seeded-demo stage | Passed, unchanged golden. |
+| Acceptance integrated-journeys stage; independent `python3 scripts/sim_journeys.py --check` | Both passed all six SIMULATED journeys (T03/T04/T05/T06/N1/N2). |
+
+Required standalone node verification commands passed: the full 1,551-test
+suite, final 119-test focused run, seven vendor tests, compileall, JavaScript
+syntax and all 77 browser cases. The full discovery process started before the
+last three additional negative/schema tests were added; those three are included
+in the final focused 119-test pass. The aggregate acceptance wrapper remains a
+host deadline limitation (900s unit / 600s browser), despite the completed
+standalone passes. No timeout, test assertion, required stage or CI definition
+was changed to turn that limitation into a pass.
+
+Browser output is preserved under `/tmp/loss-allowance-browser1` (successful
+77-case run) and `/tmp/loss-allowance-browser2` (partial repeated run). Both
+tracked report symlinks were restored byte-for-byte. The timeout left four
+Playwright loopback servers and their shell parents orphaned; all owned server
+processes were stopped and a subsequent process check found none. No long job
+is left running. The failed ladder evidence remains at
+`build/loss-allowance-acceptance-isolated.json` (ignored generated output).

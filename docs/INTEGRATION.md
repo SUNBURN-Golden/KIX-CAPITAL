@@ -236,7 +236,7 @@ before verification. Never use fixture keys outside tests.
 - `GET /api/export`: accepted journal, source pin, fixture digest, state digest and replay match. `durable` follows the same memory / `LOCAL_FILE_WORKSPACE` label as state. No import or resume endpoint. Not authenticated financial export, bank reconciliation, accounting evidence, or stage5 durable recovery. Permission `export:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. This v1 document is unchanged by the v2 manifest.
 - `GET /api/export/manifest`: read-only manifest. With an empty overlay journal it is format `KIX_CAPITAL_EXPORT_MANIFEST_V2`, byte-identical to before the overlay (`tests/golden/demo.json`). With a non-empty overlay it is `KIX_CAPITAL_EXPORT_MANIFEST_V3`: the seven sections plus `overlay` (part tag `overlaypart`; body `label` SIMULATED, `overlay_schema`, `sim_day`, `clock_source`, `terms_binding`, `entry_count`, `journal`, `state`, `overlay_state_digest`), and `reconciliation` gains the check `overlay_fold_digest_equals_persisted` and `scope.overlay_state_digest` (a mismatch makes the manifest `INCOMPLETE` with `RECONCILIATION_NOT_CLEAN`). `capital.verify` accepts both formats and rejects V3 without `overlay` and V2 with `overlay` as `SECTION_SET` (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2); `tests/golden/overlay_demo.json` pins the V3 `content_digest`. Signing is unchanged (the one `content_digest`; stage7 stays out of scope). Sections are `journal`, `receipts`, `projection`, `reconciliation`, `statement`, `fixtures`, and `source_pin`. The `source_pin` body carries the pinned `commit`, `repository`, `files`, `integrity` and the same one-entry `assets` array as `GET /api/state`. Each section object is `{sha256, body}` and `sha256` is SHA-256 of that body's canonical JSON (`sort_keys`, compact separators). `content_digest` is SHA-256 of canonical JSON of `content_material()` in `capital/export.py`, computed in three steps: (a) remove the top-level `content_digest` and `signature` fields; (b) strip `instance_id`, `created_at`, `saved_at`, `timestamp`, and `timestamps` at every depth; (c) recompute each section's `sha256` over its stripped `body` and substitute it for the stored value. The stored section `sha256` still covers the body as saved, so it can differ from the recomputed value. The verifier checks the stored value first (`SECTION_HASH_MISMATCH`), then the digest. `cursor`, `watermark`, and `source_cut` are JSON null and listed in `not_bound` with status `NOT_BOUND`. The same is true of an external key and authentication. `retention_policy` is an object of five named slots — `legal_dispute_hold`, `business_reconciliation`, `retry_support`, `memory_residency`, and `tax_accounting_records` — each `{owner, status}` with `status` `UNDETERMINED` or `DECISION_REQUIRED` per upstream R1 (kix-protocol PR #139) and `CAPITAL-RETENTION-PRIVACY-V1` in `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`. No slot carries a duration, bound, or timer; those values stay `NOT_BOUND` in the `not_bound` `retention_policy` row, and nothing deletes anything. `status` is `INCOMPLETE` when reconciliation is not `MATCHED` or the workspace is not `ACTIVE`. It is never reported `COMPLETE` in those cases. `COMPLETE` means only that the local sections were hashed on a matched, readable book. `stage7_authenticated_export` stays false. There is no import or resume route. Permission `export:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`.
 - `SignaturePort` (`capital/export.py`) is the adoption seam for a later stage7 authenticator. The default `UnsignedSigner` sets the signature to `NOT_BOUND`. `--dev-hmac` with `--workspace` opts into `DevHmacSigner`: one key file `WORKSPACE/export-dev.key`, created mode `0600`, labeled `DEV_ONLY`. The file starts with the ASCII label `DEV_ONLY` and is never returned in a response or log. A shared HMAC key is integrity only, not authentication. It is not an external key and not a credential. `python3 -m capital.verify FILE --key-file K` recomputes every section hash, the content digest, and the signature. The first mismatch is the reason (`SECTION_HASH_MISMATCH:<section>`, `CONTENT_DIGEST_MISMATCH`, or `SIGNATURE_MISMATCH`). An unsigned file verifies as signature `NOT_BOUND` without a key file.
-- `GET /api/reconciliation`: read-only local exception report. The report body is the same for every role that may read it; the role only decides access, which is gated by permission `reconciliation:read`. Six checks (`receipts_vs_journal_keys`, `rejected_receipts_absent_from_journal`, `replay_digest_equals_state_digest`, `case_fixture_map_vs_journal_offers`, `projection_totals_vs_case_views`, `fixtures_digest`) are `MATCHED` or `RECON_MISMATCH`. Journal keys and ACCEPTED receipts match, except the pinned F04 `reconcile` command, which stores an ACCEPTED receipt and does not append a journal row. A clean book is all `MATCHED`. `not_bound` lists bank/PG/provider observations, source cut, and completeness. An absent receipt, including `?operation_id=` when that id was never stored, is `UNKNOWN_UNRESOLVED` with `retry_authorized=false` and is not resolved or retried. Writes no receipt. `?mode=coa-candidate` (or `simulation`) is the only query beside `operation_id`: `coa-candidate` appends five checks, `coa_candidate_totals_vs_v1` (the renamed 1100/9100/9110 totals equal V1 after independently verified recovery/write-off principal adjustments) and `interest_ledger_vs_projection` (the folded overlay interest equals gross debits to `1110` plus `9700`, with suspended cash income excluded from the income tie), `payment_ledger_vs_projection`, `recovery_ledger_vs_projection`, and `writeoff_ledger_vs_projection`, and a `coa_candidate` label block. The three new checks compare the union of overlay and posting advance IDs, rejecting both missing and unexpected postings; they tie interest paid by kind, held cash, principal recovery, late recovery and write-off/release totals to the overlay fold. The default report and the manifest keep the six checks. `bank_reconciliation` stays `NOT_BOUND`. `durable` on this response stays `false` because the report is not the workspace file. Scope carries the examined `state_digest` cut, fixtures digest, and operation capacity bound. This is not the POST `reconcile` command, which stores a receipt and is refused to auditor and observer. Permission `reconciliation:read`.
+- `GET /api/reconciliation`: read-only local exception report. The report body is the same for every role that may read it; the role only decides access, which is gated by permission `reconciliation:read`. Six checks (`receipts_vs_journal_keys`, `rejected_receipts_absent_from_journal`, `replay_digest_equals_state_digest`, `case_fixture_map_vs_journal_offers`, `projection_totals_vs_case_views`, `fixtures_digest`) are `MATCHED` or `RECON_MISMATCH`. Journal keys and ACCEPTED receipts match, except the pinned F04 `reconcile` command, which stores an ACCEPTED receipt and does not append a journal row. A clean book is all `MATCHED`. `not_bound` lists bank/PG/provider observations, source cut, and completeness. An absent receipt, including `?operation_id=` when that id was never stored, is `UNKNOWN_UNRESOLVED` with `retry_authorized=false` and is not resolved or retried. Writes no receipt. `?mode=coa-candidate` (or `simulation`) is the only query beside `operation_id`: `coa-candidate` appends six checks, `coa_candidate_totals_vs_v1` (the renamed 1100/9100/9110 totals equal V1 after independently verified recovery/write-off principal adjustments) and `interest_ledger_vs_projection` (the folded overlay interest equals gross debits to `1110` plus `9700`, with suspended cash income excluded from the income tie), `payment_ledger_vs_projection`, `recovery_ledger_vs_projection`, `writeoff_ledger_vs_projection`, and `allowance_vs_risk_reserve`, plus a `coa_candidate` label block. The three new checks compare the union of overlay and posting advance IDs, rejecting both missing and unexpected postings; they tie interest paid by kind, held cash, principal recovery, late recovery and write-off/release totals to the overlay fold. The default report and the manifest keep the six checks. `bank_reconciliation` stays `NOT_BOUND`. `durable` on this response stays `false` because the report is not the workspace file. Scope carries the examined `state_digest` cut, fixtures digest, and operation capacity bound. This is not the POST `reconcile` command, which stores a receipt and is refused to auditor and observer. Permission `reconciliation:read`.
 - `GET /api/statement`: read-only five-category statement. `approved`, drawn/repaid/outstanding, and reserved come from F04 case views (`SIMULATED`). Settlement confirmed/distributed and refund come from the immutable fixture views (`READ_ONLY_FIXTURE`) and are not added to the case figures. `primary_sales`, `resale_sales`, and `actual_paid` are `NOT_BOUND`. `sales_combined` is false and `primary_and_resale` is `NOT_SUMMED`. Scope carries the installed `state_digest` cut, fixtures digest, and operation capacity bound. No import. Permission `statement:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`.
 - `GET /api/metrics`: process-local counters, fixed millisecond latency buckets, uptime, and workspace status. The workspace path is omitted. `mode` is `LOCAL_OBSERVABILITY` and `label` is `SIMULATED`. `external_exporters`, `tracing`, `alerting`, and `network_sinks` are `NOT_BOUND`. `funds_executed` is false. Permission `metrics:read` (organizer and auditor). Observer receives `403 ROLE_FORBIDDEN`. The read does not change `state_digest` or `operation_count`, is not an export section, and does not count itself. Counters reset when the process exits. They are not audit evidence, financial evidence, or an SLO. Unknown operation and route labels collapse to `other`.
 - `GET /api/health`: minimal `status` (`ok` when the workspace is `ACTIVE`, otherwise `degraded`), `uptime_seconds`, `workspace_status`, and `mode` `LOCAL_OBSERVABILITY`. Permission `health:read` (organizer, auditor, and observer). The `agent` role is not granted `health:read` or `metrics:read`. The read does not change the book.
@@ -923,3 +923,64 @@ added to outstanding. This reader decides no waiver, cash release, collection,
 slice write-off, legal collectability or accounting recognition. It changes no
 workspace, persistence format, statement classification, HTTP/UI or upstream
 readiness claim.
+
+
+### loss-allowance-postings
+
+The separate `ALLOWANCE_CANDIDATE_V2` posting profile reads all seven ADOPTED
+entries of `CAPITAL_LOSS_ALLOWANCE.md` and its raw note SHA256. Versions are
+read from that note; provision bps and the verified `pool_target` formula come
+from CAPITAL-TERMS-V1. There are no rate defaults. Missing policy, terms, tier
+or source evidence yields `NOT_BOUND` with null amounts; malformed ordering,
+negative principal or contradictory terminal balances fail the projection.
+
+Candidate projection adds `allowance` and `reserve_pool`. Both name the full
+KRW AssetSpec population (including unfunded/closed/written-off zero rows),
+`source_cut={f04_state_digest,overlay_digest,overlay_sim_day}`, and
+`policy_context={terms_version,chart_version,allowance_policy_version,posting_profile,decision_note_digest}`.
+Every allowance entry has `source=ALLOWANCE`, policy/operation/advance identity,
+required dimensions `asset,advance_id,claim_id,tier,sim_day,chart_version,terms_version`,
+and stable line `leg` identities. `evidence` preserves bucket_from/bucket_to,
+source cut, policy context, journal/overlay replay anchor, effective date and
+original `UNBUILT_V1` reserve marker where present.
+
+Replay applies opening-day M*+1 transitions before same-day economic events,
+then follows journal anchors and overlay sequence. Acceleration applies when
+recorded; default applies on the command day, never merely on eligibility.
+Effective principal deducts only unreflected overlay recovery principal and
+write-offs from FSM outstanding; F04 repayment principal is never deducted
+twice, and interest/post-writeoff recovery does not reduce it. Per-advance
+floored levels produce only deltas: Dr5100/Cr1190 increases, Dr1190/Cr5100
+decreases. Each completed event preserves 0 <= allowance <= principal and the
+lifetime net5100 equals closing1190 conservation. A write-off releases once,
+immediately before the existing gross Dr5200/Cr1100. Existing 4300/5200
+postings remain compatible with the adopted V2 decision; the older blanket
+NOT_RECORDED wording applies to no new recovery/write-off source in this node.
+Source UNBUILT_V1 markers are retained separately from V2 derivation policy.
+
+The memo is `RESERVE_POOL_MEMO_V1`, `MEMO_NOT_POSTED`: A=sum1190,
+F=floor(sum effective principal * parsed floor_bps /10000), target=max(A,F),
+funded=0, shortfall=target. Ties select ALLOWANCE. No 3100/3200 or funded reserve
+entry is produced; LOSS_RESERVE remains NOT_BOUND with absorbed_krw=0. The
+candidate's zero funding makes no assertion about external resources.
+
+Only candidate reconciliation adds `allowance_vs_risk_reserve`, with structured
+`allowance` details: A, F, target, requirement, binding component, delta_krw,
+source and risk cuts/populations/policy contexts. Outcomes are MATCH, MISMATCH,
+CUT_MISMATCH, NOT_BOUND; only MATCH maps to MATCHED. Comparison also validates
+actual 1190 postings/aggregates against the memo and the independent risk
+provision total. Equal amounts with different cuts/populations/policies fail.
+The seeded demo matches 30,750 KRW. Two performing T1 advances of 66 KRW give
+A=0,F=1,target=1, floorless risk=0, delta=1 and MISMATCH. Risk's existing
+acceleration/refund coverage and omission of overlay reductions are preserved;
+incomplete risk evidence is NOT_BOUND and valid differing requirements are
+MISMATCH. They are not hidden by changing risk semantics or the V1 golden.
+
+`python3 -m capital.verify --workspace DIR --mode coa-candidate` passes the
+same detached context into the offline reconciliation. Omitted mode preserves
+the default audit/pack behavior. Mode is rejected outside workspace auditing.
+Exit codes remain 0 for all checks matched, 1 for audit/reconciliation failure,
+2 for argument misuse. Audits take no lock and write no files. Candidate blocks,
+check and memo carry SIMULATED, SYNTHETIC_UNADOPTED, policy_adopted=false and
+NOT_IN_EXPORT_V1. No tax, operational accounting, upstream adoption or real
+money action is implied.

@@ -6761,7 +6761,9 @@
         "balance_groups",
         "memo_balances",
         "chart_status",
-        "conservation"
+        "conservation",
+        "allowance",
+        "reserve_pool"
       ],
       "properties": {
         "instance_id": {
@@ -6815,7 +6817,14 @@
         "entries": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/coa_entry"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/coa_entry"
+              },
+              {
+                "$ref": "#/definitions/allowance_entry"
+              }
+            ]
           }
         },
         "accounts": {
@@ -6863,6 +6872,12 @@
           "items": {
             "$ref": "#/definitions/conservation"
           }
+        },
+        "allowance": {
+          "$ref": "#/definitions/allowance_block"
+        },
+        "reserve_pool": {
+          "$ref": "#/definitions/allowance_pool"
         }
       }
     },
@@ -7560,6 +7575,9 @@
               },
               {
                 "$ref": "#/definitions/observation_capture_check"
+              },
+              {
+                "$ref": "#/definitions/allowance_recon_check"
               }
             ]
           }
@@ -18897,6 +18915,790 @@
               }
             }
           }
+        }
+      }
+    },
+    "allowance_cut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "f04_state_digest",
+        "overlay_digest",
+        "overlay_sim_day"
+      ],
+      "properties": {
+        "f04_state_digest": {
+          "type": "string"
+        },
+        "overlay_digest": {
+          "type": "string"
+        },
+        "overlay_sim_day": {
+          "type": "integer"
+        }
+      }
+    },
+    "allowance_policy_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terms_version",
+        "chart_version",
+        "allowance_policy_version",
+        "posting_profile",
+        "decision_note_digest"
+      ],
+      "properties": {
+        "terms_version": {
+          "type": "string"
+        },
+        "chart_version": {
+          "type": "string"
+        },
+        "allowance_policy_version": {
+          "type": "string"
+        },
+        "posting_profile": {
+          "type": "string"
+        },
+        "decision_note_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "allowance_population": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "advance_ids"
+      ],
+      "properties": {
+        "asset": {
+          "$ref": "#/definitions/asset_spec"
+        },
+        "advance_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "allowance_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "tier",
+        "bucket",
+        "effective_principal_krw",
+        "allowance_krw",
+        "bps"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "effective_principal_krw": {
+          "type": "integer"
+        },
+        "allowance_krw": {
+          "type": "integer"
+        },
+        "bps": {
+          "type": "integer"
+        }
+      }
+    },
+    "allowance_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "accounting_policy",
+        "policy_adopted",
+        "export",
+        "status",
+        "reason",
+        "source_cut",
+        "population",
+        "policy_context",
+        "rows",
+        "allowance_component_krw",
+        "effective_principal_krw"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "export": {
+          "const": "NOT_IN_EXPORT_V1"
+        },
+        "status": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/allowance_row"
+          }
+        },
+        "allowance_component_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_principal_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "accounting_policy",
+        "policy_adopted",
+        "export",
+        "status",
+        "reason",
+        "source_cut",
+        "population",
+        "policy_context",
+        "allowance_component_krw",
+        "portfolio_floor_krw",
+        "pool_target_krw",
+        "funded_krw",
+        "shortfall_krw",
+        "floor_bps",
+        "floor_formula",
+        "binding_component",
+        "memo_version",
+        "loss_reserve"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "export": {
+          "const": "NOT_IN_EXPORT_V1"
+        },
+        "status": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allowance_component_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "portfolio_floor_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pool_target_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "funded_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shortfall_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor_bps": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor_formula": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "binding_component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "memo_version": {
+          "const": "RESERVE_POOL_MEMO_V1"
+        },
+        "loss_reserve": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "absorbed_krw"
+          ],
+          "properties": {
+            "status": {
+              "const": "NOT_BOUND"
+            },
+            "absorbed_krw": {
+              "const": 0
+            }
+          }
+        }
+      }
+    },
+    "allowance_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "journal_index",
+        "overlay_sequence",
+        "overlay_id"
+      ],
+      "properties": {
+        "journal_index": {
+          "type": "integer"
+        },
+        "overlay_sequence": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "overlay_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "bucket_from",
+        "bucket_to",
+        "policy_context",
+        "source_cut",
+        "replay_anchor",
+        "effective_sim_day",
+        "source_reserve_step_version"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "bucket_from": {
+          "type": "string"
+        },
+        "bucket_to": {
+          "type": "string"
+        },
+        "policy_context": {
+          "$ref": "#/definitions/allowance_policy_context"
+        },
+        "source_cut": {
+          "$ref": "#/definitions/allowance_cut"
+        },
+        "replay_anchor": {
+          "$ref": "#/definitions/allowance_anchor"
+        },
+        "effective_sim_day": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_reserve_step_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_dimensions": {
+      "description": "Posting dimensions of the CAPITAL-COA-V1 candidate. Identities are dimensions, never part of the 4-digit account code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "advance_id",
+        "claim_id",
+        "sim_day",
+        "chart_version",
+        "terms_version",
+        "tier"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "advance_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "chart_version": {
+          "type": "string"
+        },
+        "terms_version": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        }
+      }
+    },
+    "allowance_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account",
+        "side",
+        "amount",
+        "leg"
+      ],
+      "properties": {
+        "account": {
+          "enum": [
+            "1190",
+            "5100"
+          ]
+        },
+        "side": {
+          "enum": [
+            "debit",
+            "credit"
+          ]
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "leg": {
+          "type": "string"
+        }
+      }
+    },
+    "allowance_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "source",
+        "txn_id",
+        "dimensions",
+        "lines",
+        "evidence"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer"
+        },
+        "source": {
+          "const": "ALLOWANCE"
+        },
+        "txn_id": {
+          "type": "string"
+        },
+        "dimensions": {
+          "$ref": "#/definitions/allowance_dimensions"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/allowance_line"
+          }
+        },
+        "evidence": {
+          "$ref": "#/definitions/allowance_evidence"
+        }
+      }
+    },
+    "allowance_recon_detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "accounting_policy",
+        "policy_adopted",
+        "export",
+        "outcome",
+        "allowance_component_krw",
+        "portfolio_floor_krw",
+        "pool_target_krw",
+        "requirement_krw",
+        "delta_krw",
+        "binding_component",
+        "per_advance_total_matches",
+        "source_cut",
+        "population",
+        "policy_context",
+        "risk_source_cut",
+        "risk_population",
+        "risk_policy_context"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "export": {
+          "const": "NOT_IN_EXPORT_V1"
+        },
+        "outcome": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "CUT_MISMATCH",
+            "NOT_BOUND"
+          ]
+        },
+        "allowance_component_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "portfolio_floor_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pool_target_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requirement_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "delta_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "binding_component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "per_advance_total_matches": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_recon_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "allowance"
+      ],
+      "properties": {
+        "id": {
+          "const": "allowance_vs_risk_reserve"
+        },
+        "status": {
+          "enum": [
+            "MATCHED",
+            "RECON_MISMATCH"
+          ]
+        },
+        "allowance": {
+          "$ref": "#/definitions/allowance_recon_detail"
         }
       }
     }
