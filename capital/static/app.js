@@ -70,8 +70,13 @@ function reconValid(data,next){
  if(data.status==='MATCHED'&&(data.state_digest!==next.state_digest||data.cut!==next.state_digest||data.replay_matched!==true))return false;
  const ids=['receipts_vs_journal_keys','rejected_receipts_absent_from_journal','replay_digest_equals_state_digest','case_fixture_map_vs_journal_offers','projection_totals_vs_case_views','fixtures_digest'];
  if(data.scope?.overlay_state_digest!==undefined)ids.push('overlay_fold_digest_equals_persisted');
+ const observed=data.checks?.find(row=>row.id==='recorded_captures_vs_claim_face');
+ if(observed){
+  ids.push('recorded_captures_vs_claim_face');
+  if(!data.scope?.overlay_state_digest||observed.derived!==true||observed.derivation!==observed.id||observed.provenance!=='DERIVED_FROM_UNVERIFIED_ASSERTED'||observed.verification!=='UNVERIFIED_ASSERTED'||observed.label!=='SIMULATED'||!Array.isArray(observed.source_fact_ids)||!observed.source_fact_ids.length||!Array.isArray(observed.claims)||observed.coverage?.completeness!=='NOT_BOUND')return false;
+ }
  if(!Array.isArray(data.checks)||(data.status!=='WORKSPACE_UNREADABLE'&&data.checks.map(row=>row.id).join(',')!==ids.join(',')))return false;
- if(!data.checks.every(row=>typeof row.id==='string'&&(row.status==='MATCHED'||row.status==='RECON_MISMATCH')))return false;
+ if(!data.checks.every(row=>typeof row.id==='string'&&(row===observed?['MATCH','ASSERTED_MISMATCH','NO_FACTS'].includes(row.status):(row.status==='MATCHED'||row.status==='RECON_MISMATCH'))))return false;
  if(!Array.isArray(data.not_bound)||data.not_bound.length<3||data.not_bound.some(row=>row.status!=='NOT_BOUND'))return false;
  const gaps=data.not_bound.map(row=>row.id);
  if(!gaps.includes('bank_pg_provider_observations')||!gaps.includes('source_cut')||!gaps.includes('completeness'))return false;
@@ -103,7 +108,8 @@ function renderReconciliation(result){
  error.hidden=true;body.hidden=false;const data=result.report;
  $('recon-scope').textContent=`cut=${data.cut} · fixtures_digest=${data.fixtures_digest} · capacity_bound=${data.scope.capacity_bound} · source_cut=NOT_BOUND · completeness=NOT_BOUND · ${data.label}`;
  const matched=data.status==='MATCHED';
- $('recon-summary').textContent=matched?`검사 ${data.checks.length}건 MATCHED · 항목 ${data.entry_count} · 은행 대사 아님`:`상태 ${data.status} · 은행 대사 아님`;
+ const observed=data.checks.find(row=>row.id==='recorded_captures_vs_claim_face');
+ $('recon-summary').textContent=matched?`재생 무결성 MATCHED · 항목 ${data.entry_count} · 은행 대사 아님${observed?` · UNVERIFIED_ASSERTED ${observed.status} · 관측 ${observed.coverage.observed_claims}/${observed.coverage.total_claims} · completeness=NOT_BOUND`:''}`:`상태 ${data.status} · 은행 대사 아님`;
  $('recon-checks').replaceChildren(...data.checks.map(row=>{const tr=document.createElement('tr');const id=textElement('td',row.id);const status=textElement('td',row.status,row.status==='MATCHED'?'':'mismatch');tr.append(id,status);return tr;}));
  $('recon-gaps').replaceChildren(...data.not_bound.map(row=>{const li=document.createElement('li');li.textContent=`${row.id} · ${row.status} · ${row.meaning||''}`;return li;}));
  const unknown=data.unknown_unresolved||[];

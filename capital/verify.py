@@ -97,6 +97,8 @@ def verify_manifest(document, key=None, key_error=None, *, keyset=None, keyset_e
             state = overlay.fold(body['journal'], len(journal))
             recovery.validate_links(body['journal'], journal)
             slices.validate_links(body['journal'], journal, sections['fixtures']['body'].get('rows', {}))
+            from capital.observation_record import validate_links as validate_observations
+            validate_observations(body['journal'], journal, sections['fixtures']['body'].get('rows', {}))
             if body['state'] != state or body['overlay_state_digest'] != overlay.state_digest(state):
                 raise ValueError('overlay fold differs')
         except (ValueError, KeyError, TypeError, ArithmeticError):
@@ -208,7 +210,11 @@ def main(argv=None):
     parser.add_argument('--workspace', default=None,
                         help='Audit DIR/workspace.json read-only. No lock, no write, no repair. Not stage5 durability evidence.')
     parser.add_argument('--facts', default=None, help='Verify canonical page-*.json files in DIR offline; integrity only.')
+    parser.add_argument('--mode', choices=('simulation', 'coa-candidate'), default=None,
+                        help='Opt-in candidate checks; applies only to --workspace.')
     args = parser.parse_args(argv)
+    if args.mode is not None and args.workspace is None:
+        parser.error('--mode applies only to --workspace')
     if args.facts is not None:
         if args.file is not None or args.workspace is not None or args.key_file is not None or args.keyset_file is not None:
             parser.error('--facts is mutually exclusive with file, --workspace and key options')
@@ -220,7 +226,7 @@ def main(argv=None):
         if args.key_file is not None or args.keyset_file is not None:
             parser.error('--key-file/--keyset-file does not apply to --workspace')
         from capital.audit import audit_workspace
-        report = audit_workspace(args.workspace)
+        report = audit_workspace(args.workspace, mode=args.mode)
     else:
         if args.file is None:
             parser.error('file or --workspace is required')
