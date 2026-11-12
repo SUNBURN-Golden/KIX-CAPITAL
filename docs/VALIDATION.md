@@ -3297,6 +3297,243 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
 
+## portfolio-cashflow-desk
+
+2026-10-26 builder continuation on `agent/capital-portfolio-cashflow-desk`, starting
+HEAD `cde0bc778573ef8d543f2e1bb70a521e06bf4e44`. The interrupted attempt's uncommitted
+implementation was inspected and retained where correct. The current environment
+allows loopback sockets, so the earlier socket-denial notes are superseded by the
+actual HTTP and Chromium results below. All data and commands are **SIMULATED**.
+
+The desk uses one existing `KIX_CAPITAL_PORTFOLIO_SNAPSHOT_V1` response for all five
+cash buckets, unscheduled legs, NOT_APPLICABLE cases, server covenant reasons,
+risk tiles and linked advance details. Exact server fractions are shown as three
+separate streams. No client money arithmetic, spendable balance, new financial
+policy, repayment posting, endpoint or facade schema was introduced. Snapshot
+sim_day, digest, assumptions and details publish together. Refresh/session
+generations and snapshot identity fence obsolete successes, failures, tokens and
+case callbacks. Separate overlay data requires matching day and overlay digest.
+Incomplete/unbound/malformed cuts clear numeric content and case controls.
+
+The stdlib HTTP journey reads at initial day, watch-window entry, seven days before
+maturity, maturity, and maturity plus one. After offer/approve/bind/draw setup it
+uses only reads and clock commands, checks bucket migration and MATURITY_WINDOW
+→ PAST_MATURITY, keeps overdue legs in 0-7, and verifies unchanged F04 canonical
+state, receipts, fixture mappings, operation count and state digest. A second
+in-process journey verifies recorded draw day 12 rather than the rollup default.
+The JS model harness is supplemental evidence and does not claim to be a browser.
+
+Commands actually run (repeated identical checks consolidated):
+
+| Command | Actual result |
+|---|---|
+| `npm ci --no-audit --no-fund` | Exit 0; 3 pinned packages installed; lockfile unchanged. |
+| `python3 -m unittest tests.test_portfolio_cashflow_desk tests.test_portfolio_snapshot tests.test_operator_desk tests.test_handbook -v` | Initial run: 42 tests, one failure from an underscore in the new journey's operation ID. Corrected to the existing API grammar. Subsequent runs, including the final implementation: **42 passed**. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `node --check tests/browser/portfolio-cashflow-desk.spec.cjs` | Exit 0. |
+| `node --check tests/cashflow_desk_harness.cjs` | Exit 0. |
+| `python3 -m unittest discover -s tests -v` | Exit 1; **846 run, 845 passed, one baseline-guard failure** described below. |
+| `python3 -m unittest tests.test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched -v` | Exit 1; independently reproduces the same pre-existing three-file baseline mismatch. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0; live role tests also ran in the narrow/full suites. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; **30 routes, 38 artifacts, 9 stages**. |
+| `python3 scripts/forecast_vectors.py --check` | Exit 0; **6456 bytes match**. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; **92734 bytes match**. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only, pending anchors are not implementation. |
+| `npx --no-install playwright test tests/browser/portfolio-cashflow-desk.spec.cjs --project workspace` | Before npm installation: exit 1, unknown command test. After installation: exit 1 before tests because unrelated services occupy configured ports 8765/8766. |
+| `npm run test:browser` | Exit 1 before tests for the same port collision; unrelated services were left running. |
+| `npx --no-install playwright test tests/browser/portfolio-cashflow-desk.spec.cjs --project workspace --config /tmp/cashflow-playwright.config.cjs` | Two early invocations failed because the temporary config had not been created. First actual run: 2 passed, 4 failed because tests accessed module-private globals. Corrected to existing DOM controls; **8 passed**. |
+| `npm run test:browser -- --config /tmp/cashflow-playwright.config.cjs` | First full run: **76 passed, one new test timed out** after reading stale hidden COMPLETE text during a role transition. Corrected test readiness to require a visible exact COMPLETE status and enabled refresh control; response gates now time out below the test deadline. Its orphaned local fixture server was explicitly stopped. Final full result is recorded with acceptance below. |
+| `npx --no-install playwright test tests/browser/portfolio-cashflow-desk.spec.cjs --project workspace --config /tmp/cashflow-playwright.config.cjs --repeat-each 3` | Exit 0; **24 passed** in 37.3 seconds after the readiness fix. |
+| `python3 scripts/build_release.py --out build/cashflow-dist1` | Exit 0; SHA256 `e06bcd65ff7bf0a8e06662d4a73cde7985b91918c3330828911eb0293beb5e30`. |
+| `python3 scripts/build_release.py --out build/cashflow-dist2` | Exit 0; identical SHA256. |
+| `cmp build/cashflow-dist1/capital-*.pyz build/cashflow-dist2/capital-*.pyz` | Exit 0; byte-identical releases. |
+| `python3 scripts/smoke_release.py build/cashflow-dist1/capital-0.1.0.pyz` | Exit 0; version-flag, state-version, static-index, journey-accepted, source-integrity, restart-instance, restart-receipts and restart-closed passed. |
+| Inline Python `hashlib` check against `capital/vendor/manifest.json` and `git show HEAD:<path>` | Exit 0; all **five SHA256 locks match**, five reference files and manifest byte-identical to HEAD. |
+| `git diff --exit-code HEAD -- capital/overlay.py capital/ports.py docs/decisions/CAPITAL_UPSTREAM_BINDING.md` | Exit 0; no node edits to any file reported by the failing guard. |
+| `git diff --name-only origin/main HEAD -- capital/overlay.py capital/ports.py docs/decisions/CAPITAL_UPSTREAM_BINDING.md` | Exit 0; all three paths already differ at starting HEAD. |
+| `git diff --check` | Exit 0. |
+
+Browser port deviation: the temporary config imports the repository config and
+changes only 8765–8768 to 9765–9768, including URLs, the first server's explicit
+`--port`, and absolute test/server paths. It preserves all projects, tests, CSP,
+assertions, worker count and lifecycle handling. No CI/configuration file changed.
+To reproduce the override from this worktree:
+
+```javascript
+// /tmp/cashflow-playwright.config.cjs
+const root = process.cwd();
+const config = require(root + '/playwright.config.cjs');
+const remap = value => value.replace(/876[5-8]/g, port => String(Number(port) + 1000));
+config.testDir = root + '/tests/browser';
+config.use.baseURL = remap(config.use.baseURL);
+for (const project of config.projects)
+  if (project.use?.baseURL) project.use.baseURL = remap(project.use.baseURL);
+for (const server of config.webServer) {
+  server.command = remap(server.command);
+  server.url = remap(server.url);
+  server.cwd = root;
+}
+config.webServer[0].command += ' --port 9765';
+module.exports = config;
+```
+
+Baseline blocker: the unchanged guard compares existing files against
+`origin/main` (`aab0a7364c79ef00d34e031e4a827a817f7ae544`). Starting HEAD already
+lacks newer overlay/port/binding changes. Importing those individually would add
+out-of-scope repayment/recovery/dependency behavior. Neither files nor tests nor
+Git refs were changed to hide this. Root `DECISION_REQUIRED.md` asks the supervisor
+who controls Git integration to choose the correct base and rerun unchanged CI.
+No new financial/product policy decision is required.
+
+Plan deviations: retained the interrupted attempt's supplemental
+`tests/cashflow_desk_harness.cjs`, corrected previously unexecuted HTTP/browser
+tests, added immediate case-callback invalidation at refresh start, used temporary
+browser ports, and recorded the pre-existing integration blocker. No new vectors,
+financial calculations, server schemas, vendored/reference changes, `.aiops/`
+edits, or legacy export changes. No commit, push, PR, issue, comment, credentials,
+provider calls, deployment or real funds.
+
+The final ladder command is `python3 /tmp/cashflow-acceptance.py`. Its temporary
+runner uses the repository's unchanged `build_plan` and `execute_plan`, extending
+only the browser argv with the port config above:
+
+```python
+import sys
+from pathlib import Path
+root = Path('/workspace/capital-run/wt/portfolio-cashflow-desk')
+sys.path.insert(0, str(root))
+from scripts import acceptance
+plan = acceptance.build_plan(root)
+for stage in plan:
+    if stage['id'] == 'browser':
+        assert stage['commands'] == [['npm', 'run', 'test:browser']]
+        stage['commands'][0] += ['--', '--config', '/tmp/cashflow-playwright.config.cjs']
+raise SystemExit(acceptance.execute_plan(
+    plan, root=root, evidence_path=root/'build/acceptance-evidence.json'))
+```
+
+Final ladder result: command exit **1**, `build/acceptance-evidence.json` has
+**ok=false**. Eight of nine stages passed; the sole failing stage is the unchanged
+unit baseline guard above. The full unit rerun again had **846 tests: 845 passed,
+one failure**. No test or assertion was disabled or weakened.
+
+| Final stage / command | Actual result |
+|---|---|
+| `python3 /tmp/cashflow-acceptance.py` | Exit 1; 8/9 stages passed; unit baseline mismatch only. |
+| unit: `python3 -m unittest discover -s tests -v` | 845 passed, 1 baseline-guard failure. The stage stops before its decision-bindings command; that check passed independently above. |
+| storage-conformance | **19 passed** across the configured storage and crash/replay commands. |
+| pinned-vendor | **7 passed**. |
+| upstream-claims | **269 passed**; CLAIM_CONFORMANCE only. |
+| node-check | Exit 0. |
+| browser: `npm run test:browser -- --config /tmp/cashflow-playwright.config.cjs` | Exit 0; **77 passed**, including all eight cashflow cases and existing role/clock/UNKNOWN/fence/mobile checks. |
+| packaged-smoke | **8 passed**. |
+| seeded-demo | **1 passed**; SIMULATED fixture parity. |
+| integrated-journeys | **4 passed**; SIMULATED only. |
+
+The final narrow suite also reran after documentation updates: **42 passed**.
+Final docs-surface, auth-matrix, compileall, JavaScript syntax and diff-whitespace
+checks passed. Final process inspection found no fixture server on this run's
+8955 or 9765–9768 ports. The timed-out first full browser run's orphan was stopped;
+all subsequent test servers exited through their normal cleanup. Unrelated
+services on 8765/8766 were untouched. Vendor files, manifest, `.aiops/`, legacy
+export, package lock and CI configuration have no node changes.
+
+## portfolio-cashflow-desk — merged-base completion
+
+2026-10-26 continuation from HEAD
+`c5d1d45` on `agent/capital-portfolio-cashflow-desk`. The supervisor merged
+`origin/main` after the preceding attempt. The earlier baseline blocker above is
+**resolved**: the unchanged full Python suite now passes, including the original
+COA baseline guard. Removed the obsolete root `DECISION_REQUIRED.md`; no product
+or financial-policy decision is required for this display-only node.
+
+Reviewed and retained the complete snapshot-backed implementation against the
+design plan. Extended the browser failure journey with wrong-instance responses,
+missing cuts, and HTTP 503 snapshot outages, verifying that old amounts, case
+controls, digest and assumptions are cleared. Extended the socket-free JS harness
+to exercise the actual `bindSession` token fence and `loadDeskCase` callback
+fence: an old role response cannot overwrite the active token, and a clock-only
+snapshot replacement invalidates late successful and failed previews even when
+instance, case, F04 state digest and callback epoch still match. Updated the
+Korean handbook to describe these recovery states. The harness is supplemental
+model evidence, not HTTP/browser evidence. All journeys remain **SIMULATED**.
+
+Verification commands actually run in this continuation (identical repetitions
+consolidated; earlier attempt results above are historical):
+
+| Command | Actual result |
+|---|---|
+| `python3 -m unittest tests.test_portfolio_cashflow_desk tests.test_portfolio_snapshot tests.test_operator_desk tests.test_handbook -v` | Exit 0; **42 passed**, initially and again after the harness extension. |
+| `python3 -m unittest discover -s tests -v` | Exit 0 on both runs; **1,130 passed** in 369.408 seconds initially and **1,130 passed** in 252.237 seconds after the test extensions and handbook update. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `node --check tests/browser/portfolio-cashflow-desk.spec.cjs` | Exit 0. |
+| `node --check tests/cashflow_desk_harness.cjs` | Exit 0. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0; role journeys also pass in the narrow/full suites. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; **31 routes, 41 artifacts, 9 stages**. |
+| `python3 scripts/forecast_vectors.py --check` | Exit 0; **6456 bytes match**. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; **97980 bytes match**. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only; pending anchors are not implementation. |
+| `npm run test:browser` | Exit 1 before tests: configured ports 8765/8766 are occupied by unrelated processes. No unrelated process was stopped. |
+| `npx --no-install playwright test tests/browser/portfolio-cashflow-desk.spec.cjs --project workspace --config /tmp/cashflow-playwright.config.cjs` | Exit 0; **8 passed** before and after extending the failure cases (19.1s / 17.0s). |
+| `npm run test:browser -- --config /tmp/cashflow-playwright.config.cjs` | Exit 0; **77 passed** in 2.1 minutes, including all eight cashflow cases and existing roles, UNKNOWN, keyboard, mobile, CSP and auditor evidence flows. |
+| `python3 scripts/build_release.py --out build/cashflow-final-dist1` | Exit 0; SHA256 `e7bd412ac36a7c1314f4e6f170499246081ae0a28e8e7fa0e8c9e69bb376de5d`. |
+| `python3 scripts/build_release.py --out build/cashflow-final-dist2` | Exit 0; identical SHA256. |
+| `cmp build/cashflow-final-dist1/capital-*.pyz build/cashflow-final-dist2/capital-*.pyz` | Exit 0; byte-identical builds. |
+| `python3 scripts/smoke_release.py build/cashflow-final-dist1/capital-0.1.0.pyz` | Exit 0; **8 checks passed**: version-flag, state-version, static-index, journey-accepted, source-integrity, restart-instance, restart-receipts, restart-closed. |
+| `python3 scripts/upstream_claims_check.py --execute` | Exit 0; **87/87 CLAIM_CONFORMANCE**. |
+| `python3 scripts/agent_claims_check.py --execute` | Exit 0; **94/94 CLAIM_CONFORMANCE**. |
+| `python3 scripts/read_model_claims_check.py --execute` | Exit 0; **39/39 CLAIM_CONFORMANCE**. |
+| `python3 scripts/ce1_claims_check.py --execute` | Exit 0; **49/49 CLAIM_CONFORMANCE**. |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | Exit 0; **30/30 CLAIM_CONFORMANCE**. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; **12/12 local CLAIM_CONFORMANCE**. Its optional external checkout citation-drift check reports **SKIPPED**, not verified. |
+| `python3 scripts/seed_demo.py` | Exit 0; SIMULATED golden parity, state digest `a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45`. |
+| `python3 scripts/sim_journeys.py` | Exit 0; **4 SIMULATED journeys**: T03-sim 22 steps, T04-sim 38, T05-sim 35, T06-sim 33. Existing repayment fixtures here are regression checks; the new cashflow maturity journey posts no repayment. |
+| Inline Python SHA256/`git show HEAD:<path>` verification | Exit 0; all **five vendor SHA256 locks match**, all five reference files and `manifest.json` byte-identical to starting HEAD. |
+| `git diff --name-only origin/main -- capital/vendor capital/export.py .aiops` | Exit 0; empty output, no changes. |
+| `git diff --check` | Exit 0. |
+
+The temporary browser config is the exact port-remapping config reproduced in
+the previous section: it imports the repository config and changes only the
+occupied 8765–8768 loopback ports to 9765–9768 plus absolute paths. All projects,
+tests, workers, assertions, CSP and server cleanup remain enabled. The repository
+CI and Playwright configuration are unchanged. Local CI equivalents are run
+directly; this continuation does not claim a new `scripts/acceptance.py` evidence
+file. Build outputs and command logs are local untracked artifacts.
+
+Plan deviations: reused the already implemented node after the supervisor's
+merge, retained and extended its supplemental JS harness, used temporary browser
+ports to avoid unrelated services, and removed the resolved integration blocker.
+No new endpoint, response schema, vector, financial policy, financial arithmetic,
+scenario, repayment implementation, upstream edit, vendor edit, `.aiops/` edit,
+test weakening or CI change. No commit, push, PR, issue, comment, external
+message, credential, provider call, deployment, chain access or real money.
+
+The final narrow suite passed **42/42** after documentation updates. The final
+docs-surface and whitespace checks passed. An inline stdlib socket bind check
+confirmed ports 8955 and 9765–9768 are free after the browser run: no fixture
+server from this continuation remains running. All foreground verification
+processes completed.
+
+Node files relative to `origin/main`: `capital/static/app.js`,
+`capital/static/index.html`, `capital/static/style.css`,
+`tests/test_portfolio_cashflow_desk.py`, `tests/cashflow_desk_harness.cjs`,
+`tests/browser/portfolio-cashflow-desk.spec.cjs`, `tests/test_operator_desk.py`,
+`tests/test_handbook.py`, `README.md`, `docs/CAPITAL_REQUIREMENTS_KO.md`,
+`docs/INTEGRATION.md`, `docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`.
+This continuation changes the two JS test files, handbook and validation record,
+and deletes the obsolete `DECISION_REQUIRED.md`; it retains the working static
+implementation and API journey from the preceding builder attempt.
+
+Changed files: `capital/static/app.js`, `capital/static/index.html`,
+`capital/static/style.css`, `tests/test_portfolio_cashflow_desk.py`,
+`tests/cashflow_desk_harness.cjs`, `tests/browser/portfolio-cashflow-desk.spec.cjs`,
+`tests/test_operator_desk.py`, `tests/test_handbook.py`, `README.md`,
+`docs/CAPITAL_REQUIREMENTS_KO.md`, `docs/INTEGRATION.md`,
+`docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`, and `DECISION_REQUIRED.md`.
 ## coa-payment-writeoff-postings — conflict-fix round 1 (2026-10-26)
 
 Resolved the append conflict with main `aab0a7364c79ef00d34e031e4a827a817f7ae544`
@@ -4577,6 +4814,38 @@ authentication NOT_BOUND. Logs are in ignored `build/margin-merge-round1/`.
 
 No external posting, provider call or consequential product decision was required.
 
+## portfolio-cashflow-desk — conflict-fix round 1 (2026-10-28)
+
+Resolved the supervisor-started merge of incoming main `863de6b` into feature
+parent `e17eaa9`. All four conflicts were overlapping documentation additions:
+`README.md`, `docs/INTEGRATION.md`, `docs/OPERATOR_HANDBOOK_KO.md` and this file.
+Both appended sides are preserved verbatim, with the cashflow handbook section's
+closing marker restored before main's facts-export and hostile-HTTP material.
+The cashflow panel, consistent-cut handling, maturity journey, static tests and
+eight browser tests remain unchanged from the feature parent. Main's facts
+export, permission catalog, risk scenarios, named journeys and hostile-HTTP
+coverage survive the automatic code/test merge. No runtime, test, CI, golden or
+vector changes were needed during this resolution.
+
+All verification below is local and SIMULATED. Authentication and external
+integration remain NOT_BOUND. The earlier baseline blocker is superseded: the
+unchanged COA baseline guard now passes against current main. The already-deleted
+root `DECISION_REQUIRED.md` is staged for removal because its sole issue was that
+old integration baseline. No consequential product decision was required.
+
+| Verification actually run | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,187 tests passed** in 271.224 s, including the stdlib clock/maturity journey without repayment posting, static UI/CSP checks, role tests, main's added suites and the legacy COA byte guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **all 77 Chromium tests passed together** in 2.2 min, including all eight cashflow desk tests. Unchanged repository configuration and the available pinned headless shell run in an isolated loopback network namespace. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; 35 registered routes, 251 artifacts and nine stages; role/catalog evidence remains consistent. |
+| `python3 scripts/{finance_vectors,pack_vectors,facts_vectors,closeout_digest,fold_fuzz,http_hostile,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist,risk_scenario_vectors,sim_journeys}.py --check` | Each script run separately; all exit 0. Finance: 99,893 bytes; nine pack files; 133 facts files; 16 fold-fuzz seeds / 736 commands; 76 hostile-HTTP files; six journey goldens match. Historical closeout bytes remain unchanged; no new full-ladder closeout run is claimed. |
+| Preservation and protected paths | All five manifest SHA256 locks match; the five reference files and manifest are byte-identical to both merge parents. `.aiops/`, legacy `capital/export.py` and CI are unchanged from both parents. |
+| Merge hygiene | All four conflicted files resolved and staged; no conflict markers or unmerged entries; whitespace check against incoming main passes. Merge remains uncommitted for the supervisor. No abort, commit, push, rebase, reset or external posting performed. |
+
+Unit/browser logs and preservation evidence are retained in ignored
+`build/portfolio-cashflow-round1/`.
 ## coa-payment-writeoff-postings — conflict-fix round 3 (2026-10-29)
 
 Resolved the supervisor-started merge of incoming main `863de6b0` into this
@@ -5608,6 +5877,58 @@ Logs are retained locally in `/tmp/coa-payment-writeoff-round3/`.
 | Final `python3 -m unittest discover -s tests -v` | Exit 0; all 1,438 tests passed in 497.459 s. The complete rerun includes the unchanged journey test and all 54 candidate-chart tests. |
 | Merge hygiene | Both parent validation histories retained in order; no conflict markers or unmerged entries; `git diff --check HEAD` and `git diff --check MERGE_HEAD` pass. Resolutions are staged; the supervisor owns the merge commit. No abort, commit, push, rebase or reset was performed. |
 
+## portfolio-cashflow-desk — conflict-fix round 1 (2026-11-10)
+
+Resolved the supervisor-started merge of `origin/main` / MERGE_HEAD
+`5405d9ed870e563e7e2aca8f4b65f7b037db0474` into reviewed node HEAD
+`4624916f84732312544baba8efc711d1cd88eb57`. These identify the parents;
+the merge is left uncommitted for the supervisor.
+
+The five conflicted paths are `DECISION_REQUIRED.md`, `README.md`,
+`capital/static/index.html`, `docs/CAPITAL_REQUIREMENTS_KO.md` and this file.
+The operator desk retains the snapshot-backed cash ladder, unscheduled legs,
+server-owned covenant explanations and linked case details alongside main's
+read-only dossier download controls. README retains main's bundled-policy
+behavior and the node's snapshot/role guidance. Requirements and validation
+history retain the additions from both parents. The Korean handbook's automatic
+merge retains both the cashflow and dossier guidance. Main's historical root
+`DECISION_REQUIRED.md` is preserved byte-for-byte; its old baseline request is
+historical, not a new product decision. This merge integrates that baseline.
+
+All verification uses local SIMULATED fixtures. Settlement cash, principal and
+interest remain separate, with no spendable-cash total or repayment posting in
+the cashflow journey. No test, CI setting, vendor/reference file, `.aiops/`,
+legacy export construction, Protocol or Commerce file was changed by this
+conflict resolution. No external post, real provider call, financial execution,
+credential or deployment was performed.
+
+Logs and the first browser failure trace are retained under ignored
+`build/cashflow-desk-merge-verification/`. Browser commands use an isolated
+loopback network because a socket probe found outer port 8765 occupied. The
+tracked configuration, all projects and assertions remain unchanged; Chromium
+145.0.7632.6 is locally available.
+
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,422 passed in 564.825s**, no skips. Includes the legacy baseline guard, stdlib maturity journey without repayment, stale-response model checks, role tests and main's dossier/CLI coverage. Log: `unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; **36 routes, 276 artifacts, 9 stages**. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; role registry and decision bindings valid. |
+| `python3 scripts/forecast_vectors.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | All exit 0; 6,456-byte forecast, 101,112-byte finance pack and 4,582-byte embedded closeout reproduce. No vector regeneration was needed. These are existing reproducibility checks, not a new acceptance-ladder claim. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` (first run, concurrent with unit) | Exit 1; **83 passed, 1 failed in 3.8m**. The trace shows a local fixture-server startup timeout at `withDesk` line 18, before page navigation or delayed-response assertions. Log: `browser.log`; trace: `first-browser-failure-trace.zip`. |
+| Same unchanged browser command, rerun after unit completed | Exit 0; **84 passed in 2.4m**, including all eight cashflow and all seven dossier cases. Log: `browser-rerun.log`. No product, test, timeout, config or assertion was changed to obtain this pass. |
+| Stdlib SHA256 and Git-parent preservation assertions | Pass; five locked reference files and manifest plus legacy export match both parents. `.aiops/` and CI are unchanged. Historical root decision matches main exactly. Reviewed cashflow tests/style and incoming dossier/API implementation/tests remain byte-identical to their respective parents. Log: `integrity.log`. |
+| Both-parent validation-history preservation; tracked conflict-marker scan; `git ls-files -u` | Pass; both historical records survive; zero markers and zero unmerged entries. |
+| `git diff --check`; `git diff --cached --check` | Both exit 0. |
+
+Only the conflict resolutions and this verification record were edited during
+this round; the automatic merges of code, tests and handbook remain intact.
+All five resolutions are staged. No abort, commit, push, rebase or reset was
+performed. The initial fixture-startup failure remains recorded separately from
+the successful rerun. Results are local SIMULATED verification, not real money,
+production deployment, independent review or human acceptance.
 ## Read-model credit queries — conflict-fix round 1 (2026-11-09)
 
 Resolved all 16 conflicts in the supervisor's merge into
@@ -5677,6 +5998,55 @@ The merge remains staged and uncommitted for the supervisor. No commit, push,
 abort, rebase, reset, external post, real provider call, financial execution,
 real credential use, deployment, upstream modification or protected-path edit occurred.
 
+## portfolio-cashflow-desk — conflict-fix round 2 (2026-11-10)
+
+Resolved the supervisor-started merge of incoming main / MERGE_HEAD
+`a791651dbc577d730979832364648a46f3356bfa` into reviewed node HEAD
+`11b564764395b52d4d139c67dad124d6ec0886dc`. The merge remains uncommitted
+for the supervisor.
+
+The sole conflict was a modify/delete conflict in `DECISION_REQUIRED.md`.
+Incoming main explicitly deleted that obsolete baseline-drift report; this
+resolution retains main's deletion. Baseline drift is resolved by this merge,
+not a product decision. The prior node report remains in Git history and the
+round-1 validation record above remains intact. No historical root decision
+text was rewritten and no new decision request is introduced.
+
+The reviewed cashflow panel, snapshot-driven amounts, unscheduled legs,
+server-owned covenant reasons, clock/refresh safeguards, case navigation,
+API journey and UI tests remain intact. Incoming main's read-model point
+queries, authorization/contract changes, claim checks, adopted citation pin,
+vectors, tests and documentation also survive. Both parent validation
+histories are retained in order, including the Korean handbook's guidance for
+both features. Settlement cash, principal and interest remain separate streams;
+the clock journey never posts repayment.
+
+Verification uses local SIMULATED fixtures and loopback servers. Logs are in
+ignored `build/cashflow-desk-merge-round2/`. The five vendor references and
+manifest, legacy export, `.aiops/` and CI match both parents. No Protocol or
+Commerce change, external post, real provider call, financial execution,
+credential use or deployment was performed. No abort, commit, push, rebase or
+reset was performed.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,464 passed in 509.827s**, no skips. Includes the unchanged baseline guard, stdlib cashflow maturity journey without repayment, static UI and stale-response model checks, role tests and main's read-model query/claim coverage. Log: `unit.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed**. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **84 passed in 2.1m**, including all eight cashflow cases. Installed Chromium; isolated loopback network; tracked configuration and assertions unchanged. Log: `browser.log`. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; **37 routes, 276 artifacts, 9 stages**. |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; role registry and decision bindings valid. |
+| `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; **113/113 claims passed, 113/113 citations verified**. Protocol checkout read only. Log: `read-model-claims.log`. |
+| `python3 scripts/upstream_repin_check.py --check --root .` | Exit 0; **HOLD, no findings**. Log: `repin.log`. |
+| Forecast, finance, closeout, pack and manifest vector scripts with `--check` | All exit 0; 6,456-byte forecast, 102,318-byte finance pack, 4,572-byte closeout, nine pack files and 19 manifest files match. No regeneration required. |
+| Stdlib SHA256 and Git-parent preservation assertions | Pass; five vendor locks, manifest, legacy export, `.aiops/` and CI match both parents. Node UI/tests and incoming main query code/tests match their respective parents. Both validation histories survive in order. Log: `integrity.log`. |
+| `git ls-files -u`; tracked conflict-marker scan; `git diff --check`; `git diff --cached --check` | No unmerged entries or markers; both whitespace checks pass. Root decision deletion matches incoming main. |
+
+Only the root conflict resolution and this additive verification record were
+edited in round 2. Automatic merges of the feature, incoming main work and
+Korean handbook remain intact. All resolutions are staged, with no commit.
+These results are local SIMULATED verification, not financial execution,
+production deployment or human acceptance. STATUS: READY.
 
 ## provider-capture-recon — supervised conflict-fix round 2 (2026-11-10)
 
