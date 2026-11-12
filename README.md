@@ -218,6 +218,7 @@ python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
 python3 scripts/compat_preflight.py --check
+python3 -m unittest discover -s tests -p test_port_composition.py -v
 python3 scripts/forecast_vectors.py --check
 python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
@@ -225,6 +226,17 @@ npm ci
 npx playwright install chromium
 npm run test:browser
 ```
+
+`tests/test_port_composition.py` composes `LOCAL_FAKE_IDP` session binding,
+the compatibility preflight factory and `LOCAL_FAKE_GATE` through the real
+loopback HTTP facade. Its local `CLAIM_CONFORMANCE` evidence uses only
+SIMULATED commands and READ_ONLY_FIXTURE inputs, without either upstream
+checkout. Identity, authentication and producer adoption remain `NOT_BOUND`;
+passing these tests is not SEMANTIC_CONFORMANCE. Coverage includes F04 lifecycle
+commands, authorized reads, rejected synthetic credentials, hostile gate replies,
+first-result replay/conflict behavior and explicit unsupported-operation refusals.
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for boundaries and
+[docs/VALIDATION.md](docs/VALIDATION.md) for builder results.
 
 한 명령 수용 사다리는 위 검사에 패키지 스모크와 시드 데모를 더합니다. 사람 수용 결정은 포함하지 않습니다.
 
@@ -305,6 +317,29 @@ See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
 
 포트폴리오 현금 데스크 (`portfolio-cashflow-desk`, CAP-01/CAP-20): `#desk`에서 기존 `GET /api/portfolio/snapshot?instance_id=…`의 한 SIMULATED 절단면으로 현금 사다리·미정 일정·코버넌트 사유·위험 타일·advance 상세를 읽는다. 정산 현금/원금/계약 이자는 별도 흐름이며 가용 현금 잔액을 만들지 않는다. 기존 시계·새로고침·UNKNOWN 복구만 사용하고 상환 게시를 구현하지 않는다. `INCOMPLETE`/`NOT_BOUND`와 지연 응답 경계, 접근성·역할·375px 검증은 `tests/test_portfolio_cashflow_desk.py`, `tests/browser/portfolio-cashflow-desk.spec.cjs`에 있다. 상세 운영법은 [한국어 핸드북](docs/OPERATOR_HANDBOOK_KO.md)의 `portfolio-cashflow-desk` 절을 따른다.
+Recorded provider-capture assertions are implemented under
+[CAPITAL_OBSERVATION_RECORD.md](docs/decisions/CAPITAL_OBSERVATION_RECORD.md).
+`POST /api/overlay/commands` accepts `op: "record_external_fact"` from the
+organizer only (agent `403 FACT_AGENT_FORBIDDEN`, other roles
+`403 FACT_ROLE_FORBIDDEN`), folding `PROVIDER_PAYMENT_CAPTURE` facts into
+`state.observations` keyed by fact id with a derived `ACTIVE`/`SUPERSEDED`
+status. Every fact is a constant `SIMULATED` + `UNVERIFIED_ASSERTED` +
+`funds_executed: false` + `provider_call_made: false` assertion — never a
+provider/bank/chain confirmation and never reconciliation or set-off cash.
+Recording enforces `operation_id` dedup (`409 FACT_IDEMPOTENCY_CONFLICT`),
+clock CAS (`409 SIM_CLOCK_STALE`), the note's bounds (`409 SIMULATION_CAPACITY`
+scope `external_facts`, `409 FACT_SUPERSEDE_DEPTH`), claim existence
+(`409 FACT_CLAIM_UNKNOWN`) and the volatile/personal-key ban
+(`400 OVERLAY_VOLATILE_KEY`). `GET /api/reconciliation` gains the conditional
+check `recorded_captures_vs_claim_face` (`MATCH`/`ASSERTED_MISMATCH`/`NO_FACTS`,
+diagnostic `OBSERVED_FACT_MISMATCH` only) only while observations exist; the
+offline workspace auditor computes the same row. Facts move no money, never
+gate the FSM or shadow derivations, and appear only inside the V3 `overlay`
+manifest section — `demo.json` and `overlay_empty.json` stay byte-identical.
+The seeded disposable demo pins `tests/golden/overlay_observations.json`:
+`python3 scripts/seed_overlay_observations.py` checks it, `--write`
+regenerates explicitly.
+
 
 ### Cursor-paginated facts (SIMULATED)
 
