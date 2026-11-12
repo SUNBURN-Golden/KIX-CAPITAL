@@ -109,6 +109,17 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_repin_checker_operational_boundary(self):
+        for path in (README, HANDBOOK):
+            text = path.read_text(encoding='utf-8')
+            for needle in ('python3 scripts/upstream_repin_check.py --check --root .',
+                           '--baseline BASELINE --candidate CANDIDATE --evidence EVIDENCE.json',
+                           'CAPITAL_UPSTREAM_REPINS.md', 'EXECUTABLE_VENDOR', 'EXECUTABLE_CITATION',
+                           'RESEARCH_BASELINE', 'EVIDENCE_COMPLETE', 'NOT_BOUND',
+                           'does not authenticate an adoption receipt', 'SIMULATED',
+                           'upstream-repin-inventory-contract-invariants', 'PENDING_NOTE_REGISTRATION'):
+                self.assertIn(needle, text, (path, needle))
+
     def test_bundled_policy_runtime_is_documented_with_provenance_and_override_failure(self):
         handbook = HANDBOOK.read_text(encoding='utf-8')
         start = handbook.index('<!-- handbook-section:artifact-docs-bundling -->')
@@ -274,6 +285,7 @@ class HandbookTests(unittest.TestCase):
             'sim-clock-ledger': ('SIM_CLOCK_STALE', 'SIM_CLOCK_STEP', 'SIM_CLOCK_NOT_ADVANCING', 'WORKSPACE_UNREADABLE'),
             'margin-cure-default': ('FIXTURE_VIEWS_IMMUTABLE', 'DEFAULT_ELIGIBLE', 'f04_default_called'),
             'audit70-fix1': ('interest_rebased', 'overlay-recovery-writeoff', 'overlay-repayment-posting', 'CAPITAL_DEFAULT_RECOVERY.md', 'CAPITAL_REPAYMENT_POSTING.md'),
+            'coa-payment-writeoff-postings': ('OVERLAY_REPAYMENT', 'OVERLAY_RECOVERY', 'OVERLAY_WRITEOFF', '9810', '9890', '9790', '5200', '4300', 'payment_ledger_vs_projection', 'recovery_ledger_vs_projection', 'writeoff_ledger_vs_projection', 'SYNTHETIC_UNADOPTED'),
             'coa-candidate-projection': ('GET /api/projection?mode=coa-candidate', 'GET /api/reconciliation?mode=coa-candidate', 'SIMULATION_FIXED_V2', 'SYNTHETIC_UNADOPTED', '9790', 'coa_candidate_totals_vs_v1', 'interest_ledger_vs_projection'),
             'audit60-fix2': ('KIX_CAPITAL_EXPORT_MANIFEST_V2', 'KIX_CAPITAL_EXPORT_MANIFEST_V3', 'overlaypart', 'SECTION_SET', 'overlay_fold_digest_equals_persisted', 'tests/golden/overlay_demo.json'),
             'overlay-repayment-posting': ('post_repayment', 'REPAYMENT_ADVANCE_STATE', 'REPAYMENT_UNAPPLIED_CAP', 'SIM_UNAPPLIED_MEMO', 'UNPOSTED_F04_REPAY'),
@@ -364,7 +376,10 @@ class HandbookTests(unittest.TestCase):
             unit_commands.index(fence[0]))
         self.assertEqual(len(upstream_commands), 7)
         for argv in upstream_commands:
-            self.assertIn('--execute', argv)
+            if 'scripts/read_model_claims_check.py' in argv:
+                self.assertNotIn('--execute', argv)
+            else:
+                self.assertIn('--execute', argv)
             self.assertIn('_claims_check.py', argv)
         for doc in (README.read_text(encoding='utf-8'),
                     HANDBOOK.read_text(encoding='utf-8')):

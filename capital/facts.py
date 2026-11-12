@@ -351,6 +351,8 @@ def verify_dir(directory):
     try:
         recovery.validate_links(entries, journal)
         slices.validate_links(entries, journal, fixtures.rows)
+        from capital.observation_record import validate_links as validate_observations
+        validate_observations(entries, journal, fixtures.rows)
     except (ValueError, KeyError, TypeError, ArithmeticError):
         return report('OVERLAY_LINK_MISMATCH')
     try:

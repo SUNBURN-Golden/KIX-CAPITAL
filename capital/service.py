@@ -23,7 +23,7 @@ from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manife
 from capital.gate_producer import GateProtocolError, TransportLost
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
-from capital.protocol import VENDOR, MockSettlement
+from capital.protocol import VENDOR, MockSettlement, SettlementMachine
 from capital.recon import build_reconciliation
 from capital.policy import (
     POLICY_LABEL, POLICY_NOT_BOUND, SCENARIO_ID, DecisionNoteSettlementPolicy,
@@ -36,7 +36,7 @@ from capital.setoff import DecisionNoteSetoff
 from capital.resources import note_path
 from capital.terms import TERMS_NOT_BOUND, DecisionNoteTermsPolicy
 from capital.underwriting import DecisionNoteUnderwriting
-from capital import slices
+from capital import slices, observation_record
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
 from capital.store import InMemoryStorage, WorkspaceError, overlay_section, verify_document
@@ -105,6 +105,31 @@ def _agent_api_error(code, role=None):
     if code == 'NOT_BOUND':
         raise ApiError('NOT_BOUND', 400, detail)
     raise ApiError('NOT_BOUND', 500, detail)
+
+
+READ_SCHEMA_VERSION = '0.1'
+READ_FIXTURE_MODE = 'REFERENCE_IN_MEMORY'
+READ_MODE = 'READ_MODEL_REHEARSAL'
+READ_LABEL = ('SIMULATED consumer rehearsal of the READ_MODEL_QUERIES draft 0.1 envelope. '
+              'Not a read model, not a ReadObservationV1, not a payment or a loan.')
+READ_QUERIES = {
+    'credit_advance': 'get_credit_advance',
+    'credit_claim': 'get_credit_claim',
+    'settlement': 'get_settlement',
+}
+
+
+def _read_api_error(code):
+    """Map a pinned reader code to HTTP. Literals stay visible to the facade error scan."""
+    if code == 'INVALID_ID':
+        raise ApiError('INVALID_ID', 400)
+    if code == 'UNKNOWN_ADVANCE':
+        raise ApiError('UNKNOWN_ADVANCE', 404)
+    if code == 'UNKNOWN_CLAIM':
+        raise ApiError('UNKNOWN_CLAIM', 404)
+    if code == 'UNKNOWN_SETTLEMENT':
+        raise ApiError('UNKNOWN_SETTLEMENT', 404)
+    raise ApiError('READ_ONLY_INVARIANT', 500)
 
 
 class ApiError(Exception):
@@ -221,6 +246,7 @@ class CapitalService:
             try:
                 recovery.validate_links(entries, journal)
                 slices.validate_links(entries, journal, self.fixtures)
+                observation_record.validate_links(entries, journal, self.fixtures)
             except ValueError as exc:
                 raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
         except Exception:
@@ -1117,6 +1143,63 @@ class CapitalService:
     def _machine_frozen(self):
         return (self.machine.state_digest(), self.machine.canonical_state(), len(self.receipts))
 
+    def read_query(self, kind, ident):
+        """get_credit_advance, get_credit_claim, get_settlement of READ_MODEL_QUERIES 0.1.
+
+        The body is the pinned view dict, unmodified. The permission is checked by the
+        route registry. Visibility classes are UNDETERMINED upstream and not enforced.
+        """
+        if kind not in READ_QUERIES:
+            raise ApiError('NOT_FOUND', 404)
+        with self.lock:
+            frozen = (self._machine_frozen(), self.machine.export_journal())
+            try:
+                body = self._read_body(kind, ident)
+                accepted = len(self.machine.export_journal())
+                if kind == 'settlement':
+                    # One settlement book per fixture, so its entry count is its journal length.
+                    accepted = body['accepted_entries']
+            finally:
+                if (self._machine_frozen(), self.machine.export_journal()) != frozen:
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+            query = READ_QUERIES[kind]
+            return {
+                'read_schema_version': READ_SCHEMA_VERSION,
+                'query': query,
+                'query_digest': digest({'query': query, 'id': ident}),
+                'fixture_mode': READ_FIXTURE_MODE,
+                'accepted_through': accepted,
+                'visibility_enforced': False,
+                'visibility_matrix': 'UNDETERMINED',
+                'mode': READ_MODE,
+                'label': READ_LABEL,
+                'body': body,
+            }
+
+    def _read_body(self, kind, ident):
+        try:
+            if kind == 'credit_advance':
+                return self.producer.view(ident)
+            if kind == 'credit_claim':
+                view_claim = getattr(self.machine, 'view_claim', None)
+                if view_claim is None:
+                    raise ApiError('NOT_BOUND', 400)
+                return view_claim(ident)
+            try:
+                # The fixture reader reports every miss as UNKNOWN_SETTLEMENT. A scratch
+                # pinned machine tells a malformed id (INVALID_ID) from an absent one.
+                SettlementMachine().view(ident)
+            except Exception as exc:
+                if getattr(exc, 'code', None) == 'INVALID_ID':
+                    raise CreditError('INVALID_ID') from exc
+            return self.fixtures.view(ident)
+        except CreditError as exc:
+            _read_api_error(exc.code)
+        except Exception as exc:
+            if isinstance(exc, ApiError):
+                raise
+            _read_api_error(getattr(exc, 'code', None))
+
     def _machine_same(self, frozen):
         if self._machine_frozen() != frozen:
             raise ApiError('READ_ONLY_INVARIANT', 500)
@@ -1454,6 +1537,9 @@ class CapitalService:
         """
         with self.lock:
             principal = Principal(role if type(role) is str else '')
+            if type(body) is dict and body.get('op') == observation_record.OP:
+                if principal.role != 'organizer':
+                    raise ApiError('FACT_AGENT_FORBIDDEN' if principal.role == 'agent' else 'FACT_ROLE_FORBIDDEN', 403)
             if principal.role == 'agent' and type(body) is dict and type(body.get('op')) is str and body['op'] in slices.COMMANDS:
                 raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
             if principal.role == 'agent' and type(body) is dict and (
@@ -1465,6 +1551,8 @@ class CapitalService:
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             self._overlay_volatile(body)
+            if body.get('op') == observation_record.OP:
+                return self._post_external_fact(body, principal)
             if type(body.get('op')) is str and body['op'] in slices.COMMANDS:
                 return self._post_slice_command(body, principal)
             if body.get('op') in recovery.COMMANDS:
@@ -1590,6 +1678,55 @@ class CapitalService:
             receipt.update(self._overlay_receipt_common(principal), transport_duplicate=False,
                            overlay_state_digest=overlay.state_digest(overlay.fold(candidate)))
             return receipt
+
+    def _post_external_fact(self, body, principal):
+        try:
+            observation_record.reject_volatile(body, transport=True)
+            if set(body) != {'instance_id', 'operation_id', 'op', 'at_sim_day', 'payload'}:
+                raise ApiError('INVALID_COMMAND')
+            if body['instance_id'] != self.instance_id:
+                raise ApiError('SESSION_CHANGED', 409)
+            if not observation_record._token(body['operation_id']):
+                raise ApiError('INVALID_OPERATION_ID')
+            self._require_day(body['at_sim_day'])
+            observation_record.validate_payload(body['payload'])
+            if body['payload']['sim_day'] != body['at_sim_day']:
+                raise ApiError('INVALID_ARGUMENTS')
+            payload = {**copy.deepcopy(body['payload']), 'recorded_by_role': 'organizer'}
+            prior = next((e for e in self.overlay_entries if e['overlay_id'] == body['operation_id']), None)
+            if prior is not None:
+                if prior['kind'] != observation_record.KIND or prior['payload'] != payload:
+                    raise ApiError('FACT_IDEMPOTENCY_CONFLICT', 409)
+                return {**self._overlay_receipt_common(principal), **observation_record.receipt(prior),
+                        'transport_duplicate': True}
+            if body['operation_id'] in self.receipts:
+                raise ApiError('FACT_IDEMPOTENCY_CONFLICT', 409)
+            state = overlay.fold(self.overlay_entries)
+            if body['at_sim_day'] != state['sim_day']:
+                raise ApiError('SIM_CLOCK_STALE', 409)
+            policy = observation_record.load_policy()
+            if policy is None or self.overlay_bounds is None:
+                raise ApiError('NOT_BOUND', 409)
+            for key, value in policy['constants'].items():
+                payload[key] = value
+            journal = self.machine.export_journal()
+            entry = {'overlay_id': body['operation_id'], 'kind': observation_record.KIND,
+                     'after_journal_index': len(journal), 'sim_day': state['sim_day'], 'payload': payload}
+            candidate = self.overlay_entries + [entry]
+            observation_record.validate_links(candidate, journal, self.fixtures, policy)
+            self._overlay_check_capacity(self.overlay_entries, [entry], state['sim_day'], {
+                'journal': journal, 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+            if len(self.receipts) + sum(e['kind'] == observation_record.KIND for e in candidate) > MAX_OPERATIONS:
+                raise ApiError('SIMULATION_CAPACITY', 409, {'scope': 'external_facts'})
+            self._persist(candidate)
+            self.overlay_entries = candidate
+            return {**self._overlay_receipt_common(principal), **observation_record.receipt(entry),
+                    'transport_duplicate': False}
+        except observation_record.FactError as exc:
+            raise ApiError(exc.code, exc.status, exc.detail) from exc
+        except WorkspaceError as exc:
+            self.workspace_status = exc.code
+            raise ApiError(exc.code, 503) from exc
 
     def _slice_observations(self, state):
         policy = self.slice_policy
@@ -2173,6 +2310,8 @@ class CapitalService:
                 }
                 if self.overlay_entries:
                     body['close_gate'] = overlay.close_gates(state)
+                if state.get('observations'):
+                    body['observations'] = copy.deepcopy(state['observations'])
                 if status is not None:
                     body['terms_binding_matches'] = (
                         state['terms_binding'] is None
@@ -2468,7 +2607,7 @@ class CapitalService:
         persisted = overlay_section(document)
         return copy.deepcopy(document['payload']), None, copy.deepcopy(persisted)
 
-    def reconciliation(self, probe_operation_id=None, mode=None):
+    def reconciliation(self, probe_operation_id=None, mode=None, *, _export_legacy=False):
         """Read-only exception report. No receipt is written and nothing is retried.
 
         mode=coa-candidate appends the two COA candidate checks; the default report and the
@@ -2481,6 +2620,10 @@ class CapitalService:
             try:
                 payload, unreadable, persisted = self._subject_payload()
                 rows = copy.deepcopy(self.fixtures.rows)
+                entries = copy.deepcopy(self.overlay_entries)
+                if _export_legacy:
+                    entries = [e for e in entries if e['kind'] != observation_record.KIND]
+                    persisted = overlay.build_section(entries)
                 return build_reconciliation(
                     payload=payload, unreadable=unreadable, fixture_rows=rows,
                     fixtures_digest=digest(rows), settlement_source=self.fixtures,
@@ -2488,7 +2631,7 @@ class CapitalService:
                     instance_id=self.instance_id, operation_capacity=MAX_OPERATIONS,
                     workspace_status=self.workspace_status,
                     coa_port=self.coa_projection if mode == coa.MODE else None,
-                    overlay_entries=copy.deepcopy(self.overlay_entries) or None,
+                    overlay_entries=entries or None,
                     overlay_persisted=persisted,
                 )
             finally:
@@ -2574,7 +2717,10 @@ class CapitalService:
             try:
                 journal, _matched = self._replay_journal()
                 projection = self.projection(None)
-                reconciliation = self.reconciliation()
+                full_reconciliation = self.reconciliation()
+                reconciliation = (self.reconciliation(_export_legacy=True)
+                                  if any(e['kind'] == observation_record.KIND for e in self.overlay_entries)
+                                  else full_reconciliation)
                 statement = self.statement()
                 rows = copy.deepcopy(self.fixtures.rows)
                 sections = {
@@ -2599,7 +2745,7 @@ class CapitalService:
                 }
                 if self.overlay_entries:
                     sections['overlay'] = overlay.export_section(self.overlay_entries, len(journal))
-                status, reasons = manifest_status(reconciliation['status'], self.workspace_status)
+                status, reasons = manifest_status(full_reconciliation['status'], self.workspace_status)
                 return build_manifest(
                     sections=sections, instance_id=self.instance_id, signer=self.signer,
                     status=status, incomplete_reasons=reasons,

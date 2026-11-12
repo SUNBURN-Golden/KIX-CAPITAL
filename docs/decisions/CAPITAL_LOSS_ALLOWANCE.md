@@ -127,6 +127,7 @@ cut은 `{f04_state_digest, overlay_digest, overlay_sim_day}`다. 비교 문맥�
 {
   "schema": "capital-decision-v1",
   "decision_id": "loss-allowance-decision",
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-10",
   "provisional": true,
