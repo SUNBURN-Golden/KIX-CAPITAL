@@ -468,3 +468,24 @@ change or external call. See [the contract](docs/INTEGRATION.md#residual-obligat
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
+
+
+### Loss allowance candidate V2
+
+`GET /api/projection?mode=coa-candidate` includes `ALLOWANCE` delta postings
+(1190/5100), an `allowance` population block and `reserve_pool` memo under the
+[adopted provisional decision](docs/decisions/CAPITAL_LOSS_ALLOWANCE.md).
+Amounts use authoritative TERMS weights and recorded draw tiers, economic
+operation order and crossed maturity days. `tier` is required on allowance
+posting dimensions. `allowance_vs_risk_reserve` is the sixth candidate check;
+seed demo is MATCH at 30,750 KRW. The TERMS portfolio floor and overlay reductions
+can expose honest mismatches with the existing risk reader. Missing evidence
+is NOT_BOUND/null. Everything remains SIMULATED / SYNTHETIC_UNADOPTED /
+`policy_adopted=false` / NOT_IN_EXPORT_V1; 3100/3200 remain unposted.
+
+Offline parity is opt-in: `python3 -m capital.verify --workspace DIR --mode coa-candidate`.
+Omitted mode retains the default audit and evidence-pack contract. Recovery and
+gross write-off postings 4300/5200 retain their existing behavior; V2 releases
+allowance once immediately before the existing gross write-off. The new
+ALLOWANCE source posts only 1190/5100. See the [integration contract](docs/INTEGRATION.md#loss-allowance-postings)
+and [handbook](docs/OPERATOR_HANDBOOK_KO.md#loss-allowance-postings).
