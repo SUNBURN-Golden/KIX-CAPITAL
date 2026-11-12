@@ -427,5 +427,33 @@ class PackRegenerationTests(unittest.TestCase):
         self.assertEqual(self.committed(), before)
 
 
+
+class OperatorReasonPackTests(unittest.TestCase):
+    def test_all_reason_sources_are_hashed_and_tampering_is_detected(self):
+        import copy
+        from tests.test_workspace_audit import seed_reason_workspace
+        with tempfile.TemporaryDirectory() as directory:
+            seed_reason_workspace(directory)
+            pack = evidence.pack_document(directory)
+            self.assertEqual(pack['status'], 'COMPLETE')
+            self.assertTrue(evidence.verify_pack(pack)['ok'])
+            manifest = pack['sections']['export_manifest']['body']['document']
+            receipts = manifest['sections']['receipts']['body']['receipts']
+            self.assertEqual(receipts['reason-offer']['receipt']['operator_reason'], 'SIMULATED offer context')
+            self.assertEqual(pack['sections']['workspace_audit']['body']['document']['operator_reasons']['count'], 3)
+            from tests import facade_schema
+            contract = facade_schema.load_contract()
+            route = next(r for r in contract['routes'] if r['path'] == '/api/export/manifest')
+            facade_schema.validate(manifest, route['response'], contract)
+            for target in ['f04', 'clock', 'repayment']:
+                changed = copy.deepcopy(pack)
+                sections = changed['sections']['export_manifest']['body']['document']['sections']
+                if target == 'f04':
+                    row = sections['receipts']['body']['receipts']['reason-offer']['receipt']
+                else:
+                    row = next(e['payload'] for e in sections['overlay']['body']['journal'] if e['kind'] == target)
+                row['operator_reason'] = 'SIMULATED tampered context'
+                self.assertEqual(evidence.verify_pack(changed)['reason'], 'SECTION_HASH_MISMATCH:export_manifest')
+
 if __name__ == '__main__':
     unittest.main()

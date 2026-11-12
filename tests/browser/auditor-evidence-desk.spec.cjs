@@ -79,7 +79,7 @@ test('V3 overlay boundaries preserve server order and include the seventh check'
  await expect(page.locator('#desk-audit-checks tr')).toHaveCount(7);
  const expected=[];
  manifest.sections.journal.body.entries.forEach((entry,index)=>{if(entry.advance_id==='sim-unbound')expected.push({key:[index,1,index],boundary:'#'+index,event:entry.op});});
- manifest.sections.overlay.body.journal.forEach((entry,index)=>{if(entry.payload?.advance_id==='sim-unbound'||['clock','terms_binding'].includes(entry.kind))expected.push({key:[entry.after_journal_index,0,index],boundary:'@'+entry.after_journal_index,event:entry.kind});});
+ manifest.sections.overlay.body.journal.forEach((entry,index)=>{if(entry.payload?.advance_id==='sim-unbound'||entry.payload?.advance_ref==='sim-unbound'||['clock','terms_binding'].includes(entry.kind))expected.push({key:[entry.after_journal_index,0,index],boundary:'@'+entry.after_journal_index,event:entry.kind});});
  expected.sort((a,b)=>a.key[0]-b.key[0]||a.key[1]-b.key[1]||a.key[2]-b.key[2]);
  const actual=await page.locator('#desk-audit-chain tr').evaluateAll(rows=>rows.map(row=>({boundary:row.cells[0].textContent,event:row.cells[3].textContent})));
  expect(actual).toEqual(expected.map(({boundary,event})=>({boundary,event})));
@@ -117,4 +117,26 @@ test('server reasons are literal text and incompatible snapshots are withheld',a
  await expect(page.locator('#desk-audit-error')).toContainText('incompatible');
  await expect(page.locator('#desk-audit-content')).toBeHidden();
  await expect(page.locator('#desk-audit-chain tr')).toHaveCount(0);
+});
+
+test('auditor evidence chain shows literal operator reasons from all three command kinds', async ({page, request}) => {
+ const state = await (await request.get(base+'/api/state')).json();
+ const headers = {'X-Capital-Token':state.local_token};
+ const operator_reason = '<b>x</b>';
+ const commands = [
+  ['/api/commands',{op:'repay',advance_id:'sim-unbound',args:{amount:1,sequence:1}}],
+  ['/api/overlay/commands',{op:'advance_day',from_sim_day:0,to_sim_day:1,reason:'SIMULATED test'}],
+  ['/api/overlay/commands',{op:'post_repayment',advance_ref:'sim-unbound',at_sim_day:1,amount_krw:1}],
+ ];
+ for(const [index,[route,body]] of commands.entries()){
+  const response=await request.post(base+route,{headers,data:{...body,instance_id:state.instance_id,operation_id:'audit-reason-'+index,operator_reason}});
+  expect(response.ok(),await response.text()).toBe(true);
+ }
+ await auditor(page);
+ const cells=page.locator('#desk-audit-chain tr td:nth-child(6)').filter({hasText:operator_reason});
+ await expect(cells).toHaveCount(3);
+ await expect(cells).toHaveText([operator_reason,operator_reason,operator_reason]);
+ await expect(page.locator('#desk-audit-chain b')).toHaveCount(0);
+ const receipt=page.locator('#desk-audit-chain tr').filter({hasText:'audit-reason-0'}).locator('td').nth(6);
+ await expect(receipt).toContainText('"operator_reason":"<b>x</b>"');
 });

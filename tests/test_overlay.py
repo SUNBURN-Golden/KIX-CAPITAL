@@ -917,5 +917,56 @@ class GoldenTests(unittest.TestCase):
                 self.assertNotIn(key, text, name)
 
 
+
+class OperatorReasonOverlayTests(unittest.TestCase):
+    def request(self, service, **extra):
+        return dict(instance_id=service.instance_id, operation_id='reason-clock', op='advance_day',
+                    from_sim_day=0, to_sim_day=1, reason='SIMULATED tick', **extra)
+
+    def test_clock_reason_roundtrip_and_capacity(self):
+        from tests import facade_schema
+        from tests.test_capital import OperatorReasonTests
+        from tests.test_repayment_posting import whole
+        contract = facade_schema.load_contract()
+        service = CapitalService()
+        for invalid in OperatorReasonTests.invalid:
+            before = whole(service)
+            with self.assertRaises(ApiError) as caught:
+                service.overlay_command(self.request(service, operator_reason=invalid))
+            self.assertEqual((caught.exception.status, caught.exception.code), (400, 'INVALID_REASON'))
+            self.assertEqual(whole(service), before)
+        for reason in ['x', 'x' * 200, '<b>x</b>']:
+            service = CapitalService()
+            request = self.request(service, operator_reason=reason)
+            facade_schema.validate(request, contract['definitions']['overlay_advance_request'], contract)
+            receipt = service.overlay_command(request)
+            self.assertEqual(receipt['operator_reason'], reason)
+            facade_schema.validate(receipt, contract['definitions']['overlay_advance_receipt'], contract)
+            self.assertEqual(overlay.operation_receipt(service.overlay_entries, 'reason-clock')['operator_reason'], reason)
+            self.assertTrue(service.overlay_command(request)['transport_duplicate'])
+            with self.assertRaisesRegex(ApiError, 'IDEMPOTENCY_CONFLICT'):
+                service.overlay_command(self.request(service))
+            # Existing entry byte admission still applies before any persistence.
+            service = CapitalService()
+            service.overlay_bounds = {**service.overlay_bounds, 'OVERLAY_ENTRY_MAX_BYTES': 100}
+            before = whole(service)
+            with self.assertRaises(ApiError) as caught:
+                service.overlay_command(self.request(service, operator_reason=reason))
+            self.assertEqual(caught.exception.code, 'SIMULATION_CAPACITY')
+            self.assertEqual(whole(service), before)
+
+    def test_entry_validation_refuses_invalid_context_and_other_entry_kinds(self):
+        from tests.test_capital import OperatorReasonTests
+        service = CapitalService()
+        service.overlay_command(self.request(service, operator_reason='context'))
+        clock = next(e for e in service.overlay_entries if e['kind'] == 'clock')
+        for invalid in OperatorReasonTests.invalid:
+            entry = copy.deepcopy(clock)
+            entry['payload']['operator_reason'] = invalid
+            with self.assertRaises(overlay.OverlayError): overlay.validate_entry(entry)
+        entry = copy.deepcopy(service.overlay_entries[0])
+        entry['payload']['operator_reason'] = 'context'
+        with self.assertRaises(overlay.OverlayError): overlay.validate_entry(entry)
+
 if __name__ == '__main__':
     unittest.main()

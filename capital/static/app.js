@@ -722,15 +722,16 @@ function paintDeskOverlay(){
 function timelineRows(manifest,c){
  const rows=[];
  manifest.sections.journal.body.entries.forEach((entry,index)=>{
-  if(entry.advance_id===c.advance_id)rows.push({key:[index,1,index],cells:[`#${index}`,'F04 저널','—',entry.op,entry.idempotency_key]});
+  const reason=manifest.sections.receipts?.body.receipts[entry.idempotency_key]?.receipt?.operator_reason;
+  if(entry.advance_id===c.advance_id)rows.push({key:[index,1,index],cells:[`#${index}`,'F04 저널','—',entry.op,entry.idempotency_key,typeof reason==='string'?reason:'—']});
  });
  const overlay=manifest.sections.overlay?manifest.sections.overlay.body.journal:[];
  overlay.forEach((entry,n)=>{
   const payload=entry.payload||{};
-  const own=payload.advance_id===c.advance_id,global=entry.kind==='clock'||entry.kind==='terms_binding';
+  const own=payload.advance_id===c.advance_id||payload.advance_ref===c.advance_id,global=entry.kind==='clock'||entry.kind==='terms_binding';
   if(!own&&!global)return;
-  const detail=Object.entries(payload).filter(([key,value])=>key!=='advance_id'&&['string','number','boolean'].includes(typeof value)).map(([key,value])=>`${key}=${value}`).join(' · ');
-  rows.push({key:[entry.after_journal_index,0,n],cells:[`@${entry.after_journal_index}`,own?'오버레이':'오버레이 · 전역',String(entry.sim_day),entry.kind,detail]});
+  const detail=Object.entries(payload).filter(([key,value])=>key!=='advance_id'&&key!=='operator_reason'&&['string','number','boolean'].includes(typeof value)).map(([key,value])=>`${key}=${value}`).join(' · ');
+  rows.push({key:[entry.after_journal_index,0,n],cells:[`@${entry.after_journal_index}`,own?'오버레이':'오버레이 · 전역',String(entry.sim_day),entry.kind,detail,typeof payload.operator_reason==='string'?payload.operator_reason:'—']});
  });
  rows.sort((a,b)=>a.key[0]-b.key[0]||a.key[1]-b.key[1]||a.key[2]-b.key[2]);
  return rows;

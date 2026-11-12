@@ -28,6 +28,7 @@
     ],
     "command": [
       "INVALID_COMMAND",
+      "INVALID_REASON",
       "SESSION_CHANGED",
       "ASSET_MISMATCH",
       "INVALID_OPERATION_ID",
@@ -183,6 +184,10 @@
     },
     {
       "code": "INVALID_COMMAND",
+      "status": 400
+    },
+    {
+      "code": "INVALID_REASON",
       "status": 400
     },
     {
@@ -1482,6 +1487,7 @@
         "BODY_TOO_LARGE",
         "INVALID_JSON",
         "INVALID_COMMAND",
+        "INVALID_REASON",
         "SESSION_CHANGED",
         "ASSET_MISMATCH",
         "INVALID_OPERATION_ID",
@@ -1554,6 +1560,10 @@
               },
               "asset": {
                 "$ref": "#/definitions/asset_spec"
+              },
+              "operator_reason": {
+                "type": "string",
+                "pattern": "[\\x20-\\x7E]{1,200}"
               }
             }
           },
@@ -1600,6 +1610,10 @@
               },
               "asset": {
                 "$ref": "#/definitions/asset_spec"
+              },
+              "operator_reason": {
+                "type": "string",
+                "pattern": "[\\x20-\\x7E]{1,200}"
               }
             }
           },
@@ -1647,6 +1661,10 @@
               },
               "asset": {
                 "$ref": "#/definitions/asset_spec"
+              },
+              "operator_reason": {
+                "type": "string",
+                "pattern": "[\\x20-\\x7E]{1,200}"
               }
             }
           }
@@ -1816,6 +1834,7 @@
         "BODY_TOO_LARGE",
         "INVALID_JSON",
         "INVALID_COMMAND",
+        "INVALID_REASON",
         "SESSION_CHANGED",
         "UNSUPPORTED_OPERATION",
         "INVALID_OPERATION_ID",
@@ -5615,6 +5634,10 @@
         },
         "effects_executed": {
           "const": false
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -5679,6 +5702,10 @@
         },
         "effects_executed": {
           "const": false
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -10999,6 +11026,10 @@
             },
             "asset": {
               "$ref": "#/definitions/asset_spec"
+            },
+            "operator_reason": {
+              "type": "string",
+              "pattern": "[\\x20-\\x7E]{1,200}"
             }
           }
         },
@@ -11045,6 +11076,10 @@
             },
             "asset": {
               "$ref": "#/definitions/asset_spec"
+            },
+            "operator_reason": {
+              "type": "string",
+              "pattern": "[\\x20-\\x7E]{1,200}"
             }
           }
         },
@@ -11092,6 +11127,10 @@
             },
             "asset": {
               "$ref": "#/definitions/asset_spec"
+            },
+            "operator_reason": {
+              "type": "string",
+              "pattern": "[\\x20-\\x7E]{1,200}"
             }
           }
         }
@@ -15049,6 +15088,10 @@
               "type": "string"
             }
           }
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15238,6 +15281,10 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15312,6 +15359,10 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15429,6 +15480,10 @@
         },
         "f04_journal_written": {
           "type": "boolean"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15476,6 +15531,10 @@
           "items": {
             "$ref": "#/definitions/overlay_posting"
           }
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15566,6 +15625,10 @@
         },
         "overlay_state_digest": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },

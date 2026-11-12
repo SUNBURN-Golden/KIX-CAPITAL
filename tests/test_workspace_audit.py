@@ -306,6 +306,68 @@ class AuditBytesTests(unittest.TestCase):
                     self.assertEqual(path.read_bytes(), raw)
 
 
+
+def seed_reason_workspace(directory):
+    from capital.service import CapitalService
+    from tests.test_capital import OperatorReasonTests
+    from tests.test_repayment_posting import body
+    from tests.test_overlay import draw_book
+    port = FileWorkspace.open(directory)
+    try:
+        service = CapitalService(port)
+        service.execute(OperatorReasonTests.command(service, operator_reason='SIMULATED offer context'))
+        draw_book(service)
+        service.overlay_command(dict(instance_id=service.instance_id, operation_id='reason-clock', op='advance_day',
+            from_sim_day=0, to_sim_day=1, reason='SIMULATED tick', operator_reason='SIMULATED clock context'))
+        service.overlay_command(body(service, 'reason-payment', 1, operator_reason='SIMULATED payment context'))
+    finally:
+        port.close()
+
+
+class OperatorReasonAuditTests(unittest.TestCase):
+    def test_reason_digest_restore_validation_and_tamper_limits(self):
+        import copy
+        from capital.service import digest
+        with tempfile.TemporaryDirectory() as directory:
+            seed_reason_workspace(directory)
+            path = Path(directory) / FILE_NAME
+            original = json.loads(path.read_bytes())
+            before = path.read_bytes()
+            report = audit_workspace(directory)
+            self.assertTrue(report['ok'], report)
+            self.assertEqual(report['checks']['receipt_journal_fingerprints'], 'MATCHED')
+            self.assertEqual(report['recon_status'], 'MATCHED')
+            reasons = {'f04': {'reason-offer': 'SIMULATED offer context'},
+                       'overlay': {'reason-clock': 'SIMULATED clock context', 'reason-payment': 'SIMULATED payment context'}}
+            self.assertEqual(report['operator_reasons'], {'count': 3, 'sha256': digest(reasons)})
+            self.assertEqual(path.read_bytes(), before)
+            for target, invalid, reseal, expected in [
+                ('f04', False, False, 'payload_sha256'),
+                ('overlay', False, False, 'service_restore'),
+                ('f04', True, True, 'service_restore'),
+                ('overlay', True, True, 'service_restore'),
+                ('f04', False, True, None),
+                ('overlay', False, True, None),
+            ]:
+                with self.subTest(target=target, invalid=invalid, reseal=reseal):
+                    doc = copy.deepcopy(original)
+                    reason = '\n' if invalid else 'SIMULATED edited context'
+                    if target == 'f04':
+                        doc['payload']['receipts']['reason-offer']['receipt']['operator_reason'] = reason
+                        if reseal: doc['payload_sha256'] = digest(doc['payload'])
+                    else:
+                        entry = next(e for e in doc['overlay']['journal'] if e['kind'] == 'clock')
+                        entry['payload']['operator_reason'] = reason
+                        if reseal: doc['overlay']['section_sha256'] = section_checksum(doc['overlay'])
+                    path.write_bytes(canonical_bytes(doc))
+                    damaged = path.read_bytes()
+                    result = audit_workspace(directory)
+                    self.assertEqual(result['failed_check'], expected, result)
+                    if expected is None:
+                        self.assertTrue(result['ok'])
+                        self.assertNotEqual(result['operator_reasons']['sha256'], report['operator_reasons']['sha256'])
+                    self.assertEqual(path.read_bytes(), damaged)
+
 if __name__ == '__main__':
     unittest.main()
 

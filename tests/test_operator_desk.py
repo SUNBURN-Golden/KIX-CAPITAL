@@ -88,5 +88,38 @@ class OperatorDeskStaticTests(unittest.TestCase):
         self.assertIn('@media(max-width:480px)', STYLE)
 
 
+
+class OperatorReasonTimelineTests(unittest.TestCase):
+    def test_timeline_associates_receipts_clock_and_repayment_context(self):
+        import json
+        import shutil
+        import subprocess
+        if not shutil.which('node'): self.skipTest('node unavailable')
+        function = APP_JS[APP_JS.index('function timelineRows('):APP_JS.index('function paintDeskTimeline(')]
+        journal = [{'advance_id': 'sim-a', 'op': 'offer', 'idempotency_key': 'offer'},
+                   {'advance_id': 'sim-a', 'op': 'draw', 'idempotency_key': 'draw'}]
+        entries = [dict(after_journal_index=2, sim_day=1, kind=kind, payload=payload) for kind, payload in [
+            ('clock', {'operator_reason': '<b>clock</b>'}),
+            ('repayment', {'advance_ref': 'sim-a', 'operator_reason': '<b>payment</b>'}),
+            ('repayment', {'advance_ref': 'sim-other', 'operator_reason': 'other'}),
+            ('interest', {'advance_id': 'sim-a', 'operator_reason': 5})]]
+        manifest = {'sections': {'journal': {'body': {'entries': journal}},
+            'receipts': {'body': {'receipts': {'offer': {'receipt': {'operator_reason': '<b>offer</b>'}}}}},
+            'overlay': {'body': {'journal': entries}}}}
+        proc = subprocess.run(['node', '-e', function + '\nconsole.log(JSON.stringify(timelineRows(' +
+            json.dumps(manifest) + ',{advance_id:"sim-a"})));'], capture_output=True, text=True, check=True)
+        rows = json.loads(proc.stdout)
+        self.assertEqual([row['cells'][5] for row in rows], ['<b>offer</b>', '—', '<b>clock</b>', '<b>payment</b>', '—'])
+        self.assertTrue(all(len(row['cells']) == 6 for row in rows))
+        self.assertTrue(all('operator_reason' not in row['cells'][4] for row in rows))
+        self.assertIn('운영자 사유', INDEX)
+        self.assertIn('Operator reason', INDEX)
+
+    def test_docs_describe_context_and_privacy_rule(self):
+        for name in ['docs/OPERATOR_HANDBOOK_KO.md', 'docs/INTEGRATION.md']:
+            text = (ROOT / name).read_text()
+            for needle in ['operator_reason', 'not authentication or approval evidence', 'no personal data']:
+                self.assertIn(needle, text, name)
+
 if __name__ == '__main__':
     unittest.main()

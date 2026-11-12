@@ -915,6 +915,13 @@ saved_at/saved_by_instance는 그대로 남긴다.
 
 <!-- /handbook-section -->
 
+## 운영자 명령 사유 (`operator_reason`)
+
+선택 필드 `operator_reason`은 organizer의 F04 명령과 overlay `advance_day` / `post_repayment`에 붙이는 free-form operator context다. Printable ASCII 0x20–0x7E, 1–200자만 받는다. 빈 문자열·null·비문자열·제어문자·비ASCII·201자 이상은 apply나 idempotency 조회 전에 400 `INVALID_REASON`이다. 기존 clock `reason`은 별도 필드다. no personal data: 개인정보를 적지 않는다. not authentication or approval evidence: 인증이나 승인 증거가 아니다. 필수 사유나 추가 승인자는 도입하지 않는다. agent는 사유를 제안에 붙일 수 없고 organizer만 자신의 명령 receipt에 기록한다. UI 입력란은 추가하지 않으며 두 desk의 timeline은 사유를 text node로 표시한다.
+
+F04 receipt의 선택 키는 journal fingerprint 밖에 둔다. 재전송의 사유가 달라지면 409 `IDEMPOTENCY_CONFLICT`다. Overlay clock/repayment entry와 재구성 receipt에 사유가 남는다. 기존 용량에 JSON escaping 후 크기로 합산하므로 200자 이하도 1,024-byte repayment entry 한도를 넘으면 409 `SIMULATION_CAPACITY` (`REPAYMENT_ENTRY_MAX_BYTES`)다. envelope version과 금융 한도는 바뀌지 않는다.
+
+Offline workspace audit의 선택 `operator_reasons` 블록은 count와 F04 operation id / overlay id별 사유의 SHA256을 제공한다. Evidence pack의 manifest 및 workspace audit section digest에도 포함된다. 원시 변조는 checksum으로, 잘못된 형식의 reseal은 restore 검증으로 검출한다. 유효한 사유로 바꾸고 unkeyed checksum을 다시 계산한 경우 이전 신뢰 digest와 비교하거나 DEV_ONLY shared-HMAC manifest로 검증해야 한다. 이것은 원격 인증 증거가 아니다.
 
 <!-- handbook-section:loss-allowance-postings -->
 

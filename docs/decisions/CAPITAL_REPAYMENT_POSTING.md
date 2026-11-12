@@ -51,6 +51,7 @@
   - `advance_ref`는 facade가 F04 명령에 이미 쓰는 advance 식별자다.
   - `at_sim_day`는 현재 `sim_day`와 같아야 한다. 다르면 409 `SIM_CLOCK_STALE`이고, 과거로 소급해 기장하는 길은 없다.
   - `evidence_ref`는 선택이고 `^[A-Za-z0-9._:-]{1,64}$`만 허용하며 `UNVERIFIED_ASSERTED`로 라벨한다. 계좌·성명·은행 참조는 받지 않는다(`NO_PERSONAL_DATA_BY_DESIGN_V1`).
+  - amended 2026-10-26 by node command-reason-trail: optional `operator_reason` is printable ASCII (0x20–0x7E), 1–200 characters, counted within the unchanged 1,024-byte entry bound. It is rule-bound free-form operator context under `CAPITAL_ACCOUNTS_TAX_LEGAL` `pii_posture`: no personal data or payer identity; not authentication or approval evidence.
   - `proposal_id`는 선택이고 agent 제안 `kind: REPAYMENT_POSTING`을 인용한다.
 - agent lane은 제안만 남길 수 있고 기장을 적용하지 못한다.
 - 선행조건(실패하면 쓰기 없음)은 다음과 같다.
@@ -159,7 +160,7 @@
         "role": "organizer",
         "permission": "overlay:command",
         "fields": ["operation_id", "advance_ref", "at_sim_day", "amount_krw"],
-        "optional_fields": ["evidence_ref", "proposal_id"],
+        "optional_fields": ["evidence_ref", "proposal_id", "operator_reason"],
         "strict": "UNKNOWN_KEYS_400_NO_CLIENT_SPLIT_NO_TIMESTAMP_NO_PAYER_IDENTITY",
         "amount_krw": "INT_0_TO_1000000000000_BOOL_FLOAT_STRING_REJECTED",
         "clock_fence": "at_sim_day_EQUALS_CURRENT_ELSE_409_SIM_CLOCK_STALE",
@@ -201,7 +202,7 @@
       "status": "ADOPTED",
       "value": {
         "entry_kind": "repayment",
-        "fields": ["kind", "entry_no", "operation_id", "after_journal_index", "sim_day", "advance_ref", "amount_krw", "unapplied_before_krw", "allocation", "witness", "terms_binding", "f04_operation_id", "f04_receipt_ref", "evidence_ref", "proposal_id", "label", "basis"],
+        "fields": ["kind", "entry_no", "operation_id", "after_journal_index", "sim_day", "advance_ref", "amount_krw", "unapplied_before_krw", "allocation", "witness", "terms_binding", "f04_operation_id", "f04_receipt_ref", "evidence_ref", "proposal_id", "operator_reason", "label", "basis"],
         "allocation_fields": ["default_interest_krw", "interest_krw", "principal_krw", "unapplied_after_krw"],
         "allocation_invariant": "amount_krw+unapplied_before_krw=default_interest_krw+interest_krw+principal_krw+unapplied_after_krw",
         "allocation_source": "SHARED_PREVIEW_FUNCTION_ORDER_FROM_FINANCIAL_TERMS_3_3_NOT_RESTATED",

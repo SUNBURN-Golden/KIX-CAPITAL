@@ -39,7 +39,7 @@ from capital.underwriting import DecisionNoteUnderwriting
 from capital import slices, observation_record
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
-from capital.store import InMemoryStorage, WorkspaceError, overlay_section, verify_document
+from capital.store import InMemoryStorage, WorkspaceError, canonical_bytes, overlay_section, verify_document
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
 OVERLAY_LABEL = 'SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry'
@@ -60,6 +60,15 @@ OPS = {
 
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
+
+
+def _operator_reason(body):
+    if 'operator_reason' not in body:
+        return None
+    reason = body['operator_reason']
+    if type(reason) is not str or overlay.OPERATOR_REASON.fullmatch(reason) is None:
+        raise ApiError('INVALID_REASON')
+    return reason
 
 
 def _release_producer(producer):
@@ -306,6 +315,9 @@ class CapitalService:
             if type(fingerprint) is not str or len(fingerprint) != 64 or any(char not in '0123456789abcdef' for char in fingerprint):
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
             if type(receipt) is not dict or receipt.get('operation_id') != key or receipt.get('outcome') not in {'ACCEPTED', 'REJECTED'}:
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
+            if 'operator_reason' in receipt and (type(receipt['operator_reason']) is not str
+                    or overlay.OPERATOR_REASON.fullmatch(receipt['operator_reason']) is None):
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
             if type(receipt.get('instance_id')) is not str:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
@@ -1240,7 +1252,7 @@ class CapitalService:
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             allowed = {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}
-            if set(body) - {'proposal_id', 'asset', 'approvals'} != allowed or not allowed <= set(body):
+            if set(body) - {'proposal_id', 'asset', 'approvals', 'operator_reason'} != allowed or not allowed <= set(body):
                 raise ApiError('INVALID_COMMAND')
             # Before instance and idempotency lookups, so a denied role cannot read
             # another role's receipt by replaying its operation_id.
@@ -1263,6 +1275,7 @@ class CapitalService:
             # the fingerprint: only one value is ever accepted, so it cannot conflict.
             if 'asset' in body and not asset_matches(body['asset']):
                 raise ApiError('ASSET_MISMATCH')
+            operator_reason = _operator_reason(body)
             operation_id = body['operation_id']
             if type(operation_id) is not str or not re.fullmatch(r'[a-zA-Z0-9-]{1,80}', operation_id):
                 raise ApiError('INVALID_OPERATION_ID')
@@ -1283,7 +1296,7 @@ class CapitalService:
             fingerprint = digest(identity)
             prior = self.receipts.get(operation_id)
             if prior:
-                if prior['fingerprint'] != fingerprint:
+                if prior['fingerprint'] != fingerprint or prior['receipt'].get('operator_reason') != operator_reason:
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 result = copy.deepcopy(prior['receipt'])
                 result['transport_duplicate'] = True
@@ -1291,6 +1304,14 @@ class CapitalService:
                 return result
             if len(self.receipts) >= MAX_OPERATIONS:
                 raise ApiError('SIMULATION_CAPACITY', 409)
+            # Admit reason bytes before any producer call, including gate-backed producers.
+            # The legacy reason-free receipt capacity behaviour remains unchanged.
+            if operator_reason is not None and self.overlay_bounds is not None:
+                payload = {'receipts': self.receipts, 'journal': self.machine.export_journal(),
+                           'case_fixtures': self.case_fixtures, 'state_digest': self.machine.state_digest()}
+                extra = len(canonical_bytes(operator_reason)) + len('"operator_reason":') + 1
+                if overlay.section_size(payload, self.overlay_entries) + extra > self.overlay_bounds['ENVELOPE_MAX_BYTES']:
+                    raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'ENVELOPE_MAX_BYTES'})
             op, case, args = body['op'], body['advance_id'], body['args']
             if type(op) is not str or op not in OPS:
                 self.observability.record_command(op if type(op) is str else None, 'REJECTED', None)
@@ -1312,6 +1333,8 @@ class CapitalService:
             if cited is not None:
                 receipt['proposal_id'] = cited
                 receipt['effects_executed'] = False
+            if operator_reason is not None:
+                receipt['operator_reason'] = operator_reason
             default_entry = None
             before_journal = self.machine.export_journal()
             if op == 'draw' and case in self.case_fixtures:
@@ -1590,7 +1613,7 @@ class CapitalService:
                 return self._post_recovery_command(body, principal)
             if body.get('op') == overlay.COMMAND_REPAY:
                 return self._post_repayment(body, principal)
-            if set(body) - {'writeoff'} != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
+            if set(body) - {'writeoff', 'operator_reason'} != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
                 raise ApiError('INVALID_COMMAND')
             if body['instance_id'] != self.instance_id:
                 raise ApiError('SESSION_CHANGED', 409)
@@ -1599,6 +1622,7 @@ class CapitalService:
             operation_id = body['operation_id']
             if type(operation_id) is not str or _OVERLAY_ID.match(operation_id) is None:
                 raise ApiError('INVALID_OPERATION_ID')
+            operator_reason = _operator_reason(body)
             from_day, to_day, reason = body['from_sim_day'], body['to_sim_day'], body['reason']
             self._require_day(from_day)
             self._require_day(to_day)
@@ -1618,7 +1642,7 @@ class CapitalService:
                 if directive != recorded_directive:
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 if prior['op'] != overlay.COMMAND_OP or (
-                        prior['from_sim_day'], prior['to_sim_day'], prior['reason']) != (from_day, to_day, reason):
+                        prior['from_sim_day'], prior['to_sim_day'], prior['reason'], prior.get('operator_reason')) != (from_day, to_day, reason, operator_reason):
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 prior.update(self._overlay_receipt_common(principal), transport_duplicate=True)
                 return prior
@@ -1674,7 +1698,7 @@ class CapitalService:
                 subject['principal'] -= r['principal_recovered_krw'] + r['written_off_krw']
             new = overlay.advance_entries(
                 operation_id, state, len(journal), to_day=to_day, reason=reason,
-                binding=binding, subjects=subjects, margin_before=cures)
+                binding=binding, subjects=subjects, margin_before=cures, operator_reason=operator_reason)
             if margin_subjects:
                 try:
                     stepped = overlay.fold(self.overlay_entries + new, len(journal))
@@ -2090,7 +2114,7 @@ class CapitalService:
     def _post_repayment(self, body, principal):
         """post_repayment: split an asserted payment over the posted dues and issue only the principal
         portion to F04, in the same single save as the overlay entry (CAPITAL_REPAYMENT_POSTING.md)."""
-        if set(body) - {'evidence_ref', 'proposal_id'} != {
+        if set(body) - {'evidence_ref', 'proposal_id', 'operator_reason'} != {
                 'instance_id', 'operation_id', 'op', 'advance_ref', 'at_sim_day', 'amount_krw'}:
             raise ApiError('INVALID_COMMAND')
         if body['instance_id'] != self.instance_id:
@@ -2098,6 +2122,7 @@ class CapitalService:
         operation_id = body['operation_id']
         if type(operation_id) is not str or _OVERLAY_ID.match(operation_id) is None:
             raise ApiError('INVALID_OPERATION_ID')
+        operator_reason = _operator_reason(body)
         ref, day, amount = body['advance_ref'], body['at_sim_day'], body['amount_krw']
         if type(ref) is not str or _ADVANCE_REF.match(ref) is None:
             raise ApiError('INVALID_ARGUMENTS')
@@ -2110,9 +2135,9 @@ class CapitalService:
             raise ApiError('INVALID_ARGUMENTS')
         prior = overlay.operation_receipt(self.overlay_entries, operation_id)
         if prior is not None:
-            wanted = (overlay.COMMAND_REPAY, ref, day, amount, evidence, proposal)
+            wanted = (overlay.COMMAND_REPAY, ref, day, amount, evidence, proposal, operator_reason)
             recorded = (prior['op'], prior.get('advance_ref'), prior.get('at_sim_day'), prior.get('amount_krw'),
-                        prior.get('evidence_ref'), prior.get('proposal_id'))
+                        prior.get('evidence_ref'), prior.get('proposal_id'), prior.get('operator_reason'))
             if recorded != wanted:
                 raise ApiError('IDEMPOTENCY_CONFLICT', 409)
             prior.update(self._overlay_receipt_common(principal), f04_journal_written=prior['f04'] is not None,
@@ -2196,7 +2221,8 @@ class CapitalService:
         entry = overlay.repayment_entry(
             operation_id, state, journal_index=len(scratch_journal), advance_ref=ref, amount=amount,
             denominator=denominator, principal_before=subject['principal'],
-            terms_version=status['terms_version'], split=split, f04=f04, evidence_ref=evidence, proposal_id=proposal)
+            terms_version=status['terms_version'], split=split, f04=f04, evidence_ref=evidence, proposal_id=proposal,
+            operator_reason=operator_reason)
         if overlay.entry_size(entry) > bounds['entry_canonical_bytes_max']:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'REPAYMENT_ENTRY_MAX_BYTES'})
         candidate = self.overlay_entries + [entry]

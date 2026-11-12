@@ -529,6 +529,8 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
                 claim = None
+                # Deny agents before service validation (including operator_reason);
+                # organizer context is validated before idempotency or any apply.
                 if path == '/api/overlay/commands':
                     body = self.read_json()
                     if type(body) is dict and body.get('op') == 'record_external_fact' and principal.role != 'organizer':
