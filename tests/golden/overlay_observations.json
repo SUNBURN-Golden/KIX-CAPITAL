@@ -1,0 +1,536 @@
+{
+  "application": "SHADOW_NOT_APPLIED",
+  "claim_id": "sim-committed",
+  "entry_count": 5,
+  "f04_digest": "825db5553577bfc1c0f73d5f1b6dd925bbe72ae55e751aba26469924a7710d82",
+  "fact_ids": [
+    "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093",
+    "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a"
+  ],
+  "funds_executed": false,
+  "label": "SIMULATED_DISPOSABLE_BOOK",
+  "manifest_verified": true,
+  "match_check": {
+    "claims": [
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-alpha-arena",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 3000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 2910000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-alpha-hall",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 1200000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 1164000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-beta-club",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 800000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-beta-festival",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 4000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 3880000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-delta-mid",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 1000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-delta-small",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 50000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 48500000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-epsilon-clean",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 2000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 1940000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-epsilon-refund",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 400000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 388000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-gamma-annex",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 2400000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 2328000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-gamma-tour",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 8000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [
+          {
+            "amount_krw": 100000,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "captured_sim_day": 7,
+            "claim_id": "sim-committed",
+            "claimed_provider_ref": "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093",
+            "effective_sim_day": 7,
+            "fact_class": "PROVIDER_PAYMENT_CAPTURE",
+            "fact_id": "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093",
+            "funds_executed": false,
+            "label": "SIMULATED",
+            "legal_effect": "NOT_ASSESSED",
+            "order_ref": "sim-order",
+            "provider_call_made": false,
+            "recorded_by_role": "organizer",
+            "sim_day": 7,
+            "status": "ACTIVE",
+            "verification": "UNVERIFIED_ASSERTED"
+          }
+        ],
+        "capture_sum_krw": 100000,
+        "claim_id": "sim-committed",
+        "draw_diagnostics": [
+          {
+            "advance_id": "sim-a",
+            "amount_krw": 90000,
+            "label": "SIMULATED_F04_ACCEPTED_DRAW",
+            "operation_id": "a-draw"
+          }
+        ],
+        "expected_claim_gross_krw": 100000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 97000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [
+          "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093"
+        ],
+        "status": "MATCH"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "sim-pending",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 100000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "sim-refund",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 100000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 97000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      }
+    ],
+    "coverage": {
+      "completeness": "NOT_BOUND",
+      "observed_claims": 1,
+      "total_claims": 13
+    },
+    "derivation": "recorded_captures_vs_claim_face",
+    "derived": true,
+    "diagnostics": [],
+    "id": "recorded_captures_vs_claim_face",
+    "label": "SIMULATED",
+    "provenance": "DERIVED_FROM_UNVERIFIED_ASSERTED",
+    "source_fact_ids": [
+      "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093"
+    ],
+    "status": "MATCH",
+    "verification": "UNVERIFIED_ASSERTED"
+  },
+  "mismatch_check": {
+    "claims": [
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-alpha-arena",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 3000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 2910000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-alpha-hall",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 1200000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 1164000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-beta-club",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 800000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-beta-festival",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 4000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 3880000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-delta-mid",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 1000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-delta-small",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 50000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 48500000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-epsilon-clean",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 2000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 1940000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-epsilon-refund",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 400000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 388000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-gamma-annex",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 2400000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 2328000000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "demo-gamma-tour",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 8000000000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [
+          {
+            "amount_krw": 90000,
+            "authority": {
+              "approvals": [],
+              "role": "organizer"
+            },
+            "captured_sim_day": 7,
+            "claim_id": "sim-committed",
+            "claimed_provider_ref": "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a",
+            "effective_sim_day": 7,
+            "fact_class": "PROVIDER_PAYMENT_CAPTURE",
+            "fact_id": "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a",
+            "funds_executed": false,
+            "label": "SIMULATED",
+            "legal_effect": "NOT_ASSESSED",
+            "order_ref": "sim-order",
+            "provider_call_made": false,
+            "recorded_by_role": "organizer",
+            "sim_day": 7,
+            "status": "ACTIVE",
+            "supersedes_fact_id": "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093",
+            "verification": "UNVERIFIED_ASSERTED"
+          }
+        ],
+        "capture_sum_krw": 90000,
+        "claim_id": "sim-committed",
+        "draw_diagnostics": [
+          {
+            "advance_id": "sim-a",
+            "amount_krw": 90000,
+            "label": "SIMULATED_F04_ACCEPTED_DRAW",
+            "operation_id": "a-draw"
+          }
+        ],
+        "expected_claim_gross_krw": 100000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 97000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [
+          "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a"
+        ],
+        "status": "ASSERTED_MISMATCH"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "sim-pending",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 100000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 0,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      },
+      {
+        "active_facts": [],
+        "capture_sum_krw": 0,
+        "claim_id": "sim-refund",
+        "draw_diagnostics": [],
+        "expected_claim_gross_krw": 100000,
+        "settlement_diagnostics": {
+          "confirmed_cash_krw": 97000,
+          "distributed_krw": 0,
+          "label": "READ_ONLY_FIXTURE"
+        },
+        "source_fact_ids": [],
+        "status": "NO_FACTS"
+      }
+    ],
+    "coverage": {
+      "completeness": "NOT_BOUND",
+      "observed_claims": 1,
+      "total_claims": 13
+    },
+    "derivation": "recorded_captures_vs_claim_face",
+    "derived": true,
+    "diagnostics": [
+      "OBSERVED_FACT_MISMATCH"
+    ],
+    "id": "recorded_captures_vs_claim_face",
+    "label": "SIMULATED",
+    "provenance": "DERIVED_FROM_UNVERIFIED_ASSERTED",
+    "source_fact_ids": [
+      "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a"
+    ],
+    "status": "ASSERTED_MISMATCH",
+    "verification": "UNVERIFIED_ASSERTED"
+  },
+  "observations": {
+    "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093": {
+      "amount_krw": 100000,
+      "authority": {
+        "approvals": [],
+        "role": "organizer"
+      },
+      "captured_sim_day": 7,
+      "claim_id": "sim-committed",
+      "claimed_provider_ref": "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093",
+      "effective_sim_day": 7,
+      "fact_class": "PROVIDER_PAYMENT_CAPTURE",
+      "funds_executed": false,
+      "label": "SIMULATED",
+      "legal_effect": "NOT_ASSESSED",
+      "order_ref": "sim-order",
+      "provider_call_made": false,
+      "recorded_by_role": "organizer",
+      "sim_day": 7,
+      "status": "SUPERSEDED",
+      "verification": "UNVERIFIED_ASSERTED"
+    },
+    "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a": {
+      "amount_krw": 90000,
+      "authority": {
+        "approvals": [],
+        "role": "organizer"
+      },
+      "captured_sim_day": 7,
+      "claim_id": "sim-committed",
+      "claimed_provider_ref": "7d4de2427dcd95d97ff2f1bc01662ead932f7da1030a1302b74393049a8a0e3a",
+      "effective_sim_day": 7,
+      "fact_class": "PROVIDER_PAYMENT_CAPTURE",
+      "funds_executed": false,
+      "label": "SIMULATED",
+      "legal_effect": "NOT_ASSESSED",
+      "order_ref": "sim-order",
+      "provider_call_made": false,
+      "recorded_by_role": "organizer",
+      "sim_day": 7,
+      "status": "ACTIVE",
+      "supersedes_fact_id": "0037fa018d793cc87574a957a94ebef071e8c4b6c891f5610bd2bc2338d53093",
+      "verification": "UNVERIFIED_ASSERTED"
+    }
+  },
+  "overlay_digest": "8d21ca64c75811ad260da8e0e3252d76dfde6b05977c1198c56cf54423cba8d4",
+  "overlay_fold_check": "MATCHED",
+  "overlay_schema": 1,
+  "provider_call_made": false,
+  "provisional": true,
+  "sim_day": 7,
+  "verification": "UNVERIFIED_ASSERTED"
+}

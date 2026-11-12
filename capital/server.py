@@ -531,7 +531,18 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 claim = None
                 # Deny agents before service validation (including operator_reason);
                 # organizer context is validated before idempotency or any apply.
-                if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
+                if path == '/api/overlay/commands':
+                    body = self.read_json()
+                    if type(body) is dict and body.get('op') == 'record_external_fact' and principal.role != 'organizer':
+                        raise ApiError('FACT_AGENT_FORBIDDEN' if principal.role == 'agent' else 'FACT_ROLE_FORBIDDEN', 403)
+                    if principal.role == 'agent' and type(body) is dict:
+                        from capital.slices import COMMANDS as slice_commands
+                        if type(body.get('op')) is str and body['op'] in slice_commands:
+                            raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
+                        if body.get('op') in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration') or 'writeoff' in body:
+                            raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
+                    require(authorizer, principal, permission)
+                elif principal.role == 'agent' and path == '/api/commands':
                     body = self.read_json()
                     from capital.slices import COMMANDS as slice_commands
                     if type(body) is dict and type(body.get('op')) is str and body['op'] in slice_commands:

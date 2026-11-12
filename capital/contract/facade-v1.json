@@ -473,6 +473,42 @@
     {
       "code": "SCENARIO_UNKNOWN",
       "status": 400
+    },
+    {
+      "code": "FACT_AGENT_FORBIDDEN",
+      "status": 403
+    },
+    {
+      "code": "FACT_ROLE_FORBIDDEN",
+      "status": 403
+    },
+    {
+      "code": "FACT_CLASS_NOT_ADOPTED",
+      "status": 400
+    },
+    {
+      "code": "FACT_CLAIM_UNKNOWN",
+      "status": 409
+    },
+    {
+      "code": "FACT_FUTURE_DAY",
+      "status": 409
+    },
+    {
+      "code": "FACT_IDEMPOTENCY_CONFLICT",
+      "status": 409
+    },
+    {
+      "code": "FACT_SUPERSEDE_DEPTH",
+      "status": 409
+    },
+    {
+      "code": "FACT_SUPERSEDE_INVALID",
+      "status": 409
+    },
+    {
+      "code": "FACT_VERIFICATION_NOT_BOUND",
+      "status": 409
     }
   ],
   "commands": {
@@ -1848,7 +1884,16 @@
         "SLICE_U1_REFUSED",
         "SLICE_WOULD_BREACH_ADVANCE_BASE",
         "UNKNOWN_SETTLEMENT",
-        "UNKNOWN_SLICE"
+        "UNKNOWN_SLICE",
+        "FACT_AGENT_FORBIDDEN",
+        "FACT_ROLE_FORBIDDEN",
+        "FACT_CLASS_NOT_ADOPTED",
+        "FACT_CLAIM_UNKNOWN",
+        "FACT_FUTURE_DAY",
+        "FACT_IDEMPOTENCY_CONFLICT",
+        "FACT_SUPERSEDE_DEPTH",
+        "FACT_SUPERSEDE_INVALID",
+        "FACT_VERIFICATION_NOT_BOUND"
       ],
       "permission": "overlay:command",
       "request": {
@@ -6743,7 +6788,9 @@
         "balance_groups",
         "memo_balances",
         "chart_status",
-        "conservation"
+        "conservation",
+        "allowance",
+        "reserve_pool"
       ],
       "properties": {
         "instance_id": {
@@ -6797,7 +6844,14 @@
         "entries": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/coa_entry"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/coa_entry"
+              },
+              {
+                "$ref": "#/definitions/allowance_entry"
+              }
+            ]
           }
         },
         "accounts": {
@@ -6845,6 +6899,12 @@
           "items": {
             "$ref": "#/definitions/conservation"
           }
+        },
+        "allowance": {
+          "$ref": "#/definitions/allowance_block"
+        },
+        "reserve_pool": {
+          "$ref": "#/definitions/allowance_pool"
         }
       }
     },
@@ -7536,7 +7596,17 @@
         "checks": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/recon_check"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/recon_check"
+              },
+              {
+                "$ref": "#/definitions/observation_capture_check"
+              },
+              {
+                "$ref": "#/definitions/allowance_recon_check"
+              }
+            ]
           }
         },
         "not_bound": {
@@ -12492,6 +12562,9 @@
         },
         {
           "$ref": "#/definitions/overlay_void_slice_request"
+        },
+        {
+          "$ref": "#/definitions/overlay_record_fact_request"
         }
       ]
     },
@@ -13129,6 +13202,9 @@
             },
             {
               "$ref": "#/definitions/overlay_unknown_operation"
+            },
+            {
+              "$ref": "#/definitions/observation_recorded_operation"
             }
           ]
         },
@@ -13153,6 +13229,12 @@
         "recovery": {
           "type": "object",
           "additionalProperties": true
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/observation_folded_fact"
+          }
         }
       }
     },
@@ -13169,6 +13251,9 @@
         },
         {
           "$ref": "#/definitions/overlay_slice_receipt"
+        },
+        {
+          "$ref": "#/definitions/overlay_record_fact_receipt"
         }
       ]
     },
@@ -18119,6 +18204,1564 @@
         },
         "matched": {
           "type": "boolean"
+        }
+      }
+    },
+    "observation_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "verification",
+        "funds_executed",
+        "provider_call_made",
+        "legal_effect",
+        "fact_class",
+        "claim_id",
+        "order_ref",
+        "claimed_provider_ref",
+        "amount_krw",
+        "sim_day",
+        "effective_sim_day",
+        "captured_sim_day",
+        "authority"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "provider_call_made": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "fact_class": {
+          "const": "PROVIDER_PAYMENT_CAPTURE"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "order_ref": {
+          "type": "string",
+          "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+        },
+        "claimed_provider_ref": {
+          "type": "string",
+          "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "effective_sim_day": {
+          "type": "integer"
+        },
+        "captured_sim_day": {
+          "type": "integer"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "approvals"
+          ],
+          "properties": {
+            "role": {
+              "const": "organizer"
+            },
+            "approvals": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "approver_label"
+                ],
+                "properties": {
+                  "approver_label": {
+                    "type": "string",
+                    "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+            }
+          }
+        },
+        "supersedes_fact_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        }
+      }
+    },
+    "observation_stored_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "verification",
+        "funds_executed",
+        "provider_call_made",
+        "legal_effect",
+        "fact_class",
+        "claim_id",
+        "order_ref",
+        "claimed_provider_ref",
+        "amount_krw",
+        "sim_day",
+        "effective_sim_day",
+        "captured_sim_day",
+        "authority",
+        "recorded_by_role"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "provider_call_made": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "fact_class": {
+          "const": "PROVIDER_PAYMENT_CAPTURE"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "order_ref": {
+          "type": "string",
+          "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+        },
+        "claimed_provider_ref": {
+          "type": "string",
+          "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "effective_sim_day": {
+          "type": "integer"
+        },
+        "captured_sim_day": {
+          "type": "integer"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "approvals"
+          ],
+          "properties": {
+            "role": {
+              "const": "organizer"
+            },
+            "approvals": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "approver_label"
+                ],
+                "properties": {
+                  "approver_label": {
+                    "type": "string",
+                    "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+            }
+          }
+        },
+        "supersedes_fact_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "recorded_by_role": {
+          "const": "organizer"
+        }
+      }
+    },
+    "observation_folded_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "verification",
+        "funds_executed",
+        "provider_call_made",
+        "legal_effect",
+        "fact_class",
+        "claim_id",
+        "order_ref",
+        "claimed_provider_ref",
+        "amount_krw",
+        "sim_day",
+        "effective_sim_day",
+        "captured_sim_day",
+        "authority",
+        "recorded_by_role",
+        "status"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "provider_call_made": {
+          "const": false
+        },
+        "legal_effect": {
+          "const": "NOT_ASSESSED"
+        },
+        "fact_class": {
+          "const": "PROVIDER_PAYMENT_CAPTURE"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "order_ref": {
+          "type": "string",
+          "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+        },
+        "claimed_provider_ref": {
+          "type": "string",
+          "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+        },
+        "amount_krw": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "effective_sim_day": {
+          "type": "integer"
+        },
+        "captured_sim_day": {
+          "type": "integer"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "approvals"
+          ],
+          "properties": {
+            "role": {
+              "const": "organizer"
+            },
+            "approvals": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "approver_label"
+                ],
+                "properties": {
+                  "approver_label": {
+                    "type": "string",
+                    "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+            }
+          }
+        },
+        "supersedes_fact_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "recorded_by_role": {
+          "const": "organizer"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUPERSEDED"
+          ]
+        }
+      }
+    },
+    "overlay_record_fact_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "operation_id",
+        "op",
+        "at_sim_day",
+        "payload"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "op": {
+          "const": "record_external_fact"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "payload": {
+          "$ref": "#/definitions/observation_payload"
+        }
+      }
+    },
+    "observation_recorded_operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "at_sim_day",
+        "sim_day",
+        "entry"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "op": {
+          "const": "record_external_fact"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "entry": {
+          "$ref": "#/definitions/observation_stored_payload"
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "label": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "overlay_record_fact_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "op",
+        "outcome",
+        "at_sim_day",
+        "sim_day",
+        "entry",
+        "f04_journal_written",
+        "label",
+        "instance_id",
+        "clock_source",
+        "actor",
+        "role",
+        "role_provenance",
+        "funds_executed",
+        "economic_finality_claimed",
+        "transport_duplicate"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+        },
+        "op": {
+          "const": "record_external_fact"
+        },
+        "outcome": {
+          "const": "APPLIED"
+        },
+        "at_sim_day": {
+          "type": "integer"
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "entry": {
+          "$ref": "#/definitions/observation_stored_payload"
+        },
+        "f04_journal_written": {
+          "const": false
+        },
+        "label": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "clock_source": {
+          "const": "SIM_LOGICAL_CLOCK"
+        },
+        "actor": {
+          "const": "LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED"
+        },
+        "role": {
+          "const": "organizer"
+        },
+        "role_provenance": {
+          "const": "SYNTHETIC_LOCAL_ROLE"
+        },
+        "funds_executed": {
+          "const": false
+        },
+        "economic_finality_claimed": {
+          "const": false
+        },
+        "transport_duplicate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observation_capture_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "derived",
+        "derivation",
+        "provenance",
+        "label",
+        "verification",
+        "source_fact_ids",
+        "diagnostics",
+        "coverage",
+        "claims"
+      ],
+      "properties": {
+        "id": {
+          "const": "recorded_captures_vs_claim_face"
+        },
+        "status": {
+          "enum": [
+            "MATCH",
+            "ASSERTED_MISMATCH",
+            "NO_FACTS"
+          ]
+        },
+        "derived": {
+          "const": true
+        },
+        "derivation": {
+          "const": "recorded_captures_vs_claim_face"
+        },
+        "provenance": {
+          "const": "DERIVED_FROM_UNVERIFIED_ASSERTED"
+        },
+        "label": {
+          "const": "SIMULATED"
+        },
+        "verification": {
+          "const": "UNVERIFIED_ASSERTED"
+        },
+        "source_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "const": "OBSERVED_FACT_MISMATCH"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed_claims",
+            "total_claims",
+            "completeness"
+          ],
+          "properties": {
+            "observed_claims": {
+              "type": "integer"
+            },
+            "total_claims": {
+              "type": "integer"
+            },
+            "completeness": {
+              "const": "NOT_BOUND"
+            }
+          }
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "claim_id",
+              "status",
+              "source_fact_ids",
+              "active_facts",
+              "capture_sum_krw",
+              "expected_claim_gross_krw",
+              "draw_diagnostics",
+              "settlement_diagnostics"
+            ],
+            "properties": {
+              "claim_id": {
+                "type": "string",
+                "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+              },
+              "status": {
+                "enum": [
+                  "MATCH",
+                  "ASSERTED_MISMATCH",
+                  "NO_FACTS"
+                ]
+              },
+              "source_fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                }
+              },
+              "active_facts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "label",
+                    "verification",
+                    "funds_executed",
+                    "provider_call_made",
+                    "legal_effect",
+                    "fact_class",
+                    "claim_id",
+                    "order_ref",
+                    "claimed_provider_ref",
+                    "amount_krw",
+                    "sim_day",
+                    "effective_sim_day",
+                    "captured_sim_day",
+                    "authority",
+                    "recorded_by_role",
+                    "status",
+                    "fact_id"
+                  ],
+                  "properties": {
+                    "label": {
+                      "const": "SIMULATED"
+                    },
+                    "verification": {
+                      "const": "UNVERIFIED_ASSERTED"
+                    },
+                    "funds_executed": {
+                      "const": false
+                    },
+                    "provider_call_made": {
+                      "const": false
+                    },
+                    "legal_effect": {
+                      "const": "NOT_ASSESSED"
+                    },
+                    "fact_class": {
+                      "const": "PROVIDER_PAYMENT_CAPTURE"
+                    },
+                    "claim_id": {
+                      "type": "string",
+                      "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                    },
+                    "order_ref": {
+                      "type": "string",
+                      "pattern": "(?:sim|demo)-[A-Za-z0-9._:-]{1,59}"
+                    },
+                    "claimed_provider_ref": {
+                      "type": "string",
+                      "pattern": "(?:[0-9a-f]{64}|(?:sim|demo)-[A-Za-z0-9._:-]{1,59})"
+                    },
+                    "amount_krw": {
+                      "type": "integer"
+                    },
+                    "sim_day": {
+                      "type": "integer"
+                    },
+                    "effective_sim_day": {
+                      "type": "integer"
+                    },
+                    "captured_sim_day": {
+                      "type": "integer"
+                    },
+                    "authority": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "role",
+                        "approvals"
+                      ],
+                      "properties": {
+                        "role": {
+                          "const": "organizer"
+                        },
+                        "approvals": {
+                          "type": "array",
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "approver_label"
+                            ],
+                            "properties": {
+                              "approver_label": {
+                                "type": "string",
+                                "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                              }
+                            }
+                          }
+                        },
+                        "proposal_id": {
+                          "type": "string",
+                          "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                        }
+                      }
+                    },
+                    "supersedes_fact_id": {
+                      "type": "string",
+                      "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                    },
+                    "recorded_by_role": {
+                      "const": "organizer"
+                    },
+                    "status": {
+                      "enum": [
+                        "ACTIVE",
+                        "SUPERSEDED"
+                      ]
+                    },
+                    "fact_id": {
+                      "type": "string",
+                      "pattern": "[A-Za-z0-9][A-Za-z0-9._:-]{0,63}"
+                    }
+                  }
+                }
+              },
+              "capture_sum_krw": {
+                "type": "integer"
+              },
+              "expected_claim_gross_krw": {
+                "type": "integer"
+              },
+              "draw_diagnostics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "operation_id",
+                    "advance_id",
+                    "amount_krw",
+                    "label"
+                  ],
+                  "properties": {
+                    "operation_id": {
+                      "type": "string"
+                    },
+                    "advance_id": {
+                      "type": "string"
+                    },
+                    "amount_krw": {
+                      "type": "integer"
+                    },
+                    "label": {
+                      "const": "SIMULATED_F04_ACCEPTED_DRAW"
+                    }
+                  }
+                }
+              },
+              "settlement_diagnostics": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "confirmed_cash_krw",
+                  "distributed_krw"
+                ],
+                "properties": {
+                  "label": {
+                    "const": "READ_ONLY_FIXTURE"
+                  },
+                  "confirmed_cash_krw": {
+                    "type": "integer"
+                  },
+                  "distributed_krw": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "allowance_cut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "f04_state_digest",
+        "overlay_digest",
+        "overlay_sim_day"
+      ],
+      "properties": {
+        "f04_state_digest": {
+          "type": "string"
+        },
+        "overlay_digest": {
+          "type": "string"
+        },
+        "overlay_sim_day": {
+          "type": "integer"
+        }
+      }
+    },
+    "allowance_policy_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terms_version",
+        "chart_version",
+        "allowance_policy_version",
+        "posting_profile",
+        "decision_note_digest"
+      ],
+      "properties": {
+        "terms_version": {
+          "type": "string"
+        },
+        "chart_version": {
+          "type": "string"
+        },
+        "allowance_policy_version": {
+          "type": "string"
+        },
+        "posting_profile": {
+          "type": "string"
+        },
+        "decision_note_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "allowance_population": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "advance_ids"
+      ],
+      "properties": {
+        "asset": {
+          "$ref": "#/definitions/asset_spec"
+        },
+        "advance_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "allowance_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advance_id",
+        "tier",
+        "bucket",
+        "effective_principal_krw",
+        "allowance_krw",
+        "bps"
+      ],
+      "properties": {
+        "advance_id": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "effective_principal_krw": {
+          "type": "integer"
+        },
+        "allowance_krw": {
+          "type": "integer"
+        },
+        "bps": {
+          "type": "integer"
+        }
+      }
+    },
+    "allowance_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "accounting_policy",
+        "policy_adopted",
+        "export",
+        "status",
+        "reason",
+        "source_cut",
+        "population",
+        "policy_context",
+        "rows",
+        "allowance_component_krw",
+        "effective_principal_krw"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "export": {
+          "const": "NOT_IN_EXPORT_V1"
+        },
+        "status": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/allowance_row"
+          }
+        },
+        "allowance_component_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_principal_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "accounting_policy",
+        "policy_adopted",
+        "export",
+        "status",
+        "reason",
+        "source_cut",
+        "population",
+        "policy_context",
+        "allowance_component_krw",
+        "portfolio_floor_krw",
+        "pool_target_krw",
+        "funded_krw",
+        "shortfall_krw",
+        "floor_bps",
+        "floor_formula",
+        "binding_component",
+        "memo_version",
+        "loss_reserve"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "export": {
+          "const": "NOT_IN_EXPORT_V1"
+        },
+        "status": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allowance_component_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "portfolio_floor_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pool_target_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "funded_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shortfall_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor_bps": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor_formula": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "binding_component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "memo_version": {
+          "const": "RESERVE_POOL_MEMO_V1"
+        },
+        "loss_reserve": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "absorbed_krw"
+          ],
+          "properties": {
+            "status": {
+              "const": "NOT_BOUND"
+            },
+            "absorbed_krw": {
+              "const": 0
+            }
+          }
+        }
+      }
+    },
+    "allowance_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "journal_index",
+        "overlay_sequence",
+        "overlay_id"
+      ],
+      "properties": {
+        "journal_index": {
+          "type": "integer"
+        },
+        "overlay_sequence": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "overlay_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "bucket_from",
+        "bucket_to",
+        "policy_context",
+        "source_cut",
+        "replay_anchor",
+        "effective_sim_day",
+        "source_reserve_step_version"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "bucket_from": {
+          "type": "string"
+        },
+        "bucket_to": {
+          "type": "string"
+        },
+        "policy_context": {
+          "$ref": "#/definitions/allowance_policy_context"
+        },
+        "source_cut": {
+          "$ref": "#/definitions/allowance_cut"
+        },
+        "replay_anchor": {
+          "$ref": "#/definitions/allowance_anchor"
+        },
+        "effective_sim_day": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_reserve_step_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_dimensions": {
+      "description": "Posting dimensions of the CAPITAL-COA-V1 candidate. Identities are dimensions, never part of the 4-digit account code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "advance_id",
+        "claim_id",
+        "sim_day",
+        "chart_version",
+        "terms_version",
+        "tier"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "advance_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sim_day": {
+          "type": "integer"
+        },
+        "chart_version": {
+          "type": "string"
+        },
+        "terms_version": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        }
+      }
+    },
+    "allowance_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account",
+        "side",
+        "amount",
+        "leg"
+      ],
+      "properties": {
+        "account": {
+          "enum": [
+            "1190",
+            "5100"
+          ]
+        },
+        "side": {
+          "enum": [
+            "debit",
+            "credit"
+          ]
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "leg": {
+          "type": "string"
+        }
+      }
+    },
+    "allowance_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "source",
+        "txn_id",
+        "dimensions",
+        "lines",
+        "evidence"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer"
+        },
+        "source": {
+          "const": "ALLOWANCE"
+        },
+        "txn_id": {
+          "type": "string"
+        },
+        "dimensions": {
+          "$ref": "#/definitions/allowance_dimensions"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/allowance_line"
+          }
+        },
+        "evidence": {
+          "$ref": "#/definitions/allowance_evidence"
+        }
+      }
+    },
+    "allowance_recon_detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "accounting_policy",
+        "policy_adopted",
+        "export",
+        "outcome",
+        "allowance_component_krw",
+        "portfolio_floor_krw",
+        "pool_target_krw",
+        "requirement_krw",
+        "delta_krw",
+        "binding_component",
+        "per_advance_total_matches",
+        "source_cut",
+        "population",
+        "policy_context",
+        "risk_source_cut",
+        "risk_population",
+        "risk_policy_context"
+      ],
+      "properties": {
+        "label": {
+          "const": "SIMULATED"
+        },
+        "accounting_policy": {
+          "const": "SYNTHETIC_UNADOPTED"
+        },
+        "policy_adopted": {
+          "const": false
+        },
+        "export": {
+          "const": "NOT_IN_EXPORT_V1"
+        },
+        "outcome": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "CUT_MISMATCH",
+            "NOT_BOUND"
+          ]
+        },
+        "allowance_component_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "portfolio_floor_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pool_target_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requirement_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "delta_krw": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "binding_component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "per_advance_total_matches": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_source_cut": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_cut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_population": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_population"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_policy_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/allowance_policy_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "allowance_recon_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "allowance"
+      ],
+      "properties": {
+        "id": {
+          "const": "allowance_vs_risk_reserve"
+        },
+        "status": {
+          "enum": [
+            "MATCHED",
+            "RECON_MISMATCH"
+          ]
+        },
+        "allowance": {
+          "$ref": "#/definitions/allowance_recon_detail"
         }
       }
     }

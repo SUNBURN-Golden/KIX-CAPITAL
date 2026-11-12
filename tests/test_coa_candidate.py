@@ -31,6 +31,23 @@ _SPEC.loader.exec_module(facade_schema)
 USD = {'namespace': 'fiat', 'reference': 'USD', 'decimals': 2, 'max_atoms': 1_000_000_000_000}
 
 
+# Only the provider-capture dispatch bytes may be removed before legacy hashing.
+OBSERVATION_DISPATCH = (
+    (b"    from capital import observation_record\n    if entry['kind'] == observation_record.KIND:\n        observation_record.validate_entry(entry)\n        return\n", b""),
+    (b"        from capital import observation_record\n        from capital import recovery, slices\n        if entry['kind'] == observation_record.KIND:\n            observation_record.fold_entry(state, entry)\n        elif entry['kind'] in slices.KINDS:\n",
+     b"        from capital import recovery, slices\n        if entry['kind'] in slices.KINDS:\n"),
+    (b"    from capital import observation_record\n    for entry in entries:\n        if entry['overlay_id'] == operation_id and entry['kind'] == observation_record.KIND:\n            return observation_record.receipt(entry)\n", b""),
+)
+
+
+def without_observation_dispatch(source):
+    for extension, original in OBSERVATION_DISPATCH:
+        if source.count(extension) != 1:
+            raise AssertionError('observation dispatch must occur exactly once')
+        source = source.replace(extension, original)
+    return source
+
+
 def note_value():
     return read_decision_block(NOTE)['entries']['chart_of_accounts_mapping']['value']
 
@@ -87,7 +104,7 @@ class ChartFenceTests(unittest.TestCase):
                     for entry in v1['entries'] for line in entry['lines']]
         mapped = [(coa.V1_TO_COA[prefix], side, amount) for prefix, side, amount in v1_sides]
         got = [(line['account'], line['side'], line['amount'])
-               for entry in coa_body['entries'] if entry['source'] != 'OVERLAY_INTEREST' for line in entry['lines']]
+               for entry in coa_body['entries'] if entry['source'] in ('EVIDENCE', 'JOURNAL') for line in entry['lines']]
         self.assertEqual(got, mapped)
 
     def test_chart_status_covers_the_whole_chart(self):
@@ -96,7 +113,7 @@ class ChartFenceTests(unittest.TestCase):
         self.assertEqual(set(status), set(coa.CHART))
         self.assertEqual(status['9150'], 'DERIVED_MEMO')
         self.assertEqual(status['9160'], 'DERIVED_MEMO')
-        self.assertEqual(status['1190'], 'NOT_RECORDED')
+        self.assertEqual(status['1190'], 'POSTED')
         self.assertEqual(status['4200'], 'ZERO_FEE_PLACEHOLDER')
         self.assertEqual(status['1300'], 'NOT_MODELED_V1_FIELD_RESERVED')
         self.assertEqual(status['9200'], 'NOT_POSTED')
@@ -244,9 +261,10 @@ class V1UnchangedTests(unittest.TestCase):
             self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
             self.assertEqual((ROOT / binding_note).read_bytes(), reviewed.stdout.encode('utf-8'))
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
-        # command-reason-trail extends this reviewed baseline with the optional operator_reason
-        # payload/receipt handling only; export, V1 projection and vendor remain pinned to main.
-        overlay_bytes = (ROOT / 'capital/overlay.py').read_bytes()
+        # Pin the reviewed command-reason-trail overlay, removing only main's
+        # three exact provider-capture dispatch additions before legacy hashing.
+        # Export, V1 projection and vendor remain pinned to main.
+        overlay_bytes = without_observation_dispatch((ROOT / 'capital/overlay.py').read_bytes())
         self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
                          '8874a13abc7cefd689fa9079c877261c6695430b44acd195fbe3045378a36a03')
         # Claim slices add only these three exact dispatch extensions. Keep the
@@ -470,7 +488,8 @@ class BalanceTests(unittest.TestCase):
         body = candidate(service)
         for entry in body['entries']:
             self.assertEqual(set(entry['dimensions']),
-                             {'asset', 'advance_id', 'claim_id', 'sim_day', 'chart_version', 'terms_version'})
+                             {'asset', 'advance_id', 'claim_id', 'sim_day', 'chart_version', 'terms_version'}
+                             | ({'tier'} if entry['source'] == 'ALLOWANCE' else set()))
             self.assertEqual(entry['dimensions']['chart_version'], 'SIMULATION_FIXED_V2')
             for line in entry['lines']:
                 self.assertNotIn(':', line['account'])
@@ -757,6 +776,26 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(len(body['checks']), len(plain['checks']) + len(recon.COA_CHECK_IDS))
         self.assertNotIn('coa_candidate', plain)
         facade_schema.validate(plain, self.route('/api/reconciliation')['response'], self.doc)
+
+    def test_allowance_route_has_required_tier_provenance_and_strict_line_evidence(self):
+        body = json.loads(self.get('/api/projection?mode=coa-candidate')[1])
+        entry = next(e for e in body['entries'] if e['source'] == 'ALLOWANCE')
+        self.assertEqual(entry['dimensions']['tier'], 'T1')
+        self.assertEqual(entry['dimensions']['advance_id'], 'sim-a')
+        self.assertEqual(entry['evidence']['operation_id'], 'a-draw')
+        self.assertEqual(body['allowance']['allowance_component_krw'], 1350)
+        self.assertEqual(body['allowance']['export'], 'NOT_IN_EXPORT_V1')
+        for mutate in ('tier', 'leg', 'extra'):
+            bad = copy.deepcopy(body)
+            changed = next(e for e in bad['entries'] if e['source'] == 'ALLOWANCE')
+            if mutate == 'tier':
+                changed['dimensions'].pop('tier')
+            elif mutate == 'leg':
+                changed['lines'][0].pop('leg')
+            else:
+                changed['evidence']['not_in_contract'] = True
+            with self.assertRaises(facade_schema.SchemaError):
+                facade_schema.validate(bad, self.route('/api/projection')['response'], self.doc)
 
     def test_roles_and_bad_modes(self):
         for role in ('organizer', 'auditor'):

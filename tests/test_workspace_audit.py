@@ -370,3 +370,75 @@ class OperatorReasonAuditTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class CandidateAllowanceAuditTests(unittest.TestCase):
+    def test_opt_in_candidate_matches_live_with_empty_overlay_while_lock_held(self):
+        with tempfile.TemporaryDirectory() as directory:
+            seed_workspace(directory)
+            held = FileWorkspace.open(directory)
+            try:
+                from capital.service import CapitalService
+                from capital.recon import COA_CHECK_IDS
+                service = CapitalService(held)
+                before = snapshot(directory)
+                live = service.reconciliation(None, 'coa-candidate')
+                report = audit_workspace(directory, mode='coa-candidate')
+                self.assertTrue(report['ok'])
+                self.assertEqual(report['recon']['checks'], live['checks'])
+                self.assertEqual(report['recon']['scope'], live['scope'])
+                self.assertEqual(report['recon']['checks'][-1]['allowance']['requirement_krw'], 30750)
+                self.assertEqual(report['recon']['checks'][-1]['allowance']['outcome'], 'MATCH')
+                plain = audit_workspace(directory)
+                self.assertFalse(any(c['id'] in COA_CHECK_IDS for c in plain['recon']['checks']))
+                self.assertEqual(snapshot(directory), before)
+                with self.assertRaises(WorkspaceError):
+                    FileWorkspace.open(directory)
+                proc = subprocess.run([sys.executable, '-m', 'capital.verify', '--workspace', directory,
+                                       '--mode', 'coa-candidate'], cwd=ROOT, capture_output=True, text=True, timeout=30)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(json.loads(proc.stdout)['recon']['checks'], live['checks'])
+            finally:
+                held.close()
+
+    def test_nonempty_overlay_parity_and_mismatch_exit_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            storage = FileWorkspace.open(directory)
+            try:
+                from capital.service import CapitalService
+                from test_overlay import draw_book, run
+                service = CapitalService(storage)
+                draw_book(service, amount=66)
+                draw_book(service, advance='sim-b', amount=66, prefix='b')
+                tick(service, 'one', 0, 1)
+                before = snapshot(directory)
+                live = service.reconciliation(None, 'coa-candidate')
+                report = audit_workspace_bytes((Path(directory) / FILE_NAME).read_bytes(),
+                                               workspace=directory, mode='coa-candidate')
+                self.assertFalse(report['ok'])
+                self.assertEqual(report['failed_check'], 'recon')
+                self.assertEqual(report['recon']['checks'], live['checks'])
+                self.assertEqual(report['recon']['scope'], live['scope'])
+                self.assertEqual(report['recon']['checks'][-1]['allowance']['delta_krw'], 1)
+                self.assertTrue(audit_workspace(directory)['ok'])
+                proc = subprocess.run([sys.executable, '-m', 'capital.verify', '--workspace', directory,
+                                       '--mode', 'coa-candidate'], cwd=ROOT, capture_output=True, text=True, timeout=30)
+                self.assertEqual(proc.returncode, 1)
+                self.assertEqual(snapshot(directory), before)
+            finally:
+                storage.close()
+
+    def test_candidate_mode_preserves_staged_file_failure(self):
+        report = audit_workspace_bytes(None, workspace='absent', mode='coa-candidate')
+        self.assertFalse(report['ok'])
+        self.assertEqual(report['failed_check'], 'workspace_file')
+        self.assertIsNone(report['recon'])
+        with self.assertRaises(ValueError):
+            audit_workspace_bytes(None, workspace='absent', mode='unknown')
+
+    def test_cli_mode_is_rejected_outside_workspace_audit(self):
+        for args in (['manifest.json'], ['--facts', 'facts']):
+            proc = subprocess.run([sys.executable, '-m', 'capital.verify', *args, '--mode', 'coa-candidate'],
+                                  cwd=ROOT, capture_output=True, text=True, timeout=30)
+            self.assertEqual(proc.returncode, 2)
+            self.assertIn('--mode applies only to --workspace', proc.stderr)

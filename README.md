@@ -218,6 +218,7 @@ python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
 python3 scripts/compat_preflight.py --check
+python3 -m unittest discover -s tests -p test_port_composition.py -v
 python3 scripts/forecast_vectors.py --check
 python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
@@ -225,6 +226,17 @@ npm ci
 npx playwright install chromium
 npm run test:browser
 ```
+
+`tests/test_port_composition.py` composes `LOCAL_FAKE_IDP` session binding,
+the compatibility preflight factory and `LOCAL_FAKE_GATE` through the real
+loopback HTTP facade. Its local `CLAIM_CONFORMANCE` evidence uses only
+SIMULATED commands and READ_ONLY_FIXTURE inputs, without either upstream
+checkout. Identity, authentication and producer adoption remain `NOT_BOUND`;
+passing these tests is not SEMANTIC_CONFORMANCE. Coverage includes F04 lifecycle
+commands, authorized reads, rejected synthetic credentials, hostile gate replies,
+first-result replay/conflict behavior and explicit unsupported-operation refusals.
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for boundaries and
+[docs/VALIDATION.md](docs/VALIDATION.md) for builder results.
 
 한 명령 수용 사다리는 위 검사에 패키지 스모크와 시드 데모를 더합니다. 사람 수용 결정은 포함하지 않습니다.
 
@@ -303,6 +315,29 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 `tests/golden/overlay_claim_slices.json`; `--write` regenerates it explicitly.
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
+
+Recorded provider-capture assertions are implemented under
+[CAPITAL_OBSERVATION_RECORD.md](docs/decisions/CAPITAL_OBSERVATION_RECORD.md).
+`POST /api/overlay/commands` accepts `op: "record_external_fact"` from the
+organizer only (agent `403 FACT_AGENT_FORBIDDEN`, other roles
+`403 FACT_ROLE_FORBIDDEN`), folding `PROVIDER_PAYMENT_CAPTURE` facts into
+`state.observations` keyed by fact id with a derived `ACTIVE`/`SUPERSEDED`
+status. Every fact is a constant `SIMULATED` + `UNVERIFIED_ASSERTED` +
+`funds_executed: false` + `provider_call_made: false` assertion — never a
+provider/bank/chain confirmation and never reconciliation or set-off cash.
+Recording enforces `operation_id` dedup (`409 FACT_IDEMPOTENCY_CONFLICT`),
+clock CAS (`409 SIM_CLOCK_STALE`), the note's bounds (`409 SIMULATION_CAPACITY`
+scope `external_facts`, `409 FACT_SUPERSEDE_DEPTH`), claim existence
+(`409 FACT_CLAIM_UNKNOWN`) and the volatile/personal-key ban
+(`400 OVERLAY_VOLATILE_KEY`). `GET /api/reconciliation` gains the conditional
+check `recorded_captures_vs_claim_face` (`MATCH`/`ASSERTED_MISMATCH`/`NO_FACTS`,
+diagnostic `OBSERVED_FACT_MISMATCH` only) only while observations exist; the
+offline workspace auditor computes the same row. Facts move no money, never
+gate the FSM or shadow derivations, and appear only inside the V3 `overlay`
+manifest section — `demo.json` and `overlay_empty.json` stay byte-identical.
+The seeded disposable demo pins `tests/golden/overlay_observations.json`:
+`python3 scripts/seed_overlay_observations.py` checks it, `--write`
+regenerates explicitly.
 
 
 ### Cursor-paginated facts (SIMULATED)
@@ -435,3 +470,23 @@ Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
 
 Optional `operator_reason` records free-form organizer context on F04 and clock/repayment commands; both desks show it as text and offline audit/evidence-pack digests cover it. No personal data; not authentication or approval evidence.
+
+### Loss allowance candidate V2
+
+`GET /api/projection?mode=coa-candidate` includes `ALLOWANCE` delta postings
+(1190/5100), an `allowance` population block and `reserve_pool` memo under the
+[adopted provisional decision](docs/decisions/CAPITAL_LOSS_ALLOWANCE.md).
+Amounts use authoritative TERMS weights and recorded draw tiers, economic
+operation order and crossed maturity days. `tier` is required on allowance
+posting dimensions. `allowance_vs_risk_reserve` is the sixth candidate check;
+seed demo is MATCH at 30,750 KRW. The TERMS portfolio floor and overlay reductions
+can expose honest mismatches with the existing risk reader. Missing evidence
+is NOT_BOUND/null. Everything remains SIMULATED / SYNTHETIC_UNADOPTED /
+`policy_adopted=false` / NOT_IN_EXPORT_V1; 3100/3200 remain unposted.
+
+Offline parity is opt-in: `python3 -m capital.verify --workspace DIR --mode coa-candidate`.
+Omitted mode retains the default audit and evidence-pack contract. Recovery and
+gross write-off postings 4300/5200 retain their existing behavior; V2 releases
+allowance once immediately before the existing gross write-off. The new
+ALLOWANCE source posts only 1190/5100. See the [integration contract](docs/INTEGRATION.md#loss-allowance-postings)
+and [handbook](docs/OPERATOR_HANDBOOK_KO.md#loss-allowance-postings).
