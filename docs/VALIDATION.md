@@ -6081,3 +6081,68 @@ Playwright loopback servers and their shell parents orphaned; all owned server
 processes were stopped and a subsequent process check found none. No long job
 is left running. The failed ladder evidence remains at
 `build/loss-allowance-acceptance-isolated.json` (ignored generated output).
+
+## slice-registry-desk — PR fix round 3 (2026-11-13)
+
+The reported timeout is valid. On merged HEAD
+`2705c177036f39221a6820161b145e0d02c47038`, unchanged discovery passed all
+1,554 tests in 2,014.246 seconds. That exceeds the unattended local runner's
+1,800-second command deadline; an assertion failure is not needed to produce
+the reported exit 124. This baseline log is retained as
+`build/slice-registry-round3/unit-before.log`.
+
+Profiling identified repeated decision-binding AST traversal during binding
+and upstream re-pin checks. The checker now gathers literal references in one
+traversal and keeps a bounded cache of immutable syntax facts keyed by the
+exact freshly read source text. Every inventory still enumerates and reads
+the files, parses fresh caller-visible ASTs, and evaluates current note
+statuses, bindings and routes. It never caches file metadata, findings, adoption
+status or caller-owned ASTs. No command, timeout, assertion, required stage,
+financial policy or product behavior was relaxed.
+
+Two added regression cases cover caller-mutated ASTs, changing adoption
+status, same-size/same-timestamp source edits, removed files and malformed
+source. The final focused decision-binding module passed all 28 tests in
+61.821 seconds. Five complete checks on the same checkout took 14.632 seconds
+with the main baseline checker and 7.987 seconds with the optimized checker;
+all ten returned identical empty findings. Timings are local diagnostics,
+not production performance evidence.
+
+All evidence in this round is local and SIMULATED. Chromium uses the existing
+105 cases, projects, assertions and timeouts through the ignored
+`build/slice-registry-round3/playwright.config.cjs`. Only configured ports
+8765–8768 are remapped to 18765–18768, with this checkout as server cwd and
+isolated report/output directories; unrelated worktree listeners are not
+stopped or reused. The first launch required correcting the temporary first
+server command to include its remapped port. No browser tests ran in that
+failed launch.
+
+The first full browser run overlapped discovery: 104 passed and the existing
+complete-lifecycle case exhausted its 30-second test budget at the final
+journal-replay click. All 28 slice cases passed. Its log, trace and report
+remain under `browser-first.log`, `results-first-failure/` and `report-first/`
+in the same evidence directory. A complete rerun retains the same assertions
+and timeouts; the lifecycle case passed in 8.2 seconds in that rerun.
+
+Final verification results on the merged checkout with the optimized checker:
+
+- `python3 -m unittest discover -s tests -v`: 1,556 tests ran in 1,410.523
+  seconds and all passed on the final tree (`unit-round3-rerun.log`); an
+  earlier pass took 1,666.199 seconds while sharing the machine with a
+  leftover discovery (`unit-round3-timed.log`). Both are inside the
+  1,800-second deadline. The same command passed unmodified on the
+  2,014-second baseline; only its duration changed, not its coverage.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04
+  -p test_mock_credit.py -v`: 7 tests passed.
+- `python3 -m compileall -q capital`: clean.
+- `node --check capital/static/app.js`: clean.
+- `python3 scripts/decision_bindings.py --check`: empty findings
+  (`checker-benchmark.log`).
+- Browser: all 105 cases passed in 11.2 minutes under the remapped config
+  (`browser-final.log`), including the 28 slice-registry-desk cases and the
+  complete-lifecycle replay.
+
+No vendored kix-protocol file, `.aiops/`, decision doc, financial term,
+test assertion or CI timeout was changed. The only behavioral delta is
+checker wall-clock time; every finding path, route check, binding shape
+rule and inventory enumeration is unchanged.

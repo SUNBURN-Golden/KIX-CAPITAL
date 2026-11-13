@@ -13,6 +13,7 @@ import ast
 import importlib.util
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,46 +46,77 @@ def literal(node):
     return node.value if isinstance(node, ast.Constant) and type(node.value) is str else None
 
 
-def inventory(root, findings):
+@lru_cache(maxsize=4096)
+def literal_name(value):
+    """Cache only lexical basename extraction, never file contents or findings."""
+    return Path(value).name
+
+
+def inventory(root, findings, *, references=None):
     trees = {}
     for folder in ('capital', 'scripts'):
         for path in sorted((root / folder).rglob('*.py')):
             if 'vendor' in path.relative_to(root).parts or path.is_symlink():
                 continue
             try:
-                trees[path.relative_to(root).as_posix()] = ast.parse(path.read_text(encoding='utf-8'))
+                source = path.read_text(encoding='utf-8')
+                relative = path.relative_to(root).as_posix()
+                trees[relative] = ast.parse(source)
+                if references is not None:
+                    references[relative] = source_references(source)
             except (OSError, UnicodeError, SyntaxError) as exc:
                 findings.append(f'{path.relative_to(root)}: cannot inspect: {exc}')
     return trees
 
 
-def discover_consumers(trees, rows):
+def tree_references(tree):
+    strings, names = set(), set()
+    for node in ast.walk(tree):
+        value = literal(node)
+        if value:
+            strings.add(literal_name(value))
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Attribute):
+                if func.attr in ('_value', '_ready') or (
+                        func.attr == 'get' and isinstance(func.value, ast.Name)
+                        and func.value.id == 'entries'):
+                    names.update(filter(None, map(literal, node.args)))
+            elif isinstance(func, ast.Name) and func.id == '_adopted' and len(node.args) == 2:
+                names.add(literal(node.args[1]))
+        if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id == 'entries':
+            names.add(literal(node.slice))
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == '_USABLE' for t in node.targets):
+            if isinstance(node.value, ast.Dict):
+                names.update(map(literal, node.value.keys))
+    return frozenset(strings), frozenset(names)
+
+
+@lru_cache(maxsize=256)
+def source_references(source):
+    """Immutable syntax facts keyed by exact text freshly read by inventory.
+
+    File metadata, AST objects, note statuses and findings are never cached. A changed,
+    deleted or malformed input is still inspected on the next invocation.
+    """
+    return tree_references(ast.parse(source))
+
+
+def referenced_consumers(references, rows):
     found = set()
     by_note = {Path(row['note']).name: row for row in rows}
-    for path, tree in trees.items():
-        strings = {Path(literal(node)).name for node in ast.walk(tree) if literal(node)}
+    for path, (strings, names) in references.items():
         notes = [row for name, row in by_note.items() if name in strings]
-        names = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                func = node.func
-                if isinstance(func, ast.Attribute):
-                    if func.attr in ('_value', '_ready') or (
-                            func.attr == 'get' and isinstance(func.value, ast.Name)
-                            and func.value.id == 'entries'):
-                        names.update(filter(None, map(literal, node.args)))
-                elif isinstance(func, ast.Name) and func.id == '_adopted' and len(node.args) == 2:
-                    names.add(literal(node.args[1]))
-            if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id == 'entries':
-                names.add(literal(node.slice))
-            if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == '_USABLE' for t in node.targets):
-                if isinstance(node.value, ast.Dict):
-                    names.update(map(literal, node.value.keys))
         for row in notes:
             for name in names:
                 if row['entries'].get(name) == 'ADOPTED':
                     found.add((row['decision_id'], name, path))
     return found
+
+
+def discover_consumers(trees, rows):
+    # Caller-owned ASTs can change between calls; inspect those without caching.
+    return referenced_consumers({path: tree_references(tree) for path, tree in trees.items()}, rows)
 
 
 def live_routes(trees):
@@ -122,7 +154,8 @@ def collect_findings(root, mapping):
         for name, status in row['entries'].items():
             if status == 'ADOPTED':
                 adopted[(decision, name)] = row['note']
-    trees = inventory(root, findings)
+    references = {}
+    trees = inventory(root, findings, references=references)
     try:
         routes = live_routes(trees)
     except (KeyError, ValueError, TypeError, AttributeError):
@@ -181,7 +214,7 @@ def collect_findings(root, mapping):
                 consumed.add((*identity, relative.as_posix()))
     for identity in adopted.keys() - listed:
         findings.append(f'{"/".join(identity)}: ADOPTED entry lacks binding')
-    for decision, name, path in discover_consumers(trees, rows) - consumed:
+    for decision, name, path in referenced_consumers(references, rows) - consumed:
         findings.append(f'{decision}/{name}: unlisted CONSUMED module {path} (absent or mislabeled pending)')
     return sorted(set(findings))
 
