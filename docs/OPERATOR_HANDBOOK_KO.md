@@ -797,7 +797,7 @@ MATCHED여야 하며 `balance_groups`의 asset·sim_day별 차변과 대변이 �
 읽기는 저장하지 않습니다. V1·manifest·golden은 그대로입니다.
 모든 결과는 SIMULATED / `SYNTHETIC_UNADOPTED`, 세무·법률·운영 원장은 NOT_BOUND,
 `policy_adopted=false`이며 수익인식 채택이나 실제 현금 수령 증빙이 아닙니다.
-충당·준비금 계정 1190/5100/3100/3200은 전기하지 않습니다.
+기존 UNBUILT_V1은 1190/5100을 전기하지 않습니다. 별도 V2 후보는 아래 loss-allowance-postings 절을 따르며 3100/3200은 무분개입니다.
 
 검증: `tests/test_coa_payment_writeoff.py`의 seeded disposable-book,
 combined-book, loopback GET, 변조·읽기 불변 검사를 실행합니다.
@@ -912,5 +912,43 @@ saved_at/saved_by_instance는 그대로 남긴다.
 
 면제, 환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식은 결정하지
 않는다. 새 영속 포맷·명세서 재분류·외부 호출·HTTP/UI 변경도 없다.
+
+<!-- /handbook-section -->
+
+
+<!-- handbook-section:loss-allowance-postings -->
+
+### loss-allowance-postings
+
+`GET /api/projection?mode=coa-candidate`의 `allowance`는 잠정 채택된
+CAPITAL_LOSS_ALLOWANCE V2 결정을 읽습니다. 기록된 인출 등급과 TERMS bps로
+건별 실효 원금 충당액을 내림하고 차액만 1190/5100에 게시합니다. 원금 상환,
+연체 M*+1, 기록된 가속·부도 명령·원금 회수·종결마다 평가합니다. 틱을 나누거나
+건너뛰어도 금액 분개열은 같습니다. 부도 적격일만으로 자동 부도나 상각하지 않습니다.
+
+전체 KRW 모집단은 미인출·종결·상각의 0행도 보존합니다. source_cut의 F04 digest,
+overlay digest와 sim_day, 정책 버전·결정문 digest, advance_id·tier·원장 순서를
+확인할 수 있습니다. 증거 누락은 NOT_BOUND/null이며 음수 원금·모순·순서 오류는
+실패입니다. 실제 상환을 두 번 빼지 않고 회수의 이자와 상각 뒤 회수는 원금을
+줄이지 않습니다. 상각 직전 충당금을 한 번 환입하고 기존 5200 총액 상각을
+그대로 한 번 표시합니다. 기존 4300 회수도 유지하며 원본 UNBUILT_V1 표식과
+V2 posting_profile을 구분합니다.
+
+`reserve_pool`은 무분개 메모입니다. A=충당금 합계, F=전체 실효 원금에 TERMS
+공식의 floor_bps를 적용해 한 번 내린 금액, 목표=max(A,F)입니다. 동률은 ALLOWANCE,
+funded_krw=0, shortfall_krw=목표입니다. 3100/3200 분개와 LOSS_RESERVE 바인딩은 없습니다.
+
+후보 대사의 여섯 번째 검사 `allowance_vs_risk_reserve`는 같은 cut·모집단·정책의
+목표와 risk 필요액을 오차 0으로 비교합니다. MATCH만 MATCHED이며 MISMATCH,
+CUT_MISMATCH, NOT_BOUND는 통과가 아닙니다. seed demo는 30,750 KRW로 일치합니다.
+T1 66원 두 건은 A=0,F=1,risk=0,delta=1 불일치가 정상입니다. 기존 risk가
+반영하지 않는 가속·오버레이 원금 감소나 불완전한 등급 증거도 숨기지 않습니다.
+
+`python3 -m capital.verify --workspace DIR --mode coa-candidate`로 오프라인에서
+동일 검사를 재계산합니다. mode 생략 시 기존 감사와 evidence pack을 유지합니다.
+종료 코드는 성공 0, 감사/대사 실패 1, 인자 오류 2입니다. 감사는 lock을 잡거나
+파일을 수정하지 않습니다. 모든 신규 블록은 SIMULATED / SYNTHETIC_UNADOPTED /
+policy_adopted=false / NOT_IN_EXPORT_V1입니다. V1·export·golden은 변경하지 않으며
+실제 회계·세무 채택·자금 이동을 뜻하지 않습니다.
 
 <!-- /handbook-section -->

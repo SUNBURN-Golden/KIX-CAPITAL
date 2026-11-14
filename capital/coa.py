@@ -13,9 +13,12 @@ precedent as capital/assets.py). tests/test_coa_candidate.py fences it against t
 """
 from __future__ import annotations
 
+import copy
+import re
 from types import MappingProxyType
 
-from capital import assets, overlay
+from capital import assets, overlay, risk
+from capital.resources import note_path, read_note
 from capital.projection import ProjectionError, ProjectionPort, SimulationProjection
 
 CHART_VERSION = 'SIMULATION_FIXED_V2'
@@ -83,12 +86,14 @@ def asset_id(spec):
     return f"{spec['namespace']}:{spec['reference']}"
 
 
-def chart_status():
+def chart_status(allowance_bound=False):
     """Every chart code with the status this candidate gives it. Nothing is silently dropped."""
     rows = []
     for code, (name, klass, normal) in CHART.items():
         if code in _DERIVED:
             status = 'DERIVED_MEMO'
+        elif code in ('1190', '5100') and allowance_bound:
+            status = STATUS_POSTED
         elif code in _NOT_RECORDED:
             status = 'NOT_RECORDED'
         elif code in _RESERVED:
@@ -163,7 +168,7 @@ def _interest_lines(payload, suspended):
 
 
 NEW_SOURCES = ('OVERLAY_REPAYMENT', 'OVERLAY_RECOVERY', 'OVERLAY_WRITEOFF')
-KNOWN_SOURCES = frozenset(('EVIDENCE', 'JOURNAL', 'OVERLAY_INTEREST') + NEW_SOURCES)
+KNOWN_SOURCES = frozenset(('EVIDENCE', 'JOURNAL', 'OVERLAY_INTEREST') + NEW_SOURCES + ('ALLOWANCE',))
 _ALLOWED = {
     'OVERLAY_REPAYMENT': frozenset(('1000', '1110', '4110', '9700', '9790', '9810', '9890')),
     'OVERLAY_RECOVERY': frozenset(('1000', '1100', '1110', '4110', '4300', '9700', '9790')),
@@ -228,7 +233,7 @@ class CoaCandidateProjection(ProjectionPort):
     CHART_VERSION = CHART_VERSION
     COA_VERSION = COA_VERSION
 
-    def project(self, journal, evidence, *, overlay_entries=(), asset=None):
+    def project(self, journal, evidence, *, overlay_entries=(), asset=None, allowance_context=None):
         spec = assets.KRW if asset is None else asset
         if not assets.matches(spec):
             _fail('ASSET_MISMATCH')
@@ -238,6 +243,8 @@ class CoaCandidateProjection(ProjectionPort):
             state = overlay.fold(list(overlay_entries), len(journal))
         except overlay.OverlayError as exc:
             raise ProjectionError() from exc
+        # The overlay fold deliberately ignores identical transport duplicates. Posting does too.
+        overlay_entries = list({e['overlay_id']: e for e in overlay_entries}.values())
         binding_at = next((entry['after_journal_index'] for entry in overlay_entries
                            if entry['kind'] == overlay.KIND_TERMS), None)
         final_terms = (state['terms_binding'] or {}).get('terms_version', TERMS_NOT_BOUND)
@@ -315,6 +322,10 @@ class CoaCandidateProjection(ProjectionPort):
                     'step': len(entries) + 1, 'source': source, 'txn_id': record['overlay_id'],
                     'dimensions': _dimensions(asset, advance_id, claim_of.get(advance_id), record['sim_day'], terms),
                     'lines': lines})
+        allowance, reserve_pool, entries = allowance_fold(
+            journal, overlay_entries, entries, allowance_context, spec)
+        for step, entry in enumerate(entries, 1):
+            entry['step'] = step
         for entry in entries:
             codes = {line['account'] for line in entry['lines']}
             if (entry['source'] == 'EVIDENCE') != (codes <= _EVIDENCE_CODES) or \
@@ -346,12 +357,22 @@ class CoaCandidateProjection(ProjectionPort):
                             if r['writeoff_sim_day'] is not None for kind in ('CONTRACT', 'DEFAULT'))},
             {'predicate': 'NO_REAL_EFFECT', 'matched': True},
         ]
+        if allowance['status'] == 'BOUND':
+            conservation.extend([
+                {'predicate': 'ALLOWANCE_WITHIN_EFFECTIVE_PRINCIPAL',
+                 'matched': all(0 <= row['allowance_krw'] <= row['effective_principal_krw']
+                                for row in allowance['rows'])},
+                {'predicate': 'ALLOWANCE_1190_EQUALS_NET_5100',
+                 'matched': balances.get('1190', {'balance': 0})['balance']
+                 == balances.get('5100', {'balance': 0})['balance'] == allowance['allowance_component_krw']},
+            ])
         if not all(row['matched'] for row in conservation):
             _fail()
         return {
             'assets': assets.declared(), 'sim_day': state['sim_day'], 'overlay_state_digest': overlay.state_digest(state),
             'entries': entries, 'accounts': accounts, 'subledger': subledger, 'balance_groups': groups,
-            'memo_balances': memo, 'chart_status': chart_status(), 'conservation': conservation,
+            'memo_balances': memo, 'chart_status': chart_status(allowance['status'] == 'BOUND'),
+            'conservation': conservation, 'allowance': allowance, 'reserve_pool': reserve_pool,
         }
 
 
@@ -482,6 +503,10 @@ def _overlay_postings(coa):
             source = entry['source']
             if source not in KNOWN_SOURCES:
                 return None
+            if source == 'ALLOWANCE':
+                if any(line['account'] not in ('1190', '5100') for line in entry['lines']):
+                    return None
+                continue
             if source not in NEW_SOURCES:
                 continue
             advance = entry['dimensions']['advance_id']
@@ -581,3 +606,235 @@ def recoveries_match_ledger(coa, overlay_entries):
 def writeoffs_match_ledger(coa, overlay_entries):
     """writeoff_ledger_vs_projection: principal loss, interest reversal and memo release tie."""
     return _matches_overlay(coa, overlay_entries, 'OVERLAY_WRITEOFF')
+
+
+# The separate V2 allowance candidate reads the adopted decision at runtime. Rates
+# are exclusively TERMS inputs; the note's descriptive_bps is never a fallback.
+_ALLOWANCE_ITEMS = (
+    'allowance_measurement_basis', 'allowance_posting_timing', 'allowance_true_up_and_reversal',
+    'allowance_after_acceleration_and_default', 'reserve_pool_3100_3200_appropriation_link',
+    'recon_check_allowance_vs_risk_reserve', 'cut_scope_and_export_section',
+)
+_ALLOWANCE_LABELS = {'label': 'SIMULATED', 'accounting_policy': 'SYNTHETIC_UNADOPTED',
+                     'policy_adopted': False, 'export': 'NOT_IN_EXPORT_V1'}
+_ZERO_BUCKET = 'UNFUNDED_OR_WRITTEN_OFF_OR_CLOSED'
+
+
+def allowance_policy():
+    note = read_note(note_path('CAPITAL_LOSS_ALLOWANCE.md'))
+    block = note['block']
+    if type(block) is not dict or block.get('policy_adopted') is not False:
+        return None
+    entries = block.get('entries', {})
+    if any(type(entries.get(name)) is not dict or entries[name].get('status') != 'ADOPTED'
+           or type(entries[name].get('value')) is not dict for name in _ALLOWANCE_ITEMS):
+        return None
+    # Fail closed for unsupported semantics, including a changed posting profile.
+    if (block.get('allowance_policy_version') != 'CAPITAL-LOSS-ALLOWANCE-V2'
+            or block.get('posting_profile') != 'ALLOWANCE_CANDIDATE_V2'
+            or block.get('bases', {}).get('chart_version') != COA_VERSION
+            or entries['allowance_measurement_basis']['value'].get('bucket_order') != [
+                _ZERO_BUCKET, 'DEFAULTED', 'PAST_DUE_OR_ACCELERATED', 'T2_PERFORMING', 'T1_PERFORMING']
+            or entries['allowance_measurement_basis']['value'].get('formula') !=
+                'floor(effective_principal * bucket_bps / 10000); sum rounded levels'
+            or entries['allowance_posting_timing']['value'].get('measurement') !=
+                'Every recorded sim_day tick and economic event; replay crossed stage transitions'
+            or entries['allowance_true_up_and_reversal']['value'].get('full_reversal_and_repost') is not False
+            or entries['allowance_after_acceleration_and_default']['value'].get('posting_profile') != block['posting_profile']
+            or entries['reserve_pool_3100_3200_appropriation_link']['value'].get('mode') != 'RESERVE_POOL_MEMO_V1'
+            or entries['cut_scope_and_export_section']['value'].get('cut') !=
+                ['f04_state_digest', 'overlay_digest', 'overlay_sim_day']
+            or entries['reserve_pool_3100_3200_appropriation_link']['value'].get('post_3100_to_3200') is not False
+            or entries['recon_check_allowance_vs_risk_reserve']['value'].get('tolerance_krw') != 0):
+        return None
+    return {'terms_version': block['bases']['terms_version'], 'chart_version': block['bases']['chart_version'],
+            'allowance_policy_version': block['allowance_policy_version'],
+            'posting_profile': block['posting_profile'], 'decision_note_digest': note['note_sha256']}
+
+
+def allowance_not_bound(reason):
+    common = {**_ALLOWANCE_LABELS, 'status': 'NOT_BOUND', 'reason': reason}
+    return ({**common, 'rows': [], 'allowance_component_krw': None, 'effective_principal_krw': None,
+             'source_cut': None, 'population': None, 'policy_context': None},
+            {**common, 'source_cut': None, 'population': None, 'policy_context': None,
+             'memo_version': 'RESERVE_POOL_MEMO_V1',
+             'loss_reserve': {'status': 'NOT_BOUND', 'absorbed_krw': 0},
+             'allowance_component_krw': None, 'portfolio_floor_krw': None,
+             'pool_target_krw': None, 'binding_component': None, 'funded_krw': None,
+             'shortfall_krw': None, 'floor_bps': None, 'floor_formula': None})
+
+
+def allowance_fold(journal, overlay_entries, entries, context, spec):
+    """Replay anchored economic events and crossed opening-day stages, without writes.
+
+    Principal is reconstructed from draw/repay, then only unreflected recovery and
+    write-off principal is deducted. Interest cash and post-writeoff recovery never
+    change it. A complete event is measured once; write-off releases precede gross loss.
+    """
+    policy = allowance_policy()
+    if context is None or policy is None:
+        a, memo = allowance_not_bound('allowance context or adopted policy absent')
+        return a, memo, entries
+    state = overlay.fold(list(overlay_entries), len(journal))
+    population = {'asset': copy.deepcopy(spec), 'advance_ids': sorted({e['advance_id'] for e in journal})}
+    cut = context.get('source_cut')
+    if (context.get('population') != population or context.get('policy_context') != policy
+            or type(cut) is not dict or cut.get('overlay_digest') != overlay.state_digest(state)
+            or cut.get('overlay_sim_day') != state['sim_day']
+            or context.get('journal_digest') != risk._digest(journal)):
+        a, memo = allowance_not_bound('context does not describe replay cut/population/policy')
+        return a, memo, entries
+    weights = (context.get('reserve_terms') or {}).get('provision_bps_of_outstanding')
+    facts = {r['advance_id']: r for r in context.get('advances', [])}
+    if (set(facts) != set(population['advance_ids']) or type(weights) is not dict
+            or context.get('terms_version') != policy['terms_version']
+            or any(type(bps) is not int or not 0 <= bps <= 10000 for bps in weights.values())):
+        a, memo = allowance_not_bound('terms or population evidence absent')
+        return a, memo, entries
+    for event in journal:
+        if event['op'] == 'draw':
+            ledger = facts[event['advance_id']].get('ledger_terms')
+            if (not ledger or ledger.get('terms_version') != policy['terms_version']
+                    or type(ledger.get('maturity_day')) is not int or ledger['maturity_day'] < 0
+                    or risk.reserve_bucket(weights, ledger.get('tier')) is None
+                    or risk.reserve_bucket(weights, ledger.get('tier'), past_due=True) is None
+                    or risk.reserve_bucket(weights, ledger.get('tier'), defaulted=True) is None):
+                a, memo = allowance_not_bound('draw tier or maturity evidence absent')
+                return a, memo, entries
+    rows = {ref: {'advance_id': ref, 'tier': 'NOT_APPLICABLE', 'effective_principal_krw': 0,
+                  'allowance_krw': 0, 'bucket': _ZERO_BUCKET, 'bps': 0}
+            for ref in population['advance_ids']}
+    runtime = {ref: {'drawn': False, 'defaulted': False, 'accelerated': False, 'closed': False,
+                     'written_off': False, 'fsm_principal': 0, 'deductions': 0}
+               for ref in rows}
+    originals = {(entry['source'], entry['txn_id']): entry for entry in entries if entry['source'] != 'EVIDENCE'}
+    ordered = [entry for entry in entries if entry['source'] == 'EVIDENCE']
+    day = 0
+
+    def measure(ref, at, operation, anchor, *, effective_day=None, source_reserve_step=None):
+        row, live = rows[ref], runtime[ref]
+        principal = live['fsm_principal'] - live['deductions']
+        if principal < 0 or ((live['closed'] or live['written_off']) and principal != 0):
+            _fail()
+        bucket = _ZERO_BUCKET
+        if live['drawn'] and not (live['closed'] or live['written_off']) and principal:
+            ledger = facts[ref]['ledger_terms']
+            bucket = risk.reserve_bucket(weights, row['tier'], defaulted=live['defaulted'],
+                                         past_due=live['accelerated'] or at > ledger['maturity_day'])
+        if bucket is None:
+            _fail()
+        bps = 0 if bucket == _ZERO_BUCKET else weights[bucket]
+        target = risk.provision_level(principal, bps)
+        delta = target - row['allowance_krw']
+        if delta:
+            legs = [('5100', 'debit'), ('1190', 'credit')] if delta > 0 else [('1190', 'debit'), ('5100', 'credit')]
+            identity = f"{policy['allowance_policy_version']}:{ref}:{operation}"
+            evidence = {'operation_id': operation, 'bucket_from': row['bucket'], 'bucket_to': bucket,
+                        'policy_context': copy.deepcopy(policy), 'source_cut': copy.deepcopy(cut),
+                        'replay_anchor': anchor, 'effective_sim_day': effective_day,
+                        'source_reserve_step_version': source_reserve_step}
+            dims = _dimensions(asset_id(spec), ref, facts[ref]['case']['claim_id'], at, policy['terms_version'])
+            dims['tier'] = row['tier']
+            ordered.append({'source': 'ALLOWANCE', 'txn_id': identity, 'dimensions': dims,
+                            'evidence': evidence, 'lines': [
+                                _line(code, side, abs(delta), leg=f'{identity}:{code}:{side}') for code, side in legs]})
+        row.update(effective_principal_krw=principal, allowance_krw=target, bucket=bucket, bps=bps)
+        if not 0 <= target <= principal:
+            _fail()
+
+    def move(to_day, anchor):
+        nonlocal day
+        if to_day < day:
+            _fail()
+        transitions = sorted((facts[ref]['ledger_terms']['maturity_day'] + 1, ref)
+                             for ref, live in runtime.items() if live['drawn']
+                             and day < facts[ref]['ledger_terms']['maturity_day'] + 1 <= to_day)
+        for at, ref in transitions:
+            measure(ref, at, f'STAGE_TRANSITION:{ref}:{at}', anchor)
+        day = to_day
+
+    overlays = {}
+    for sequence, record in enumerate(overlay_entries):
+        overlays.setdefault(record['after_journal_index'], []).append((sequence, record))
+    for index in range(len(journal) + 1):
+        for sequence, record in overlays.get(index, []):
+            anchor = {'journal_index': index, 'overlay_sequence': sequence, 'overlay_id': record['overlay_id']}
+            move(record['sim_day'], anchor)
+            kind, payload = record['kind'], record['payload']
+            ref = payload.get('advance_id', payload.get('advance_ref'))
+            if ref is not None and ref not in rows:
+                _fail()
+            original_source = {overlay.KIND_INTEREST: 'OVERLAY_INTEREST', overlay.KIND_REPAYMENT: 'OVERLAY_REPAYMENT',
+                               'RECOVERY': 'OVERLAY_RECOVERY', 'WRITEOFF': 'OVERLAY_WRITEOFF'}.get(kind)
+            original = originals.pop((original_source, record['overlay_id']), None)
+            if original and kind != 'WRITEOFF':
+                ordered.append(original)
+            if kind in (overlay.KIND_MARGIN_ACCELERATION, 'acceleration_event'):
+                runtime[ref]['accelerated'] = True
+            elif kind == 'RECOVERY' and payload['phase'] != 'POST_WRITEOFF':
+                runtime[ref]['deductions'] += payload['allocation']['principal_krw']
+            elif kind == 'WRITEOFF':
+                live = runtime[ref]
+                if live['written_off'] or payload['writeoff_principal_krw'] != live['fsm_principal'] - live['deductions']:
+                    _fail()
+                live['deductions'] += payload['writeoff_principal_krw']
+                live['written_off'] = True
+            if kind in (overlay.KIND_MARGIN_ACCELERATION, 'acceleration_event', 'RECOVERY', 'WRITEOFF'):
+                measure(ref, day, record['overlay_id'], anchor,
+                        effective_day=payload.get('writeoff_effective_sim_day', payload.get('effective_sim_day')),
+                        source_reserve_step=payload.get('reserve_step_version'))
+            if original and kind == 'WRITEOFF':
+                ordered.append(original)
+        if index == len(journal):
+            break
+        event = journal[index]
+        ref, op = event['advance_id'], event['op']
+        live, row = runtime[ref], rows[ref]
+        anchor = {'journal_index': index, 'overlay_sequence': None, 'overlay_id': None}
+        move(overlay.draw_day_for(overlay_entries, index), anchor)
+        original = originals.pop(('JOURNAL', event['idempotency_key']), None)
+        if original:
+            ordered.append(original)
+        if op == 'draw':
+            if live['drawn']:
+                _fail()
+            live['drawn'] = True
+            live['fsm_principal'] = facts[ref]['case']['amount']
+            row['tier'] = facts[ref]['ledger_terms']['tier']
+        elif op == 'repay':
+            live['fsm_principal'] -= event['body']['amount']
+        elif op == 'default':
+            live['defaulted'] = True
+        elif op == 'close':
+            live['closed'] = True
+        measure(ref, day, event['idempotency_key'], anchor)
+    if originals:
+        _fail()
+    for ref, live in runtime.items():
+        if (live['fsm_principal'] != facts[ref]['case']['outstanding_exposure']
+                or (facts[ref]['case']['phase'] == 'CLOSED' and live['fsm_principal'] != 0)):
+            _fail()
+    amount = sum(r['allowance_krw'] for r in rows.values())
+    principal = sum(r['effective_principal_krw'] for r in rows.values())
+    net_expense = sum((1 if line['side'] == 'debit' else -1) * line['amount']
+                      for e in ordered if e['source'] == 'ALLOWANCE' for line in e['lines'] if line['account'] == '5100')
+    if net_expense != amount:
+        _fail()
+    common = {**_ALLOWANCE_LABELS, 'source_cut': copy.deepcopy(cut), 'population': population,
+              'policy_context': policy}
+    block = {**common, 'status': 'BOUND', 'reason': None, 'rows': list(rows.values()),
+             'allowance_component_krw': amount, 'effective_principal_krw': principal}
+    formula = context['reserve_terms'].get('pool_target')
+    match = re.fullmatch(r'max\(sum of provisions, (\d+) bps of portfolio outstanding\)', formula or '')
+    floor_bps = int(match[1]) if match and int(match[1]) <= 10000 else None
+    floor = None if floor_bps is None else risk.provision_level(principal, floor_bps)
+    target = None if floor is None else max(amount, floor)
+    memo = {**common, 'status': 'NOT_BOUND' if floor is None else 'MEMO_NOT_POSTED',
+            'reason': 'unverified TERMS pool_target' if floor is None else None,
+            'memo_version': 'RESERVE_POOL_MEMO_V1', 'allowance_component_krw': amount,
+            'portfolio_floor_krw': floor, 'pool_target_krw': target, 'floor_bps': floor_bps,
+            'floor_formula': formula, 'binding_component': None if floor is None else (
+                'ALLOWANCE' if amount >= floor else 'PORTFOLIO_FLOOR'),
+            'funded_krw': 0, 'shortfall_krw': target,
+            'loss_reserve': {'status': 'NOT_BOUND', 'absorbed_krw': 0}}
+    return block, memo, ordered
