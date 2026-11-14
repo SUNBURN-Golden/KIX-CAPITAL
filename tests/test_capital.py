@@ -5,10 +5,44 @@ import http.client
 import json
 import threading
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from capital.service import ApiError, CapitalService, MAX_OPERATIONS, VENDOR
 from capital.server import make_server
+
+
+class ScenarioInitializationTests(unittest.TestCase):
+    def test_commands_do_not_replay_disposable_scenarios(self):
+        with patch('capital.service.replay_scenarios') as replay:
+            service = CapitalService()
+            receipt = service.execute(dict(instance_id=service.instance_id,
+                operation_id='lazy-offer', op='offer', advance_id='sim-lazy',
+                args={'fixture_id': 'sim-committed', 'amount': 100}))
+            self.assertEqual(receipt['outcome'], 'ACCEPTED')
+            service.snapshot()
+            replay.assert_not_called()
+
+    def test_concurrent_first_reads_replay_once_without_economic_effect(self):
+        from capital.scenarios import replay_scenarios
+        service = CapitalService()
+        before = service._frozen()
+        with patch('capital.service.replay_scenarios', wraps=replay_scenarios) as replay:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                results = list(pool.map(lambda _: service.scenario_results, range(8)))
+            replay.assert_called_once_with()
+        self.assertTrue(all(result is results[0] for result in results))
+        self.assertEqual(results[0], replay_scenarios())
+        self.assertEqual(service._frozen(), before)
+
+    def test_scenario_results_are_isolated_between_services_and_responses(self):
+        first, second = CapitalService(), CapitalService()
+        expected = copy.deepcopy(second.scenario_results)
+        response = first.scenarios('partial-after')
+        response['scenario']['steps'].clear()
+        self.assertEqual(first.scenario_results, expected)
+        first.scenario_results['partial-after']['steps'].clear()
+        self.assertEqual(second.scenario_results, expected)
 
 
 class DomainTests(unittest.TestCase):

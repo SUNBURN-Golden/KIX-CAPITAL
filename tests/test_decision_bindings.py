@@ -5,6 +5,7 @@ import copy
 import importlib.util
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -59,6 +60,23 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(self.findings(), [])
         identities = [(row['decision_id'], row['entry']) for row in self.data['entries']]
         self.assertEqual(identities, sorted(set(identities)))
+
+    def test_warm_scan_observes_same_size_edits_deletion_and_invalid_source(self):
+        root = self.fixture()
+        path = root / 'capital/cache_probe.py'
+        source = "NOTE='CAPITAL_FINANCIAL_TERMS.md'\ndef consume(self):\n return self._value('fees')\n"
+        path.write_text(source)
+        original = path.stat()
+        self.assertDrift('financial-terms-decision/fees: unlisted', root)
+        path.write_text(source.replace("'fees'", "'term'"))
+        os.utime(path, ns=(original.st_atime_ns, original.st_mtime_ns))
+        found = self.findings(root)
+        self.assertTrue(any('financial-terms-decision/term: unlisted' in row for row in found))
+        self.assertFalse(any('financial-terms-decision/fees: unlisted' in row for row in found))
+        path.unlink()
+        self.assertEqual(self.findings(root), [])
+        path.write_text('def invalid(')
+        self.assertDrift('cache_probe.py: cannot inspect', root)
 
     def test_each_parked_entry_is_pending_with_node_and_anchor(self):
         nodes = {'claim-slice-registry-decision': 'claim-slice-registry'}

@@ -6265,3 +6265,100 @@ verification. The final browser run closed its own servers normally. The
 worktree's original tracked report symlinks were preserved. No merge commit,
 push, upstream modification, deployment, real provider call or funds movement
 was performed; the supervisor retains the merge commit.
+
+## repayment-recovery-journeys — PR fix round 1 (2026-11-14)
+
+Verification baseline: merge head `3618a7d` on
+`agent/capital-repayment-recovery-journeys`, with the uncommitted fixes below.
+The reported failure was full unittest discovery timing out. Two bounded
+performance changes preserve the merged behavior and all journey pins:
+
+- `CapitalService` replays disposable comparison scenarios on their first read,
+  under its existing instance lock, and retains the result per service. Command
+  execution and snapshots no longer pay for an unused scenario replay. Returned
+  API responses still own independent copies.
+- The decision-binding checker reads and inventories every source file on every
+  scan, while caching immutable syntax reference sets by complete source text
+  (at most 256 entries). Routes are still parsed live. New files, deletion,
+  malformed replacements and same-size edits with preserved mtimes remain
+  visible; no path, timestamp, finding or decision outcome is cached.
+
+Four added regression tests cover concurrent first reads, response/service
+isolation, commands without scenario replay, and warm binding scans observing
+same-size source edits, deletion and invalid Python. The focused initialization
+and decision-binding suite passed all 31 tests in 3.627 seconds.
+
+A local same-process comparison against source loaded from merge HEAD measured
+ten service initializations at 0.119s before / 0.074s after, and ten binding scans
+at 6.340s before / 0.664s after; both binding implementations returned no
+findings. These are host-dependent microbenchmarks, not a reconstruction of the
+CI timeout or a claim about total-suite speedup.
+
+Logs and invocation metadata are retained in ignored
+`build/repayment-recovery-review-r1/`. Browser ports 8765–8768 were already in use
+outside this worktree. The initial standalone browser attempt therefore exited
+1 before running tests. A private user/network namespace with only loopback
+enabled ran the unchanged browser configuration successfully: 77 passed in
+2.0 minutes. Standalone output directories were selected through Playwright's
+CLI and HTML output setting. Default acceptance uses the unchanged commands,
+required stages and 900/600-second unit/browser deadlines; its generated
+`test-results` symlink is temporarily replaced with a local output directory;
+reports are retained under this run's ignored output directory and the original
+symlink is restored afterwards. No other listener or report target is
+modified. No CI timeout, assertion or test was weakened.
+
+Independent `python3 scripts/sim_journeys.py --check` passed all eight committed
+SIMULATED goldens, including N3-sim (34 steps) and N4-sim (43 steps). All eight
+golden files, `capital/export.py`, the five SHA256-locked vendored references
+and `capital/vendor/manifest.json` match merge HEAD byte for byte. `.aiops/`
+has no diff. No root decision file was created. Real funds, providers,
+credentials, deployments and upstream qualification remain unbound.
+
+| Command / evidence | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,568 tests, no failures or skips, 390.937 seconds. Log: `unit.log`. |
+| Focused scenario initialization and decision-binding tests | Exit 0; 31 passed in 3.627 seconds. Log: `focused.log`. |
+| First default `python3 scripts/acceptance.py` run | All nine stages passed; `acceptance-first.json` has `ok:true`, `SIMULATED`, `funds_executed:false`. Unit discovery passed in 415.257 seconds under the unchanged 900-second deadline; browser passed 77 tests under the unchanged 600-second deadline. |
+| Acceptance storage, pinned vendor, upstream claims, packaged smoke and seeded demo | 19, 7, 283 + 2 documented divergences / 285, 11 and 1 respectively. External read-model citation checks are explicitly SKIPPED without a supplied Protocol checkout and add no passing count. |
+| Standalone `npm run test:browser` in the private namespace | Exit 0; 77 passed, no retry or assertion changes. Log: `browser-isolated.log`. |
+| Standalone vendor test command | Exit 0; seven passed in 0.001 seconds. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/decision_ledger.py`; `python3 scripts/decision_bindings.py --check`; `python3 scripts/not_bound_checklist.py --check` | All exit 0. |
+| `python3 scripts/sim_journeys.py --check` | All eight SIMULATED journeys passed; all golden bytes unchanged. Log: `journeys.log`. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 37 routes, 276 artifacts and nine stages. |
+| `python3 scripts/closeout_digest.py --write --evidence build/repayment-recovery-review-r1/acceptance-first.json`; `python3 scripts/finance_vectors.py --write` | Generated the 4,572-byte standalone closeout and 102,920-byte finance pack from the clean first measured ladder. |
+| `python3 scripts/closeout_digest.py --check-evidence` against first evidence; `python3 scripts/finance_vectors.py --check` | Both exit 0; standalone, embedded and first-run measured evidence agree. |
+
+Before regeneration, `--check-evidence` correctly exited 1 naming only
+`$.packaged.sha256`, `$.stages[0].test_count.passed` and
+`$.stages[0].test_count.ran`. The generated unit count changes from 1,564 to
+1,568; the package hash changes with `capital/service.py`. The seven other
+finance-vector groups match their pre-regeneration values exactly. The first
+ladder itself exited 0; the local runner initially failed to clean up because
+Playwright replaced its temporary output symlink with a directory. Those reports
+were retained, the original tracked link restored, and the local cleanup was
+corrected before the second pass. Invocation metadata records that distinction.
+
+The second unchanged default acceptance run also passed all nine stages
+(`acceptance-second.json`, `ok:true`, `SIMULATED`, `funds_executed:false`):
+1,568 unit tests in 378.878 seconds, 77 browser tests, and all eight integrated
+SIMULATED journeys. The complete ladder took 524.287 seconds. The unit and
+browser commands used the repository's original 900/600-second deadlines.
+`closeout_digest.py --check-evidence` against that second run exited 0: its
+covered fields byte-match the first run and the regenerated artifact. Final
+`closeout_digest.py --check`, `finance_vectors.py --check` and
+`docs_surface.py --check` all exited 0. The second evidence file is also copied
+to ignored `build/acceptance-evidence.json`.
+
+Final preservation checks confirm all 15 recorded file hashes (eight journey
+goldens, legacy export, vendor manifest and five vendored references), the seven
+non-closeout finance groups, and both original report symlinks. There is no
+diff under `.aiops/`, `.github/` or `capital/vendor/`. `git diff --check` and
+`git diff --cached --check` pass. No commit, push or external post was made.
+These are local working-tree results, not a new CI run or human acceptance.
+
+Final generated hashes:
+
+- `tests/vectors/closeout_digest.json`: `f81577a1592c2157176da67ef97ae2fd21ff9b4bd9c98ac96e55da677b7192b6`.
+- `tests/vectors/finance_vectors.json`: `7eaafb18791dc662312c56984364ad8a3c8088926d86157778111e65d2a1fe39`.
+- Unpublished `LOCAL_SIMULATION_ARTIFACT` package: `9d4cc4e95e90a6c08d9fea82fe9b5341068d60be194b68d73d5fbf8a9bc4c769`.
