@@ -195,7 +195,7 @@ python3 scripts/smoke_release.py dist/capital-0.2.0.pyz
 - 로컬 부하 하네스(`python3 scripts/load_harness.py`). 워크로드마다 임시 포트의 loopback 서버를 새로 띄우고 stdlib `http.client`·`ThreadPoolExecutor`로 `POST /api/commands`를 보낸다. 여섯 시드 워크로드(`low-load-uniform`, `uniform`, `hot-seat`, `same-command-retry`, `history-growth`, `saturation`)를 메모리와 `--workspace` mode로 돌리고, 예정 도착시각과 서비스 시간을 따로 기록하며 new-success·replay·reject·conflict·capacity를 클래스별로 세어 절대 섞지 않는다. 보고서 `KIX_CAPITAL_LOAD_REPORT_V1`은 `LOCAL_EXPLORATION` 라벨과 입력 fingerprint·Python·OS·CPU 정보만 담는다. SLO·TPS 주장이 없고 **이 보고서는 production 성능 증거가 아니다.** `smoke` 프로필은 unittest 안에서 임계값 없이 돌고, `full`은 수동 실행이며 출력은 커밋하지 않는 `build/` 아래에 둔다.
 - 이벤트 로그 오프라인 요약(`python3 -m capital.events FILE --summary`). 서버 없이 파일 하나만 읽어 줄마다 정확히 다섯 필드(`time`, `route`, `status`, `code`, `operation_id`) 모양을 검사하고, 경로·상태·코드별 건수와 `without_code`, 첫·마지막 UTC 시각을 한 줄 JSON으로 낸다. 어긋난 줄이 있으면 그 줄의 1부터 세는 번호를 stderr에 붙여 0이 아닌 코드로 끝나고, 빈 파일은 0건으로 요약한다. 바이트만 읽고 아무것도 쓰지 않는다. `dropped`·`errors`는 프로세스 카운터라 파일에서 관측되지 않아 null과 `NOT_OBSERVABLE_OFFLINE`로 표시하고 `GET /api/metrics`의 `counters.event_log`를 가리킨다. 이벤트 로그 형식·크기 한도·서버 동작은 바꾸지 않는다. exporter, tracing, 감사·금융 증거가 아니다.
 - 자산은 KRW 하나만 선언합니다. `GET /api/state`와 export manifest `source_pin`의 `assets`가 `{namespace: fiat, reference: KRW, decimals: 0, max_atoms: 1000000000000}` 한 건이고, 명령 본문의 선택 필드 `asset`이 이와 다르면 `400 ASSET_MISMATCH`로 적용 전에 거절하며 저널·receipt를 남기지 않습니다. 금액은 정수이고 FX·교차 자산 합산·asset registry는 없습니다(PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.6).
-- 추가형 `CAPITAL-COA-V1` 후보 투영은 `GET /api/projection?mode=coa-candidate`로만 읽습니다(`capital/coa.py`, chart `SIMULATION_FIXED_V2`). 4자리 코드와 차원(`asset`, `advance_id`, `claim_id`, `sim_day`, `chart_version`, `terms_version`), KRW AssetSpec 한 개, 오버레이 이자 전기(1110/4100/4110, DEFAULTED 이후는 9700 메모), 청구 액면은 9100/9110 메모에만 둡니다. `GET /api/reconciliation?mode=coa-candidate`만 `coa_candidate_totals_vs_v1`, `interest_ledger_vs_projection` 두 검사를 더합니다. V1 응답·manifest·golden은 그대로이고 `accounting_policy`는 `SYNTHETIC_UNADOPTED`, `tax`는 `NOT_BOUND`입니다. 수익인식·세무 채택이 아닙니다.
+- 추가형 `CAPITAL-COA-V1` 후보 투영은 `GET /api/projection?mode=coa-candidate`로만 읽습니다(`capital/coa.py`, chart `SIMULATION_FIXED_V2`). 4자리 코드와 차원(`asset`, `advance_id`, `claim_id`, `sim_day`, `chart_version`, `terms_version`), KRW AssetSpec 한 개, 오버레이 이자 전기(1110/4100/4110, DEFAULTED 이후는 9700 메모), 청구 액면은 9100/9110 메모에만 둡니다. `GET /api/reconciliation?mode=coa-candidate`만 `coa_candidate_totals_vs_v1`, `interest_ledger_vs_projection` 및 `payment_ledger_vs_projection`, `recovery_ledger_vs_projection`, `writeoff_ledger_vs_projection` 검사를 더합니다. 후보는 납입 이자 현금 메모(1000/1110), 회수·상각(4300/5200), 9700 해제의 9790 및 미배분 현금 전용 9810/9890 메모를 포함합니다. V1 응답·manifest·golden은 그대로이고 `accounting_policy`는 `SYNTHETIC_UNADOPTED`, `tax`는 `NOT_BOUND`입니다. 수익인식·세무 채택이 아닙니다.
 - 로컬 facade 계약은 `capital-local-facade/1` (`capital/contract/facade-v1.json`)입니다. `ProducerPort`의 기본 구현은 고정 FSM wrapper입니다. 양성·음성 vectors는 SEMANTIC_CONFORMANCE가 아니고, CAP-16 exact tuple은 NOT_BOUND입니다. 옵트인 `--producer gate-fake`는 127.0.0.1의 `LOCAL_FAKE_GATE`(`scripts/fake_gate.py`)에만 붙습니다. 그 라벨은 채택이 아니고 ProducerPort는 NOT_BOUND입니다. 옵트인 `--authorizer fake-idp`는 `POST /api/session`에서만 `scripts/fake_idp.py`의 HS256 토큰(커밋된 테스트 벡터 키, 자격 증명 아님)을 요구하는 `LOCAL_FAKE_IDP`이고, identity와 authentication은 NOT_BOUND입니다. 포트 목록은 [docs/SEAMS.md](docs/SEAMS.md)에 있습니다.
 - 어댑터 정체성 클레임 표(`tests/adapter_identity_claims.json`, `KIX_CAPITAL_ADAPTER_IDENTITY_CLAIMS_V1`, 30행). `capital/adapter_identity_claims.py`는 별도 핀 `e2a029d8ac3af7575888dac22fc4bf173ebec232`의 `docs/contracts/ADAPTER_EVENT_IDENTITY.md` §2 정체성·§3 기수·§5 경우 행렬을 `ObservationPort` fake와 loopback facade로 실행합니다. 라벨은 `CLAIM_CONFORMANCE`, 결과는 `SIMULATED`입니다. facade 명령은 `COMMAND_BOUNDARY_ANALOGUE`이며 `COMMAND_RECEIPT_IDEMPOTENCY_IS_NOT_EVENT_IDENTITY`를 명시합니다. facade에 없는 범위는 `ISOLATION_ONLY`, 수단은 `METHOD_IS_CONTENT_NOT_SCOPE_IN_LOCAL_PROFILE` divergence입니다. 실제 제공자·커널·SEMANTIC_CONFORMANCE 주장이 아닙니다. `scripts/adapter_identity_claims_check.py`는 체크아웃 없이 `SKIPPED`, `--protocol-dir`는 읽기 전용 절·needle 드리프트와 `SOURCE_SHA256 match|differs`를 보고합니다.
 
@@ -218,6 +218,7 @@ python3 scripts/finance_vectors.py --check
 python3 scripts/closeout_digest.py --check
 python3 scripts/gate_faults.py --check
 python3 scripts/compat_preflight.py --check
+python3 -m unittest discover -s tests -p test_port_composition.py -v
 python3 scripts/forecast_vectors.py --check
 python3 scripts/risk_scenario_vectors.py --check
 python3 scripts/docs_surface.py --check
@@ -225,6 +226,17 @@ npm ci
 npx playwright install chromium
 npm run test:browser
 ```
+
+`tests/test_port_composition.py` composes `LOCAL_FAKE_IDP` session binding,
+the compatibility preflight factory and `LOCAL_FAKE_GATE` through the real
+loopback HTTP facade. Its local `CLAIM_CONFORMANCE` evidence uses only
+SIMULATED commands and READ_ONLY_FIXTURE inputs, without either upstream
+checkout. Identity, authentication and producer adoption remain `NOT_BOUND`;
+passing these tests is not SEMANTIC_CONFORMANCE. Coverage includes F04 lifecycle
+commands, authorized reads, rejected synthetic credentials, hostile gate replies,
+first-result replay/conflict behavior and explicit unsupported-operation refusals.
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for boundaries and
+[docs/VALIDATION.md](docs/VALIDATION.md) for builder results.
 
 한 명령 수용 사다리는 위 검사에 패키지 스모크와 시드 데모를 더합니다. 사람 수용 결정은 포함하지 않습니다.
 
@@ -303,6 +315,29 @@ real money or COA posting. The golden disposable demo uses demo-book claims:
 `tests/golden/overlay_claim_slices.json`; `--write` regenerates it explicitly.
 See [INTEGRATION.md](docs/INTEGRATION.md) for fields and refusal codes and
 [VALIDATION.md](docs/VALIDATION.md) for replay limits and verification evidence.
+
+Recorded provider-capture assertions are implemented under
+[CAPITAL_OBSERVATION_RECORD.md](docs/decisions/CAPITAL_OBSERVATION_RECORD.md).
+`POST /api/overlay/commands` accepts `op: "record_external_fact"` from the
+organizer only (agent `403 FACT_AGENT_FORBIDDEN`, other roles
+`403 FACT_ROLE_FORBIDDEN`), folding `PROVIDER_PAYMENT_CAPTURE` facts into
+`state.observations` keyed by fact id with a derived `ACTIVE`/`SUPERSEDED`
+status. Every fact is a constant `SIMULATED` + `UNVERIFIED_ASSERTED` +
+`funds_executed: false` + `provider_call_made: false` assertion — never a
+provider/bank/chain confirmation and never reconciliation or set-off cash.
+Recording enforces `operation_id` dedup (`409 FACT_IDEMPOTENCY_CONFLICT`),
+clock CAS (`409 SIM_CLOCK_STALE`), the note's bounds (`409 SIMULATION_CAPACITY`
+scope `external_facts`, `409 FACT_SUPERSEDE_DEPTH`), claim existence
+(`409 FACT_CLAIM_UNKNOWN`) and the volatile/personal-key ban
+(`400 OVERLAY_VOLATILE_KEY`). `GET /api/reconciliation` gains the conditional
+check `recorded_captures_vs_claim_face` (`MATCH`/`ASSERTED_MISMATCH`/`NO_FACTS`,
+diagnostic `OBSERVED_FACT_MISMATCH` only) only while observations exist; the
+offline workspace auditor computes the same row. Facts move no money, never
+gate the FSM or shadow derivations, and appear only inside the V3 `overlay`
+manifest section — `demo.json` and `overlay_empty.json` stay byte-identical.
+The seeded disposable demo pins `tests/golden/overlay_observations.json`:
+`python3 scripts/seed_overlay_observations.py` checks it, `--write`
+regenerates explicitly.
 
 
 ### Cursor-paginated facts (SIMULATED)
@@ -476,3 +511,24 @@ change or external call. See [the contract](docs/INTEGRATION.md#residual-obligat
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
+
+
+### Loss allowance candidate V2
+
+`GET /api/projection?mode=coa-candidate` includes `ALLOWANCE` delta postings
+(1190/5100), an `allowance` population block and `reserve_pool` memo under the
+[adopted provisional decision](docs/decisions/CAPITAL_LOSS_ALLOWANCE.md).
+Amounts use authoritative TERMS weights and recorded draw tiers, economic
+operation order and crossed maturity days. `tier` is required on allowance
+posting dimensions. `allowance_vs_risk_reserve` is the sixth candidate check;
+seed demo is MATCH at 30,750 KRW. The TERMS portfolio floor and overlay reductions
+can expose honest mismatches with the existing risk reader. Missing evidence
+is NOT_BOUND/null. Everything remains SIMULATED / SYNTHETIC_UNADOPTED /
+`policy_adopted=false` / NOT_IN_EXPORT_V1; 3100/3200 remain unposted.
+
+Offline parity is opt-in: `python3 -m capital.verify --workspace DIR --mode coa-candidate`.
+Omitted mode retains the default audit and evidence-pack contract. Recovery and
+gross write-off postings 4300/5200 retain their existing behavior; V2 releases
+allowance once immediately before the existing gross write-off. The new
+ALLOWANCE source posts only 1190/5100. See the [integration contract](docs/INTEGRATION.md#loss-allowance-postings)
+and [handbook](docs/OPERATOR_HANDBOOK_KO.md#loss-allowance-postings).
