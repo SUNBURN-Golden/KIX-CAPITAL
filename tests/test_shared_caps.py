@@ -261,6 +261,47 @@ class SharedCapsTests(unittest.TestCase):
         self.assertNotEqual(cut['policy_inputs_digest'], after['cut']['policy_inputs_digest'])
         self.assertNotEqual(cut['inputs_digest'], after['cut']['inputs_digest'])
 
+    def test_recorded_capture_and_allowance_reads_preserve_shared_capacity(self):
+        with tempfile.TemporaryDirectory() as tmp, FileWorkspace.open(tmp) as store:
+            s = CapitalService(storage=store)
+            draw_book(s)
+            seed.register(s, 'capture-slice', 1000, 'demo-alpha-arena')
+            seed.open_slice(s, 'capture-slice')
+            tick(s, 'capture-clock', 0, 7)
+            before = s.shared_caps()
+            receipt = s.overlay_command({
+                'instance_id': s.instance_id, 'operation_id': 'shared-cap-capture',
+                'op': 'record_external_fact', 'at_sim_day': 7,
+                'payload': {
+                    'fact_class': 'PROVIDER_PAYMENT_CAPTURE', 'claim_id': 'sim-committed',
+                    'order_ref': 'sim-cap-order', 'amount_krw': 100000,
+                    'claimed_provider_ref': 'sim-cap-provider', 'sim_day': 7,
+                    'effective_sim_day': 7, 'captured_sim_day': 7,
+                    'authority': {'role': 'organizer', 'approvals': []},
+                    'label': 'SIMULATED', 'verification': 'UNVERIFIED_ASSERTED',
+                    'funds_executed': False, 'provider_call_made': False,
+                    'legal_effect': 'NOT_ASSESSED',
+                }})
+            self.assertEqual(receipt['outcome'], 'APPLIED')
+            files = {p.name: p.read_bytes() for p in Path(tmp).iterdir()}
+            frozen = copy.deepcopy(s._frozen())
+            after = s.shared_caps()
+            self.assertEqual(after['status'], 'BOUND', after)
+            for name in ('beneficiaries', 'portfolio'):
+                self.assertEqual(after[name], before[name])
+            for name in ('state_digest', 'fixtures_digest', 'policy_inputs_digest'):
+                self.assertEqual(after['cut'][name], before['cut'][name])
+            for name in ('overlay_state_digest', 'inputs_digest'):
+                self.assertNotEqual(after['cut'][name], before['cut'][name])
+            self.assertIn('allowance', s.projection('coa-candidate'))
+            checks = s.reconciliation(None, 'coa-candidate')['checks']
+            self.assertTrue(any(c['id'] == 'allowance_vs_risk_reserve' for c in checks))
+            self.assertEqual(s.shared_caps(), after)
+            self.assertEqual(s._frozen(), frozen)
+            self.assertEqual(files, {p.name: p.read_bytes() for p in Path(tmp).iterdir()})
+            self.assertEqual(CapitalService(storage=store).shared_caps(), after)
+            self.schema(after)
+
     def test_closed_schema_and_required_labels_in_both_alternatives_and_rows(self):
         s = CapitalService()
         draw_book(s)
