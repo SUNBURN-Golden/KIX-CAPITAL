@@ -22,11 +22,18 @@
 | CAP-10 | 원 operation/최초 결과/UNKNOWN | `persistence-port` | SIMULATED | 개발용 LOCAL_FILE_WORKSPACE다. stage5 내구 거래가 아니다. |
 | CAP-11 | 내구 거래·inbox/outbox·장애복구 | `k-stage5-durable-tx` | NOT_BOUND | upstream, not adopted. 자체 저장엔진을 만들지 않는다. docs/decisions/CAPITAL_REPAYMENT_POSTING.md는 중복 방지·응답 유실 UNKNOWN·단일 저장 시뮬레이션 오버레이만 정하며 stage5 내구 거래가 아니므로 CAP-11은 NOT_BOUND 그대로다. |
 | CAP-12 | 자산별 정확한 금액·FX | `product-journey` | SIMULATED | KRW 정수 검증과 KRW AssetSpec 단일 선언(`assets`, 다른 asset은 `ASSET_MISMATCH`, node `asset-spec-krw`, PROVISIONAL per `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.6)만 로컬이다. u128·registry·FX는 upstream, not adopted. |
-| CAP-13 | 복식 금융 투영 | `finance-projection` | SIMULATED | 로컬 후보 SYNTHETIC_UNADOPTED다. `fin-ledger-contract`는 upstream, not adopted. |
-| CAP-14 | 원관측·대사 예외 | `recon-statement` | SIMULATED | 로컬 진단이다. 은행·PG·제공자 관측은 NOT_BOUND다. |
+| CAP-13 | 복식 금융 투영 | `finance-projection` | SIMULATED | 로컬 후보 SYNTHETIC_UNADOPTED다. `fin-ledger-contract`는 upstream, not adopted.  별도 ALLOWANCE_CANDIDATE_V2: TERMS 건별 차액 1190/5100·단일 상각 환입·reserve_pool 무분개 메모, 전체 KRW cut 증거. SIMULATED / policy_adopted=false / NOT_IN_EXPORT_V1. |
+| CAP-14 | 원관측·대사 예외 | `recon-statement` | SIMULATED | 로컬 진단이다. 은행·PG·제공자 관측은 NOT_BOUND다.  후보 allowance_vs_risk_reserve는 TERMS 풀 목표와 risk 필요액을 동일 cut·모집단·정책으로 대사하며 offline --mode coa-candidate와 같다. 기본 여섯 검사는 유지; MATCH만 통과, 증거 누락 NOT_BOUND. |
 | CAP-15 | 인증 export·일관 source cut | `export-manifest` | SIMULATED | 로컬 해시 manifest와 SignaturePort다. stage7 인증 export가 아니다. |
 | CAP-16 | SDK·API 적합성 | `facade-contract-seams` | NOT_BOUND | 로컬 capital-local-facade/1은 exact tuple이 아니다. SEMANTIC_CONFORMANCE가 아니다. |
 | CAP-17 | 공개/비공개·권리 규모 | `RS-0~5` | NOT_BOUND | upstream, not adopted. privacy·currentness와 규모 검증이 없다. |
 | CAP-18 | 선택적 토큰 담보·보상 | `TL` | NOT_AUTHORIZED | upstream, not adopted. coin lock 결정이 없고 토큰 호출 코드가 없다. |
 | CAP-19 | AI 운영·권한·최소공개 | `CAPITAL-AUTH-BOUNDARY` | NOT_BOUND | 로컬 합성 역할과 SIMULATED QUERY/PROPOSE 픽스처가 있다. 제안은 HUMAN_PENDING이고 effects_executed는 false다. IdP·KYC·AgentGrant/ActionPermit은 upstream, not adopted. |
 | CAP-20 | 접근성·통합 수용 | `acceptance-suite` | SIMULATED | 자동 검증만이다. 브라우저 여정은 `journeys-portfolio`에도 있다. 사람 수용은 PENDING이고 실서비스 출시는 승인되지 않았다. `#desk` 운영 데스크(`POST /api/overlay/commands` sim_day 제어, 사례 타임라인, 서버가 사유를 붙인 다음 작업)의 브라우저 검증도 `tests/browser/operator-desk.spec.cjs`에 있다. 자동 검증이며 사람 수용이 아니다. |
+
+`event-stress-report` extends CAP-01/CAP-04/CAP-08/CAP-20 locally with an audited,
+detached offline claim shock report (`capital/event_stress.py`,
+`tests/test_event_stress.py`). Policy: docs/decisions/CAPITAL_EVENT_STRESS.md;
+implementation mapping: docs/decisions/CAPITAL_EVENT_STRESS_BINDING.md.
+Both remain provisional SIMULATED. Shared allocation and historical policy
+authentication remain NOT_BOUND; no production permission or financial posting.

@@ -92,3 +92,39 @@ test('reconciliation and statement panels stay read-only and unsummed', async ({
   expect(finalState.state_digest).toBe(digest);
   expect(finalState.operation_count).toBe(quiet.operation_count);
 });
+
+test('recorded capture fact adds the conditional observed-vs-expected check', async ({page}) => {
+  await page.goto('/');
+  await expect(page.locator('#recon-checks tr')).toHaveCount(CHECKS.length);
+  const state = await (await page.request.get('/api/state')).json();
+  const fact = {
+    instance_id: state.instance_id, operation_id: 'browser-fact-1', op: 'record_external_fact',
+    at_sim_day: 0,
+    payload: {
+      fact_class: 'PROVIDER_PAYMENT_CAPTURE', claim_id: 'sim-committed',
+      order_ref: 'sim-order-browser', amount_krw: 100000,
+      claimed_provider_ref: 'ab'.repeat(32),
+      sim_day: 0, effective_sim_day: 0, captured_sim_day: 0,
+      authority: {role: 'organizer', approvals: []},
+      label: 'SIMULATED', verification: 'UNVERIFIED_ASSERTED',
+      funds_executed: false, provider_call_made: false, legal_effect: 'NOT_ASSESSED',
+    },
+  };
+  const posted = await page.request.post('/api/overlay/commands', {
+    headers: {'Content-Type': 'application/json', 'X-Capital-Token': state.local_token},
+    data: fact,
+  });
+  expect(posted.status()).toBe(200);
+  const receipt = await posted.json();
+  expect(receipt.entry.recorded_by_role).toBe('organizer');
+  expect(receipt.entry.verification).toBe('UNVERIFIED_ASSERTED');
+  await page.reload();
+  const rows = page.locator('#recon-checks tr');
+  await expect(rows).toHaveCount(CHECKS.length + 2);
+  const observed = rows.filter({hasText: 'recorded_captures_vs_claim_face'});
+  await expect(observed).toContainText('MATCH');
+  await expect(page.locator('#recon-summary')).toContainText('재생 무결성 MATCHED');
+  await expect(page.locator('#recon-summary')).toContainText('UNVERIFIED_ASSERTED MATCH');
+  await expect(page.locator('#recon-summary')).toContainText('completeness=NOT_BOUND');
+  await expect(page.locator('#recon-summary')).toContainText('은행 대사 아님');
+});
