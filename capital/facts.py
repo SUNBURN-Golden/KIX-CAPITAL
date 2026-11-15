@@ -31,12 +31,15 @@ LIMIT_DEFAULT, LIMIT_MAX = 100, 500
 # Read-phase input budget of verify_dir: a demo bound, not a financial limit.
 # Sized above the adopted producer bounds (MAX_OPERATIONS=500,
 # OVERLAY_MAX_ENTRIES=2000, OVERLAY_ENTRY_MAX_BYTES=4096, request bodies
-# <=8192 bytes, ENVELOPE_MAX_BYTES=4MiB, page limit 500) so every export the
-# producer can emit fits: 2500 rows ~8.5KiB worst case fit five pages under
-# 8MiB each and 64MiB in aggregate; real pages nest about six levels.
+# <=8192 bytes, ENVELOPE_MAX_BYTES=4MiB, page limit 1..500) so every export the
+# producer can emit fits, including the worst pagination: 500+2000=2500 rows
+# sealed at limit=1 need 2500 pages, and 4096 directory entries leave headroom
+# for non-page files beside them. Those 2500 worst-case pages measure ~21MiB
+# (~12KiB each), under 8MiB per page and 64MiB in aggregate; real pages nest
+# about six levels.
 INPUT_LIMITS = {
     'max_dir_entries': 4096,
-    'max_pages': 64,
+    'max_pages': 2500,
     'max_page_bytes': 8 * 1024 * 1024,
     'max_total_bytes': 64 * 1024 * 1024,
     'max_json_depth': 32,
@@ -289,6 +292,9 @@ def _read_regular(path, before):
     and after the bounded read, so replacement, truncation, growth and a
     modify-in-place observed through inode, size or mtime all fail identically.
     A non-regular fd is never read, so a substituted fifo cannot block the read.
+    Because an open descriptor keeps the original inode even when the pathname
+    is renamed away or atomically replaced mid-read, the pathname is checked
+    again with lstat after the read and must still name the same regular file.
     """
     flags = (os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0)
              | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
@@ -316,6 +322,16 @@ def _read_regular(path, before):
         after = os.fstat(fd)
         if (after.st_ino, after.st_size, after.st_mtime_ns) != (
                 opened.st_ino, opened.st_size, opened.st_mtime_ns):
+            raise _ChangedError()
+        try:
+            named = os.lstat(path)
+        except OSError as exc:
+            if exc.errno in _CHANGED_ERRNOS:
+                raise _ChangedError() from exc
+            raise
+        if (not stat.S_ISREG(named.st_mode)
+                or (named.st_dev, named.st_ino, named.st_size, named.st_mtime_ns)
+                != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)):
             raise _ChangedError()
         return b''.join(chunks)
     finally:
@@ -481,6 +497,8 @@ def verify_dir(directory, *, limits=None):
     try:
         recovery.validate_links(entries, journal)
         slices.validate_links(entries, journal, fixtures.rows)
+        from capital.observation_record import validate_links as validate_observations
+        validate_observations(entries, journal, fixtures.rows)
     except (ValueError, KeyError, TypeError, ArithmeticError):
         return report('OVERLAY_LINK_MISMATCH')
     try:

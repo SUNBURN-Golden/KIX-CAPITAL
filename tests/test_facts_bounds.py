@@ -1,4 +1,5 @@
 """Bounded filesystem and memory inputs for the offline facts verifier."""
+import copy
 import json
 import os
 import subprocess
@@ -21,10 +22,10 @@ def copy_clean(directory):
         (Path(directory) / path.name).write_bytes(path.read_bytes())
 
 
-def write_maximum_export(directory):
-    """Synthesize the largest export the adopted producer bounds allow:
-    500 journal rows near the 8192-byte request cap plus 2000 foldable overlay
-    clock entries near OVERLAY_ENTRY_MAX_BYTES=4096, sealed at page limit 500.
+def maximum_rows():
+    """The largest row book the adopted producer bounds allow: 500 journal rows
+    near the 8192-byte request cap plus 2000 foldable overlay clock entries
+    near OVERLAY_ENTRY_MAX_BYTES=4096 (2500 rows, the limit=1 page worst case).
     """
     journal = [{'op': 'offer', 'advance_id': f'sim-pad-{index:04d}',
                 'body': {'amount': 1, 'pad': 'j' * 7800}} for index in range(500)]
@@ -35,11 +36,45 @@ def write_maximum_export(directory):
                             'reason': 'SIMULATED ' + 'o' * 3800}}
                for index in range(2000)]
     cut = facts.make_cut(journal, entries, '0' * 64, facts.sha256_hex(FixtureViews().rows))
-    rows = facts.build_rows(journal, entries)
+    return facts.build_rows(journal, entries), cut
+
+
+def write_maximum_export(directory):
+    """Seal the maximum-supported export at page limit 500 (five pages)."""
+    rows, cut = maximum_rows()
     after = None
     for start in range(0, len(rows), 500):
         page = facts.seal(rows, cut, after, start, 500, len(rows))
         (Path(directory) / f'page-{start // 500:04d}.json').write_bytes(canonical_bytes(page))
+        after = page['next_cursor']
+
+
+def write_single_row_pages(directory, rows, cut):
+    """Seal the same book at limit=1, one page per row, carrying the chain.
+
+    facts.seal re-deep-copies and re-hashes the whole book on every call, which
+    is quadratic at limit=1; this carries the chain forward instead and
+    byte-checks sampled pages against facts.seal so the fixture stays
+    producer-identical.
+    """
+    sealed = [{**copy.deepcopy(row), 'row_sha256': facts.row_digest(row)} for row in rows]
+    total, chain, after = len(sealed), facts.genesis(cut), None
+    samples = {0, total // 2, total - 1}
+    for start, row in enumerate(sealed):
+        before = chain
+        chain = facts.chain_step(chain, row)
+        end = start + 1
+        page = {'format': facts.PAGE_FORMAT, 'schema_id': facts.SCHEMA_ID,
+                'schema_sha256': facts.sha256_hex(facts.schema()), 'schema': facts.schema(),
+                **copy.deepcopy(facts.LABELS), 'cut': copy.deepcopy(cut), 'after': after,
+                'start_seq': start, 'limit': 1, 'row_count_total': total, 'rows': [row],
+                'chain_before': before, 'chain_after': chain,
+                'next_cursor': facts.cursor(end, cut) if end < total else None}
+        page['page_digest'] = facts.page_digest(page)
+        raw = canonical_bytes(page)
+        if start in samples:
+            assert raw == canonical_bytes(facts.seal(rows, cut, after, start, 1, total)), start
+        (Path(directory) / f'page-{start:04d}.json').write_bytes(raw)
         after = page['next_cursor']
 
 
@@ -166,6 +201,63 @@ class BoundaryTests(unittest.TestCase):
             with patch('capital.facts.os.open', record_open), patch('capital.facts.os.read', grew):
                 self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_CHANGED:page-0005.json')
 
+    def test_post_open_replacement_and_vanish_give_input_changed(self):
+        # The open descriptor keeps the original inode, size and mtime when the
+        # pathname is swapped after os.open; only the post-read pathname
+        # identity recheck can observe these. Each action fires on the first
+        # read of the target page, inside the read window.
+        real_open, real_read = os.open, os.read
+        with tempfile.TemporaryDirectory() as d:
+            copy_clean(d)
+            target = Path(d) / 'page-0003.json'
+            original = target.read_bytes()
+            fds = {}
+
+            def record_open(path, flags, *args):
+                fd = real_open(path, flags, *args)
+                fds[Path(path).name] = fd
+                return fd
+
+            def verdict(action):
+                fds.clear()  # closed fd numbers are reused; never match a stale one
+                fired = []
+
+                def reader(fd, n):
+                    data = real_read(fd, n)
+                    if fd == fds.get('page-0003.json') and not fired:
+                        fired.append(True)
+                        action()
+                    return data
+
+                with patch('capital.facts.os.open', record_open), \
+                        patch('capital.facts.os.read', reader):
+                    report = facts.verify_dir(d)
+                self.assertEqual(fired, [True], 'replacement must run after open and read')
+                self.assertFalse(report['ok'])
+                return report['reason']
+
+            # Atomic replacement with identical bytes, size and mtime: the
+            # inode is the only observable difference.
+            def replaced():
+                staging = Path(d) / 'staging.tmp'
+                staging.write_bytes(original)
+                os.utime(staging, ns=(target.lstat().st_atime_ns, target.lstat().st_mtime_ns))
+                os.replace(staging, target)
+            self.assertEqual(verdict(replaced), 'INPUT_CHANGED:page-0003.json')
+            copy_clean(d)
+
+            # The pathname vanishes while the original descriptor reads on.
+            self.assertEqual(verdict(target.unlink), 'INPUT_CHANGED:page-0003.json')
+            copy_clean(d)
+
+            # The pathname becomes a symlink to different content mid-read.
+            def symlinked():
+                other = Path(d) / 'link-target.tmp'
+                other.write_bytes(original + b' ')
+                target.unlink()
+                os.symlink(other, target)
+            self.assertEqual(verdict(symlinked), 'INPUT_CHANGED:page-0003.json')
+
     def test_deep_json_duplicate_keys_and_truncated_pages_return_reasons(self):
         depth = facts.INPUT_LIMITS['max_json_depth'] + 1
         with tempfile.TemporaryDirectory() as d:
@@ -219,6 +311,60 @@ class BoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / 'page-0000.json').write_bytes(raw)
             self.assertTrue(facts.verify_dir(d)['ok'])
+
+    def test_small_page_export_over_64_pages_verifies_under_defaults(self):
+        # The producer accepts limit=1, so a supported export can exceed the
+        # old 64-page default; a real replayable book must verify end to end.
+        from scripts.facts_vectors import seed
+        service = seed()
+        journal = service.machine.export_journal()
+        entries = [{'overlay_id': f'clock-{index:04d}', 'after_journal_index': len(journal),
+                    'sim_day': index + 1, 'kind': 'clock',
+                    'payload': {'from_sim_day': index, 'to_sim_day': index + 1,
+                                'actor': overlay.ACTOR, 'clock_source': overlay.CLOCK_SOURCE,
+                                'reason': 'SIMULATED small-page bound test'}}
+                   for index in range(45)]
+        rows = facts.build_rows(journal, entries)
+        self.assertGreater(len(rows), 64)
+        cut = facts.make_cut(journal, entries, service.machine.state_digest(),
+                             facts.sha256_hex(service.fixtures.rows))
+        with tempfile.TemporaryDirectory() as d:
+            after = None
+            for start in range(len(rows)):
+                page = facts.seal(rows, cut, after, start, 1, len(rows))
+                (Path(d) / f'page-{start:04d}.json').write_bytes(canonical_bytes(page))
+                after = page['next_cursor']
+            report = facts.verify_dir(d)
+            self.assertTrue(report['ok'], report['reason'])
+            self.assertEqual(report['pages'], len(rows))
+            self.assertEqual(report['rows'], len(rows))
+            self.assertEqual(facts.verify_dir(d, limits={'max_pages': len(rows)})['pages'], len(rows))
+            self.assertEqual(facts.verify_dir(d, limits={'max_pages': len(rows) - 1})['reason'],
+                             'INPUT_PAGES')
+
+    def test_maximum_export_at_limit_one_fits_the_default_bounds(self):
+        # Worst supported pagination: all 2500 maximum rows sealed one per page.
+        rows, cut = maximum_rows()
+        self.assertEqual(len(rows), 2500)
+        with tempfile.TemporaryDirectory() as d:
+            write_single_row_pages(d, rows, cut)
+            sizes = [path.stat().st_size for path in Path(d).glob('page-*.json')]
+            self.assertEqual(len(sizes), 2500)
+            self.assertLessEqual(len(sizes), facts.INPUT_LIMITS['max_pages'])
+            self.assertLessEqual(len(list(os.scandir(d))), facts.INPUT_LIMITS['max_dir_entries'])
+            self.assertLessEqual(max(sizes), facts.INPUT_LIMITS['max_page_bytes'])
+            self.assertLessEqual(sum(sizes), facts.INPUT_LIMITS['max_total_bytes'])
+            report = facts.verify_dir(d)
+            # Every page was read under the defaults; only the fake journal op
+            # fails, and that is a semantic reason, not an input budget.
+            self.assertEqual(report['pages'], 2500)
+            self.assertEqual(report['reason'], 'JOURNAL_REPLAY_FAILED')
+            self.assertEqual(facts.verify_dir(d, limits={'max_pages': 2499})['reason'], 'INPUT_PAGES')
+            # One over the default page budget refuses during enumeration,
+            # before any of the 2500 otherwise-supported pages can be opened.
+            (Path(d) / 'page-2500.json').write_bytes(b'{}')
+            with patch('capital.facts._read_regular', side_effect=AssertionError('must not read')):
+                self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_PAGES')
 
     def test_no_partial_success_no_writes_and_no_leaked_contents(self):
         sentinel = b'UNIQUE_SENTINEL_9f3c_DO_NOT_LEAK'

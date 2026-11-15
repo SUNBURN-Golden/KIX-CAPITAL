@@ -114,9 +114,10 @@ This node hardened `capital/facts.py` `verify_dir` and the
 `k-stage7-authenticated-export`. All inputs below are synthetic local fixtures.
 No commit, push, PR, issue or external comment was made.
 
-The read phase enforces `INPUT_LIMITS` (4096 directory entries, 64 matched
+The original read phase enforced `INPUT_LIMITS` (4096 directory entries, 64 matched
 `page-*.json` files, 8 MiB per page, 64 MiB aggregate, 32 JSON levels) before
-unbounded reads or accumulation; non-regular pages refuse on `lstat` with
+unbounded reads or accumulation. The page-count bound and pathname race check
+are superseded by PR fix round 2 below. Non-regular pages refuse on `lstat` with
 `INPUT_NOT_REGULAR` and replacement/vanish/modify observed via inode, size or
 mtime fails with `INPUT_CHANGED`. Budget failures carry `INPUT_*` reasons,
 distinct from the unchanged semantic reasons (`PAGE_SHAPE`, `*_MISMATCH`,
@@ -165,3 +166,64 @@ Vendor files and manifest remain pinned and unmodified; `capital/export.py`,
 untouched. No decision note, corpus file or route changed. No product,
 financial, legal, provider or deployment decision was needed; the bound values
 are documented technical budgets, not financial terms.
+
+## facts-verifier-input-bounds — PR fix round 2 (2026-11-16 KST)
+
+Both blocking findings are accepted and fixed in the uncommitted working tree
+on `agent/capital-facts-verifier-input-bounds`. The incoming main merge is
+already resolved (`MERGE_HEAD=d6ccd93130b86f3dbc37c514ed78cc3c01d8c99d`);
+it is left uncommitted as requested. Existing main changes are preserved.
+
+`_read_regular` now checks the pathname with `os.lstat` after reading and
+requires the same regular file, device, inode, size and mtime as the opened
+descriptor. A vanished pathname, atomic replacement or symlink substitution
+therefore returns `INPUT_CHANGED:<file>` even when the old descriptor still
+reads the original bytes. The regression swaps the pathname after a successful
+`os.read`, with identical replacement bytes, size and mtime, and asserts that
+the swap actually ran. Separate cases remove the pathname or substitute a
+symlink. No replacement target is followed.
+
+The current default input budgets are 4096 directory entries, **2500 matched
+pages**, 8 MiB per page, 64 MiB aggregate and JSON depth 32. The producer accepts
+`limit=1..500`; 500 journal rows plus 2000 overlay rows can require 2500 pages
+at `limit=1`. A valid 66-row book now verifies end to end as 66 one-row pages.
+The maximum-size SIMULATED fixture has 2500 pages, maximum page size 11,950
+bytes and aggregate size 22,206,087 bytes. All pages and rows pass input and
+integrity checks under the defaults; its deliberately fabricated journal fails
+only at semantic replay (`JOURNAL_REPLAY_FAILED`). It is not represented as a
+valid financial book. Adding a 2501st page yields `INPUT_PAGES` during directory
+enumeration, with page reads patched to fail if attempted. The five-page
+`limit=500` maximum-size fixture remains covered too. Sampled one-row maximum
+pages are byte-compared with `facts.seal`; the 66-page valid book uses the
+producer sealer for every page.
+
+README, integration guidance and the operator handbook now document the full
+pagination range, current limits and post-read pathname check. Ordering,
+canonical bytes, CLI exits and semantic outcomes are preserved; the 133-file
+facts corpus was checked without regeneration. These are local technical
+budgets, not financial capacity policy or production throughput claims.
+
+| Local check | Round-2 result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1585 tests passed in 525.367 seconds. |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | Exit 0; 26 passed, including all 12 boundary tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 38 routes, 276 artifacts, nine stages. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 canonical/intentional-tamper files unchanged. |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; seven pages, 27 rows, authentication `NOT_BOUND`. |
+| Focused `test_handbook.py` and `test_docs_surface.py` discovery | Exit 0; 15 plus 15 passed after the documentation update. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --output=/tmp/facts-bounds-r2-browser-results --reporter=list'` | Exit 0; all 85 Chromium tests passed in 2.2 minutes. Tracked configuration and assertions unchanged; only loopback enabled in the isolated namespace. |
+| Vendor SHA256 and byte comparisons | All five files match manifest pin `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`; manifest and legacy export match both HEAD and incoming main. `.aiops/` is unchanged. |
+
+Browser output is retained in `/tmp/facts-bounds-r2-browser.log` and
+`/tmp/facts-bounds-r2-browser-results`; full unit output is in
+`/tmp/facts-bounds-r2-unit.log`. Both tracked report symlinks were
+restored to the merge index bytes after the run. Pre-existing local browser
+artifacts and the port-remap configuration were preserved under
+`/tmp/facts-bounds-r2-existing-browser-5gk526mh`; any regenerated report was
+preserved under `/tmp/facts-bounds-r2-final-browser-7sg8qihh` before restoration.
+
+All inputs and replay results remain `SIMULATED`, source authority and
+authentication `NOT_BOUND`. No financial terms, real provider, credentials,
+deployment or funds were introduced. No commit, push or external post was made.
