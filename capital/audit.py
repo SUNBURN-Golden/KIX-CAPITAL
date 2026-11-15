@@ -6,7 +6,8 @@ the envelope checksum, replay the journal into a scratch machine, run the
 service's own restore validation over an in-memory document port, recompute
 receipt fingerprints, and embed the same build_reconciliation checks as
 GET /api/reconciliation (six, plus overlay_fold_digest_equals_persisted when
-the overlay is non-empty). The first failing check supplies the reason and the
+the overlay is non-empty). Opt-in mode=coa-candidate adds the six candidate
+checks with the same source context as the live route. The first failing check supplies the reason and the
 command exits non-zero. This is a local diagnostic, not stage5 durable
 transaction evidence and not an import or resume route.
 """
@@ -17,7 +18,7 @@ import hmac
 import json
 from pathlib import Path
 
-from capital import store
+from capital import coa, store
 from capital.producer import FixtureViews
 from capital.projection import SimulationProjection
 from capital.protocol import CreditMachine
@@ -180,7 +181,7 @@ def _fingerprints_match(receipts, journal, mapping):
     return True
 
 
-def audit_workspace(directory):
+def audit_workspace(directory, mode=None):
     """Audit DIR/workspace.json read-only. Returns the JSON report dict."""
     workspace = str(directory)
     try:
@@ -190,14 +191,16 @@ def audit_workspace(directory):
         raw = path.read_bytes()
     except (OSError, TypeError, ValueError):
         raw = None
-    return audit_workspace_bytes(raw, workspace=workspace)
+    return audit_workspace_bytes(raw, workspace=workspace, mode=mode)
 
 
-def audit_workspace_bytes(raw, *, workspace):
+def audit_workspace_bytes(raw, *, workspace, mode=None):
     """Audit captured bytes with the same stages as audit_workspace.
 
     None represents a failed file capture. No path is opened by this entry point.
     """
+    if mode not in (None, 'simulation', coa.MODE):
+        raise ValueError('unsupported workspace audit mode')
     detail = {}
 
     def fail(reason, check, recon=None):
@@ -260,7 +263,9 @@ def audit_workspace_bytes(raw, *, workspace):
             probe_operation_id=None, instance_id=_AUDIT_INSTANCE,
             operation_capacity=MAX_OPERATIONS, workspace_status=_WORKSPACE_STATUS,
             overlay_entries=copy.deepcopy(service.overlay_entries) or None,
-            overlay_persisted=copy.deepcopy(overlay_section(document)))
+            overlay_persisted=copy.deepcopy(overlay_section(document)),
+            coa_port=service.coa_projection if mode == coa.MODE else None,
+            allowance_context=service._allowance_context() if mode == coa.MODE else None)
     except Exception:
         return fail('RECON_MISMATCH', 'recon')
     if recon['status'] != 'MATCHED':
