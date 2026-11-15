@@ -51,7 +51,7 @@ class RepinTests(unittest.TestCase):
 
     def move(self, surface):
         pin = checker.pins(self.policy)[surface]
-        new = ('a' if surface == 'vendor_pin' else 'b') * 40
+        new = {'vendor_pin': 'a', 'ai_draft_pin': 'b', 'read_model_draft_pin': 'c'}[surface] * 40
         for table_path in pin['bound_tables']:
             path = self.candidate / table_path
             table = checker.read_json(path)
@@ -66,7 +66,9 @@ class RepinTests(unittest.TestCase):
                 source.parent.mkdir(parents=True, exist_ok=True)
                 with source.open('a') as stream:
                     stream.write('\nSIMULATED / READ_ONLY_FIXTURE\n' + '\n'.join(parts))
-        implementation = 'capital/upstream_claims.py' if surface == 'vendor_pin' else 'capital/agent_claims.py'
+        implementation = {'vendor_pin': 'capital/upstream_claims.py',
+                          'ai_draft_pin': 'capital/agent_claims.py',
+                          'read_model_draft_pin': 'capital/read_model_claims.py'}[surface]
         path = self.candidate / implementation
         path.write_text(path.read_text().replace("PINNED_SHA = '" + pin['sha'] + "'", "PINNED_SHA = '" + new + "'"))
         if 'manifest' in pin:
@@ -152,6 +154,25 @@ class RepinTests(unittest.TestCase):
         self.assertNotIn('tests/adapter_identity_claims.json', tables)
         self.assertTrue(all(row['class'] == 'RESEARCH_BASELINE' for row in result['research'].values()))
 
+    def test_read_model_registration_is_required_and_cannot_weaken_citation(self):
+        path = self.candidate / checker.READ_MODEL_NOTE
+        original = path.read_text()
+        self.assertNotIn('tests/read_model_claims.json', checker.pins(self.policy)['vendor_pin']['bound_tables'])
+        pin = checker.pins(self.policy)['read_model_draft_pin']
+        self.assertEqual(pin['sha'], '244595db1524cbb1a01148baa07d6d28cd1b8dc6')
+        self.assertEqual(pin['class'], 'EXECUTABLE_CITATION')
+        evidence = self.evidence()
+        for before, after in (('EXECUTABLE_CITATION', 'RESEARCH_BASELINE'),
+                              ('"vendored": false', '"vendored": true'),
+                              ('"assessment": "HOLD"', '"assessment": "PASS"')):
+            path.write_text(original.replace(before, after))
+            self.assertFinding(self.inspect(), 'unsupported read-model query pin registration')
+        path.write_text(original.replace(pin['sha'], 'd' * 40))
+        self.refresh(evidence)
+        self.assertFinding(self.compare(evidence), 'candidate policy governance changed')
+        path.unlink()
+        self.assertFinding(self.inspect(), 'invalid snapshot')
+
     def test_current_pin_assessment_is_hold_and_honest(self):
         result = self.inspect()
         self.assertFalse(result['repin_performed'])
@@ -162,7 +183,7 @@ class RepinTests(unittest.TestCase):
         self.assertEqual(result['status'], 'HOLD')
 
     def test_fully_evidenced_synthetic_vendor_and_citation_moves(self):
-        for surfaces in (('vendor_pin',), ('ai_draft_pin',)):
+        for surfaces in (('vendor_pin',), ('ai_draft_pin',), ('read_model_draft_pin',)):
             with self.subTest(surfaces=surfaces):
                 # Reset between independent hypothetical moves.
                 shutil.rmtree(self.candidate)
@@ -172,8 +193,8 @@ class RepinTests(unittest.TestCase):
                 self.assertEqual(result['status'], 'EVIDENCE_COMPLETE')
                 self.assertEqual(result['approval'], 'NOT_BOUND')
 
-    def test_combined_move_requires_both_independent_surfaces(self):
-        self.assertEqual(self.compare(self.evidence(('vendor_pin', 'ai_draft_pin')))['findings'], [])
+    def test_combined_move_requires_all_independent_surfaces(self):
+        self.assertEqual(self.compare(self.evidence(('vendor_pin', 'ai_draft_pin', 'read_model_draft_pin')))['findings'], [])
 
     def test_undeclared_pin_movement(self):
         evidence = self.evidence()
@@ -194,7 +215,7 @@ class RepinTests(unittest.TestCase):
 
     def test_static_resolution_aliases_and_fallback_rejection(self):
         self.assertEqual(checker.resolve_pin(self.candidate, 'capital/read_model_claims.py'),
-                         checker.pins(self.policy)['vendor_pin']['sha'])
+                         checker.pins(self.policy)['read_model_draft_pin']['sha'])
         path = self.candidate / 'capital/agent_claims.py'
         original = path.read_text()
         old = "PINNED_SHA = '" + checker.pins(self.policy)['ai_draft_pin']['sha'] + "'"
@@ -264,8 +285,32 @@ class RepinTests(unittest.TestCase):
         path = self.candidate / checker.NOTE
         old = checker.pins(self.policy)['ai_draft_pin']['sha']
         path.write_text(path.read_text().replace('"sha": "' + old + '"', '"sha": "' + 'b' * 40 + '"'))
+        record = next(row for row in evidence['changes'][0]['artifacts'] if row['path'] == checker.NOTE)
+        record['digest'] = checker.file_digest(self.candidate, checker.NOTE)
+        record['result'] = 'REGENERATED'
         self.refresh(evidence)
         self.assertEqual(self.compare(evidence)['findings'], [])
+
+    def test_read_model_candidate_registration_allows_only_declared_sha_replacement(self):
+        evidence = self.evidence(('read_model_draft_pin',))
+        required = checker.required_evidence(self.policy, 'read_model_draft_pin', self.baseline, self.candidate)
+        self.assertTrue({'finance-vectors', 'auth-matrix', 'read-model-queries'} <= set(required['validation']))
+        self.assertTrue({checker.NOTE, checker.READ_MODEL_NOTE, 'tests/test_read_model_queries.py',
+                         'capital/contract/facade-v1.json'} <= set(required['artifacts']))
+        path = self.candidate / checker.READ_MODEL_NOTE
+        old = checker.pins(self.policy)['read_model_draft_pin']['sha']
+        path.write_text(path.read_text().replace(old, 'c' * 40))
+        record = next(row for row in evidence['changes'][0]['artifacts'] if row['path'] == checker.READ_MODEL_NOTE)
+        record['digest'] = checker.file_digest(self.candidate, checker.READ_MODEL_NOTE)
+        record['result'] = 'REGENERATED'
+        self.refresh(evidence)
+        self.assertEqual(self.compare(evidence)['findings'], [])
+        original = path.read_text()
+        block = checker.ledger['extract_blocks'](original)[0]
+        block['entries']['read_model_query_pin']['rationale'] = 'SIMULATED unauthorized amendment'
+        path.write_text('```capital-decision-v1\n' + json.dumps(block) + '\n```\n')
+        self.refresh(evidence)
+        self.assertFinding(self.compare(evidence), 'candidate policy governance changed')
 
     def test_explicit_baseline_policy_is_authority_not_checker_checkout(self):
         surface = 'ai_draft_pin'
