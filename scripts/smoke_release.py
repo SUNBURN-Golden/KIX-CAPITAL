@@ -93,9 +93,12 @@ def _drain(stream, sink) -> None:
         stream.close()
 
 
-def _start(pyz: Path, workdir: Path, cwd: Path, env: dict[str, str]) -> _Server:
+def _start(pyz: Path, workdir: Path, cwd: Path, env: dict[str, str], *, dev_keyset=False) -> _Server:
+    command = [sys.executable, '-B', os.fspath(pyz), '--port', '0', '--workspace', os.fspath(workdir)]
+    if dev_keyset:
+        command.append('--dev-keyset')
     proc = subprocess.Popen(
-        [sys.executable, '-B', os.fspath(pyz), '--port', '0', '--workspace', os.fspath(workdir)],
+        command,
         cwd=os.fspath(cwd),
         env=env,
         stdin=subprocess.DEVNULL,
