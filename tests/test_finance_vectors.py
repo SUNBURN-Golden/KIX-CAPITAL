@@ -220,6 +220,9 @@ FACADE_READS = [
     ('/api/preview/{advance_id}', ['preview']),
     ('/api/underwrite/{advance_id}', ['underwrite']),
     ('/api/operations/{operation_id}', ['accepted_receipt', 'rejected_receipt', 'unknown_operation']),
+    ('/api/read/credit_advance/{id}', ['read_credit_advance']),
+    ('/api/read/credit_claim/{id}', ['read_credit_claim']),
+    ('/api/read/settlement/{id}', ['read_settlement']),
     ('/api/export', ['export_v1']),
     ('/api/export/manifest', ['manifest']),
     ('/api/export/facts', ['facts_page']),
@@ -231,6 +234,7 @@ FACADE_READS = [
     ('/api/overlay', ['overlay_state']),
     ('/api/overlay/slices', ['slice_registry_listing']),
     ('/api/risk', ['risk_state']),
+    ('/api/risk/shared-caps', ['shared_caps']),
     ('/api/risk/covenants', ['covenant_state']),
     ('/api/risk/scenarios', ['whatif_index']),
     ('/api/risk/scenarios/{id}', ['whatif_scenario']),
@@ -748,14 +752,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_thirty_six_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 36)
+    def test_exactly_the_forty_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 40)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 48)
+        self.assertEqual(len(self.contract['routes']), 52)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
