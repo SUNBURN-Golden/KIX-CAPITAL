@@ -1,0 +1,1007 @@
+{
+  "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_CASES_V1",
+  "label": "SIMULATED",
+  "applied": false,
+  "cases": [
+    {
+      "name": "empty",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [],
+        "bindings": []
+      },
+      "statuses": [],
+      "binding_statuses": [],
+      "delivery_reasons": [],
+      "group_deliveries": [],
+      "variant_deliveries": [],
+      "conflict_deliveries": [],
+      "conflict_fields": [],
+      "variant_bindings": [],
+      "report_sha256": "bc30680b2781e1627bbe17caba495230d6124271590716521b90d1c730a61034"
+    },
+    {
+      "name": "identical",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order"
+          }
+        ]
+      },
+      "statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "binding_statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION",
+        "IDENTICAL_REDELIVERY"
+      ],
+      "group_deliveries": [
+        [
+          0,
+          1
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        []
+      ],
+      "conflict_fields": [
+        []
+      ],
+      "variant_bindings": [
+        [
+          "MATCHED_FIXTURE"
+        ]
+      ],
+      "report_sha256": "c570da4505413d18a1ab840933085c4cc2cbfb9b02aa7fe3a0a086334e950404"
+    },
+    {
+      "name": "metadata",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-redelivery",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order"
+          }
+        ]
+      },
+      "statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "binding_statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION",
+        "TRANSMISSION_METADATA_CHANGED"
+      ],
+      "group_deliveries": [
+        [
+          0,
+          1
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        []
+      ],
+      "conflict_fields": [
+        []
+      ],
+      "variant_bindings": [
+        [
+          "MATCHED_FIXTURE"
+        ]
+      ],
+      "report_sha256": "eb00b3ea46bb8331aa7e6efbd7a4807000812bfe0cfb3bc969adf060461901ea"
+    },
+    {
+      "name": "conflict",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 999,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order"
+          }
+        ]
+      },
+      "statuses": [
+        "CONFLICT"
+      ],
+      "binding_statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION",
+        "CONTENT_CONFLICT"
+      ],
+      "group_deliveries": [
+        [
+          0,
+          1
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        [
+          1
+        ]
+      ],
+      "conflict_fields": [
+        [
+          [
+            "amount"
+          ]
+        ]
+      ],
+      "variant_bindings": [
+        [
+          "MATCHED_FIXTURE",
+          "MATCHED_FIXTURE"
+        ]
+      ],
+      "report_sha256": "146290c7fbb632ee46d2adf5da995fc621cd324ddd951daef1e57fb29853e4a5"
+    },
+    {
+      "name": "unmatched",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": []
+      },
+      "statuses": [
+        "UNMATCHED"
+      ],
+      "binding_statuses": [
+        "UNMATCHED"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION"
+      ],
+      "group_deliveries": [
+        [
+          0
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        []
+      ],
+      "conflict_fields": [
+        []
+      ],
+      "variant_bindings": [
+        [
+          "UNMATCHED"
+        ]
+      ],
+      "report_sha256": "f35c20e136d9fb4954b4de6980a8120379f95b7195a2abe406c7a5fc6dc800e9"
+    },
+    {
+      "name": "binding-conflict",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-other",
+            "order_id": "sim-other"
+          }
+        ]
+      },
+      "statuses": [
+        "BINDING_CONFLICT"
+      ],
+      "binding_statuses": [
+        "BINDING_CONFLICT"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION"
+      ],
+      "group_deliveries": [
+        [
+          0
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        []
+      ],
+      "conflict_fields": [
+        []
+      ],
+      "variant_bindings": [
+        [
+          "BINDING_CONFLICT"
+        ]
+      ],
+      "report_sha256": "0ff6267cbad98ad6d76aca45aa688027ac469a28d0b2429c9b1526d498d36719"
+    },
+    {
+      "name": "interleaved-persistent",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-other",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 999,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 999,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-unmatched",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order"
+          }
+        ]
+      },
+      "statuses": [
+        "CONFLICT",
+        "MATCHED_FIXTURE"
+      ],
+      "binding_statuses": [
+        "MATCHED_FIXTURE",
+        "MATCHED_FIXTURE"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION",
+        "FIRST_OBSERVATION",
+        "CONTENT_CONFLICT",
+        "IDENTICAL_REDELIVERY",
+        "CONTENT_CONFLICT",
+        "CONTENT_CONFLICT"
+      ],
+      "group_deliveries": [
+        [
+          0,
+          2,
+          3,
+          4,
+          5
+        ],
+        [
+          1
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            5
+          ]
+        ],
+        [
+          [
+            1
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        [
+          2,
+          4,
+          5
+        ],
+        []
+      ],
+      "conflict_fields": [
+        [
+          [
+            "amount"
+          ],
+          [
+            "amount"
+          ],
+          [
+            "operation"
+          ]
+        ],
+        []
+      ],
+      "variant_bindings": [
+        [
+          "MATCHED_FIXTURE",
+          "MATCHED_FIXTURE",
+          "UNMATCHED"
+        ],
+        [
+          "MATCHED_FIXTURE"
+        ]
+      ],
+      "report_sha256": "c34d25c5ec0efcd9112338eb0d79282499dbae864c6dbc1c64050dde4f376770"
+    },
+    {
+      "name": "reverse-reference",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 999,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 999,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order"
+          }
+        ]
+      },
+      "statuses": [
+        "CONFLICT"
+      ],
+      "binding_statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION",
+        "CONTENT_CONFLICT",
+        "IDENTICAL_REDELIVERY"
+      ],
+      "group_deliveries": [
+        [
+          0,
+          1,
+          2
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        [
+          1
+        ]
+      ],
+      "conflict_fields": [
+        [
+          [
+            "amount"
+          ]
+        ]
+      ],
+      "variant_bindings": [
+        [
+          "MATCHED_FIXTURE",
+          "MATCHED_FIXTURE"
+        ]
+      ],
+      "report_sha256": "f68e6978a2517ec088fd759a6d487195649d49b278164809e4e40265dff1e747"
+    },
+    {
+      "name": "variant-binding",
+      "input": {
+        "format": "KIX_CAPITAL_OBSERVATION_TRIAGE_INPUT_V1",
+        "label": "SIMULATED",
+        "facts": [
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          },
+          {
+            "provenance": "SYNTHETIC_FIXTURE",
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "item_key": "sim-capture-1",
+            "payment_key": "sim-other",
+            "order_id": "sim-order",
+            "operation": "sim-operation",
+            "kind": "capture",
+            "amount": 1000,
+            "currency": "KRW",
+            "method": "sim-card",
+            "status": "DONE",
+            "occurred_at": "2026-10-01T12:00:00",
+            "offset": null,
+            "api_version": "sim-api-v1",
+            "product": "sim-product",
+            "transmission": {
+              "id": "sim-delivery-1",
+              "raw_evidence_ref": "sim-raw-1",
+              "received_at": "sim-receive-1"
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "provider": "sim-provider",
+            "account": "sim-mid",
+            "environment": "fixture",
+            "profile_version": "sim-v1",
+            "operation": "sim-operation",
+            "payment_key": "sim-payment",
+            "order_id": "sim-order"
+          }
+        ]
+      },
+      "statuses": [
+        "CONFLICT"
+      ],
+      "binding_statuses": [
+        "MATCHED_FIXTURE"
+      ],
+      "delivery_reasons": [
+        "FIRST_OBSERVATION",
+        "CONTENT_CONFLICT"
+      ],
+      "group_deliveries": [
+        [
+          0,
+          1
+        ]
+      ],
+      "variant_deliveries": [
+        [
+          [
+            0
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      "conflict_deliveries": [
+        [
+          1
+        ]
+      ],
+      "conflict_fields": [
+        [
+          [
+            "payment_key"
+          ]
+        ]
+      ],
+      "variant_bindings": [
+        [
+          "MATCHED_FIXTURE",
+          "BINDING_CONFLICT"
+        ]
+      ],
+      "report_sha256": "4a2bad125fd4f123e95203ce8062c86c1018939fcfe0a42d42e5f51c5d0f3d7b"
+    }
+  ]
+}
