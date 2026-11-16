@@ -200,6 +200,7 @@ class FacadeContractTests(unittest.TestCase):
         self.assertEqual(closed['result']['credit']['phase'], 'CLOSED')
         reads = [
             ('GET', f'/api/cases/sim-journey/dossier?instance_id={instance}', '/api/cases/{advance_id}/dossier', None),
+            ('GET', f'/api/cases/sim-journey/interest-trace?instance_id={instance}', '/api/cases/{advance_id}/interest-trace', None),
             ('GET', '/api/evidence', '/api/evidence', None),
             ('GET', '/api/projection', '/api/projection', None),
             ('GET', '/api/terms', '/api/terms', None),
