@@ -40,6 +40,7 @@ GET_DISPATCH = (
     ('/api/overlay/slices', False, 'overlay_slices'),
     ('/api/portfolio/snapshot', False, 'portfolio_snapshot'),
     ('/api/risk', False, 'risk'),
+    ('/api/risk/shared-caps', False, 'shared_caps'),
     ('/api/risk/covenants', False, 'covenants'),
     ('/api/risk/scenarios', True, 'risk_scenarios'),
     ('/api/policy', True, 'policy'),
@@ -47,6 +48,7 @@ GET_DISPATCH = (
     ('/api/underwrite/', True, 'underwrite'),
     ('/api/cases/', True, 'cases'),
     ('/api/operations/', True, 'operation'),
+    ('/api/read/', True, 'read'),
     ('/api/export', False, 'export'),
     ('/api/export/manifest', False, 'export_manifest'),
     ('/api/export/facts', False, 'export_facts'),
@@ -347,6 +349,11 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
         def _get_risk(self, route, principal):
             return self.reply(200, service.risk())
 
+        def _get_shared_caps(self, route, principal):
+            if route.query:
+                raise ApiError('INVALID_ARGUMENTS')
+            return self.reply(200, service.shared_caps())
+
         def _get_portfolio_snapshot(self, route, principal):
             params = parse_qs(route.query, keep_blank_values=True)
             if set(params) - {'instance_id'} or len(params.get('instance_id', [])) > 1:
@@ -412,6 +419,14 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
 
         def _get_health(self, route, principal):
             return self.reply(200, service.health())
+
+        def _get_read(self, route, principal):
+            # Exactly <kind>/<id>. A bare kind, an unknown kind or an extra segment is
+            # 404: the draft's list_* queries and paging are UNDETERMINED upstream.
+            parts = route.path[len('/api/read/'):].split('/')
+            if len(parts) != 2:
+                raise ApiError('NOT_FOUND', 404)
+            return self.reply(200, service.read_query(parts[0], parts[1]))
 
         def _get_operation(self, route, principal):
             instance = parse_qs(route.query).get('instance_id', [''])[0]
@@ -520,7 +535,18 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
                 if permission is None:
                     raise ApiError('NOT_FOUND', 404)
                 claim = None
-                if principal.role == 'agent' and path in ('/api/commands', '/api/overlay/commands'):
+                if path == '/api/overlay/commands':
+                    body = self.read_json()
+                    if type(body) is dict and body.get('op') == 'record_external_fact' and principal.role != 'organizer':
+                        raise ApiError('FACT_AGENT_FORBIDDEN' if principal.role == 'agent' else 'FACT_ROLE_FORBIDDEN', 403)
+                    if principal.role == 'agent' and type(body) is dict:
+                        from capital.slices import COMMANDS as slice_commands
+                        if type(body.get('op')) is str and body['op'] in slice_commands:
+                            raise ApiError('SLICE_AGENT_FORBIDDEN', 403)
+                        if body.get('op') in ('default', 'post_recovery', 'post_writeoff', 'record_acceleration') or 'writeoff' in body:
+                            raise ApiError('RECOVERY_AGENT_FORBIDDEN', 403)
+                    require(authorizer, principal, permission)
+                elif principal.role == 'agent' and path == '/api/commands':
                     body = self.read_json()
                     from capital.slices import COMMANDS as slice_commands
                     if type(body) is dict and type(body.get('op')) is str and body['op'] in slice_commands:
