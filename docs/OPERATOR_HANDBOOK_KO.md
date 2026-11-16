@@ -1,5 +1,35 @@
 # KIX Capital 운영 핸드북
 
+## 인출 순서 리허설 (`SIMULATED`)
+
+```sh
+python3 -m capital.draw_order --workspace SNAPSHOT_DIR --advance sim-a --advance sim-b
+```
+
+명시한 캡처 디렉터리에서 `workspace.json`을 한 번 읽어 감사한다. 이미 APPROVED인
+advance ID 2–4개를 `--advance`로 반복 지정하면 정렬된 모든 순열 2/6/24개를 각각
+새 메모리 서비스로 복원하여 기존 underwriting → draw 경로로 실행한다. 중복·미등록·
+부적격 ID는 모든 리플레이 전에 실패한다. 이전 거절 영수증만 있는 APPROVED 항목은
+가능하지만 성공 draw 이력이 있으면 불가하다. 기록되지 않은 과거 UNKNOWN은 알 수 없다.
+
+출력 JSON의 `steps[].underwriting`은 해당 시도 직전 U1–U6 기록이고 `command`는
+실제 수락/거절 영수증 또는 `{code,status,detail}` API 오류다. 권고 심사 FAIL과
+강제 명령 거절을 구분한다. `movements`는 전/후/증감이며 `reserved_open`은 청구별로
+한 번 센다. 일부 원금 상환 후에도 기존 F04 예약 액면은 유지될 수 있다. slice 노출은
+advance 노출과 별도로 표시한다. `final.risk`는 선택하지 않은 기존 포트폴리오도
+포함하며 기존 정수 내림 준비금 요구량을 사용한다. 준비금을 적립하거나 충당하지 않는다.
+`comparison`은 결과 변형과 달라진 재무 측정값을 보여주며 순위를 추천하지 않는다.
+
+`inputs`의 workspace/fixture/policy 해시는 감사한 바이트와 비교 시점 잠정 정책을
+식별한다. 원천 파일·mode·잠금 파일을 변경하지 않고 키·네트워크를 사용하지 않는다.
+캡처한 sim_day를 고정하며 시계·상환·회수·준비금 기장 명령을 추가하지 않는다.
+정상 거절도 완료(exit 0)이고 입력/정책 부족 또는 UNKNOWN/예상 밖 오류는
+INCOMPLETE(exit 1), 인수 문법 오류는 exit 2다. UNKNOWN은 재전송하지 않고 해당
+순열을 중단한다. 인증·역사적 정책 출처·준비금 재원은 `NOT_BOUND`다.
+`CAPITAL_PARTICIPATION_WINDOW.md`의 bounded multi-claim participation과
+`CAPITAL_EVENT_STRESS.md`의 순서 독립 scenario와 다른 탐색 보고서다.
+자세한 형식·정책 출처는 [INTEGRATION.md](INTEGRATION.md)를 참조한다.
+
 이 문서는 로컬 시뮬레이션을 켜고, 화면과 증거 파일을 읽고, 막힌 항목을 오해하지 않기 위한 절차다. 제품 동작을 바꾸지 않는다. 실대출·신용심사·은행 잔액·운영 출시가 아니다.
 
 사람 수용은 아직 없다. 자동 검사가 통과해도 사람이 수용한 것이 아니다.
