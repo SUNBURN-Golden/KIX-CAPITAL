@@ -217,6 +217,175 @@ test('a restarted session clears stale diagnostic values back to the new process
   });
 });
 
+test('a failed state prerequisite during refresh clears loaded diagnostics in place', async ({page}) => {
+  await withServer(8966, async base => {
+    const seen = watch(page);
+    await page.setViewportSize({width: 1280, height: 900});
+    await page.goto(`${base}/#desk`);
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('event_log.written');
+    const before = metricsGets(seen).length;
+    // Keep the loaded page; fail only the state prerequisite of the refresh.
+    await page.route('**/api/state', route => route.abort('failed'));
+    await page.locator('#desk-diag-refresh').click();
+    await expect(page.locator('#notice')).toContainText('진단 조회에 실패했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('사용할 수 없습니다');
+    await expect(page.locator('#desk-diag-health')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-capacity-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-eventlog')).not.toContainText('event_log.written');
+    await expect(page.locator('#desk-diag-capacity-rows')).not.toContainText('DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY');
+    await expect(page.locator('#desk-diag-command-rows tr')).toHaveCount(1);
+    // The failed prerequisite stops the refresh: no diagnostics re-read, no retry.
+    expect(metricsGets(seen).length).toBe(before);
+    await page.unroute('**/api/state');
+    await page.locator('#desk-diag-refresh').click();
+    await expect(page.locator('#notice')).toContainText('진단 값을 다시 조회했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('event_log.written');
+    await expect(page.locator('#desk-diag-capacity-rows')).toContainText('DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY');
+    expect(commandPosts(seen)).toEqual([]);
+  });
+});
+
+test('a failed evidence prerequisite during refresh clears loaded diagnostics in place', async ({page}) => {
+  await withServer(8967, async base => {
+    const seen = watch(page);
+    await page.setViewportSize({width: 1280, height: 900});
+    await page.goto(`${base}/#desk`);
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('event_log.written');
+    const before = metricsGets(seen).length;
+    // Keep the loaded page; state succeeds but the evidence prerequisite fails.
+    await page.route('**/api/evidence', route => route.abort('failed'));
+    await page.locator('#desk-diag-refresh').click();
+    await expect(page.locator('#notice')).toContainText('진단 조회에 실패했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('사용할 수 없습니다');
+    await expect(page.locator('#desk-diag-health')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-capacity-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-eventlog')).not.toContainText('event_log.written');
+    await expect(page.locator('#desk-diag-capacity-rows')).not.toContainText('DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY');
+    expect(metricsGets(seen).length).toBe(before);
+    await page.unroute('**/api/evidence');
+    await page.locator('#desk-diag-refresh').click();
+    await expect(page.locator('#notice')).toContainText('진단 값을 다시 조회했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('event_log.written');
+    expect(commandPosts(seen)).toEqual([]);
+  });
+});
+
+test('an in-page server restart clears stale diagnostics without navigating away', async ({page}) => {
+  let started = startServer(8968);
+  try {
+    const base = 'http://127.0.0.1:8968';
+    const first = await waitReady(8968);
+    const posted = await page.request.post(`${base}/api/commands`, {
+      headers: {'X-Capital-Token': first.local_token},
+      data: {instance_id: first.instance_id, operation_id: 'diag-inpage-1', op: 'offer', advance_id: 'sim-diag-inpage', args: {fixture_id: 'sim-committed', amount: 1000}},
+    });
+    expect(posted.ok()).toBeTruthy();
+    const seen = watch(page);
+    await page.setViewportSize({width: 1280, height: 900});
+    await page.goto(`${base}/#desk`);
+    const row = page.locator('#desk-diag-command-rows tr').filter({has: page.getByRole('cell', {name: 'offer', exact: true})});
+    await expect(row.locator('td').nth(1)).toHaveText('1');
+    // Restart on the same port while the page keeps its old token and DOM.
+    await stopServer(started.child);
+    fs.rmSync(started.directory, {recursive: true, force: true});
+    started = startServer(8968);
+    const second = await waitReady(8968);
+    expect(second.instance_id).not.toBe(first.instance_id);
+    await page.locator('#desk-diag-refresh').click();
+    await expect(page.locator('#notice')).toContainText('진단 조회에 실패했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('사용할 수 없습니다');
+    await expect(page.locator('#desk-diag-health')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-capacity-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).not.toContainText('offer');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('unavailable');
+    expect(commandPosts(seen)).toEqual([]);
+    // Killing the process under the live page produces transport-level console
+    // noise (403 for the stale token, reset/empty response on reused idle
+    // sockets); Chromium retries and the assertions above pin the outcome.
+    // Uncaught page errors are not resource noise and remain fatal here.
+    expect(seen.errors.filter(item => !item.startsWith('Failed to load resource:'))).toEqual([]);
+    // Recovery is a fresh load against the new process: counters start at 0.
+    await page.reload();
+    const fresh = page.locator('#desk-diag-command-rows tr').filter({has: page.getByRole('cell', {name: 'offer', exact: true})});
+    await expect(fresh.locator('td').nth(1)).toHaveText('0');
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+  } finally {
+    await stopServer(started.child);
+    fs.rmSync(started.directory, {recursive: true, force: true});
+  }
+});
+
+test('a changed instance with a failing evidence read clears the previous session diagnostics', async ({page}) => {
+  let started = startServer(8969);
+  try {
+    const base = 'http://127.0.0.1:8969';
+    const first = await waitReady(8969);
+    const posted = await page.request.post(`${base}/api/commands`, {
+      headers: {'X-Capital-Token': first.local_token},
+      data: {instance_id: first.instance_id, operation_id: 'diag-restart-evidence-1', op: 'offer', advance_id: 'sim-diag-restart-evidence', args: {fixture_id: 'sim-committed', amount: 1000}},
+    });
+    expect(posted.ok()).toBeTruthy();
+    const seen = watch(page);
+    await page.setViewportSize({width: 1280, height: 900});
+    await page.goto(`${base}/#desk`);
+    const row = page.locator('#desk-diag-command-rows tr').filter({has: page.getByRole('cell', {name: 'offer', exact: true})});
+    await expect(row.locator('td').nth(1)).toHaveText('1');
+    await stopServer(started.child);
+    fs.rmSync(started.directory, {recursive: true, force: true});
+    started = startServer(8969);
+    const second = await waitReady(8969);
+    expect(second.instance_id).not.toBe(first.instance_id);
+    // Controlled prerequisite failure: let /api/state return the restarted
+    // process's real snapshot (the page's old token would otherwise 403),
+    // then fail /api/evidence so the new state never reaches the commit.
+    await page.route('**/api/state', async route => {
+      const snapshot = await getJson(8969, '/api/state');
+      await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(snapshot.body)});
+    });
+    let failEvidence;
+    const evidenceFailure = new Promise(resolve => { failEvidence = resolve; });
+    await page.route('**/api/evidence', async route => {
+      await evidenceFailure;
+      await route.abort('failed');
+    });
+    await page.locator('#desk-diag-refresh').click();
+    // The new instance clears the old values while evidence is still pending,
+    // before the failure catch or final state/deskData replacement can run.
+    await expect(page.locator('#desk-diag-label')).toContainText('세션이 바뀌어');
+    await expect(page.locator('#desk-diag-health')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-capacity-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).not.toContainText('offer');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('unavailable');
+    failEvidence();
+    await expect(page.locator('#notice')).toContainText('진단 조회에 실패했습니다');
+    // The fulfilled state carried the new process token, so removing the
+    // controlled failures lets a manual refresh recover without navigation.
+    await page.unroute('**/api/state');
+    await page.unroute('**/api/evidence');
+    await page.locator('#desk-diag-refresh').click();
+    await expect(page.locator('#notice')).toContainText('진단 값을 다시 조회했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+    const fresh = page.locator('#desk-diag-command-rows tr').filter({has: page.getByRole('cell', {name: 'offer', exact: true})});
+    await expect(fresh.locator('td').nth(1)).toHaveText('0');
+    const health = (await getJson(8969, '/api/health')).body;
+    await expect(page.locator('#desk-diag-health')).toContainText(health.workspace_status);
+    expect(commandPosts(seen)).toEqual([]);
+  } finally {
+    await stopServer(started.child);
+    fs.rmSync(started.directory, {recursive: true, force: true});
+  }
+});
+
 test('keyboard walkthrough reaches the diagnostics refresh and capacity labels stay readable', async ({page}) => {
   await withServer(8965, async base => {
     const seen = watch(page);
@@ -239,5 +408,27 @@ test('keyboard walkthrough reaches the diagnostics refresh and capacity labels s
     expect(cells.join(' ')).toContain('DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY');
     expect(commandPosts(seen)).toEqual([]);
     expect(seen.errors).toEqual([]);
+    // Keyboard-only failure path: a controlled prerequisite failure must clear
+    // every loaded value, and Tab+Enter must restore them without a mouse.
+    // The busy fence disables the focused button, so Tab back to it first.
+    await page.route('**/api/state', route => route.abort('failed'));
+    for (let index = 0; index < 60 && (await active()) !== 'desk-diag-refresh'; index += 1) await page.keyboard.press('Tab');
+    expect(await active()).toBe('desk-diag-refresh');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#notice')).toContainText('진단 조회에 실패했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('사용할 수 없습니다');
+    await expect(page.locator('#desk-diag-health')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-capacity-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-command-rows')).toContainText('unavailable');
+    await expect(page.locator('#desk-diag-eventlog')).toContainText('unavailable');
+    await page.unroute('**/api/state');
+    for (let index = 0; index < 60 && (await active()) !== 'desk-diag-refresh'; index += 1) await page.keyboard.press('Tab');
+    expect(await active()).toBe('desk-diag-refresh');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#notice')).toContainText('진단 값을 다시 조회했습니다');
+    await expect(page.locator('#desk-diag-label')).toContainText('LOCAL_OBSERVABILITY');
+    const restored = await page.locator('#desk-diag-capacity-rows td').allTextContents();
+    expect(restored.join(' ')).toMatch(/\d+\/\d+/);
+    expect(commandPosts(seen)).toEqual([]);
   });
 });

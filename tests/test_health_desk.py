@@ -211,6 +211,31 @@ class HealthDeskStaticTests(unittest.TestCase):
         # The stale-session guard keeps an older instance's values off screen.
         self.assertIn('diag.instance_id!==state?.instance_id', block)
 
+    def test_failed_refresh_clears_stale_diagnostic_values(self):
+        # refreshCore must invalidate the panel when a prerequisite read fails
+        # (state, session bind, evidence) and when the instance changes, because
+        # the commit that replaces deskData never runs on those paths.
+        start = APP_JS.index('async function refreshCore(')
+        core = APP_JS[start:APP_JS.index('\n}\n', start)]
+        self.assertIn('catch(error){invalidateDeskDiag(', core)
+        self.assertIn('throw error;', core)
+        self.assertIn('next.instance_id!==state.instance_id)invalidateDeskDiag(', core)
+        # A successful commit is the only path that restores values.
+        self.assertIn('deskData=deskView;diagUnavailable=null;', core)
+        block = desk_block()
+        self.assertIn('function invalidateDeskDiag(reason)', block)
+        self.assertIn('if(!diagUnavailable)diagUnavailable=reason;', block)
+        paint = APP_JS[APP_JS.index('function paintDeskDiag'):APP_JS.index('function renderDesk(')]
+        self.assertIn('if(diagUnavailable){', paint)
+        # The unavailable branch precedes the stale-session guard and any value
+        # rendering, so no previous successful number can survive a failed read.
+        self.assertLess(paint.index('if(diagUnavailable){'),
+                        paint.index('diag.instance_id!==state?.instance_id'))
+        self.assertLess(paint.index('if(diagUnavailable){'), paint.index('const h=diag.health'))
+        for needle in ("deniedRow('capacity','unavailable')", "deniedRow('metrics','unavailable')",
+                       "textElement('dd','unavailable','unavailable')"):
+            self.assertIn(needle, paint)
+
     def test_diag_adds_no_client_maths_or_retry_paths(self):
         block = desk_block()
         for token in FORBIDDEN_MATHS:
