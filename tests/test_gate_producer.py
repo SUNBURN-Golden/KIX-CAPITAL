@@ -1,4 +1,5 @@
 """LOCAL_FAKE_GATE adapter. Not SEMANTIC_CONFORMANCE. CAP-16 stays NOT_BOUND."""
+import copy
 import json
 import signal
 import subprocess
@@ -19,7 +20,7 @@ from capital.producer import PinnedFsmProducer
 from capital.server import make_server
 from capital.service import CapitalService
 from capital.store import FileWorkspace
-from test_producer_port import VECTORS, run_producer_vectors
+from test_producer_port import VECTORS, run_producer_vectors, run_value_isolation_vectors
 
 ROOT = Path(__file__).resolve().parents[1]
 SEAMS = ROOT / 'docs' / 'SEAMS.md'
@@ -62,6 +63,46 @@ def _offer(producer, key='offer-1', amount=1000, fixture='sim-committed', advanc
 
 
 class GateProducerTests(unittest.TestCase):
+    def test_value_isolation_vectors_pass_over_owned_loopback_gates(self):
+        opened = []
+
+        def factory():
+            producer = GateHttpProducer()
+            opened.append(producer)
+            return producer
+
+        run_value_isolation_vectors(factory)
+        self.assertEqual(len(opened), 5)
+        for producer in opened:
+            self.assertTrue(producer.base_url.startswith('http://127.0.0.1:'))
+            self.assertFalse(producer.gate.thread.is_alive())
+
+    def test_mutating_results_and_lookups_preserves_original_gate_receipt(self):
+        producer = GateHttpProducer()
+        self.addCleanup(producer.close)
+        _offer(producer, amount=60_000)
+        for op, args in (('approve', {}), ('bind_settlement', {}), ('draw', {}),
+                         ('repay', {'amount': 20_000, 'sequence': 1})):
+            result = producer.apply(op, 'sim-a', idempotency_key=op.replace('_', '-'), args=args,
+                                    bound_settlement_id='sim-committed')
+        receipt = producer.lookup('repay')
+        expected = copy.deepcopy(receipt)
+        result['credit']['repayments'][0]['amount'] = -1
+        result['effect'].clear()
+        receipt['result']['credit']['repayments'].clear()
+        receipt['result']['effect']['outstanding_exposure'] = -2
+        receipt['result']['duplicate'] = True
+        receipt['actor'] = 'SIMULATED caller replacement'
+        duplicate = producer.apply('repay', 'sim-a', idempotency_key='repay',
+                                   args={'amount': 20_000, 'sequence': 1},
+                                   bound_settlement_id='sim-committed')
+        duplicate['credit']['repayments'][0].clear()
+        duplicate['effect'].clear()
+        self.assertEqual(producer.lookup('repay'), expected)
+        self.assertIs(expected['result']['duplicate'], False)
+        self.assertEqual(expected['result']['applied'], 'repay')
+        self.assertEqual(producer.view('sim-a')['outstanding_exposure'], 40_000)
+
     def test_vectors_pass_over_loopback_without_claiming_conformance(self):
         opened = []
 
