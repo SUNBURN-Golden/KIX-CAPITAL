@@ -218,6 +218,9 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', f'/api/preview/sim-journey?instance_id={instance}', '/api/preview/{{advance_id}}', None),
             ('GET', f'/api/underwrite/sim-journey?instance_id={instance}&sim_day=0', '/api/underwrite/{{advance_id}}', None),
             ('GET', f'/api/operations/j-offer?instance_id={instance}', '/api/operations/{{operation_id}}', None),
+            ('GET', '/api/read/credit_advance/sim-journey', '/api/read/credit_advance/{id}', None),
+            ('GET', '/api/read/credit_claim/sim-committed', '/api/read/credit_claim/{id}', None),
+            ('GET', '/api/read/settlement/sim-committed', '/api/read/settlement/{id}', None),
             ('GET', '/api/export', '/api/export', None),
             ('GET', '/api/export/manifest', '/api/export/manifest', None),
             ('GET', f'/api/export/facts?instance_id={instance}', '/api/export/facts', None),
@@ -227,6 +230,7 @@ class FacadeContractTests(unittest.TestCase):
             ('GET', '/api/metrics', '/api/metrics', None),
             ('GET', '/api/health', '/api/health', None),
             ('GET', '/api/risk', '/api/risk', None),
+            ('GET', '/api/risk/shared-caps', '/api/risk/shared-caps', None),
         ]
         for method, path, template, _query in reads:
             code, payload = self.request(method, path)
