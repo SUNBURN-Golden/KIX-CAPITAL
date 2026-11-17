@@ -17,6 +17,15 @@ DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement �
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
 
+`python3 -m capital.signature_inventory --keyset-file SNAPSHOT.json A.json B.json`은
+명시한 export 목록을 한 번 읽은 DEV_ONLY keyset snapshot으로 오프라인 점검합니다.
+파일별 선언 digest·kid와 기존 verifier 결과를 순서대로 보고하며 retirement는
+그 snapshot 기준만 뜻합니다. 1–100개, 파일당 8 MiB, 합계 64 MiB, JSON 깊이
+128의 자원 한도를 적용하고 symlink·비정규 파일·부분 처리의 전체 성공을 거절합니다.
+keyset은 정확히 mode 0600이어야 하며 합성 fixture는 임시 복사본만 chmod합니다.
+서명·원본 수정·재서명·자동 rotation·운영 폐기 정책은 없습니다. CAP-15 인증 및
+source cut은 계속 NOT_BOUND이며 `funds_executed: false`입니다.
+
 ## portfolio-history-comparison
 
 `capital/portfolio_compare.py` / `tests/test_portfolio_compare.py`:

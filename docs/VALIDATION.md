@@ -1,5 +1,55 @@
 # Validation scope
 
+## dev-signature-inventory — builder verification (2026-11-04)
+
+Implemented `capital/signature_inventory.py` and
+`tests/test_signature_inventory.py`: an explicit bounded, read-only collection
+audit under exactly one strict DEV_ONLY keyset load. Results preserve the
+existing verifier's section → digest → signature precedence and report declared
+digest/kid separately from verification. Tests cover V2/V3, active/retired/unknown
+kids, unsigned and missing-key results, corrupted content, keyset replacement,
+retirement/deletion during a batch, deterministic CLI output, exact 0600 modes,
+count/byte/growth limits, aggregate skips, malformed JSON, unsafe files,
+descriptor closure, no disclosure and no mutation. All evidence is local
+SIMULATED fixture integrity; authentication remains NOT_BOUND, stage7
+authenticated export and funds execution remain false.
+
+| Command actually run | Result |
+| --- | --- |
+| `PYTHONPATH=tests python3 -m unittest test_signature_inventory test_dev_keyset test_manifest_vectors test_export_manifest test_coa_candidate -v` | Final exit 0; 92 tests passed in 6.569 s, including the unchanged legacy export byte guard. Two earlier runs failed one new test each (89 and 90 total tests); corrections are described below. |
+| `python3 scripts/manifest_vectors.py --check` | Exit 0; all 19 vector files match. No committed vectors added or changed. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,350 tests passed in 305.587 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --ignore-scripts` | Exit 0; three pinned packages installed from local cache. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 Chromium tests passed in 1.8 min with unchanged Playwright configuration and assertions. |
+| `python3 build/signature-inventory/check_preservation.py` | Exit 0; all five vendor SHA256 locks match; vendor files, vendor manifest and export match the captured starting bytes; root decision file, `.aiops/` and CI unchanged. |
+| `git diff --check` | Exit 0. |
+
+The initial nesting test exposed that local Python 3.13.5 accepts 2,000 nested
+JSON arrays. Added and documented an explicit 128-container-depth engineering
+limit, using bounded iterator traversal before verification. The second failure
+was a new test's mistaken expectation that an escaped surrogate would fail
+canonical hashing: the existing canonical serializer escapes it, so the corrected
+assertion preserves the verifier's `SECTION_HASH_MISMATCH:journal` outcome.
+No existing test, verifier semantics or CI gate was weakened.
+
+Plan deviations: added the explicit JSON depth limit for consistent resource
+handling; used `PYTHONPATH=tests` for the repository's test-module imports; used
+cached npm dependencies and an isolated loopback network namespace for browser
+verification. No signature adapter was necessary. No export, keyset loader,
+evidence-pack format, server/UI or upstream reference change was needed.
+
+Full-unit and browser suites ran sequentially. Logs and the captured byte
+baseline/preservation checker are under ignored `build/signature-inventory/`;
+browser artifacts use the existing ignored Playwright paths. All test servers
+were stopped. The historical root `DECISION_REQUIRED.md` is preserved unchanged;
+the current baseline guard passes and this node requires no new product decision.
+No commit, push, GitHub action, external post, provider call, deployment or real
+funds operation was performed.
+
 ## Residual obligations report — PR fix round 2
 
 2026-11-04, reviewed head `bbe1b48b51e86744d65158af754e33dc3d640fc4`.
