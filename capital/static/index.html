@@ -23,6 +23,25 @@
 <div class="desk-bar"><label for="desk-days">진행 일수</label><input id="desk-days" type="number" inputmode="numeric" min="1" step="1" value="1" aria-describedby="desk-advance-reason"><button id="desk-advance" type="button" aria-describedby="desk-advance-reason">sim_day 진행</button></div>
 <p id="desk-advance-reason" class="muted desk-reason" role="status"></p>
 <h3>다음 작업</h3><p id="desk-next-help" class="muted"></p><ul id="desk-actions" class="desk-actions"></ul></div>
+<section id="desk-recovery" hidden aria-labelledby="desk-recovery-title">
+<h3 id="desk-recovery-title">회수 · 상각 데스크 · SIMULATED</h3>
+<p>서버가 계산한 모의 회수·상각 메모입니다. 실제 추심·자금 이동·준비금 기장이 아닙니다.</p>
+<p id="desk-recovery-status" role="status"></p>
+<dl id="desk-recovery-facts"></dl>
+<div class="table-wrap" role="region" aria-label="Recovery source quotes" tabindex="0"><table><caption>서버 회수 재원 · waterfall_step은 서버 값이며 브라우저는 배분하지 않습니다.</caption><thead><tr><th scope="col">source_ref</th><th scope="col">quote_ref</th><th scope="col">available_krw</th><th scope="col">amount_krw</th><th scope="col">waterfall_step</th></tr></thead><tbody id="desk-recovery-quotes"></tbody></table></div>
+<p id="desk-recovery-empty" class="muted"></p>
+<div id="desk-recovery-controls" hidden>
+<label for="desk-recovery-source">회수 재원 견적 선택</label><select id="desk-recovery-source" aria-describedby="desk-recovery-status"></select>
+<label for="desk-recovery-amount">모의 회수 금액 (KRW 정수)</label><input id="desk-recovery-amount" type="text" inputmode="numeric" autocomplete="off">
+<fieldset id="desk-recovery-approvals"><legend>SIMULATED controls; identity/authentication NOT_BOUND; not authenticated second-person approval</legend>
+<label><input id="desk-recovery-approval-a" type="checkbox" value="sim-approver-a">sim-approver-a · 합성 승인 라벨</label>
+<label><input id="desk-recovery-approval-b" type="checkbox" value="sim-approver-b">sim-approver-b · 합성 승인 라벨</label></fieldset>
+<label for="desk-recovery-decline">상계 거절 사유 (상각 시 선택 사항 · 직접 입력)</label><input id="desk-recovery-decline" type="text" maxlength="64" autocomplete="off" aria-describedby="desk-recovery-label-help">
+<p id="desk-recovery-label-help" class="muted">사유는 영문·숫자로 시작하며 영문·숫자·점·밑줄·콜론·하이픈 64자 이내입니다. 승인 라벨·사유는 자동 입력하지 않습니다.</p>
+<div class="desk-bar"><button id="desk-recovery-post" type="button" aria-describedby="desk-recovery-status">모의 회수 기록</button><button id="desk-recovery-writeoff" type="button" aria-describedby="desk-recovery-status">모의 상각 기록</button></div>
+</div>
+<details><summary>서버 회수·상각 기록 · allocation / residual_claim / waterfall_trace</summary><pre id="desk-recovery-entries"></pre></details>
+</section>
 <h3>조건 오버레이 원장 (GET /api/overlay)</h3>
 <div class="table-wrap" id="desk-overlay-region" role="region" aria-label="오버레이 원장" tabindex="0"><table><caption class="sr-only">제안별 이자 원장과 종결 가능 여부</caption><thead><tr><th scope="col">제안</th><th scope="col">단계</th><th scope="col">남은 원금</th><th scope="col">interest_due_krw</th><th scope="col">default_interest_due_krw</th><th scope="col">발생 기준일</th><th scope="col">close_ready</th><th scope="col">마진</th></tr></thead><tbody id="desk-overlay-rows"></tbody></table></div>
 <h3>사례 타임라인 (F04 저널 + 오버레이)</h3><p id="desk-timeline-note" class="muted"></p>

@@ -87,6 +87,30 @@ class OperatorDeskStaticTests(unittest.TestCase):
         self.assertIn(':focus-visible', STYLE)
         self.assertIn('@media(max-width:480px)', STYLE)
 
+    def test_recovery_panel_uses_existing_commands_and_explicit_simulation_labels(self):
+        block = desk_block()
+        for needle in ("deskPostRecovery('post_recovery')", "deskPostRecovery('post_writeoff')",
+                       'source_ref:{...quote.source_ref}', 'quote_ref:quote.quote_ref',
+                       'at_sim_day:deskData.overlay.sim_day', 'approvals', 'setoff_declined_reason',
+                       'RECOVERY_DRAFT_CHANGED', 'validateRecoveryReceipt(op,original,false)',
+                       'sameRecoveryValue(entry.command,command)', 'reserve_step_version',
+                       "e.entry_kind==='WRITEOFF'", 'overlay.overlay_state_digest'):
+            self.assertIn(needle, block)
+        for needle in ('SIMULATED controls', 'identity/authentication NOT_BOUND',
+                       'not authenticated second-person approval', 'sim-approver-a', 'sim-approver-b'):
+            self.assertIn(needle, INDEX)
+        self.assertNotRegex(INDEX, r'id="desk-recovery-approval-[ab]"[^>]*\bchecked')
+        self.assertNotIn("op:'record_acceleration'", block)
+        self.assertNotIn("op:'post_repayment'", block)
+
+    def test_overlay_lookup_is_permission_gated_and_preserves_pending_identity(self):
+        lookup = APP_JS[APP_JS.index("$('recover').onclick="):APP_JS.index("$('new-session').onclick=")]
+        self.assertLess(lookup.index("!can('projection:read')"), lookup.index('await request('))
+        self.assertIn('encodeURIComponent(original.operation_id)', lookup)
+        self.assertNotIn("method:'POST'", lookup)
+        self.assertIn('clearMatching(original)', lookup)
+        self.assertIn("storageBlocked||!can('projection:read')", APP_JS)
+
 
 if __name__ == '__main__':
     unittest.main()
