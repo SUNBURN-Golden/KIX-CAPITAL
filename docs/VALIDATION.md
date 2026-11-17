@@ -6314,3 +6314,43 @@ confirm all three branch-only paths and all 66 main-only paths survive.
 The merge is left uncommitted for the supervisor. No commit, push, abort,
 rebase, reset, external post, upstream modification, provider call, credentials,
 money movement or deployment was involved.
+
+### repayment-schedule-comparison — PR fix round 2 CI timeout follow-up (2026-11-18 KST)
+
+The supplied CI log reported a 120-second timeout in the fold-fuzz checker.
+The pre-edit standalone checker passed locally in 20.304 seconds, so the
+timeout did not reproduce as a deterministic input or digest failure. Reduced
+avoidable replay work in `scripts/fold_fuzz.py`: each command's expected journal
+length is now checked against the persisted journal already compared with the
+live export, eliminating two additional full-journal exports per command.
+The fixed store clock uses a reused explicit namespace instead of constructing
+a MagicMock for every command, and the final detached journal export no longer
+gets copied twice. The clock replacement remains scoped to each command and
+restores the original `capital.store.datetime` reference on failures too.
+
+All 16 seeds, 736 commands, both independent file replays, every prefix refold,
+digest and raw-byte comparison, reload and receipt lookup remain checked. The
+120-second subprocess timeout and corpus bytes are unchanged. Added a regression
+that rejects both too-small and too-large expected append counts against a
+verified live journal and confirms that the saved bytes remain unchanged.
+The repayment comparison implementation and all 30 of its tests are unchanged.
+
+These are local SIMULATED / READ_ONLY_FIXTURE results on top of merge HEAD
+`640952056d421f06cea0f777d42ae5c19f1993bb`, not a new CI run, real financial
+execution, durability claim or performance guarantee.
+
+| Verification actually run | Observed result |
+| --- | --- |
+| `python3 -m unittest tests.test_fold_fuzz tests.test_repayment_compare -v` | Exit 0; 44 passed in 59.003 seconds, including both complete hash-seed checker subprocesses under the unchanged timeout. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,604 passed in 608.350 seconds, including the reported timeout case and the legacy export guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `PYTHONDONTWRITEBYTECODE=1 npm run test:browser -- --output=/tmp/repayment-round2-browser-results --reporter=list` | Exit 0; all 85 Chromium tests passed in 3.2 minutes using the tracked assertions and loopback server configuration. Output options preserved the existing report symlinks. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 38 routes, 276 artifacts, nine stages; declared bindings checked. |
+| Main ancestry and vendor integrity | `origin/main` is an ancestor of HEAD. All five vendor files satisfy the 7481b0e SHA256 locks; all five plus manifest match HEAD and origin/main byte-for-byte. |
+
+Logs are local `/tmp/repayment-round2-{focused,unittest,browser}.log` files.
+No corpus, golden, acceptance evidence, finance formula, timeout or existing
+assertion was changed. Legacy export, `.aiops/` and the historical root
+decision-file state remain unchanged. No commit, push, external post, deployment,
+provider call, credentials or money movement was involved.

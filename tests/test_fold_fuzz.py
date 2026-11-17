@@ -227,6 +227,20 @@ class FoldFuzzTests(unittest.TestCase):
             finally:
                 port.close()
 
+    def test_capture_checks_expected_append_count_against_verified_live_journal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fuzz.replay(self.corpus['cases'][0]['commands'][:2], tmp)
+            with store.FileWorkspace.open(tmp) as port:
+                service = CapitalService(port)
+                self.addCleanup(service.observability.close)
+                raw = port.path.read_bytes()
+                fuzz.capture(service, raw, journal_length=1)
+                for wrong_length in (0, 2):
+                    with self.subTest(length=wrong_length), self.assertRaisesRegex(
+                            fuzz.FuzzError, 'journal append count'):
+                        fuzz.capture(service, raw, journal_length=wrong_length)
+                self.assertEqual(port.path.read_bytes(), raw)
+
     def assert_check_fails_unchanged(self, raw, detail):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / 'corpus.json'
