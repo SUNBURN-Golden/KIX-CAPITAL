@@ -5123,6 +5123,91 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## residual-obligation-review-page — builder verification (2026-11-04)
+
+Implemented a separate stdlib offline HTML renderer consuming
+`capital.residuals.report_workspace` directly, with five independent native
+category tables, expandable case/slice evidence, visible honesty fields and
+failure explanations. No monetary arithmetic, HTTP route, application navigation,
+served-UI, repayment/recovery desk, report production or financial policy changes.
+Hashes identify integrity, not authentication. Results below are local SIMULATED
+checks, not real payments, qualification, authentication or legal collectability.
+The historical root `DECISION_REQUIRED.md` remains unchanged; this presentation
+scope requires no consequential product decision.
+
+| Command actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_residual*.py' -v` (initial) | Exit 1; 40 tests, eight fixture errors (`INVALID_OPERATION_ID`). Corrected the new fixture helper to replace underscores in operation IDs with hyphens; no service or existing test changed. |
+| `python3 -m unittest discover -s tests -p 'test_residual*.py' -v` (rerun) | Exit 0; all 40 passed in 4.342 s, including 16 new renderer tests. |
+| `python3 -m unittest tests.test_handbook tests.test_docs_surface -v` | Exit 0; 27 passed in 1.301 s. Includes the new handbook scope/evidence/status contract. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. No new vector file or registry entry. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only; pending anchors remain pending. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three pinned packages installed from local cache. Lockfile unchanged; existing Chromium headless-shell 1208 available. |
+| `python3 scripts/build_release.py --out build/residual-review-release` | Exit 0; archive SHA256 `4b01400ae65202607a1c544ad7167eb00e7480fce602a1d2ff5eff18dada5214`. Build verifies all five vendor SHA256 locks at `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. |
+| `python3 scripts/smoke_release.py build/residual-review-release/capital-0.2.0.pyz` | Exit 0; all eleven packaged smoke checks passed. |
+
+The renderer tests parse HTML with stdlib HTMLParser, checking semantic headings,
+five captions, scoped headers, unique fixed IDs and resolving fragment links;
+reject executable/resource markup; compare independent metric cells to report
+fields; retain CLOSED/DEFAULTED/write-off/late-recovery references and slice
+observations; retain unknowns, zero, exact fractions, NOT_CHECKED, hashes and audit
+metadata; check missing/corrupt/inactive/missing-evidence/mismatch failures and CLI
+exit codes; assert a single report call, UTF-8 bytes under ASCII stdout encoding,
+repeatability, pure-renderer I/O prohibition and unchanged workspace bytes,
+modes and directory inventory. Injected reader failures use detached composition
+inputs after a real successful audit and do not claim invalid workspace evidence
+was accepted.
+
+Host ports 8765/8766 belong to unrelated processes. Browser verification and the
+complete acceptance runner use `unshare -Urn -- bash -c 'ip link set lo up && exec …'`
+to retain the unchanged Playwright configuration on isolated loopback. No unrelated
+listener is stopped. Git resolves HEAD inside the namespace without a safe-directory
+workaround on this runner. The ignored `build/residual-review-acceptance.py` loads
+`scripts/acceptance.py` through `runpy.run_path`, obtains `build_plan()`, asserts
+the exact integrated-journeys argv, removes only its trailing `--check` (the
+script's equivalent default check mode), verifies all nine stage IDs and invokes
+`execute_plan` with the standard evidence path. This preserves the established
+closeout command text without changing the acceptance script, assertions,
+timeouts or test coverage. This accommodation was specified in the design plan.
+
+The worktree is based at HEAD `9510843f63a17b810ed80e795e08ace5d82e9074`;
+implementation and evidence updates remain uncommitted for the supervisor.
+
+| Command actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all **1,343 passed** in 305.801 s. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all **76 Chromium tests passed** in 1.9 min with the unchanged configuration. Playwright cleaned up its loopback servers. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 build/residual-review-acceptance.py'` (first pass) | Exit 0; **all nine stages passed**, `ok:true`: unit 1,343; storage-conformance 19; vendor 7; upstream CLAIM_CONFORMANCE 322 passes / 324 evaluated rows with two documented divergences and zero failures; node syntax passed; Chromium 76; packaged smoke 11; seeded demo 1; six integrated-journey checks, each SIMULATED / integrated false. Evidence copied to `build/residual-review-logs/acceptance-1-evidence.json`. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0; regenerated 4,574-byte closeout digest from the first passing evidence. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated 101,104-byte finance fixture using the new digest. |
+
+A structural comparison against HEAD found only three changed paths in the
+closeout digest: packaged.sha256 and the unit stage's ran/passed counts (1,343).
+The finance fixture changes only those same three paths in its embedded
+closeout_digest group. No other fixture amounts, source hashes, interpretations
+or candidate claims changed. No new vectors or hand edits to generated artifacts.
+
+| Final command actually run | Result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 build/residual-review-acceptance.py'` (second pass, after regeneration) | Exit 0; **all nine stages passed**, `ok:true`, with exactly the same counts as the first pass: 1,343 unit; 19 storage; seven vendor; 322 local claim passes plus two documented divergences / 324; node syntax passed; 76 Chromium; eleven smoke; one seeded demo; six SIMULATED journeys. Fresh evidence copied to `build/residual-review-logs/acceptance-2-evidence.json`. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4,574 bytes and embedded finance copy match. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0; second-pass fresh evidence reproduces the committed-candidate digest exactly. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101,104 bytes match. |
+| `python3 scripts/docs_surface.py --check` (final) | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `git diff --exit-code HEAD -- capital/vendor .aiops .github capital/export.py tests/golden docs/decisions playwright.config.cjs package.json package-lock.json` | Exit 0; protected paths are byte-identical to HEAD. Additional comparisons of `capital/residuals.py`, server/static assets, scripts and historical root decision note also exit 0. |
+| `git diff --check` | Exit 0; no whitespace errors. |
+
+Final process inspection found no `capital.server` process with this worktree as
+its working directory; all servers started by verification stopped. The five
+vendor manifest SHA256 locks were rechecked successfully. Standalone test logs,
+both full-ladder logs and both evidence captures are retained under ignored
+`build/residual-review-logs/`. There were no product-scope deviations. The planned
+isolated-loopback/default-journey invocation accommodations are described above;
+no browser stage was skipped. No commit, push, PR, issue, comment, external post,
+Protocol/Commerce edit, provider call, credential use or funds movement occurred.
 
 ## risk-scenario-desk builder verification — 2026-11-02
 
@@ -6137,3 +6222,57 @@ left unchanged; the successful run's browser servers stopped on completion.
 No CI/test requirement was relaxed. Vendor, legacy export, `.aiops/` and the
 root decision-file state are unchanged against both parents. No commit, push,
 deployment or external publication was performed.
+
+### residual-obligation-review-page — conflict-fix round 1 (2026-11-18 KST)
+
+Merged supervisor-provided main `d6ccd93130b86f3dbc37c514ed78cc3c01d8c99d`
+into reviewed node head `2a104d0b65dab173d710069d9258d2f35c3041e3` on
+`agent/capital-residual-obligation-review-page`. All evidence is local and
+SIMULATED; authentication, actual payments and legal collectability remain
+NOT_BOUND.
+
+Resolved `tests/test_handbook.py` by retaining the offline review-page test and
+all main tests, including risk-scenario desk, shared-cap utilization and repin
+guidance. The reviewed renderer and its focused tests remain byte-identical to
+the node head. Main's runtime, tests and documentation survive alongside them.
+Removed a dangling sentence left by the automatic INTEGRATION merge and restored
+the README heading spacing. The two conflicting JSON vectors were regenerated
+together from measured clean combined-tree acceptance evidence, following
+CAPITAL-CLOSEOUT-REGEN-V1; historical test counts were never added together.
+
+| Local command/check | Observed result |
+| --- | --- |
+| Focused discovery for `test_residual_review.py`, `test_residuals.py`, `test_handbook.py` | Exit 0; 14 renderer, 26 report and 16 handbook tests passed. |
+| First clean `python3 scripts/acceptance.py --evidence build/residual-review-merge/acceptance-clean-first.json` | Exit 0; all nine stages passed, `ok:true`, SIMULATED, funds_executed:false. Full unit discovery passed 1,588 tests in 506.750s; storage 19; vendor seven; claims 283 passes and two documented divergences / 285; browser 85; packaged smoke 11; demo one; journeys six; JavaScript syntax passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 38 routes, 276 artifacts, nine stages. |
+| `python3 scripts/upstream_repin_check.py --check --root .` | Exit 0; HOLD, no findings, adoption/approval NOT_BOUND. |
+| `python3 scripts/closeout_digest.py --write --evidence build/residual-review-merge/acceptance-clean-first.json`; `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated 4,572-byte closeout and 103,382-byte finance vectors. |
+| Closeout `--check` and `--check-evidence` against the first clean run; finance `--check` | All exit 0; standalone, embedded and measured evidence agree. |
+| Second clean `python3 scripts/acceptance.py --evidence build/residual-review-merge/acceptance-clean-second.json` | Exit 0; all nine stages passed again, `ok:true`. Full discovery passed 1,588 tests in 621.915s; storage 19, vendor seven, claims 283 passes plus two documented divergences / 285, Chromium 85, packaged smoke 11, demo one and journeys six; JavaScript syntax passed. |
+| `python3 scripts/closeout_digest.py --check-evidence` against each clean run | Both exit 0; all covered counts, commands, digests and package hash byte-match. Final clean evidence also copied to ignored `build/acceptance-evidence.json`. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/manifest_vectors.py --check` | Both exit 0; nine pack and 19 manifest files reproduce. |
+| Vendor and protected-path verification | Five SHA256 pins match 7481b0e; all five files and manifest match both parents. `capital/export.py` and `.aiops/` diffs against both parents are empty. Historical root decision SHA256 remains `d307ba913bbd1328619fbc23066fbc4e30e5ce2bc393d1a32f0a2d1e91f4983f`. |
+| Merge hygiene | No unmerged index entries or conflict markers; staged and unstaged whitespace checks pass. |
+
+The lockfile-pinned browser runner was installed with `npm ci --no-audit
+--no-fund`; Chromium was already present. Acceptance used an isolated loopback
+network with `unshare -Urn -- bash -c 'ip link set lo up && exec python3 -u
+scripts/acceptance.py ...'`, preserving the tracked commands and browser
+configuration. Generated browser directories are retained under the ignored
+`build/residual-review-merge/`; tracked output symlinks are restored after each
+run. No unrelated host listener was stopped.
+
+The initial acceptance attempt had one unit failure: an overlapping handbook
+check rewrote `tests/__pycache__/test_handbook.cpython-313.pyc` while the fold-fuzz
+test measured project immutability. Its evidence is `ok:false` and was excluded
+from regeneration. All 1,588 unit tests passed when acceptance ran without
+overlapping checks. No runtime change, test weakening or timeout increase was
+needed. An initial package-style residual-report invocation also encountered its
+existing discovery-path import dependency; the required discovery invocation
+passed all 26 report tests.
+
+The resolved merge is staged and left uncommitted for the supervisor. The
+historical untracked root `DECISION_REQUIRED.md` is untouched. No vendor,
+Protocol/Commerce reference, `.aiops/`, CI or financial policy was changed;
+no abort, commit, push, rebase, reset, deployment or external post was performed.

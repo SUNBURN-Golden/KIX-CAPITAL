@@ -495,12 +495,30 @@ supplied path and local audit inputs produce identical output (the existing
 audit path and saved envelope metadata are retained). This register establishes
 no authentication, actual payment, waiver, refund/cash release, collection,
 slice write-off, legal collectability or accounting recognition. It performs
-no workspace mutation, new persistence, statement reclassification, HTTP/UI
-change or external call. See [the contract](docs/INTEGRATION.md#residual-obligations-report)
+no workspace mutation, new persistence, statement reclassification or external call.
+There is no HTTP route, application navigation, desk, or served-UI change; a
+separate read-only offline HTML renderer consumes the existing report.
+See [the contract](docs/INTEGRATION.md#residual-obligations-report)
 and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-report).
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
 
+
+### Offline residual obligation review page
+
+`python3 -m capital.residual_review --workspace DIR > /tmp/residual-review.html`
+prints self-contained UTF-8 HTML to stdout; save outside the source workspace.
+It calls `capital.residuals.report_workspace` once, preserving its evidence scope
+and nonzero failure outcome. Open the saved file locally and use native tables,
+fragment navigation and expandable details to inspect the five separate
+categories, original journal references, audit checks and exact remainders.
+Known subtotals, unknown counts, NOT_BOUND amounts and genuine zero remain
+separate; hashes identify integrity, not authentication. No scripts or external
+resources, grand total, cash netting, collection, waiver or cash-release controls
+are added. COMPLETE covers only the declared recorded population; INCOMPLETE
+and AUDIT_FAILED remain prominent (exit 1; CLI misuse 2; COMPLETE 0).
+See [operator instructions](docs/OPERATOR_HANDBOOK_KO.md#residual-obligation-review-page).
+Focused tests: `python3 -m unittest discover -s tests -p 'test_residual*.py' -v`.
 
 ### Loss allowance candidate V2
 
