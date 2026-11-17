@@ -203,6 +203,62 @@ Synthetic committed keyset fixtures may check out mode 0644: copy and chmod 0600
 before verification. Never use fixture keys outside tests.
 `authentication` and `external_key` remain NOT_BOUND; `stage7_authenticated_export` is false.
 
+## Signature inventory
+
+`capital.signature_inventory.inventory_manifests(paths, *, keyset_file)` accepts
+a list/tuple of 1–100 explicit paths and returns `KIX_CAPITAL_SIGNATURE_INVENTORY_V1`.
+The CLI is `python3 -m capital.signature_inventory --keyset-file SNAPSHOT.json A.json B.json`.
+It loads the strict DEV_ONLY keyset once with `create=False`, retaining either that
+private snapshot or its closed `SIGNATURE_KEYSET_*` error for the entire batch.
+Replacing, retiring or deleting the on-disk snapshot cannot change later rows;
+a subsequent invocation observes the new file. No signer is constructed.
+
+Manifest reads walk every component using directory descriptors with no-follow
+flags, then require a regular file and read bounded bytes from that descriptor.
+Secure-open support is mandatory. Limits are 8 MiB per manifest, 64 MiB aggregate
+manifest bytes and 128 JSON container levels; strict JSON rejects duplicate keys,
+invalid UTF-8 and non-JSON constants. Size checks include a one-byte growth probe.
+Bytes read from invalid documents and failed reads also consume aggregate budget.
+An advertised size beyond a limit is rejected without reading its body. At an
+aggregate failure the current row fails and every remaining row is explicitly
+skipped. Other independent errors permit subsequent files to be checked.
+
+The report contains `label: DEV_ONLY`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, `funds_executed: false`, `keyset_error`,
+`limits` (`max_inputs`, `max_manifest_bytes`, `max_total_bytes`, `max_json_depth`),
+ordered `files`, and `summary`. Each file row has a one-based `index`, original
+`path`, declared `content_digest` (64 lowercase hex or null), `kid` (1–128 ASCII
+letters/digits/`-._` or null), `input_error`, and `verification`. Declared metadata
+does not establish successful verification. `verification` embeds the existing
+`verify_manifest` report unchanged, preserving section → digest → signature
+precedence; it is null if reading, parsing or safe processing fails. Legacy HMAC
+manifests still report `SIGNATURE_KEY_REQUIRED`: this CLI supplies only a keyset.
+Unknown kids report `UNKNOWN_KID`; retired entries report `KEY_RETIRED` solely
+under this snapshot. No historical validity or collection completeness is inferred.
+
+Input errors are closed codes: `INVENTORY_INPUT_UNREADABLE` (including refused
+links), `INVENTORY_INPUT_NOT_REGULAR`, `INVENTORY_SECURE_OPEN_UNSUPPORTED`,
+`INVENTORY_DOCUMENT_INVALID`, `INVENTORY_MANIFEST_BYTES_LIMIT`,
+`INVENTORY_TOTAL_BYTES_LIMIT`, and `INVENTORY_SKIPPED_TOTAL_BYTES_LIMIT`.
+No exception text, key material, signature values or document bodies are emitted.
+The caller-supplied paths and bounded declared metadata are report fields.
+
+`summary.requested` includes duplicates, `verified` counts completed verifier
+calls including negative outcomes, `failed` counts all unsuccessful non-skipped
+rows, and `skipped` counts unprocessed rows after aggregate exhaustion.
+`complete` means every requested row reached the verifier. `all_valid` additionally
+requires a loaded snapshot and every verifier `ok` true; a partial batch cannot
+pass. `all_dev_signatures_verified` additionally requires every signature outcome
+to be `VERIFIED_DEV_ONLY_INTEGRITY`. Unsigned manifests can pass content checks
+while that last flag remains false. No flag describes authentication.
+
+The CLI assembles one compact, sorted-key JSON line before emission: identical
+inputs, paths and snapshot produce identical stdout. Exit codes are 0 for
+`all_valid`, 1 for input/verification/keyset failure or incomplete processing,
+and 2 for argument misuse. The API rejects invalid counts with `ValueError` before
+loading anything. There is no discovery, stdin, implicit key lookup, generation,
+rotation, repair, network access or input mutation.
+
 ## Local facade v1
 
 - `GET /api/permissions`: read-only `KIX_CAPITAL_PERMISSION_CATALOG_V1` catalog with ordered `routes` (`method`, `route`, `children`, `permission`) and `role_permissions` sets. Includes all GET, POST and static registrations; static permissions are null because assets precede authentication. Requires `reference:read`: organizer, auditor and observer allowed; agent receives `403 ROLE_FORBIDDEN`. No token defaults to organizer. Labels are `SIMULATED`, `SYNTHETIC_LOCAL_ROLE`, identity and authentication `NOT_BOUND`; no tokens or operational state are exposed or changed. `python3 scripts/auth_matrix.py --check` fetches this served catalog on an ephemeral memory-only loopback server and reconciles it with the pinned matrix and both generated documentation blocks; `--write` remains offline.
