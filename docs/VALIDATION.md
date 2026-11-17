@@ -1,5 +1,112 @@
 # Validation scope
 
+## Fake port composition — conflict-fix round 1
+
+2026-11-06, branch `agent/capital-fake-port-composition`, merging main
+`5c15a52c28327b067781177fd201047aed11831f` into node head
+`eae0b90b062d7d5e172533d20c71814bf141428f`. All evidence uses local
+SIMULATED / READ_ONLY_FIXTURE inputs; identity, authentication and adoption
+remain NOT_BOUND. This is CLAIM_CONFORMANCE only.
+
+Resolved `docs/INTEGRATION.md` by retaining both the fake port composition and
+residual obligations report sections. Resolved this validation file by retaining
+both parents' complete records, including main's residual report fix rounds.
+An ordered-line comparison verifies that every line of each parent document
+survives. Main's code, tests, decision notes and regenerated vectors remain in
+the merge alongside the six composition tests. No runtime or test change was
+needed. The historical root `DECISION_REQUIRED.md` remains present and unchanged;
+earlier validation records below describe their own rounds only.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,345 passed in 352.954s, including 6 composition, 26 residual report and 11 portfolio migration tests |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, semantic HOLD, adoption NOT_BOUND |
+| `python3 scripts/gate_faults.py --check` | Exit 0; all 7 pinned cases match |
+| `python3 scripts/auth_matrix.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0 |
+| `npm run test:browser -- --config /tmp/capital-fake-port-merge-playwright.config.cjs` | Final fresh serial run: exit 0; 76 passed in 1.8m with Chromium |
+| Vendor integrity and protected paths | All 5 SHA256 pins match; those files and manifest are byte-identical to both parents; vendor, `.aiops/` and root historical decision diffs empty |
+| Merge hygiene | Both parent documents preserved; no conflict markers or unmerged index entries; staged and unstaged whitespace checks pass |
+
+Browser setup: `npm ci --ignore-scripts --no-audit --no-fund` installed the
+lockfile-pinned runner after the global `playwright` lacked the test command.
+The default browser command then failed because ports 8765–8767 were occupied.
+The temporary config loads the tracked config, maps its four server ports to
+39765–39768, uses absolute test paths and temporary artifact/demo workspace
+paths, and sets the repository as the server working directory. Projects,
+assertions, workers, timeouts and retries are unchanged.
+
+The first remapped run had 56 passes and 20 failures: missing screenshot-target
+directories plus lifecycle UI assertions. The tracked browser output symlinks
+were restored after the default runner replaced them, and their existing target
+directories were created. After unit discovery finished, a fresh serial browser
+run passed all 76 tests without code or assertion changes. The cause of the
+earlier lifecycle UI failures was not established. Logs are under
+`/tmp/capital-fake-port-merge-{unittest,browser,browser-remapped,browser-remapped-final}.log`.
+No unrelated server was stopped. No CI, executable pin, upstream reference or
+financial term was changed; no external post, commit, push, abort, rebase or
+reset was performed. The resolved merge is left for the supervisor to commit.
+
+## Fake port composition — builder verification
+
+2026-11-01, baseline HEAD `c4114c751ea149865493bd3c734bc5d3c423ae2e`,
+branch `agent/capital-fake-port-composition`.
+
+Added `tests/test_port_composition.py` and documented its boundaries in README
+and INTEGRATION. Six discovery tests cover the preflighted gate and fake IdP
+through the actual loopback facade, including the eight-command lifecycle,
+role-based reads, rejected credentials, both preflight drift cases, all seven
+pinned fault-corpus scenarios, accepted/rejected first-result replays, conflicts
+and unsupported producer operations. Business snapshots exclude observability
+counters and include canonical state, journal, receipts, mappings, overlay and
+saved memory storage. All servers use loopback; composition servers use ephemeral
+ports and are shut down and joined by context cleanup, including failure paths.
+
+No runtime defect was demonstrated, so no runtime implementation, port contract,
+executable pin or corpus was changed. No new vector files were added. Evidence
+is local `CLAIM_CONFORMANCE` with `LOCAL_FAKE_IDP`, `LOCAL_FAKE_GATE`, SIMULATED
+commands and READ_ONLY_FIXTURE inputs. Identity, authentication and adoption
+remain NOT_BOUND; this does not establish SEMANTIC_CONFORMANCE, upstream
+integration, real funds movement or distributed durability. Neither upstream
+checkout was supplied or required.
+
+Commands actually executed (all results use local synthetic inputs). The
+independent verification round on 2026-11-01 reran every listed command after
+implementation; earlier implementation-iteration results are noted inline:
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_port_composition.py -v` | Implementation iteration: one test initially omitted required `instance_id` on the facts request; corrected only the test request. Verification round: exit 0, 6 passed in 6.674s |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, semantic HOLD, adoption NOT_BOUND |
+| `python3 scripts/gate_faults.py --check` | Exit 0; all 7 pinned cases match |
+| `python3 scripts/auth_matrix.py --check` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages (repeated after documentation changes) |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1308 passed in 315.717s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm run test:browser` | Exit 1 before tests: default loopback port 8765 occupied by an unrelated local service (`Errno 98`); rerun through the temporary port-remap config below |
+| `npx playwright test --config /tmp/fake-port-composition-playwright.config.cjs` | Exit 0; 76 passed in 1.9m (Chromium); all four spawned web servers exited with the run |
+| Inline Python vendor integrity check (`hashlib.sha256` against `capital/vendor/manifest.json`, plus `git diff` on the vendor tree) | Exit 0; all five SHA256 pins match; `capital/vendor/` and `.aiops/` diffs empty |
+| `git diff --check` | Exit 0 |
+
+Deviations from the supplied plan: no conditional runtime fix was necessary.
+Chromium was already available. Default port 8765 is held by an unrelated local
+service, so the browser suite ran through
+`/tmp/fake-port-composition-playwright.config.cjs`, which requires the tracked
+config and remaps only ports 8765–8768 to 39765–39768 (adding the missing
+`--port` on the default server command), with absolute test/output paths and
+repository server working directory. Projects, assertions, timeouts, retries
+and tracked browser config are unchanged. Orphaned `capital.server` processes
+from an earlier browser run of this node were stopped first; no unrelated
+server was stopped. Existing root `DECISION_REQUIRED.md` is preserved as
+historical material. No financial terms, provider choices or other
+consequential decisions were needed. No commit, push, PR, issue, external post,
+`.aiops/` edit or upstream change was made.
 ## Offline event stress report — local builder verification
 
 2026-11-03, branch `agent/capital-event-stress-report`. All calculations and
@@ -1516,6 +1623,38 @@ Commands actually run:
 - `python3 scripts/docs_surface.py --check`: ok (28 routes, 20 artifacts, 8 stages). `python3 scripts/seed_demo.py`: ok, digests unchanged.
 - `npm ci`: exit 0. `npm run test:browser`: exit 0, **62 passed** (3.2m): the 51 existing specs plus 11 in `tests/browser/operator-desk.spec.cjs`. Screenshots are under `test-results/operator-desk/{desktop,mobile}/`. No server was left on 8765–8768 or 8911–8921.
 - `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions tests/golden capital/server.py capital/service.py`: no output.
+## read-model-credit-queries
+
+Three read-only GET routes, `GET /api/read/credit_advance/{id}`, `/api/read/credit_claim/{id}` and `/api/read/settlement/{id}`, rehearse `get_credit_advance`, `get_credit_claim` and `get_settlement` of `docs/contracts/READ_MODEL_QUERIES.md` (draft 0.1) as a local consumer. SIMULATED, `fixture_mode` `REFERENCE_IN_MEMORY`, CLAIM_CONFORMANCE only. Not a read model, not `ReadObservationV1`, not SEMANTIC_CONFORMANCE. The body is the unmodified pinned view dict inside the draft section 3 envelope. Visibility classes, paging and `list_*` are UNDETERMINED upstream, so there are no list routes and the response says `visibility_enforced` false.
+
+Pin provenance: the draft at kix-protocol `244595db1524cbb1a01148baa07d6d28cd1b8dc6` is byte-identical to the read-only checkout's working file (`git show 244595d:docs/contracts/READ_MODEL_QUERIES.md | cmp`). The drift check reads the working tree of the checkout given by `--protocol-dir`, not the pinned commit.
+
+Capital choices the draft leaves open, stated so no row claims more than it checks: `query_digest` is the sha256 of the canonical JSON `{id, query}` (the draft names no algorithm); `accepted_through` is the credit machine journal length for the two credit queries and the fixture book's own journal length (`accepted_entries`) for `settlement`, because each fixture settlement is its own one-case book; a mock credit claim exists only after a draw, so a valid fixture id is `UNKNOWN_CLAIM` before it; the draft section 8 ownership-source clause is trivially satisfied because Capital builds the credit machine without an ownership source and is not separately tested; with `--producer gate-fake` the remote book has no claim view, so `credit_claim` answers `400 NOT_BOUND`. The nested settlement `claim` null branch (pre-capture phases) is not reachable through the routes because the fixtures hold only CAPTURED and COMMITTED settlements.
+
+Test edits that track the new routes and are not weakenings: `tests/test_finance_vectors.py` counts 25 to 28 GET routes and 37 to 40 routes, `tests/vectors/finance_vectors.json` was regenerated with `finance_vectors.py --write`, `tests/test_auth_matrix.py` seeds a second drawn advance so the `credit_claim` probe finds a noted claim, and `tests/test_facade_contract.py` validates the three live responses. `--update-golden` was not used.
+
+- `python3 -m unittest discover -s tests -v`: exit 1. 661 tests, 660 passed, 1 failed: `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`. It diffs against `origin/main`, which has moved; the three files it names (`docs/decisions/CAPITAL_EXTERNAL_GATES.md`, `docs/decisions/CAPITAL_RELEASE_ACCEPTANCE.md`, `tests/golden/demo.json`) differ between `HEAD` and `origin/main` and are unchanged in this working tree. Environmental, not a pass.
+- `python3 -m unittest tests.test_read_model_queries tests.test_read_model_claims tests.test_facade_contract tests.test_auth_matrix tests.test_finance_vectors tests.test_docs_surface`: exit 0.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, 7 passed. `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/auth_matrix.py --write`, `--check`; `python3 scripts/finance_vectors.py --write`, `--check`; `python3 scripts/docs_surface.py --check`: exit 0.
+- `python3 scripts/read_model_claims_check.py`: exit 0, `SKIPPED`, no count. `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro`: exit 0, `CLAIM_CONFORMANCE passed=74 total=74 failed=0`, `CLAIM_DRIFT verified=74 total=74`. `upstream_claims_check.py` and `agent_claims_check.py` with the same `--protocol-dir`: exit 0, `verified=87` and `verified=94`.
+- `npm ci --offline --ignore-scripts`, then `npm run test:browser`: **48 passed** on the first run. A later run, and the `browser` stage of `scripts/acceptance.py`, failed with `http://127.0.0.1:8765 is already used`: an unrelated `python3 -m http.server 8765` from another project held the port. That is a port clash, not a test result; the process was not mine and was not stopped.
+- `python3 scripts/acceptance.py --evidence /tmp/…`: exit 1 for those two reasons. `upstream-claims` passed 181/181 with `skipped` listing `scripts/read_model_claims_check.py`; with `--protocol-dir` it passed 255/255 (87+94+74) and `skipped` was empty. `storage-conformance`, `pinned-vendor`, `node-check`, `packaged-smoke` and `seeded-demo` passed.
+- `git diff --name-only -- capital/vendor .aiops`: empty.
+
+Merge with main (conflict-fix round 1, 2026-10-19; main had gained audit70-fix5, portfolio-risk-analytics and operator-console-ux, then t05-t06-sim-journeys and the claim-slice-registry decision while this merge was open): four conflicts against the supervisor's merge head, none dropped. `docs/OPERATOR_HANDBOOK_KO.md` conflicts inside the generated auth-matrix block; the `projection:read` row now lists `/api/risk` after `/api/overlay` and `/api/read/…` last, matching the merged `GET_DISPATCH` order, and the block was regenerated with `auth_matrix.py --write`. `tests/test_finance_vectors.py` now counts 29 GET routes and 41 contract routes (the 25 base routes plus main's `/api/risk` and this node's three `/api/read/…` routes); `FACADE_READS` was not in conflict and matches the merged contract order. `tests/vectors/finance_vectors.json` was regenerated from the merged facade with `python3 scripts/finance_vectors.py --write`, not hand-merged. Because `origin/main` moved after the merge started, the t05-t06-sim-journeys and claim-slice-registry changes were folded in too: `scripts/acceptance.py` keeps both sides (`record['skipped']` beside `record['journeys']` in `_command_record`, the `integrated-journeys` stage beside the read-model `--protocol-dir` plan argument), and `tests/test_coa_candidate.py`, `tests/test_acceptance.py`, `tests/test_sim_journeys.py`, `scripts/sim_journeys.py`, the two journey goldens, `docs/ACCEPTANCE_KO.md`, `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md` and the auto-merged `README.md` match `origin/main`. This file keeps main's four sections before this one.
+
+Commands actually run after the merge:
+
+- `python3 scripts/finance_vectors.py --write`, then `--check`: exit 0, 91825 bytes match.
+- `python3 scripts/auth_matrix.py --write`, then `--check`; `python3 scripts/docs_surface.py --check` (29 routes, 20 artifacts, 9 stages); `manifest_vectors` (13 files), `workspace_vectors` (6 files), `not_bound_checklist` with `--check`, `decision_ledger.py`: exit 0.
+- `python3 scripts/seed_demo.py`: exit 0, `state_digest=a8609033…ef45`, `content_digest=2f71dab1…dca`, golden unchanged.
+- `python3 -m unittest discover -s tests -v`: the first post-merge run exited 1 (697 tests, one failure: `test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`) because `origin/main` moved to `c9cfd6e` after the merge began; after folding `a6e603a` and `c9cfd6e` into the resolution: exit 0, **724 passed**.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v`: exit 0, 7 passed. `python3 -m compileall -q capital` and `node --check capital/static/app.js`: exit 0.
+- `python3 scripts/read_model_claims_check.py`: exit 0, `SKIPPED`, no count. With `--protocol-dir /workspace/capital-run/kixproto-ro`: exit 0, `CLAIM_CONFORMANCE passed=74 total=74 failed=0`, `CLAIM_DRIFT verified=74 total=74`.
+- `python3 scripts/sim_journeys.py`: exit 0, `sim journeys ok SIMULATED T05-sim steps=35 T06-sim steps=33`.
+- `npm ci --offline --ignore-scripts`: exit 0. `npm run test:browser`: exit 0, **62 passed**; no server left running.
+- `git diff --name-only origin/main -- capital/vendor .aiops .github docs/decisions`: no output. The five vendored files match the `capital/vendor/manifest.json` SHA256 pins. The staged tree differs from `git merge-tree --write-tree HEAD origin/main` only inside the five files that conflicted.
 
 ## shadow-participation-slice-uc
 
@@ -2869,6 +3008,38 @@ not production authorization or upstream adoption evidence.
 | `python3 scripts/closeout_digest.py --check-evidence`, `--check`; `scripts/finance_vectors.py --check`; `scripts/pack_vectors.py --check` | All pass against the final evidence; the committed digests needed no regeneration. |
 | `git diff --exit-code origin/main -- capital/vendor capital/export.py .aiops` | Empty diff. |
 
+
+## read-model-credit-queries — conflict-fix round 1 (2026-10-25)
+
+Resolved the in-progress merge of `origin/main` (`51a0d2e8b1b6422d99c3a8f3b7f8bb999ca4090c`) into `agent/capital-read-model-credit-queries` (HEAD `c12b03a1faa7047fc3bd0176873fb4d5c27339e3`). The merge remains uncommitted for the supervisor. All results below are local SIMULATED / CLAIM_CONFORMANCE evidence, with no upstream completion, real funds, provider calls or deployment claimed.
+
+The three point-query routes and their unmodified view bodies, draft §3 envelopes, `projection:read` boundary, false flags, exact error codes and §8 non-mutation checks remain. The combined read-model table preserves all 74 point-query rows and all 39 mapped-surface rows from main (113 total). The latter keep their original citation in `original_pinned_sha`; the combined table cites READ_MODEL_QUERIES draft 0.1 at `244595db1524cbb1a01148baa07d6d28cd1b8dc6`. Two old global needles now cite text inside their own section: the §2.13 reference to §2.12's `_flags`, and §8's `canonical_state()`. Scoped drift and keyset checks remain strict. The surface-focused tests are preserved in `tests/test_read_model_surface_claims.py` alongside the point-query tests.
+
+Main's CE1, adapter identity and lifecycle claim commands still execute in the upstream-claims stage. Without a protocol checkout, the read-model command runs no rows, reports SKIPPED, and contributes no passed count. With a checkout, it executes all 113 rows and checks drift read-only. Acceptance tests cover both paths. Main's T03/T04/T05/T06 journey implementation, T05 golden and COA byte guards remain byte-identical to main. In particular, the decided recovery rebase and repayment memo behavior survive. The contract includes both the slice-command `UNKNOWN_SETTLEMENT` 409 and point-query `UNKNOWN_SETTLEMENT` 404. The merged contract has 33 GET API routes and 45 routes overall. Finance vectors and the evidence-pack tamper corpus were regenerated through their scripts after regenerating the auth matrix.
+
+Resolved files:
+
+- `README.md`, `capital/contract/facade-v1.json`, `capital/read_model_claims.py`, `capital/service.py`.
+- `docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`, `scripts/acceptance.py`, `scripts/read_model_claims_check.py`, `scripts/sim_journeys.py`.
+- `tests/golden/journey_t05_sim.json`, `tests/read_model_claims.json`, `tests/test_coa_candidate.py`, `tests/test_finance_vectors.py`, `tests/test_read_model_claims.py`, `tests/test_sim_journeys.py`, `tests/vectors/finance_vectors.json`.
+
+| Verification | Final evidence |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | 1,111 passed; exit 0 |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 passed; exit 0 |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | exit 0 |
+| `python3 scripts/read_model_claims_check.py` | SKIPPED; rows not run; no passed count |
+| Same script with `--protocol-dir /workspace/capital-run/kixproto-ro` | 113/113 CLAIM_CONFORMANCE; 113/113 CLAIM_DRIFT; exit 0 |
+| Upstream-claims acceptance stage, without / with protocol checkout | 272/272 plus explicit read-model SKIPPED / 385/385, no skips; both exit 0 |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | exit 0; docs surface: 32 dispatch routes, 40 artifacts, 9 stages |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | exit 0 |
+| `python3 scripts/sim_journeys.py` | all four SIMULATED goldens match: T03 22, T04 38, T05 35, T06 33 steps |
+| Release build and `python3 scripts/smoke_release.py build/merge-dist/capital-0.1.0.pyz` | exit 0; 8 smoke checks |
+| Chromium: `npm run test:browser -- --config build/merge-playwright.config.cjs` | 69 passed; exit 0 |
+| Vendor integrity / protected paths | 5/5 SHA256 pins match; manifest unchanged; no diff from main under `capital/vendor`, `.aiops`, `.github`, `docs/decisions`, or `capital/export.py` |
+| Merge hygiene | zero unmerged index entries; no conflict markers; `git diff --check origin/main` passes |
+
+Browser environment: the unmodified default command was attempted, but unrelated local services own ports 8765/8766. The ignored temporary config uses the same suites, assertions and timeouts on loopback ports 18765–18768, with the repository as each server's cwd. An earlier full browser run had 67 passes and two refresh timeouts while the server returned APPROVED; the unchanged portfolio suite passed all six tests on a fresh server. Another attempt hit an environment startup timeout. The final unchanged full suite passed all 69 tests. No UI, browser test, repository Playwright config or CI checks were changed to obtain that result. Initial Python failures in acceptance assumptions and derived pack bytes were repaired and the full suite rerun successfully.
 ## fake-idp-session
 
 `capital/idp_fake.py` adds `FakeIdpAuthorizer`, a `LocalRoleAuthorizer` subclass for the opt-in `python3 -m capital.server --authorizer fake-idp`, and `scripts/fake_idp.py` mints HS256 tokens for the four synthetic roles from a committed test-vector key (not a credential, no key or kid parameter, no environment or file key source). Only `POST /api/session` changes: it needs exactly one `Authorization: Bearer` header, the bound role is the verified `role` claim, and a different body role is `403 ROLE_MISMATCH`. A missing token is `401 IDP_TOKEN_REQUIRED`; any rejected token (alg `none` or another alg, bad signature, expired, not yet valid with zero leeway, wrong `iss` or `aud`, unknown `kid`, duplicate/missing/extra claims, non-integer times, lifetime over 3600 s, over 2048 bytes, malformed base64url) is `401 IDP_TOKEN_INVALID` with a closed `reason` slug and never echoes the token. The check runs before the body is read, and nothing is written. Responses carry `mode: LOCAL_FAKE_IDP` while `identity`, `authentication`, `idp`, `kyc`, `agent_grant` and `action_permit` stay `NOT_BOUND`. `sub` must equal one fixed placeholder and the verifier returns only the role, so no subject, name or email reaches the workspace, event log or metrics (asserted against `workspace`, event log, `/api/state`, `/api/metrics`, `/api/export`). Later requests keep the role-scoped `X-Capital-Token`. This is not a security upgrade: the bootstrap organizer token from `GET /api/state` is unchanged, and tokens have no `jti`, so they replay until `exp`. The browser UI cannot present a bearer token, so role switching in the UI gets 401 in fake mode; the browser suite runs the default mode only.
@@ -2946,6 +3117,100 @@ NOT_BOUND, and no real funds or provider calls occur.
 No product decision or external action was needed. No merge abort, commit, push,
 rebase or reset was performed.
 
+## coa-payment-writeoff-postings (2026-10-25)
+
+The CAPITAL-COA-V1 candidate now consumes repayment, recovery and write-off
+entries in overlay order. Payment principal remains in the F04 mapping; interest
+cash reduces 1110, suspended interest received credits 4110 and releases the
+9700/9790 memo, principal recovery reduces 1100, full-principal write-off debits
+5200, recognized interest is reversed, and late recovery credits 4300. The three
+new candidate reconciliation checks compare the union of folded and posted
+advance IDs, including unexpected postings against an empty overlay. The V1
+principal tie independently verifies the recovery/write-off credit adjustment.
+
+Candidate-only memo accounts for reviewer consideration: reused **9790
+MEMO_SUSPENDED_INTEREST_CONTRA**, new **9810 MEMO_UNAPPLIED_CASH_HELD**
+(debit-normal), and **9890 MEMO_UNAPPLIED_CASH_CONTRA** (credit-normal). These
+three have `adopted_in_note=false`. Unapplied cash is the only newly unmapped
+amount. No allowance/reserve postings, tax treatment or revenue-recognition
+adoption was added. Accounting policy remains SYNTHETIC_UNADOPTED; tax, legal and
+the operating ledger remain NOT_BOUND. All journeys are SIMULATED.
+
+`tests/test_coa_payment_writeoff.py` adds independent amount assertions for partial
+payments, payoff, held cash, both interest kinds, oldest recognized interest,
+principal recovery, write-off and late recovery. It exercises the disposable seed,
+a combined book, actual loopback GETs, schema validation, immutable default
+projection/reconciliation/manifest responses, and tampered/missing/unexpected
+postings. Existing chart and reconciliation-count assertions are extended without
+changing any compatibility guard. Only the existing finance vector is regenerated,
+through `scripts/finance_vectors.py --write`; only the facade contract, definitions and `/api/projection` closure digests
+change within that vector.
+
+Plan deviations and initial failures:
+
+- The proposed repayment-before-recovery combined journey encounters an existing
+  `RECOVERY_QUOTE_STALE` during overlay replay: recovery quotes stamp the final
+  folded repayment close gate, whereas replay encounters its intermediate value.
+  The protected overlay/recovery implementation is unchanged. The combined test
+  instead performs recoveries/write-off/late recovery before repayments; it has
+  both paths on one book and every reconciliation check MATCHED. Its payoff also
+  accounts for the existing margin acceleration caused by the shared source.
+- Initial new-test runs failed on that ordering and test assumptions about response
+  labels, the F04 outstanding field and accelerated maturity. Those tests were
+  corrected against the existing interfaces; no production interfaces or policy
+  values were changed. The focused final run passes.
+- The disposable seed retains its known `fixtures_digest` mismatch because its
+  settlement observation changes after the offer. All five candidate checks pass
+  on it; the combined bound-claim book has the complete report MATCHED.
+- The stock browser command encountered occupied loopback ports 8765/8766.
+  The same browser suite was rerun using a temporary config under
+  `/tmp/coa-payment-writeoff-evidence/playwright.config.cjs`, changing only config
+  path resolution and the four suite server ports to 18765–18768. Repository
+  browser configuration and tests are unchanged; other processes were untouched.
+
+Commands actually run and their results (transient logs are under
+`/tmp/coa-payment-writeoff-evidence/`):
+
+<!-- coa-payment-writeoff-evidence -->
+
+| Command | Result |
+| --- | --- |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; existing vector regenerated, 97,980 bytes; only three facade-derived digest fields changed. |
+| `python3 -m unittest discover -s tests -p test_coa_candidate.py -v` | Exit 0; 36 passed. |
+| `python3 -m unittest discover -s tests -p test_coa_payment_writeoff.py -v` | Initial runs failed on test assumptions/order as described above; all 18 new tests pass in the focused and full runs below. |
+| `PYTHONPATH=tests:. python3 -m unittest test_coa_payment_writeoff test_coa_candidate test_handbook -v` | Exit 0; 65 passed in 17.549 s. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,130 passed in 211.940 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 40 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 97,980 bytes match. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4,518 bytes and embedded copy match; no closeout regeneration. |
+| `npm ci` | Exit 0; three packages installed, zero vulnerabilities. |
+| `npm run test:browser` | Exit 1; occupied default ports, before browser tests. |
+| `npm run test:browser -- --config=/tmp/coa-payment-writeoff-evidence/playwright.config.cjs` | Exit 0; 69 passed in 2.2 minutes. |
+| `python3 scripts/build_release.py --out /tmp/coa-payment-writeoff-evidence/dist` | Exit 0. |
+| `python3 scripts/build_release.py --out /tmp/coa-payment-writeoff-evidence/dist2` | Exit 0. |
+| `cmp /tmp/coa-payment-writeoff-evidence/dist/capital-*.pyz /tmp/coa-payment-writeoff-evidence/dist2/capital-*.pyz` | Exit 0; deterministic package SHA256 `3182c5b39f7115e83ca16ab868bfccdb7ffce2e3b04a1198708a64cb40990644`. |
+| `python3 scripts/smoke_release.py /tmp/coa-payment-writeoff-evidence/dist/capital-*.pyz` | Exit 0; all eight package smoke checks pass. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references validated. |
+| `python3 scripts/seed_demo.py` | Exit 0; existing demo golden, F04 state/content digests and debit=credit=385,000 preserved. |
+| `python3 scripts/sim_journeys.py` | Exit 0; T03/T04/T05/T06-sim pass with 22/38/35/33 steps; existing goldens preserved. |
+| `python3 scripts/upstream_claims_check.py --execute` | Exit 0; 87/87 local claim checks. |
+| `python3 scripts/agent_claims_check.py --execute` | Exit 0; 94/94 local claim checks. |
+| `python3 scripts/read_model_claims_check.py --execute` | Exit 0; 39/39 local claim checks. |
+| `python3 scripts/ce1_claims_check.py --execute` | Exit 0; 49/49 local claim checks. |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | Exit 0; 30/30 local claim checks. |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; 12/12 local SIMULATED vectors; optional upstream drift execution reports SKIPPED, verified=0. No upstream conformance/adoption claim. |
+| `PYTHONPATH=tests:. python3 /tmp/coa-payment-writeoff-evidence/recovery-replay-probe.py` | Exit 0; confirms the existing repayment-close-gate replay mismatch without changing protected code. |
+| `python3 /tmp/coa-payment-writeoff-evidence/verify-protected.py` | Exit 0; all 36 snapshotted protected files byte-identical, including vendor references/manifest, legacy paths, decision notes, .aiops and goldens. |
+| `git diff --name-only origin/main -- capital/vendor capital/export.py capital/projection.py capital/overlay.py capital/recovery.py capital/ports.py .aiops docs/decisions tests/golden` | Exit 0; empty. |
+| `git diff --check` | Exit 0. |
+| `ss -ltnp '( sport = :18765 or sport = :18766 or sport = :18767 or sport = :18768 )'` | Exit 0; no remaining suite listeners after Playwright shutdown. |
+
+No git/GitHub writes or upstream edits were performed. The listed commands are
+individual local CI equivalents; no fresh consolidated acceptance evidence or
+closeout pin was generated.
 ## permission-catalog-surface
 
 Read-only permission catalog: `GET /api/permissions` serves `KIX_CAPITAL_PERMISSION_CATALOG_V1` — the ordered registered GET/POST/static routes (`method`, `route`, `children`, `permission`; static permissions `null` because assets answer before authentication) and the synthetic role-to-permission sets. The route is itself registered under `reference:read`: organizer, auditor, observer and a tokenless caller (default organizer) get 200 with identical bodies; `agent` gets `403 ROLE_FORBIDDEN` naming `reference:read`. No role, permission or other route changed. Labels stay `SIMULATED` / `SYNTHETIC_LOCAL_ROLE`; identity and authentication stay `NOT_BOUND`; no token or operational state is exposed.
@@ -3031,6 +3296,72 @@ All results are local and SIMULATED. CAP-11 remains NOT_BOUND; these checks clai
 | `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed, 1.8 min. Existing host ports 8765/8766 were occupied; unchanged browser configuration ran inside an isolated loopback network namespace. |
 | Vendor integrity | All five SHA256 locks match the manifest; vendored files and manifest are byte-identical to main. |
 | Merge hygiene | Both conflicted additions preserved byte-for-byte; no conflict markers or unmerged entries; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
+
+## coa-payment-writeoff-postings — conflict-fix round 1 (2026-10-26)
+
+Resolved the append conflict with main `aab0a7364c79ef00d34e031e4a827a817f7ae544`
+by preserving both the payment/write-off validation section and main's fold-fuzz
+conflict-fix section verbatim. Main's fold-fuzz implementation, tests, corpus,
+README, integration notes and docs-surface entry remain alongside this node's
+candidate postings and reconciliation changes. No code or vector correction was
+needed. The merge remains uncommitted for the supervisor.
+
+All results below are local and SIMULATED; accounting policy remains
+SYNTHETIC_UNADOPTED and tax remains NOT_BOUND. No product decision, external
+action, Protocol/Commerce edit or change to CI/tests was needed. Transient logs:
+`/tmp/coa-payment-writeoff-merge-r1.UDeZLc/`.
+
+| Verification | Actual local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,142 tests passed in 327.340 s, including candidate payment/write-off and incoming fold-fuzz tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 31 routes, 41 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; 97,980 finance-vector bytes match; 4,518 closeout bytes and embedded copy match. |
+| `python3 scripts/fold_fuzz.py --check` | Exit 0; 16 SIMULATED seeds, 736 commands match. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 3.0 min. Host ports 8765/8766 were occupied; unchanged browser configuration ran in an isolated loopback network namespace. |
+| Vendor and compatibility integrity | All five SHA256 locks match; vendor/manifest, legacy export/projection, `.aiops/` and goldens are byte-identical to main. |
+| Merge hygiene | Both conflicting sections preserved verbatim; no conflict markers or unmerged entries; `git diff --check HEAD` passes. No abort, commit, push, rebase or reset performed. |
+## read-model-credit-queries — conflict-fix round 2 (2026-10-26)
+
+Resolved the merge of `origin/main` / `MERGE_HEAD`
+`aab0a7364c79ef00d34e031e4a827a817f7ae544` into
+`agent/capital-read-model-credit-queries` (HEAD
+`f1c79d8118e4e5d9e3b2c25d1a0d9bf2655f85b9`). The merge remains
+uncommitted for the supervisor. Both conflicting validation additions survive
+byte-for-byte, including main's fake-IdP, load-harness and fold-fuzz evidence.
+
+Resolved files: `docs/VALIDATION.md` and
+`tests/vectors/finance_vectors.json`. Regenerated the latter with
+`python3 scripts/finance_vectors.py --write` from the combined facade. All
+non-facade vector groups are identical to both parents. All 30 GET route rows
+from main survive unchanged, alongside the three point-query route rows.
+Against this node's HEAD, only the facade contract digest, definitions digest
+and `/api/state` closure digest change for main's fake-IdP auth-mode enum.
+No runtime or test changes were needed beyond the incoming merge.
+
+All evidence below is local SIMULATED / CLAIM_CONFORMANCE evidence. Identity,
+authentication and external integrations remain NOT_BOUND; no funds, provider
+calls, upstream edits or deployments occurred.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,163 passed, 304.927 s, including main's fake-IdP/load/fold-fuzz coverage and this node's point-query, auth, keyset and non-mutation coverage. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; 69 Chromium tests passed, 2.3 min. Host ports 8765/8766 were occupied; unchanged browser configuration ran inside an isolated loopback namespace. |
+| `python3 scripts/read_model_claims_check.py`, without / with `--protocol-dir /workspace/capital-run/kixproto-ro` | Without: SKIPPED, rows not run and no passed count. With: 113/113 CLAIM_CONFORMANCE and 113/113 CLAIM_DRIFT; exit 0. Protocol checkout read-only. |
+| `scripts.acceptance.execute_plan`, upstream-claims stage without / with protocol checkout | Both exit 0. Without: 272/272 plus explicit read-model SKIPPED. With: 385/385 and no skips. These are stage-only evidence, not a new full-ladder claim. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; docs surface: 32 dispatch routes, 41 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | All exit 0; 99,196 finance bytes and nine pack files match. |
+| Vendor and protected paths | Five SHA256 locks match. Vendored files and manifest are byte-identical to main; no diff from main under `capital/vendor`, `.aiops`, `.github`, or `capital/export.py`. |
+| Merge hygiene | No unmerged index entries or conflict markers; `git diff --check origin/main` passes. No abort, commit, push, rebase or reset performed. |
+
+Detailed logs and stage-only evidence are retained under the ignored
+`build/read-model-merge-round2/` directory. No consequential product decision
+was needed.
+
+
 
 ## readiness-runtime-claims
 
@@ -3740,6 +4071,49 @@ All results below are local SIMULATED verification run on the merged tree. No ru
 | Vendor integrity | `git diff` of `capital/vendor` and `.aiops` against both merge parents is empty; the five reference files and `manifest.json` are byte-identical. |
 | Merge hygiene | All three conflicted paths resolved with both sides preserved; no conflict markers (`<<<<<<<`/`=======`/`>>>>>>>`) or unmerged index entries; `git diff --check` clean. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
 
+
+## read-model-credit-queries — conflict-fix round 1 (2026-10-28)
+
+Resolved incoming main `dce49d43d6945f548fceec307c09383e26408a54` into
+node HEAD `8ab7f32b1b414b16ab116b6da6b6959db0814441`, retaining both parents'
+features, tests and documentation. All existing facade routes and definitions
+survive, with additive error sets: three credit/settlement point queries coexist
+with main's facts export routes and hostile-request boundary handling. Added
+main's shared `INVALID_TARGET` boundary error to the three point-query contract
+entries. The finance tests now pin the combined 35 GET API routes and 47 total
+routes; no assertion was removed. Both validation histories and the 900-second
+unit-stage timeout survive.
+
+Resolved files: `capital/contract/facade-v1.json`, `docs/VALIDATION.md`,
+`scripts/acceptance.py`, `tests/test_finance_vectors.py`,
+`tests/vectors/finance_vectors.json`, and all nine conflicted files under
+`tests/vectors/pack/` (`clean.json`, `content-digest.json`,
+`section-auth_matrix.json`, `section-decisions.json`,
+`section-export_manifest.json`, `section-reconciliation.json`,
+`section-workspace_audit.json`, `truncated.json`, `volatile.json`). Finance and
+pack vectors were regenerated from the combined code. Only the facade group
+changes relative to main's finance vector; main's committed closeout evidence
+is retained unchanged, including its embedded copy.
+
+All results are local SIMULATED / CLAIM_CONFORMANCE evidence. Authentication
+and external integrations remain NOT_BOUND. No financial terms, provider calls,
+Protocol/Commerce changes, deployments, or consequential decisions were needed.
+Detailed logs and stage-only JSON evidence are in ignored
+`build/read-model-conflict-round1/`.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,188 passed in 258.919 seconds, including credit-query envelopes, exact key sets and errors, authorization, non-mutation, facts export, hostile HTTP, and legacy byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 1.8 minutes. Ports 8765/8766 were occupied on the host, so the unchanged configuration ran in an isolated loopback namespace. |
+| `python3 -m unittest tests.test_facade_contract tests.test_finance_vectors -v` | Exit 0; 59 passed after adding the shared boundary error. |
+| `scripts.acceptance.execute_plan`, upstream-claims stage without / with `--protocol-dir /workspace/capital-run/kixproto-ro` | Both exit 0. Without: 272/272 and explicit read-model SKIPPED, no read-model passed count. With: 385/385, including 113/113 read-model claims and 113/113 drift checks. Stage-only evidence, not a full-ladder claim. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; docs registry: 34 dispatch routes, 250 artifacts, nine stages. |
+| Finance, pack, facts, HTTP-hostile, fold-fuzz, closeout, manifest, workspace and forecast vector checks; decision-bindings and not-bound checklist checks | All exit 0. Finance: 99,928 bytes; pack: nine files; facts: 133 files; hostile HTTP: 76 files. Finance was rechecked after the boundary-error addition. |
+| Preservation and vendor audit | Both parents' facade routes, definitions and error codes retained; both validation histories retained in order. Five SHA256 locks and manifest match both parents. No change under `.aiops/` or to legacy `capital/export.py`. |
+| Merge hygiene | All 14 conflicted paths resolved; no tracked conflict markers or unmerged entries. `git diff --check MERGE_HEAD` passes. Main's intentional whitespace-corruption fixture remains byte-identical; its trailing space is required test data. Merge remains uncommitted for the supervisor. No abort, commit, push, rebase or reset performed. |
+
 ## permission-catalog-surface — conflict-fix round 1 (2026-10-28)
 
 Resolved all 12 conflicts against incoming main `dce49d4` while preserving this
@@ -3787,6 +4161,85 @@ Logs and temporary browser configurations are retained in ignored
 `build/pcs-conflict-round1/`. All resolutions are staged. The supervisor retains
 responsibility for the merge commit; no abort, commit, push, rebase or reset was
 performed.
+
+## coa-payment-writeoff-postings — conflict-fix round 2 (2026-10-28)
+
+Merged incoming main `dce49d4` (permission-catalog-surface, http-hostile-corpus
+and facts-cursor-export alongside the earlier fold-fuzz work) while preserving
+both sides. The three conflicts were append/pin conflicts:
+`docs/OPERATOR_HANDBOOK_KO.md` keeps this node's
+`coa-payment-writeoff-postings` section first, then main's bare Facts section
+and `http-hostile-corpus` section verbatim; this file keeps this node's two
+histories first, then main's appended histories verbatim and in order;
+`tests/vectors/finance_vectors.json` was regenerated with
+`scripts/finance_vectors.py --write` against the merged facade contract (99,070
+bytes), so both route sets and this node's `coa-candidate` projection closure
+survive. The embedded `closeout_digest` group and the committed
+`tests/vectors/closeout_digest.json` stay main's recorded pass and match each
+other byte-for-byte. No runtime code change was needed: main's `export_facts`,
+`/api/permissions` and `INVALID_TARGET` request fix coexist with this node's
+`mode=coa-candidate` postings and reconciliation checks in the auto-merged
+`capital/server.py`, `capital/service.py`, `capital/auth.py` and
+`capital/contract/facade-v1.json`.
+
+All results below are local SIMULATED verification on the merged tree.
+Accounting policy remains SYNTHETIC_UNADOPTED and tax remains NOT_BOUND. No
+product decision, external action, Protocol/Commerce edit or change to
+CI/tests was needed.
+
+| Verification | Actual local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,171 tests passed in 413.091 s, including candidate payment/write-off, facts-export, hostile-HTTP and fold-fuzz tests. |
+| `python3 -m unittest discover -s tests -p 'test_coa_*.py' -v` | Exit 0; 54 tests passed, including the seeded disposable-book, combined-book, loopback GET and tamper/read-only checks. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; 99,070 finance-vector bytes match; 4,518 closeout bytes and embedded copy match. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; 34 routes, 250 artifacts, nine stages; served catalog, pinned matrix and generated blocks agree. |
+| `python3 scripts/{manifest_vectors,pack_vectors,workspace_vectors,forecast_vectors,facts_vectors,decision_bindings,not_bound_checklist,http_hostile,fold_fuzz}.py --check` | All exit 0; 19 manifest, 9 pack, 6 workspace, 76 hostile and 133 facts files match; 16 seeds, 736 commands. |
+| `python3 scripts/seed_demo.py`; `python3 scripts/sim_journeys.py` | Both exit 0; existing golden state/content digests and debit=credit=385,000 preserved; T03/T04/T05/T06-sim pass with 22/38/35/33 steps. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 3.9 min. Host ports 8765/8766 were occupied; unchanged browser configuration ran in an isolated loopback network namespace. |
+| Vendor and compatibility integrity | All five SHA256 locks match `capital/vendor/manifest.json`; vendor files and manifest are byte-identical to both parents. `.aiops/` untouched. |
+| Merge hygiene | All three conflicted paths resolved with both sides preserved; no conflict markers or unmerged index entries; `git diff --check HEAD` clean, `git diff --check MERGE_HEAD` reports only main's pre-existing intentional `facts/corrupt/whitespace/page-0000.json` fixture. The merge is left uncommitted for the supervisor; no abort, commit, push, rebase or reset performed. |
+## read-model-credit-queries — conflict-fix round 2 (2026-10-28)
+
+Resolved all 13 conflicts merging incoming main `e445f38282e14bc271c94b48d3f4dcfbe195cba0`
+into node HEAD `f5f69f7e9c16047e1b73ceab460ec16380733633`. Main's permission
+catalog and the three credit/settlement point queries coexist. Every facade
+route and definition from both parents is retained unchanged, as are all role
+grants, authorization matrix rows, cells and edge cases. Both validation
+histories remain verbatim and in order. The finance tests now pin the combined
+36 API GET routes and 48 total facade routes; no assertion was removed.
+
+Resolved files: `docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`,
+`tests/test_finance_vectors.py`, `tests/vectors/finance_vectors.json`, and all
+nine conflicted pack vectors: `clean.json`, `content-digest.json`,
+`section-auth_matrix.json`, `section-decisions.json`,
+`section-export_manifest.json`, `section-reconciliation.json`,
+`section-workspace_audit.json`, `truncated.json` and `volatile.json` under
+`tests/vectors/pack/`. Auth documentation, finance vectors and pack vectors
+were regenerated from the combined code. Non-facade finance groups, including
+the embedded recorded closeout digest, remain identical to both parents.
+
+All evidence is local SIMULATED / CLAIM_CONFORMANCE verification. Authentication
+and external integrations remain NOT_BOUND. No external posting, financial
+terms decision, real provider call, upstream edit or deployment occurred.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,193 tests passed in 305.837 s, including both features, exact query envelopes/errors/key sets, authorization and fixture/demo non-mutation predicates. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.5 min, with unchanged configuration in an isolated loopback network namespace. |
+| `scripts.acceptance.execute_plan`, upstream-claims stage without / with `--protocol-dir /workspace/capital-run/kixproto-ro` | Both exit 0. Without: 272/272 with explicit read-model SKIPPED and no read-model passed count. With: 385/385, including 113/113 read-model claims and 113/113 drift checks. Stage-only evidence, not a full-ladder claim. Protocol checkout read-only. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; docs surface: 35 dispatch routes, 250 artifacts, nine stages. Served permission catalog, matrix and generated documentation agree. |
+| Finance, pack, facts, hostile HTTP, fold-fuzz, closeout, manifest, workspace and forecast vector checks; decision-bindings and not-bound checklist checks | All exit 0. Finance: 100,286 bytes; pack: nine files. |
+| Preservation and protected paths | Both parents' facade routes/definitions, authorization cases, validation histories and non-facade finance groups retained. Five vendor SHA256 locks match; vendor files and manifest, legacy `capital/export.py`, `.aiops/` and CI are unchanged against both parents. |
+| Merge hygiene | All 13 conflicts resolved and staged; no unmerged entries or tracked conflict markers. `git diff --check MERGE_HEAD` passes. No abort, commit, push, rebase or reset performed. |
+
+Logs and stage-only JSON evidence are retained under ignored
+`build/read-model-conflict-round2/`. No consequential product decision was
+needed. The supervisor retains responsibility for committing the merge.
+
 
 
 ## bundled-policy-runtime — conflict-fix round 3 (2026-10-28)
@@ -4124,6 +4577,85 @@ authentication NOT_BOUND. Logs are in ignored `build/margin-merge-round1/`.
 
 No external posting, provider call or consequential product decision was required.
 
+## coa-payment-writeoff-postings — conflict-fix round 3 (2026-10-29)
+
+Resolved the supervisor-started merge of incoming main `863de6b0` into this
+node's `ce82641b`. Both conflicts are resolved: every validation section from
+both parents is retained verbatim, and `tests/vectors/finance_vectors.json` is
+regenerated from the combined facade contract. Only `facade_read_model` differs
+from either parent; the other seven groups remain unchanged, including main's
+historical closeout snapshot and its matching standalone artifact. Every contract
+value from both parents survives with additive list entries.
+
+The candidate posting implementation, reconciliation and both COA test files are
+byte-identical to this node's reviewed parent. Incoming main's risk scenario
+implementation, generator, tests and artifact, plus its six-journey implementation,
+tests and N1/N2 goldens are byte-identical to main. README, integration and handbook
+coverage for both features survives. No runtime, test or CI correction was needed.
+
+All evidence below is local and SIMULATED. Accounting policy remains
+SYNTHETIC_UNADOPTED and tax remains NOT_BOUND; candidate reads neither write state
+nor adopt revenue recognition. No external action, product decision or
+Protocol/Commerce edit was needed. Transient logs: `/tmp/coa-payment-writeoff-merge-r3.ZuRcO6/`.
+
+| Verification actually run | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,199 tests passed in 333.693 s. Includes all 54 COA tests: combined payments/write-off, seeded recovery, loopback candidate GETs, read immutability, legacy byte guards and negative reconciliation controls, alongside main's risk and six-journey suites. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.4 min using the unchanged repository configuration and locally cached pinned headless shell, with servers isolated in a loopback network namespace. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 251 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; 99,893 finance bytes match; the 4,518-byte historical closeout artifact matches its embedded copy. No new full-ladder closeout run is claimed. |
+| `python3 scripts/sim_journeys.py --check`; `python3 scripts/risk_scenario_vectors.py --check` | Both exit 0; all six existing journey goldens match (22/38/35/33/16/18 steps), and 37,747 risk scenario bytes match. |
+| `python3 scripts/{auth_matrix,pack_vectors,facts_vectors,fold_fuzz,http_hostile,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist}.py --check` | All exit 0; nine pack files, 133 facts files, 16 fold-fuzz seeds / 736 commands, 76 hostile-HTTP files, 19 manifest files and six workspace files match. |
+| Vendor and compatibility integrity | All five manifest SHA256 locks match; the five vendored files and manifest, legacy projection/export, demo golden and closeout artifact match both parents byte-for-byte. Default projection/reconciliation and manifest vector groups remain unchanged from both parents. `.aiops/` and CI are unchanged from both parents. |
+| Merge hygiene | Both conflicted paths resolved and staged; no conflict markers in tracked files or unmerged index entries; whitespace checks against both parents pass. The merge is left uncommitted for the supervisor. No abort, commit, push, rebase or reset performed. |
+
+No new consequential product decision or `DECISION_REQUIRED.md` was needed.
+
+## read-model-credit-queries — conflict-fix round 3 (2026-10-28)
+
+Resolved all 13 conflicts in the supervisor-started merge of incoming main
+`863de6b0f76cbb8caba11834d25782a3cba8e490` into node HEAD
+`dc5de7c59cead56bb3d9168e30f862883cfab615`. The three credit/settlement point
+queries coexist with main's risk scenarios and N1-sim/N2-sim journeys. All
+facade routes from both parents survive unchanged; definition fields and
+main's `effects_executed: false` receipt metadata are preserved. The combined
+finance tests pin 38 API GET routes and 50 total facade routes.
+
+Resolved files: `docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`,
+`tests/test_finance_vectors.py`, `tests/vectors/finance_vectors.json`, and
+`clean.json`, `content-digest.json`, `section-auth_matrix.json`,
+`section-decisions.json`, `section-export_manifest.json`,
+`section-reconciliation.json`, `section-workspace_audit.json`, `truncated.json`
+and `volatile.json` under `tests/vectors/pack/`. Both validation histories
+remain verbatim and in order. Auth documentation, finance vectors and pack
+vectors were regenerated from the combined implementation. All seven
+non-facade finance groups, including the historical closeout snapshot, remain
+identical to both parents. Main's risk/journey implementations, tests and
+vectors and this node's read-model claim table, checker and tests are unchanged.
+
+All evidence is local SIMULATED / CLAIM_CONFORMANCE verification. Identity,
+authentication and external integrations remain NOT_BOUND. No financial terms
+were selected, no external posting or provider call occurred, and no upstream
+repository, vendor reference, deployment or CI configuration was changed.
+
+| Verification | Actual local result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,221 tests passed in 310.917 s, including read-model envelopes, exact key sets/errors, role gates, fixture/demo non-mutation, risk scenarios and all six journeys. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.5 min using the unchanged configuration in an isolated loopback namespace. |
+| `scripts.acceptance.execute_plan`, upstream-claims stage without / with `--protocol-dir /workspace/capital-run/kixproto-ro` | Both exit 0. Without: 272/272, with read-model rows explicitly SKIPPED and no read-model pass count. With: 385/385, including 113/113 read-model claims and 113/113 drift checks. Protocol checkout read-only; stage-only evidence, not a full-ladder claim. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; docs surface: 36 dispatch routes, 251 artifacts, nine stages. |
+| Finance, pack, risk-scenario, facts, hostile-HTTP, fold-fuzz, manifest, workspace, forecast and closeout vector checks; sim journeys, decision bindings and not-bound checklist checks | All exit 0. Finance: 101,109 bytes; pack: nine files; all six journey goldens match. |
+| Preservation and protected paths | Both parents' facade routes, definition fields, auth cases and validation histories retained. All five vendor SHA256 locks match; vendor files and manifest, `capital/export.py`, `.aiops/` and CI unchanged against both parents. |
+| Merge hygiene | All 13 conflicts resolved and staged; no unmerged entries or tracked conflict markers; `git diff --check MERGE_HEAD` passes. No abort, commit, push, rebase or reset performed. |
+
+Logs, preservation checks and stage-only JSON evidence are retained under ignored
+`build/read-model-conflict-round3/`. No consequential product decision was needed.
+The supervisor retains responsibility for committing the merge.
+
 ## readiness-runtime-claims — supervised conflict-fix round 2 (2026-10-28)
 
 Resolved the supervisor-started merge of incoming main
@@ -4291,6 +4823,35 @@ posts, Protocol/Commerce edits, executable re-pinning, merge abort, commit, push
 rebase or reset were performed. No consequential product decision was required.
 
 
+## coa-payment-writeoff-postings — supervised conflict-fix round 1 (2026-10-29)
+
+Resolved the three append conflicts in `docs/VALIDATION.md` between reviewed node
+HEAD `a3a768b` and incoming main `bae7a53`. Every line of both parent documents is
+preserved verbatim and in order. Candidate payment/recovery/write-off postings,
+reconciliation and COA tests remain byte-identical to HEAD; incoming producer
+preflight implementation, tests and fixtures remain byte-identical to main.
+Only this validation document needed editing; no code, test or fixture fix was needed.
+
+All evidence below is local SIMULATED / READ_ONLY_FIXTURE verification.
+Accounting policy remains SYNTHETIC_UNADOPTED and tax remains NOT_BOUND; candidate
+reads do not adopt revenue recognition. Producer preflight remains BOOTSTRAP,
+semantic consumption HOLD, semantic_conformance false and adoption NOT_BOUND.
+
+| Verification actually run | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,219 tests passed in 306.679 s, including all 54 COA tests and incoming compatibility/preflight tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 69 Chromium tests passed in 2.4 min using the unchanged configuration in an isolated loopback network namespace. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 35 routes, 267 artifacts, nine stages. |
+| `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, zero errors; HOLD / NOT_BOUND. |
+| `python3 scripts/{finance_vectors,closeout_digest,sim_journeys,risk_scenario_vectors,auth_matrix,pack_vectors,facts_vectors,fold_fuzz,http_hostile,manifest_vectors,workspace_vectors,forecast_vectors,decision_bindings,not_bound_checklist}.py --check` (each separately) | All exit 0. Historical closeout evidence remains unchanged; no new full-ladder closeout run is claimed. |
+| Vendor and compatibility integrity | All five vendor SHA256 locks match. Vendor files/manifest, legacy projection/export and demo golden match both parents byte-for-byte; `.aiops/` and CI are unchanged. Finance vector groups other than the candidate facade read model match both parents. |
+| Merge hygiene | Both parent validation histories preserved in order; no tracked conflict markers or unmerged entries; staged and both-parent whitespace checks pass. Resolution staged; merge left uncommitted for the supervisor. |
+
+Logs: `/tmp/coa-payment-writeoff-conflict-r1.kl5vnjv5/`. No external posts,
+Protocol/Commerce edits, merge abort, commit, push, rebase or reset were performed.
+No consequential product decision or `DECISION_REQUIRED.md` was needed.
 ## advance-case-dossier — supervised conflict-fix round 1 (2026-10-29)
 
 Resolved the three append conflicts in `docs/VALIDATION.md` for the
@@ -4407,6 +4968,37 @@ obsolete root `DECISION_REQUIRED.md` is retained and staged: its moved-main
 baseline blocker is resolved and the unmodified guard passes. No consequential
 product decision was needed. No abort, commit, push, rebase, reset, external post
 or provider call was performed.
+
+## provider-capture-recon — build round 1 (2026-10-29)
+
+Recorded `PROVIDER_PAYMENT_CAPTURE` assertions fold into `state.observations` via
+the organizer-only `record_external_fact` overlay op; `GET /api/reconciliation`
+gains the conditional `recorded_captures_vs_claim_face` check and the offline
+auditor computes the same row. Facts stay `SIMULATED` / `UNVERIFIED_ASSERTED`,
+move no money, never gate the FSM or shadow derivations, and appear only inside
+the V3 `overlay` manifest section. `demo.json` and `overlay_empty.json` are
+byte-identical; `tests/golden/overlay_observations.json` pins the seeded demo.
+Two pre-existing repairs were needed: `recon.py` ran the new link validation even
+after an earlier link failure (masking `claim_slice_link`), the server dropped
+`default` from the agent recovery-denial list on the overlay route, the facade
+lacked the new `FACT_*` error literals, and the closeout stage pin predated the
+`sim_journeys.py --check` ladder command added in 863de6b. The closeout digest
+and finance vector pack were rebuilt through `CAPITAL-CLOSEOUT-REGEN-V1` because
+the facade definitions and the unit test count changed.
+
+| Verification actually run | Actual local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,288 tests passed**, including 41 new provider-capture-recon tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all **77 Chromium tests passed**, including the new conditional-check spec. Host ports 8765/8766 were occupied by foreign services, so the unchanged repository configuration ran in an isolated loopback namespace. |
+| `python3 scripts/seed_overlay_observations.py` | Exit 0; `overlay observations ok SIMULATED entries=5`. |
+| `python3 scripts/{observation_vectors,docs_surface,decision_bindings,manifest_vectors,workspace_vectors}.py --check` | All exit 0. |
+| `python3 scripts/acceptance.py` (twice, in the same loopback namespace) | Second pass exit 0; all nine stages passed, evidence `ok=true`. First pass failed only on the stale integrated-journeys command pin (fixed in `tests/test_closeout_digest.py`). |
+| `python3 scripts/closeout_digest.py --write` then `python3 scripts/finance_vectors.py --write` | Both artifacts regenerated by the decided path; `--check` exits 0 on both. |
+| Preservation and protected paths | Five vendor files and manifest byte-identical (`7481b0e`), `.aiops/` untouched, `capital/export.py`, `ObservationPort` and the fake/corpus unchanged; no Protocol/Commerce edits. |
+
+No server remains running; no commit, push, PR or external post was performed.
 
 ## readiness-runtime-claims — supervised conflict-fix round 1 (2026-10-30)
 
@@ -4638,6 +5230,166 @@ Final acceptance stages (the full unit discovery command above was rerun inside 
 - `tests/vectors/pack/volatile.json`
 
 Vendored files/manifest, legacy export construction, reviewed decision notes, .aiops/, Protocol and Commerce references are unchanged. No git commit, push, PR, issue or external comment was made.
+
+## risk-scenario-desk builder verification — 2026-11-02
+
+All results below concern local SIMULATED fixtures. This node adds a read-only
+comparison UI, HTTP/static coverage, Chromium coverage and handbook guidance.
+No financial assumptions, scenarios, backend routes or contracts were changed.
+No git commit/push, PR, issue, comment, provider call or external post was made.
+
+The plan was checked against the repository before implementation. Snapshot risk
+and covenant components are raw calculation bodies, so the UI uses separate
+validators rather than the standalone service-envelope validator. Required fields,
+non-null digests, read-only flags, captured state/day/terms and both reconciliation
+baseline digests gate result tables. Stable server row identifiers align the two
+columns, including the hypothetical injected advance. Selection keeps its baseline;
+only an explicit capture replaces it. Errors, application refreshes and role changes
+clear results and invalidate outstanding requests. Stale mismatches latch until an
+explicit valid recapture. All numeric values, including reconciliation deltas, come
+from server responses; null is unavailable. No polling or apply controls were added.
+
+Plan refinements/deviations:
+
+- Detailed comparisons use paired field tables grouped in expandable sections so
+  every supplied risk/covenant reason and server value remains inspectable.
+- A legitimate NOT_BOUND response has `terms_version: null`. Validation preserves
+  that reason without allowing numeric result tables. Incomplete diagnostic cuts
+  can also lack digests; their completeness reasons remain visible without a comparison.
+- The role selector uses aria-disabled with an event guard while busy to preserve
+  keyboard focus during role transitions. Existing command and UNKNOWN fencing
+  remains active. Comparison responses never move focus.
+- Catalogue errors can be retried by the explicit capture control. A successful
+  retry loads the catalogue and captures a new pair in the same explicit action.
+- The historical root DECISION_REQUIRED.md was preserved. Current HEAD and local
+  origin/main both resolve to c4114c751ea149865493bd3c734bc5d3c423ae2e; the historical
+  integration-baseline guard failure did not reproduce. No new decision is needed.
+
+Executed verification (stdout/stderr were captured under /tmp/risk-desk-*.log for
+longer commands; the results here are durable summaries):
+
+| Command | Actual result |
+| --- | --- |
+| `npm ci` | PASS; 3 packages installed, 0 vulnerabilities. |
+| `python3 -m unittest tests.test_risk_scenario_desk -v` | Initial run: 3 harness errors and 1 static-guard failure; empty bootstrap token header and string-literal matching corrected. An intermediate rerun exposed an indentation error, corrected. |
+| `python3 -m unittest tests.test_risk_scenario_desk tests.test_risk_whatif tests.test_portfolio_snapshot tests.test_handbook -v` | Initial combined run: 58 passed, 1 harness error (snapshot_inputs belongs to producer, corrected). Final run: PASS, 59/59 in 4.709s. |
+| `npm run test:browser -- --project workspace tests/browser/risk-scenario-desk.spec.cjs` | Invalid Playwright CLI argument ordering; no tests ran. Corrected below. |
+| `npm run test:browser -- tests/browser/risk-scenario-desk.spec.cjs --project=workspace` | First run 4/5: NOT_BOUND null terms version rejected, fixed. Expanded run 6/7: focus assertion lacked initial focus, corrected. Then PASS, 7/7. Added catalogue/application-refresh coverage afterward. |
+| `npm run test:browser -- tests/browser/risk-scenario-desk.spec.cjs tests/browser/terms-overlay.spec.cjs --project=workspace` | PASS, 10/10 in 16.6s (8 comparison tests plus both unchanged terms-overlay tests). |
+| `python3 scripts/docs_surface.py --check` | PASS; 36 routes, 273 artifacts, 9 stages. |
+| `python3 scripts/risk_scenario_vectors.py --check` | PASS; existing 37,747-byte scenario vector is byte-identical. No new vectors. |
+| `python3 -m unittest discover -s tests -v` | PASS; 1,308/1,308 in 389.993s. Includes the unchanged baseline guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | PASS; 7/7. |
+| `python3 -m compileall -q capital` | PASS, exit 0. |
+| `node --check capital/static/app.js` | PASS, exit 0. |
+| `npm run test:browser` | First full run: 82/83 passed; unchanged terms-overlay initial-label assertion timed out while full unit verification ran concurrently. Its focused rerun passed without timeout/test changes. Final full rerun: PASS, 84/84 in 2.7m, including all 8 comparison tests. |
+| `git diff --exit-code -- capital/vendor capital/export.py .aiops` | PASS; no changes. |
+| `git diff --exit-code HEAD -- capital/overlay.py capital/ports.py docs/decisions/CAPITAL_UPSTREAM_BINDING.md` | PASS; historical guard paths unchanged. |
+| Python stdlib SHA256 + `git show HEAD:<path>` byte verification | PASS; all five vendor file hashes match manifest pins, and all five files plus manifest are byte-identical to HEAD. |
+| `git diff --check` | PASS. |
+
+Initial read-only data-shape inspection used an incorrect import
+`scripts.seed_demo_workspace` (ModuleNotFoundError); corrected to the existing
+`scripts.seed_demo`. This did not modify state. The failed HTTP harness run was
+interrupted and its in-process servers exited; every subsequent HTTP fixture and
+Playwright web server is closed by its teardown. No long job was detached.
+
+Keyboard verification is automated in the comparison browser spec and documented
+in the handbook: scenario arrow-key selection, Enter/Space capture, focus retention,
+expandable details and keyboard-scrollable tables, 375px layout, stale/error result
+clearing, explicit recovery, observer refusal and auditor inspection. No separate
+human/manual walkthrough is claimed.
+
+Final cleanup: `ss -ltnp` showed no listeners on the test-owned loopback ports
+8765–8768, 8891–8892, 8901–8903 or 8911–8913; no capital.server or focused unittest
+process remained. Final `git diff --check` and documentation surface check passed.
+All five vendored reference hashes and their manifest remained unchanged. The
+worktree changes are uncommitted and ready for supervisor review.
+## shared-cap-utilization
+
+Local SIMULATED builder verification on 2026-11-01; no real funds, provider,
+Protocol/Commerce changes, deployment, external posts or git publication. The
+projection follows the adopted claim-slice shared-cap decision and preserves
+advance-only risk totals and existing enforcement. New test limits are explicitly
+synthetic temporary inputs; no decision-note terms changed.
+
+Implementation: `capital/shared_caps.py`, locked `CapitalService.shared_caps()`,
+exact `GET /api/risk/shared-caps`, projection authorization and strict facade
+alternatives. Tests exercise all five slice states, partial service/recourse,
+late-distribution saturation, defaults, beneficiary/portfolio exact-cap and
+one-won-over boundaries, U4 candidate increments, deterministic hashes, both
+reader/writer orders, unsupported adapters, unusable policies, damaged storage,
+required labels and repeated reads preserving workspace bytes, receipts,
+reservations and both journals. Operator surfaces and auth matrix are synchronized.
+
+Commands actually run (all results below are local simulation evidence):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_shared_caps -v` | First run: 11 tests, one failure and six errors in synthetic fixture setup. Corrected pending-settlement use, synthetic IDs, stamped-policy setup and same-cut risk comparison. Rerun: 11 passed. |
+| `python3 scripts/auth_matrix.py --write` | Exit 0; regenerated table and both generated documentation blocks. |
+| `python3 -m unittest tests.test_shared_caps tests.test_claim_slices tests.test_underwriting tests.test_risk tests.test_portfolio_snapshot tests.test_facade_contract tests.test_auth_matrix tests.test_handbook tests.test_docs_surface -v` | Both runs exit 0: 168 passed each. |
+| `python3 -m unittest tests.test_shared_caps tests.test_handbook -v` | Final extended-case verification: 24 passed. |
+| `python3 scripts/auth_matrix.py --check` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0: 37 routes, 273 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check` | Initially reported facade digest/route drift; passed after generator update. |
+| `python3 scripts/pack_vectors.py --check` | Initially reported nine affected existing pack files; passed after generator update. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated the facade contract projection. |
+| `python3 scripts/pack_vectors.py --write` | Exit 0; regenerated nine affected existing files. No new vector paths. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0 on the existing pair before fresh closeout regeneration. |
+| `npm ci` | Exit 0; installed three packages, zero reported vulnerabilities; lockfile unchanged. |
+| `npm run test:browser` | Initial run exit 1: unrelated crawler owns host-loopback port 8765. No other service was stopped. |
+| `unshare -Urn bash -c 'ip link set lo up && npm run test:browser'` | Exit 0: 76 passed with installed Chromium headless shell. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0: seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/build_release.py --out build/shared-cap-utilization/dist1` and the same command with `dist2` | Both exit 0; SHA256 `4f66b96d187402b5267ba889d707ecf335602676fdf1df148fe7c25ef26f5ba8`. |
+| `cmp build/shared-cap-utilization/dist1/capital-*.pyz build/shared-cap-utilization/dist2/capital-*.pyz` | Exit 0: byte-identical. |
+| `python3 scripts/smoke_release.py build/shared-cap-utilization/dist1/capital-*.pyz` | Exit 0: all 11 smoke checks passed. |
+| `git diff --check` | Exit 0. |
+
+Environment deviation: run the unchanged browser/acceptance commands in a private
+user/network namespace, bringing up only its loopback interface, because an
+unrelated pre-existing crawler occupies port 8765. This changes no repository
+configuration, test, CI stage or acceptance command recorded inside the ladder.
+Chromium is available; no browser skip is claimed. Nine pack vectors needed
+regeneration because the new auth route changes existing pack sections. No new
+consequential product decision was needed. The five vendor files and manifest
+remain byte-identical to HEAD; SHA256 checks against the manifest pass.
+
+Additional verification and correction evidence:
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Initial run: 1,314 tests, two failures from stale hand-pinned facade route counts (36/48). Updated the explicit catalogue and exact pins to 37/49. Fresh full rerun: exit 0, all 1,314 passed in 358.835s. |
+| `python3 -m unittest tests.test_finance_vectors tests.test_shared_caps tests.test_handbook -v` | Exit 0: 78 passed, including the corrected explicit facade catalogue. |
+| `unshare -Urn bash -c 'ip link set lo up && python3 scripts/acceptance.py'` (initial attempt) | Exit 1, `ok:false`: unit stage retained the two stale count assertions, plus a concurrent standalone suite changed `tests/__pycache__/test_observation_port.cpython-313.pyc` during the fold-fuzz byte guard. The other eight stages passed: storage 19, vendor 7, upstream claims 322 plus two documented divergences, browser 76, smoke 11, seed 1 and journeys 6. This failed evidence was archived and was NOT used for closeout regeneration. Subsequent acceptance runs execute sequentially with no overlapping test job. |
+
+The explicit finance facade catalogue test extension is an additional file beyond
+the design list (`tests/test_finance_vectors.py`); it preserves strict coverage
+rather than deriving away the independent route-count pins. The initial
+concurrent verification cache race was corrected by sequential execution, with
+no relaxation of the read-only byte guard.
+
+Closeout regeneration and final ladder evidence (2026-11-01, sequential runs only):
+
+| Command | Result |
+| --- | --- |
+| `unshare -Urn bash -c 'ip link set lo up && python3 scripts/acceptance.py'` | Exit 0, `ok:true`: unit 1,314; storage 19; vendor 7; upstream claims 322 plus two documented divergences; node-check; browser 76; packaged smoke 11; seeded demo 1; journeys 6 — all nine stages passed. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0: 4,582 bytes written from the genuine `ok:true` evidence; no field hand-edited. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0: 101,574 bytes; embedded copy refreshed. |
+| Second `python3 scripts/acceptance.py` (same namespace wrapper) | Exit 1: unit stage 1,313/1,314 — one failure, `test_closeout_digest` hand pin `python3 scripts/sim_journeys.py` vs the real ladder `python3 scripts/sim_journeys.py --check`. Pre-existing drift: `scripts/acceptance.py` has run `--check` since commit 863de6b; the stale artifact had never been honestly regenerated. Corrected the hand-maintained pin in `tests/test_closeout_digest.py` to the genuine command (matching the `test_acceptance.py` argv pin). No test weakened; the pin still asserts the exact recorded command. |
+| `python3 -m unittest tests.test_closeout_digest tests.test_acceptance tests.test_finance_vectors -v` | Exit 0: 123 passed. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0: 4,582 bytes, embedded copy matches. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0: 101,574 bytes match. |
+| Third `python3 scripts/acceptance.py` (same namespace wrapper) | Exit 0, `ok:true`: all nine stages passed again — unit 1,314; storage 19; vendor 7; upstream claims 322 plus two documented divergences; node-check; browser 76; packaged smoke 11; seeded demo 1; journeys 6. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0: committed artifact byte-matches the fresh `ok:true` evidence. |
+| `python3 scripts/pack_vectors.py --check` / `python3 scripts/docs_surface.py --check` / `python3 scripts/auth_matrix.py --check` | Exit 0 each: nine pack files match; 37 routes, 273 artifacts, nine stages; auth matrix clean. |
+
+The `tests/test_closeout_digest.py` pin update is the only additional file beyond
+the prior list; it aligns a hand-maintained expectation with the unchanged real
+acceptance command. The committed closeout digest is an honest projection of two
+independent clean ladder passes.
 ## observation-triage-cli
 
 Implemented offline SIMULATED observation diagnostics with a bounded stdlib API/CLI,
@@ -4863,6 +5615,90 @@ inspection found no `python3 -m capital.server` or `playwright test` process;
 the test-managed servers exited. Only the six planned source/test/documentation
 files are changed; no work is staged or committed.
 
+## risk-scenario-desk — conflict-fix round 1 (2026-11-07)
+
+Resolved the supervisor-started merge of `origin/main` (`15c2900a`) into
+`agent/capital-risk-scenario-desk` (`125a782`). All six conflicted files retain
+both parent versions in order: README, requirements, integration, handbook,
+validation and handbook tests. The risk comparison handbook section closes
+before main's re-pin guidance; the residual section retains its own boundary.
+All handbook test bodies from each parent survive unchanged (14 merged tests).
+The risk comparison UI and main's residual, migration, re-pin and decision work
+remain present. No implementation or test assertion changes were necessary.
+
+These are local SIMULATED checks, not real payments or authenticated adoption.
+Completed full-suite logs are under ignored `build/risk-scenario-merge-round1/`.
+
+| Command / evidence | Actual result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | PASS: 1,380 tests in 539.409s; `unit.log`. Includes both handbook tests, main-baseline guard, comparison HTTP/static tests and main's new report/checker tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | PASS: 7 tests. |
+| `python3 -m compileall -q capital` | PASS, exit 0. |
+| `node --check capital/static/app.js` | PASS, exit 0. |
+| `unshare -Urn -- sh -c 'ip link set lo up && npm run test:browser'` | PASS: 84 tests in 2.7m; `browser.log`. Installed Chromium 145.0.7632.6; unchanged command/config/assertions in an isolated loopback namespace because shared default ports were occupied. Includes all eight comparison cases and automated keyboard/focus coverage. |
+| `python3 scripts/docs_surface.py --check` | PASS: 36 routes, 273 artifacts, 9 stages. |
+| `python3 scripts/risk_scenario_vectors.py --check` | PASS: 37,747 bytes match. |
+| `python3 scripts/manifest_vectors.py --check` | PASS: 19 files match. |
+| `python3 scripts/pack_vectors.py --check` | PASS: 9 files match. |
+| `python3 scripts/finance_vectors.py --check` | PASS: 101,104 bytes match. |
+| `python3 scripts/upstream_repin_check.py --check --root .` | HOLD, no findings; approval/adoption/authentication remain NOT_BOUND. |
+| `python3 scripts/decision_bindings.py --check` | PASS. |
+| Stdlib SHA256 / `git show` preservation assertions | PASS: all five 7481b0e vendor pins; five source files plus manifest, legacy export and historical root decision byte-identical to both parents; `.aiops/` unchanged. |
+| Line-order and AST preservation assertions | PASS: all lines of both parents' six conflicted files retained in order; every parent handbook test body unchanged. |
+| `git diff --check`, `git diff --cached --check`, marker scan and unresolved-index checks | PASS; no conflict markers or unresolved entries. |
+
+The merge resolution is staged and uncommitted for the supervisor. No abort,
+commit, push, rebase, reset, external post, upstream edit, provider call, funds
+movement or deployment was performed. No new product decision was needed;
+the historical root `DECISION_REQUIRED.md` remains unchanged.
+
+## shared-cap-utilization — conflict-fix round 1 (2026-11-07)
+
+Resolved the supervisor-started merge of main `5fe7340` into shared-cap branch
+`5982814`. Both sides survive: the shared-cap route, locked capture, strict facade,
+authorization, conservative slice-face measure and advance-only risk behavior;
+main's residual register, portfolio migrations, upstream re-pin checker, decision
+notes and binding coverage. No source-code changes or test relaxations were
+needed for this merge. Handbook sections have independent closing markers and
+both operator tests remain present.
+
+Resolved paths: `README.md`, `docs/INTEGRATION.md`,
+`docs/OPERATOR_HANDBOOK_KO.md`, `docs/VALIDATION.md`, `tests/test_handbook.py`,
+`tests/vectors/closeout_digest.json`, `tests/vectors/finance_vectors.json`, and
+all nine conflicted `tests/vectors/pack/` files: `clean.json`,
+`content-digest.json`, `section-auth_matrix.json`, `section-decisions.json`,
+`section-export_manifest.json`, `section-reconciliation.json`,
+`section-workspace_audit.json`, `truncated.json`, `volatile.json`.
+Pack vectors were regenerated from the combined auth/decision inputs. The genuine
+prior branch closeout served only as bootstrap input; its replacement and the
+finance vector copy were generated from the successful combined-tree acceptance
+evidence, with no invented counts or hand-edited hashes.
+
+All results below are local SIMULATED verification; no real funds executed.
+The acceptance/browser command ran in an isolated user/network namespace with
+only loopback enabled, preserving the repository's commands, assertions and
+configuration while avoiding shared-host port conflicts. No external posts,
+provider calls, credentials, deployment or upstream edits occurred.
+
+| Command / evidence | Measured result |
+| --- | --- |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three cached packages installed; lockfile unchanged. |
+| `unshare -Urn bash -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Exit 0, `ok:true`, all nine stages passed: full unittest discovery 1,386; storage 19; vendor 7; upstream claims 322 passed plus two documented divergences; node syntax; Chromium browser 76; packaged smoke 11; seeded demo 1; journeys 6. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/closeout_digest.py --write`; `python3 scripts/finance_vectors.py --write` | Exit 0; genuine combined-tree evidence projected into 4,582-byte closeout and 101,574-byte finance vectors. |
+| `python3 scripts/closeout_digest.py --check-evidence`; `python3 scripts/finance_vectors.py --check` | Both exit 0; fresh evidence and embedded copy agree. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/manifest_vectors.py --check` | Both exit 0; nine pack and 19 manifest files match regenerated expectations. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; 37 routes, 273 artifacts, nine stages; authorization table and generated docs agree. |
+| `python3 scripts/upstream_repin_check.py --check --root .` | Exit 0, HOLD, zero findings; approval/adoption/authentication remain NOT_BOUND. |
+| `python3 -m unittest tests.test_closeout_digest tests.test_finance_vectors tests.test_handbook tests.test_shared_caps tests.test_evidence_pack -v` | Post-regeneration exit 0; 158 passed. Includes all 11 shared-cap tests. |
+| SHA256 / Git byte assertions | All five vendor reference files match manifest locks and both merge parents; manifest, legacy export, historical root DECISION_REQUIRED.md and .aiops unchanged. |
+
+Full-ladder evidence and logs are retained under ignored
+`build/shared-cap-conflict-fix/` (`acceptance-evidence.json`, `acceptance.log`,
+`refreshed-artifacts.log`). The final documentation entry is outside the packaged
+artifact inventory. No new vector paths, CI changes or consequential product
+decision were needed. The resolved merge is staged and left uncommitted for the
+supervisor; no merge abort, commit, push, rebase or reset was performed.
 ## Event stress report — conflict-fix round 1
 
 2026-11-08, merging `origin/main` (`15c2900a2ba9f468e131304e5d3ece199279fe20`)
@@ -5035,3 +5871,433 @@ run equality. No repository check failed and no repository correction was needed
 The resolved merge is staged and left uncommitted for the supervisor.
 
 STATUS: READY
+## provider-capture-recon — supervised conflict-fix round 1 (2026-11-10)
+
+Resolved the supervisor-started merge of incoming main
+`5405d9ed870e563e7e2aca8f4b65f7b037db0474` into reviewed provider-capture head
+`219c2121adf7f2f085e2cfb8596c84bd75e7c1eb`. The four conflicts were
+`docs/INTEGRATION.md`, `docs/VALIDATION.md`,
+`tests/vectors/closeout_digest.json` and `tests/vectors/finance_vectors.json`.
+Integration retains the organizer-only capture command and main's bundled-policy
+runtime description. Both parent validation histories are retained. The two
+closeout fixtures are regenerated together through CAPITAL-CLOSEOUT-REGEN-V1
+from successful combined-tree acceptance evidence; historical counts and package
+hashes are not combined by hand. The finance generator also retains the combined
+facade contract, including main's provenance fields and the capture definitions.
+
+All ten files changed only by the reviewed branch match its HEAD bytes; all 89
+paths changed only by incoming main preserve that parent's changes, including
+its deletions. The combined service, server, facade, decision bindings and byte
+guards pass the complete suite. No additional implementation or test repair was
+needed. Five vendor SHA256 locks, their manifest, legacy `capital/export.py`,
+`demo.json` and `overlay_empty.json` match both parents. Historical root
+`DECISION_REQUIRED.md` matches incoming main. `.aiops/` and CI are unchanged.
+
+Results below are local SIMULATED / READ_ONLY_FIXTURE / CLAIM_CONFORMANCE
+evidence only. Recorded captures remain UNVERIFIED_ASSERTED; no provider call,
+financial execution, authenticated observation, deployment or upstream adoption
+is claimed. Browser runs use the unchanged tracked configuration inside an
+isolated loopback network. Logs and evidence are under ignored
+`build/provider-capture-recon-merge/`.
+
+| Verification actually run | Result |
+| --- | --- |
+| First `python3 scripts/acceptance.py --evidence build/provider-capture-recon-merge/acceptance-first.json` in isolated loopback | Exit 0; all nine stages passed; evidence `ok:true`, `label:SIMULATED`, `funds_executed:false`. |
+| Full Python discovery in the first acceptance run | 1,457 tests passed in 598.264s, including 41 provider-capture tests and incoming main coverage. |
+| Vendor discovery; storage conformance | Seven vendor tests and 19 storage/crash tests passed. |
+| Upstream claim checks | 322 passes plus two documented divergences / 324 evaluated rows, zero failures. Optional Protocol citation checks remain SKIPPED without a supplied checkout. |
+| `npm run test:browser` in the first acceptance run | 77 Chromium tests passed in 2.0m, including the conditional capture check. |
+| Packaged smoke; seeded demo; integrated journeys | 11 smoke checks, one demo and six journeys passed. |
+| `python3 scripts/closeout_digest.py --write --evidence build/provider-capture-recon-merge/acceptance-first.json`; `python3 scripts/finance_vectors.py --write` | Both exit 0; 4,582-byte closeout and 101,256-byte finance pack regenerated from measured evidence. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | Both exit 0; standalone and embedded closeout agree, finance bytes reproduce. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 36 routes / 276 artifacts / nine stages; decision bindings valid. |
+| `python3 scripts/seed_overlay_observations.py` | Exit 0; five SIMULATED entries match the reviewed capture golden. |
+| Observation, triage, event-stress, pack, manifest and workspace vector checkers | All exit 0; existing corpora reproduce. |
+| Protected-byte, parent-preservation, marker and index assertions | All pass; no unmerged entries or tracked conflict markers. |
+
+An initial optional `decision_ledger.py --check` invocation returned argparse
+exit 2 because this repository's CLI has no such flag. Its supported bare
+`python3 scripts/decision_ledger.py` invocation passed; no CLI or test was changed.
+
+| Final verification actually run | Result |
+| --- | --- |
+| Second `python3 scripts/acceptance.py --evidence build/provider-capture-recon-merge/acceptance-second.json` in isolated loopback | Exit 0; all nine stages passed again: unit 1,457, storage 19, vendor seven, claims 322 passes plus two documented divergences / 324, browser 77, packaged smoke 11, demo one and journeys six; node syntax passed. |
+| `python3 scripts/closeout_digest.py --check-evidence` with each acceptance evidence file separately | Both exit 0; both fresh runs byte-match the regenerated artifact on all covered counts, digests and package hash. |
+| Final closeout, finance and docs-surface checks | All exit 0; standalone and embedded closeout agree; finance pack reproduces; docs cover 36 routes / 276 artifacts / nine stages. |
+| Final Git and preservation checks | No unmerged entries or tracked conflict markers; staged and unstaged whitespace checks pass; protected bytes and both parents' feature changes survive. |
+
+Combined-tree package SHA256: `61ccbf5c82fdeb1ea75223e634430fcfa1591a9f489461d340787b42da927f25`.
+
+- `tests/vectors/closeout_digest.json` SHA256: `cfbe662247b7c48a95e36c22baab00764cde77ba468647898388b6c6571dd7a1`.
+
+- `tests/vectors/finance_vectors.json` SHA256: `0afeb78d0c28d7e0d8c1ce64253b0f58cb1bbb980475f3ad099d0a0fb2167010`.
+
+All four resolutions are staged, and the merge remains uncommitted for the
+supervisor. No commit, push, merge abort, rebase, reset, external post,
+Protocol/Commerce edit, real provider call, credential, funds movement or
+deployment was performed. No CI or test assertion was weakened.
+
+## provider-capture-recon — PR fix round 1 verification (2026-11-10)
+
+Verified merge HEAD `23282f6740fc874e68082621cdff5a6de94a7f75` against
+`origin/main` `5405d9ed870e563e7e2aca8f4b65f7b037db0474`. The supplied CI log
+contains one error: the evidence-pack volatile-field test's fresh-workspace
+`seed_demo.py` subprocess exceeded its existing 120-second timeout. The other
+diagnostic stderr lines in that log are expected negative-test output; the log
+reports no assertion failures. The timeout did not reproduce in the focused
+evidence-pack suite or in 25 independent fresh-workspace seed subprocesses run
+with the unchanged timeout (0.162–0.282 seconds each). This is evidence against
+a reproducible seed failure on this tree, not proof of the original timeout's
+cause. The full 1,457-test discovery also passed, including the exact test that
+timed out in CI and the live baseline byte guard. No application, test, timeout,
+CI or policy change was justified by those results.
+
+The interrupted attempt had rewritten the historical root `DECISION_REQUIRED.md`.
+Restored its exact `origin/main` bytes, removing both the interrupted rewrite
+and the stale branch-specific baseline request. Baseline integration is already
+present in the merge HEAD and requires no new decision. No other existing work
+was discarded. The original interrupted root diff is retained outside the repo
+at `/tmp/provider-capture-recon-interrupted-decision.diff`.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` (PR fix round 1) | Exit 0; all 1,457 tests passed in 545.430s, including the reported evidence-pack timeout case and both this node's and merged-main coverage. Full log: `build/provider-capture-recon-fix1/unit.log`. |
+| `python3 -m unittest discover -s tests -p test_provider_capture_recon.py -v` | Exit 0; all 41 tests passed, covering admission, organizer authority, dedup, clock CAS, volatile-key rejection, fold, reconciliation/auditor parity and export isolation. |
+| `python3 -m unittest discover -s tests -p test_evidence_pack.py -v` | Exit 0; all 18 tests passed in 6.176s, including the CI timeout case. |
+| 25 fresh-workspace `scripts/seed_demo.py --workspace` subprocesses | All exit 0, preserve the demo pin and absent observations key; maximum elapsed 0.282s with timeout=120 unchanged. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `npm run test:browser` inside isolated loopback via `unshare -Urn` | Exit 0; all 77 Chromium tests passed in 1.9m using the unchanged tracked configuration, including the recorded-capture conditional check. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 36 routes / 276 artifacts / nine stages; bindings valid. |
+| `python3 scripts/seed_overlay_observations.py` | Exit 0; five SIMULATED entries match the existing observation golden. |
+| Observation, triage, event-stress, pack, manifest and workspace vector checkers with `--check` | All exit 0; existing corpora reproduce. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | Both exit 0; 4,582-byte closeout and 101,256-byte finance pack agree and reproduce. No measured package or test-count change requires regeneration. |
+| `python3 scripts/build_release.py --out build/provider-capture-recon-fix1/dist` | Exit 0; package SHA256 remains `61ccbf5c82fdeb1ea75223e634430fcfa1591a9f489461d340787b42da927f25`. |
+| Protected-byte checks | All five vendor SHA256 locks pass; manifest, legacy export, `demo.json`, `overlay_empty.json`, `.aiops/` and CI equal `origin/main`; the observation golden equals HEAD; the historical root equals `origin/main`. |
+
+Logs and repeat timings are retained under ignored
+`build/provider-capture-recon-fix1/`. These are local SIMULATED /
+READ_ONLY_FIXTURE results only. Recorded captures remain UNVERIFIED_ASSERTED;
+no real provider confirmation, money movement, credential use, deployment or
+upstream change is claimed. No commit, push or external post was performed.
+## coa-payment-writeoff-postings — conflict-fix round 3 (2026-11-09)
+
+Resolved the merge of node HEAD `daed4146982b7c1c5016f373509aab508355c86f`
+with main `5405d9ed870e563e7e2aca8f4b65f7b037db0474`. Both parent validation
+histories survive verbatim and in order. `tests/test_http_hostile.py` retains
+main's deterministic hostile token and this node's single-pass template helper
+and regression cases: unknown placeholders fail before opaque token insertion,
+including tokens that contain literal `__TOKEN__` and `__PORT__` text.
+`tests/vectors/finance_vectors.json` was regenerated from the combined code;
+only its facade-read-model group differs from main, retaining the new routes
+and the candidate payment/recovery/write-off source enum. Main's closeout group
+is preserved exactly and agrees with the standalone closeout artifact.
+
+No runtime or CI changes were needed for the combination. The candidate payment,
+recovery and write-off implementation and all main additions remain present.
+All execution evidence is local SIMULATED verification; accounting policy remains
+SYNTHETIC_UNADOPTED and tax remains NOT_BOUND. No external messages, services,
+funds, deployment, Protocol/Commerce changes or policy decisions were involved.
+The historical root `DECISION_REQUIRED.md` and `.aiops/` were not edited.
+Logs are retained locally in `/tmp/coa-payment-writeoff-round3/`.
+
+| Verification | Actual local result |
+| --- | --- |
+| Initial `python3 -m unittest discover -s tests -v` | 1,438 tests in 522.515 s; one error: the T04-sim `capital.verify --workspace` subprocess exceeded its existing 20 s timeout. The other 1,437 tests passed, including all 54 candidate-chart tests. |
+| `python3 -m unittest tests.test_sim_journeys.CommonTests.test_second_run_has_the_same_digests -v` | Exit 0; affected test passed unchanged in 5.495 s. No timeout or assertion was relaxed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 Chromium tests passed in 1.8 min using the unchanged configuration and an isolated loopback network namespace. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Both exit 0; docs surface has 36 routes, 276 artifacts and nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/closeout_digest.py --check` | Both exit 0; 101,112 finance-vector bytes match; 4,582 closeout bytes and embedded copy match. |
+| `python3 scripts/seed_demo.py`; `python3 scripts/sim_journeys.py --check` | Both exit 0; existing demo state/content digests match with debit = credit = 385,000 synthetic units; all six SIMULATED journeys pass. |
+| Vendor and compatibility integrity | Five SHA256 locks match; vendor references/manifest, legacy export/projection and demo golden are byte-identical to both parents. Default reconciliation and export immutability are covered by the candidate tests. |
+| Final `python3 -m unittest discover -s tests -v` | Exit 0; all 1,438 tests passed in 497.459 s. The complete rerun includes the unchanged journey test and all 54 candidate-chart tests. |
+| Merge hygiene | Both parent validation histories retained in order; no conflict markers or unmerged entries; `git diff --check HEAD` and `git diff --check MERGE_HEAD` pass. Resolutions are staged; the supervisor owns the merge commit. No abort, commit, push, rebase or reset was performed. |
+
+## Read-model credit queries — conflict-fix round 1 (2026-11-09)
+
+Resolved all 16 conflicts in the supervisor's merge into
+`agent/capital-read-model-credit-queries`, preserving the reviewed three point
+queries and incoming main's case dossier, readiness claims, policy/runtime work,
+tests and documentation histories. The combined contract has 51 total routes,
+including 39 API GET routes. Both parent route/error inventories survive; main's
+response-definition changes and the feature's added definitions are retained.
+The nine pack fixtures and the finance facade group were regenerated from the
+combined code rather than choosing a parent's generated bytes.
+
+The integration also required registering the existing, task-authorized
+`244595db1524cbb1a01148baa07d6d28cd1b8dc6` read-model draft citation separately
+from vendor `7481b0e`. The additive adopted registration is
+`docs/decisions/CAPITAL_READ_MODEL_QUERY_PIN.md`; existing reviewed decision
+notes are byte-identical to incoming main. `scripts/upstream_repin_check.py`
+still enforces one active pin per surface and rejects undeclared movement,
+weakened policy, stale artifact hashes and incomplete evidence. Its inventory
+and evidence closure now include the separate read-model citation and its
+routes/auth/finance/query tests. All 35 re-pin tests execute in the passing full
+suite. The default acceptance command runs no read-model claim rows without
+`--protocol-dir`: its SKIPPED record contributes no passed rows. A separate
+read-only Protocol-checkout invocation verifies and executes all 113 rows.
+
+Run parents: HEAD `0624939b347736271423f955fc5934aa3fd2e10f`, incoming
+MERGE_HEAD `5405d9ed870e563e7e2aca8f4b65f7b037db0474`. These identify the
+uncommitted merge's parents, not exact-head CI. Logs, preservation assertions
+and measured evidence are under ignored `build/read-model-merge-verification/`.
+All results are local SIMULATED fixtures; `funds_executed=false`.
+
+| Verification actually run | Result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py --evidence build/read-model-merge-verification/acceptance-complete.json'` | Exit 0; all nine stages passed, evidence `ok:true`, SIMULATED, funds_executed=false. Tracked browser configuration and tests unchanged. |
+| `python3 -m unittest discover -s tests -v` inside that ladder | 1,458 passed in 652.726s; no failures or skips. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven passed both standalone and in the ladder. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `npm run test:browser` inside the isolated loopback ladder | 76 passed using installed pinned Chromium headless shell; no config or assertion changes. |
+| Storage, claims, packaged smoke, seeded demo and journeys in the ladder | Storage 19; upstream claims 283 passed / 285 total with two documented divergences and read-model checker separately SKIPPED; smoke 11; seed one; journeys six. |
+| `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | 113/113 claims passed; 113/113 citations verified. Checkout read only. Without the argument the command prints SKIPPED and runs no rows. |
+| Focused read-model, claim, finance and contract/auth/docs checks | 51 read-model, 123 claim, 54 finance and 82 contract/auth/docs tests passed after the count/fixture integration fixes. |
+| `python3 scripts/upstream_repin_check.py --check --root .`; `python3 scripts/decision_bindings.py --check`; `python3 scripts/decision_ledger.py` | All exit 0; re-pin report HOLD with no findings and three independently classified surfaces. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 37 dispatch routes, 276 artifacts, nine stages. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/manifest_vectors.py --check` | Exit 0; nine pack and 19 manifest files match. Event-stress, observation-triage and dossier vector checks also pass. |
+| `python3 scripts/closeout_digest.py --write --evidence build/read-model-merge-verification/acceptance-complete.json`; `python3 scripts/finance_vectors.py --write` | Regenerated the 4,572-byte closeout and its 102,318-byte finance container from the measured clean run. No historical counts are added together. |
+| Closeout `--check`, `--check-evidence` against the clean run; finance `--check` | All exit 0; standalone and embedded closeout bytes agree with the measured evidence. |
+| Final focused discovery after regeneration | All 61 closeout tests and 54 finance tests passed. The closeout test's expected command now records the default read-model SKIPPED invocation without --execute. No runtime implementation changed after the clean ladder. |
+| Preservation audit and Git hygiene | Five vendor SHA256 locks/manifest, legacy export, historical root decision, .aiops, CI and all existing main decision notes unchanged; both validation histories retained; six unrelated finance groups unchanged. No unmerged entries, tracked conflict markers or whitespace errors. |
+
+The first focused read-model run exposed an older surface test omitting the
+13 incoming readiness rows and their two documented divergences. Those counts
+and the readiness test's explicit protocol fixture were combined. The first
+completed full ladder then had one unittest setup error: main's re-pin inventory
+still classified read-model claims under the old vendor pin. All other stages,
+including 76 browser tests, passed on that attempt; its evidence remains
+`ok:false` and was never used for regeneration. Extending the atomic artifact
+closure exposed two stale policy-note hashes in synthetic re-pin test evidence;
+the fixtures now explicitly regenerate those hashes and results. Those two
+focused cases and the final full ladder pass. Preliminary ladder attempts were
+stopped while integrating focused findings; no result is inferred from them.
+A module-form focused COA invocation hit its existing test_overlay import-path
+assumption; the documented discovery invocation passed all 36 tests without
+changing that test. No CI, guard, test or assertion was weakened.
+
+The measured package SHA256 is
+`4b108a62d9caf1336fa79cc562f53147e7bd33d5598316c32a5beb41e9890644`.
+The merge remains staged and uncommitted for the supervisor. No commit, push,
+abort, rebase, reset, external post, real provider call, financial execution,
+real credential use, deployment, upstream modification or protected-path edit occurred.
+
+
+## provider-capture-recon — supervised conflict-fix round 2 (2026-11-10)
+
+Resolved the supervisor-started merge of incoming main `a791651dbc577d730979832364648a46f3356bfa` into
+reviewed branch `9cb2d86db4f22595f74fd7040d70895355063d29`. Main deleted the historical root
+`DECISION_REQUIRED.md`; that deletion is preserved without rewriting its
+contents. The two JSON conflicts, `tests/vectors/closeout_digest.json` and
+`tests/vectors/finance_vectors.json`, contain generated evidence rather than
+independent product policy. Their final values are regenerated from the
+combined facade and measured acceptance results under CAPITAL-CLOSEOUT-REGEN-V1.
+Both parent validation histories, organizer-only provider-capture recording,
+conditional reconciliation and main's newer read-model routes are preserved.
+
+Before the validation-log addition, a merge-base comparison confirmed that all
+11 branch-only paths and all 32 main-only paths match their respective parent
+bytes (or preserve that parent's deletion). All five locked vendor files and
+`capital/vendor/manifest.json`, legacy `capital/export.py`, `.aiops/`, and
+`tests/golden/demo.json`, `overlay_empty.json` and `overlay_observations.json`
+remain byte-identical to the reviewed branch. No CI or test assertion was
+weakened. The merge is left uncommitted for the supervisor.
+
+All results here are local SIMULATED / READ_ONLY_FIXTURE evidence. Captures
+remain UNVERIFIED_ASSERTED. No external provider, credentials, money movement,
+production deployment, Protocol/Commerce edit or external post was involved.
+
+The initial host-network acceptance run passed 1,499 Python tests, storage
+conformance (19), pinned vendor tests (seven), upstream claims (283 passes plus
+two documented divergences / 285), JavaScript syntax, packaged smoke (11),
+seeded demo (one) and integrated journeys (six). Its browser stage failed at
+server startup with `OSError: [Errno 98] Address already in use` because a
+foreign service occupied host loopback port 8765. That `ok:false` evidence is
+retained as `build/provider-capture-recon-round2/acceptance-host-port-conflict.json`
+and is excluded from closeout regeneration. Final acceptance runs use
+`unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py ...'`
+with the unchanged tracked browser configuration and assertions.
+
+| Verification actually run | Result |
+| --- | --- |
+| First isolated `python3 scripts/acceptance.py --evidence build/provider-capture-recon-round2/acceptance-first.json` | Exit 0; nine stages passed; `ok:true`, `label:SIMULATED`, `funds_executed:false`. |
+| Full Python discovery in that run | All 1,499 tests passed in 476.728s, including both parents' coverage. |
+| Storage conformance; pinned vendor | 19 and seven tests passed, respectively. |
+| Upstream claims | 283 passes plus two documented divergences / 285 evaluated rows, zero failures. Optional Protocol citation checks remain SKIPPED without a supplied checkout; main's read-model check runs without `--execute`. |
+| `npm run test:browser` in isolated loopback | All 77 Chromium tests passed, including conditional recorded-capture reconciliation. |
+| Packaged smoke; seeded demo; integrated journeys | 11, one and six checks passed, respectively. |
+| `python3 scripts/closeout_digest.py --write --evidence build/provider-capture-recon-round2/acceptance-first.json`; `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated 4,572-byte standalone closeout and 102,462-byte finance pack. |
+| Closeout `--check` and `--check-evidence` with first evidence; finance `--check` | Exit 0; standalone, embedded and measured evidence match; combined facade vectors reproduce. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 37 routes / 276 artifacts / nine stages. |
+| Observation seed; auth matrix; decision bindings; pack, manifest, workspace and not-bound checks | All exit 0; seeded observations and existing corpora reproduce. |
+
+The measured combined-tree package SHA256 is
+`6a16d7e10e80f28613ab04cb4512a3510560e2bdc076d8694894e3dd8f1be8de`.
+Round-two logs and per-run evidence are local ignored files under
+`build/provider-capture-recon-round2/`.
+
+| Final verification actually run | Result |
+| --- | --- |
+| Second isolated `python3 scripts/acceptance.py --evidence build/provider-capture-recon-round2/acceptance-second.json` | Exit 0; all nine stages passed again: unit 1,499, storage 19, vendor seven, claims 283 passes plus two documented divergences / 285, browser 77, packaged smoke 11, demo one and journeys six; JavaScript syntax passed. Evidence is `ok:true`, SIMULATED, `funds_executed:false`. |
+| `python3 scripts/closeout_digest.py --check-evidence` with each successful evidence file | Both exit 0; both runs byte-match all covered counts, commands, digests and package hash. |
+| Final closeout and finance vector `--check` | Exit 0; standalone and embedded closeout agree and finance bytes reproduce. |
+
+Final artifact SHA256 values:
+
+- `tests/vectors/closeout_digest.json`: `2af7ab218432835146e9422bd30376e10d3722ebd5a36efe6883bb2c7f9ee50a`.
+- `tests/vectors/finance_vectors.json`: `4030300c645b6ed2e3c29db199906986a0d8a091ce1530649a0d53fe857d1f86`.
+
+Final Git checks confirm no unmerged entries or tracked conflict markers, clean
+staged and unstaged whitespace checks, unchanged protected bytes, and preservation
+of both parents' exclusive paths. The three conflict resolutions and this
+validation record are staged. The supervisor owns the uncommitted merge; no
+commit, push, abort, rebase or reset was performed.
+
+
+### 2026-11-12 — loss-allowance-postings (SIMULATED, uncommitted builder)
+
+Implemented the adopted CAPITAL-LOSS-ALLOWANCE-V2 / ALLOWANCE_CANDIDATE_V2
+candidate: ordered 1190/5100 deltas, complete population/cut/policy evidence,
+reserve-pool memo and allowance_vs_risk_reserve. Seed allowance and risk both
+recompute to 30,750 KRW. Two T1 advances of 66 KRW independently give allowance
+0, portfolio floor 1, risk 0 and delta +1 (MISMATCH). V2 releases once before
+existing gross write-off; post-writeoff recovery leaves allowance zero.
+
+Compatibility interpretation follows the design and adopted V2 decision:
+existing 4300/5200 postings stay POSTED. The node adds no new recovery/write-off
+source; ALLOWANCE can post only 1190/5100. Existing risk semantics remain pinned:
+acceleration/refund evidence can be incomplete (NOT_BOUND), while overlay
+principal reductions/write-offs can produce a valid MISMATCH. No new vector
+files, pack changes, upstream edits, policy decisions, external calls, commits
+or GitHub actions were needed. All amounts are synthetic; provisional policy
+adoption is not operational accounting or professional legal/tax approval.
+
+Commands actually run (from this node worktree; redirected logs are under /tmp):
+
+| Command | Observed result |
+| --- | --- |
+| `PYTHONPATH=tests python3 -m unittest test_coa_candidate test_coa_payment_writeoff -q` | Initial run: 43 tests, 30 errors from a missing assets import. Next: 54 tests, 7 failures/4 schema errors from old status/dimension expectations and missing check schema alternative. One edit introduced a SyntaxError, fixed immediately. Final rerun: 54 passed. Byte guards were retained. |
+| `PYTHONPATH=tests python3 -m unittest test_allowance -q` | Initial 20 tests: 4 failures/2 errors exposed invalid test fixture IDs/event names, write-off prerequisite, evidence population comparison and incomplete risk coverage. Corrected fixtures/assertions; all 20 passed. |
+| `PYTHONPATH=tests python3 -m unittest test_allowance test_coa_candidate test_coa_payment_writeoff test_workspace_audit test_risk -q` | First 116 passed; after additional negative/schema cases, all 119 passed (23.393s). |
+| `python3 scripts/finance_vectors.py --write` | Regenerated existing finance_vectors.json (102,920 bytes) for the additive facade response schema. |
+| `python3 scripts/decision_bindings.py --check` | Passed; seven allowance entries now have actual consuming code/test bindings. |
+| `python3 scripts/docs_surface.py --check` | Passed: 37 routes, 276 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check` | Passed, 102,920 bytes reproduce. |
+| `python3 scripts/pack_vectors.py --check` | Passed, nine existing files unchanged. |
+| `python3 scripts/workspace_vectors.py --check` | Passed, six files. |
+| `python3 scripts/manifest_vectors.py --check` | Passed, 19 files. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci` | Exit 0, installed three locked packages; zero audit vulnerabilities. Chromium was already available locally. |
+| `python3 scripts/seed_demo.py --workspace /tmp/loss-allowance-review.20cUTV` | Passed; unchanged state digest a8609033… and V1 content digest 2f71dab1…; debit=credit=385,000. Directory was created with mktemp. |
+| `python3 -m capital.verify --workspace /tmp/loss-allowance-review.20cUTV` | Exit 0, six default checks, no lock or writes. |
+| `python3 -m capital.verify --workspace /tmp/loss-allowance-review.20cUTV --mode coa-candidate` | Exit 0, twelve checks; allowance=target=risk=30,750, MATCH, delta=0. |
+| `python3 scripts/build_release.py --out /tmp/loss-allowance-dist` and `--out /tmp/loss-allowance-dist2`; `cmp /tmp/loss-allowance-dist/capital-*.pyz /tmp/loss-allowance-dist2/capital-*.pyz`; `python3 scripts/smoke_release.py /tmp/loss-allowance-dist/capital-*.pyz` | Both builds and comparison passed; all eleven packaged smoke probes passed. Final acceptance also rebuilds the final source. |
+| Inline Python byte comparison with git HEAD for vendor/export/overlay/ports/projection/demo and root decision state | Passed for all six vendor files including manifest and all protected files. First attempted guard assumed the historical root decision file existed; it is absent in this worktree and HEAD. Corrected guard verifies unchanged presence/absence. demo.json SHA256 c575e407c98913b53da47871e89ca31acc53382fdd9be7c45a9afb1cb522f3cc. |
+| `git diff --check` | Passed. |
+
+Full suite, browser and acceptance results are appended below after completion.
+
+
+Additional final-source artifact checks:
+
+| Command | Result |
+| --- | --- |
+| `python3 scripts/build_release.py --out /tmp/loss-allowance-final-dist` and `--out /tmp/loss-allowance-final-dist2`; `cmp /tmp/loss-allowance-final-dist/capital-*.pyz /tmp/loss-allowance-final-dist2/capital-*.pyz` | Exit 0; identical final-source artifacts SHA256 135138d90de2a8d0e92f0cfb487992ec46f9a11d26abe50afea4cb3649ab5b83. |
+| From `/tmp`: `PYTHONPATH=/tmp/loss-allowance-final-dist/capital-0.2.0.pyz python3 -m capital.verify --workspace /tmp/loss-allowance-review.20cUTV --mode coa-candidate` | Exit 0, packaged policy/resources work: MATCH, target 30,750. |
+
+
+| Completed browser command | Result |
+| --- | --- |
+| `npm run test:browser` | Exit 0; all 77 Playwright Chromium cases passed (7.3m). Playwright-managed loopback servers stopped on completion. |
+
+
+The first `python3 scripts/acceptance.py --evidence build/loss-allowance-acceptance.json`
+run overlapped the standalone suite/browser run. Its unit stage hit the existing
+900-second timeout (exit 124; no assertion failure reported). The already-failed
+orchestrator was then stopped (exit 143) together with its active child process
+group to avoid redundant work. No passing evidence is claimed for that run.
+A subsequent full ladder uses an isolated temporary directory on /dev/shm;
+no timeout, stage requirement, test, or CI configuration is relaxed.
+
+
+| Full standalone command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,551 tests passed (2,159.959s on this filesystem/host). No failures or skips. |
+| Final focused rerun: `PYTHONPATH=tests python3 -m unittest test_allowance test_coa_candidate test_coa_payment_writeoff test_workspace_audit test_risk -q` | Exit 0; 119 passed (31.584s), including an explicit assertion that post-draw rebinding is rejected. |
+| `git rev-list --left-right --count HEAD...origin/main` | 0 / 0: no baseline/branch drift requiring integration. |
+
+
+#### Completion results — 2026-11-13 KST
+
+| Final command / stage | Observed result |
+| --- | --- |
+| `TMPDIR=/dev/shm/loss-allowance-ci.Om7BXW python3 scripts/acceptance.py --evidence build/loss-allowance-acceptance-isolated.json` | Exit 1, overall ok=false. Unit stage hit the unchanged 900s deadline while progressing through existing load-harness tests; repeated browser stage hit the unchanged 600s deadline after 58 completed cases. Output tails report timeouts, not assertion failures. This aggregate run is **not** claimed as a pass. |
+| Acceptance storage-conformance commands | Passed 19 checks (storage plus crash replay). |
+| Acceptance pinned-vendor stage | Passed seven tests. |
+| Acceptance upstream-claims stage | 283 passed plus two documented divergences / 285; external read-model citation command was explicitly SKIPPED because no protocol checkout was supplied, never counted as passed. |
+| Acceptance JavaScript syntax stage | Exit 0. |
+| Acceptance packaged-smoke stage | All eleven probes passed on the final artifact. |
+| Acceptance seeded-demo stage | Passed, unchanged golden. |
+| Acceptance integrated-journeys stage; independent `python3 scripts/sim_journeys.py --check` | Both passed all six SIMULATED journeys (T03/T04/T05/T06/N1/N2). |
+
+Required standalone node verification commands passed: the full 1,551-test
+suite, final 119-test focused run, seven vendor tests, compileall, JavaScript
+syntax and all 77 browser cases. The full discovery process started before the
+last three additional negative/schema tests were added; those three are included
+in the final focused 119-test pass. The aggregate acceptance wrapper remains a
+host deadline limitation (900s unit / 600s browser), despite the completed
+standalone passes. No timeout, test assertion, required stage or CI definition
+was changed to turn that limitation into a pass.
+
+Browser output is preserved under `/tmp/loss-allowance-browser1` (successful
+77-case run) and `/tmp/loss-allowance-browser2` (partial repeated run). Both
+tracked report symlinks were restored byte-for-byte. The timeout left four
+Playwright loopback servers and their shell parents orphaned; all owned server
+processes were stopped and a subsequent process check found none. No long job
+is left running. The failed ladder evidence remains at
+`build/loss-allowance-acceptance-isolated.json` (ignored generated output).
+
+### shared-cap-utilization — merge conflict fix round 3 (2026-11-15 KST)
+
+Resolved all twelve conflicts from the supervisor's merge of main. The service
+keeps both `assets` and `shared_caps`; the facade keeps all 52 routes and 310
+definitions, including the six shared-cap and twenty provider-capture/allowance
+definitions added independently by the two parents. Existing finance and pack
+vectors were regenerated from the combined implementation. README, INTEGRATION
+and the operator handbook explain the combined behavior.
+
+The new SIMULATED integration regression records an UNVERIFIED_ASSERTED provider
+capture beside an open slice and drawn advance. Capacity stays unchanged while
+the overlay/input digests change. Candidate allowance reads and repeated
+shared-cap reads preserve workspace bytes, receipts and both journals, including
+after reload. No actual payment, provider verification or source authentication
+is claimed.
+
+| Local command/check | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,566 tests passed in 587.620s. Discovery began before the additional integration regression was added. |
+| `python3 -m unittest discover -s tests -p test_shared_caps.py -v` | Exit 0; all 12 passed, including the added provider-capture/allowance integration regression. |
+| Focused `test_handbook.py` / `test_docs_surface.py` discovery | Exit 0; 14 / 15 tests passed after the documentation changes. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 38 routes, 276 artifacts, nine stages. |
+| `python3 scripts/finance_vectors.py --check`; `python3 scripts/pack_vectors.py --check` | Exit 0; 103,382 finance bytes and nine pack files reproduce. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --output=/tmp/shared-cap-round3-browser-results --reporter=list'` | Exit 0; all 77 Chromium cases passed in 2.3 minutes. Only loopback was enabled in the isolated network namespace. |
+| Vendor SHA256 and parent byte comparisons | All five reference files match the 7481b0e manifest; all five plus manifest are byte-identical to both merge parents. |
+| Git conflict and whitespace checks | Zero unmerged entries, zero conflict markers, `git diff --check` and `git diff --cached --check` pass. |
+
+The initial browser invocation found only the unrelated global Playwright CLI;
+`npm ci` installed the three locked local packages without changing the lockfile.
+The next invocation encountered an existing listener on port 8765. The successful
+run kept the browser configuration and assertions intact and isolated loopback
+networking instead. Existing host listeners and tracked report symlinks were
+left unchanged; the successful run's browser servers stopped on completion.
+No CI/test requirement was relaxed. Vendor, legacy export, `.aiops/` and the
+root decision-file state are unchanged against both parents. No commit, push,
+deployment or external publication was performed.
