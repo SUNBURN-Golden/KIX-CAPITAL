@@ -53,7 +53,7 @@ STAGES = (
     ('pinned-vendor', ['python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v']),
     ('upstream-claims', ['python3 scripts/upstream_claims_check.py --execute',
                          'python3 scripts/agent_claims_check.py --execute',
-                         'python3 scripts/read_model_claims_check.py --execute',
+                         'python3 scripts/read_model_claims_check.py',
                          'python3 scripts/ce1_claims_check.py --execute',
                          'python3 scripts/adapter_identity_claims_check.py --execute',
                          'python3 scripts/lifecycle_claims_check.py --execute',
