@@ -22,10 +22,11 @@ SESSION_BIND = 'session:bind'
 OVERLAY_COMMAND = 'overlay:command'
 AGENT_QUERY = 'agent:query_grant'
 AGENT_QUERY_SUBJECT = 'agent:query_subject'
+AGENT_QUERY_CASE = 'agent:query_case'
 AGENT_PROPOSE = 'agent:propose_action'
 AGENT_WITHDRAW = 'agent:withdraw_proposal'
 AGENT_PROPOSE_CHANGE = 'agent:propose_grant_change'
-AGENT_PERMISSIONS = (AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_PROPOSE, AGENT_WITHDRAW, AGENT_PROPOSE_CHANGE)
+AGENT_PERMISSIONS = (AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_QUERY_CASE, AGENT_PROPOSE, AGENT_WITHDRAW, AGENT_PROPOSE_CHANGE)
 
 # Keep this tuple aligned with CapitalService.OPS. The test locks the sets together.
 OP_ORDER = (
