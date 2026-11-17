@@ -576,5 +576,43 @@ F04 outstanding exposure is never added to a residual claim for the same
 obligation; cash is never netted against other cases; slice shortfall is never
 added to outstanding. This reader decides no waiver, cash release, collection,
 slice write-off, legal collectability or accounting recognition. It changes no
-workspace, persistence format, statement classification, HTTP/UI or upstream
-readiness claim.
+workspace, persistence format, statement classification or upstream readiness claim.
+There is no HTTP route, application navigation, desk, or served-UI change; a
+separate read-only offline HTML renderer consumes the existing report.
+
+
+## residual-obligation-review-page
+
+Stdlib API: `capital.residual_review.render_report(report: dict) -> str` and
+`main(argv=None) -> int`. The pure renderer performs no I/O or monetary arithmetic.
+`python3 -m capital.residual_review --workspace DIR` calls
+`capital.residuals.report_workspace` exactly once and emits UTF-8 HTML plus a
+newline to stdout. There is no output-path option; save explicitly outside the
+source workspace. Exit codes remain COMPLETE 0, INCOMPLETE/AUDIT_FAILED 1,
+argument misuse 2. A failed report still emits its status, reasons, audit evidence
+and five unavailable tables, without invented counts or totals. Audited empty
+populations instead retain the report's zero totals.
+
+Five native tables follow `residuals.METRICS` order, each with its own caption,
+scoped headers, independent metric columns, known_subtotal_krw, unknown_rows and
+total_krw. Monetary null is displayed as “NOT_BOUND — unknown”; zero remains 0.
+Fractional remainder strings are copied separately and excluded from integer
+totals. There is no grand total, F04 exposure addition, cash netting or sum of
+slice shortfall and outstanding. CLOSED, DEFAULTED and written-off cases retain
+their obligations, lifecycle and original journal references.
+
+Native details preserve identity, reasons, basis, all seven fold_values blocks,
+remainders, source hashes, audit metadata/checks, coverage and reconciliation
+(including NOT_CHECKED). Reference index is zero-based; after_journal_index is
+the anchor; sim_day is the recorded logical day. A null F04 date means “not
+recorded.” Every dynamic key/value is escaped; IDs use only fixed category names
+and positions; links are fragments. Fixed inline CSS is the only embedded
+resource. No scripts, events, forms, external resources, HTTP routes, application
+navigation, served-UI or pending repayment/recovery desk changes are added.
+No collection, waiver, cash-release control, PDF dependency or live financial
+calculation is introduced. Hashes identify integrity, not authentication.
+SIMULATED / READ_ONLY_RESIDUAL_REGISTER, authentication/actual_payments/
+legal_collectability NOT_BOUND, funds_executed false and workspace_mutated false
+are visible outside disclosures. COMPLETE means only the declared recorded
+population was audited and reconciled. Determinism depends on identical supplied
+report data, including the report's existing path and audit metadata.

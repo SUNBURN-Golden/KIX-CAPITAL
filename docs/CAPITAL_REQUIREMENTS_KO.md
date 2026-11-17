@@ -121,6 +121,22 @@ F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산�
 
 이 기능은 `SIMULATED` / `READ_ONLY_RESIDUAL_REGISTER` 로컬 보고 확장이다. 면제,
 환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식 또는 실제 지급을
-결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
+결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류는 없다.
+HTTP route, application navigation, desk, served-UI 변경은 없으며 별도 read-only
+offline HTML renderer가 기존 보고서를 소비한다.
 Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
 검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
+
+
+## residual-obligation-review-page — 오프라인 운영자 검토
+
+`python3 -m capital.residual_review --workspace DIR`는 기존 감사 보고서를 직접
+소비하여 self-contained HTML을 stdout에 출력한다. 원본 workspace 밖에 저장하고
+로컬 파일로 연다. native table 5개와 details로 종결 의무·원본 저널·감사·대사
+근거를 조회한다. 알려진 소계, 미확인 행 수, NOT_BOUND 금액, 0, 원 미만 분수를
+구분하며 범주 총합과 현금 상계는 없다. SIMULATED / READ_ONLY_RESIDUAL_REGISTER,
+인증·실제 지급·법적 회수 가능성 NOT_BOUND, funds_executed/workspace_mutated false를
+항상 표시한다. Hashes identify integrity, not authentication. COMPLETE는 선언된
+기록 모집단만 뜻한다. INCOMPLETE/AUDIT_FAILED는 사유와 종료 코드 1을 유지한다.
+HTTP route, application navigation, desk, served-UI 변경이나 추심·면제·현금 해제
+기능, PDF 의존성, 실시간 금융 계산은 없다.

@@ -4414,3 +4414,89 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## residual-obligation-review-page — builder verification (2026-11-04)
+
+Implemented a separate stdlib offline HTML renderer consuming
+`capital.residuals.report_workspace` directly, with five independent native
+category tables, expandable case/slice evidence, visible honesty fields and
+failure explanations. No monetary arithmetic, HTTP route, application navigation,
+served-UI, repayment/recovery desk, report production or financial policy changes.
+Hashes identify integrity, not authentication. Results below are local SIMULATED
+checks, not real payments, qualification, authentication or legal collectability.
+The historical root `DECISION_REQUIRED.md` remains unchanged; this presentation
+scope requires no consequential product decision.
+
+| Command actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_residual*.py' -v` (initial) | Exit 1; 40 tests, eight fixture errors (`INVALID_OPERATION_ID`). Corrected the new fixture helper to replace underscores in operation IDs with hyphens; no service or existing test changed. |
+| `python3 -m unittest discover -s tests -p 'test_residual*.py' -v` (rerun) | Exit 0; all 40 passed in 4.342 s, including 16 new renderer tests. |
+| `python3 -m unittest tests.test_handbook tests.test_docs_surface -v` | Exit 0; 27 passed in 1.301 s. Includes the new handbook scope/evidence/status contract. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. No new vector file or registry entry. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only; pending anchors remain pending. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` | Exit 0; three pinned packages installed from local cache. Lockfile unchanged; existing Chromium headless-shell 1208 available. |
+| `python3 scripts/build_release.py --out build/residual-review-release` | Exit 0; archive SHA256 `4b01400ae65202607a1c544ad7167eb00e7480fce602a1d2ff5eff18dada5214`. Build verifies all five vendor SHA256 locks at `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`. |
+| `python3 scripts/smoke_release.py build/residual-review-release/capital-0.2.0.pyz` | Exit 0; all eleven packaged smoke checks passed. |
+
+The renderer tests parse HTML with stdlib HTMLParser, checking semantic headings,
+five captions, scoped headers, unique fixed IDs and resolving fragment links;
+reject executable/resource markup; compare independent metric cells to report
+fields; retain CLOSED/DEFAULTED/write-off/late-recovery references and slice
+observations; retain unknowns, zero, exact fractions, NOT_CHECKED, hashes and audit
+metadata; check missing/corrupt/inactive/missing-evidence/mismatch failures and CLI
+exit codes; assert a single report call, UTF-8 bytes under ASCII stdout encoding,
+repeatability, pure-renderer I/O prohibition and unchanged workspace bytes,
+modes and directory inventory. Injected reader failures use detached composition
+inputs after a real successful audit and do not claim invalid workspace evidence
+was accepted.
+
+Host ports 8765/8766 belong to unrelated processes. Browser verification and the
+complete acceptance runner use `unshare -Urn -- bash -c 'ip link set lo up && exec …'`
+to retain the unchanged Playwright configuration on isolated loopback. No unrelated
+listener is stopped. Git resolves HEAD inside the namespace without a safe-directory
+workaround on this runner. The ignored `build/residual-review-acceptance.py` loads
+`scripts/acceptance.py` through `runpy.run_path`, obtains `build_plan()`, asserts
+the exact integrated-journeys argv, removes only its trailing `--check` (the
+script's equivalent default check mode), verifies all nine stage IDs and invokes
+`execute_plan` with the standard evidence path. This preserves the established
+closeout command text without changing the acceptance script, assertions,
+timeouts or test coverage. This accommodation was specified in the design plan.
+
+The worktree is based at HEAD `9510843f63a17b810ed80e795e08ace5d82e9074`;
+implementation and evidence updates remain uncommitted for the supervisor.
+
+| Command actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all **1,343 passed** in 305.801 s. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all **76 Chromium tests passed** in 1.9 min with the unchanged configuration. Playwright cleaned up its loopback servers. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 build/residual-review-acceptance.py'` (first pass) | Exit 0; **all nine stages passed**, `ok:true`: unit 1,343; storage-conformance 19; vendor 7; upstream CLAIM_CONFORMANCE 322 passes / 324 evaluated rows with two documented divergences and zero failures; node syntax passed; Chromium 76; packaged smoke 11; seeded demo 1; six integrated-journey checks, each SIMULATED / integrated false. Evidence copied to `build/residual-review-logs/acceptance-1-evidence.json`. |
+| `python3 scripts/closeout_digest.py --write` | Exit 0; regenerated 4,574-byte closeout digest from the first passing evidence. |
+| `python3 scripts/finance_vectors.py --write` | Exit 0; regenerated 101,104-byte finance fixture using the new digest. |
+
+A structural comparison against HEAD found only three changed paths in the
+closeout digest: packaged.sha256 and the unit stage's ran/passed counts (1,343).
+The finance fixture changes only those same three paths in its embedded
+closeout_digest group. No other fixture amounts, source hashes, interpretations
+or candidate claims changed. No new vectors or hand edits to generated artifacts.
+
+| Final command actually run | Result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 build/residual-review-acceptance.py'` (second pass, after regeneration) | Exit 0; **all nine stages passed**, `ok:true`, with exactly the same counts as the first pass: 1,343 unit; 19 storage; seven vendor; 322 local claim passes plus two documented divergences / 324; node syntax passed; 76 Chromium; eleven smoke; one seeded demo; six SIMULATED journeys. Fresh evidence copied to `build/residual-review-logs/acceptance-2-evidence.json`. |
+| `python3 scripts/closeout_digest.py --check` | Exit 0; 4,574 bytes and embedded finance copy match. |
+| `python3 scripts/closeout_digest.py --check-evidence` | Exit 0; second-pass fresh evidence reproduces the committed-candidate digest exactly. |
+| `python3 scripts/finance_vectors.py --check` | Exit 0; 101,104 bytes match. |
+| `python3 scripts/docs_surface.py --check` (final) | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `git diff --exit-code HEAD -- capital/vendor .aiops .github capital/export.py tests/golden docs/decisions playwright.config.cjs package.json package-lock.json` | Exit 0; protected paths are byte-identical to HEAD. Additional comparisons of `capital/residuals.py`, server/static assets, scripts and historical root decision note also exit 0. |
+| `git diff --check` | Exit 0; no whitespace errors. |
+
+Final process inspection found no `capital.server` process with this worktree as
+its working directory; all servers started by verification stopped. The five
+vendor manifest SHA256 locks were rechecked successfully. Standalone test logs,
+both full-ladder logs and both evidence captures are retained under ignored
+`build/residual-review-logs/`. There were no product-scope deviations. The planned
+isolated-loopback/default-journey invocation accommodations are described above;
+no browser stage was skipped. No commit, push, PR, issue, comment, external post,
+Protocol/Commerce edit, provider call, credential use or funds movement occurred.

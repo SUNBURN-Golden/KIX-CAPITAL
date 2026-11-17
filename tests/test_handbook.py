@@ -109,6 +109,27 @@ def _sample_evidence():
 
 
 class HandbookTests(unittest.TestCase):
+    def test_residual_review_page_documents_scope_evidence_and_failure_outcomes(self):
+        text = HANDBOOK.read_text(encoding='utf-8')
+        start = text.index('<!-- handbook-section:residual-obligation-review-page -->')
+        section = text[start:text.index('<!-- /handbook-section -->', start)]
+        for needle in ('python3 -m capital.residual_review --workspace DIR > /tmp/residual-review.html',
+                       'capital.residuals.report_workspace', 'source workspace', 'stdout',
+                       'COMPLETE 0', 'INCOMPLETE/AUDIT_FAILED 1', '인자 오류 2',
+                       'SIMULATED', 'READ_ONLY_RESIDUAL_REGISTER', 'authentication', 'actual_payments',
+                       'legal_collectability', 'NOT_BOUND', 'funds_executed/workspace_mutated', 'false',
+                       'native table', 'details', 'fragment navigation', 'recorded population',
+                       'known_subtotal_krw', 'unknown_rows', 'total_krw', 'NOT_CHECKED',
+                       'CLOSED', 'DEFAULTED', 'F04', 'not recorded', 'cash netting',
+                       'Hashes identify integrity, not authentication', 'HTTP route',
+                       'application navigation', 'desk', 'served-UI', 'cash-release controls'):
+            self.assertIn(needle, section)
+        for path in ('README.md', 'docs/INTEGRATION.md', 'docs/CAPITAL_REQUIREMENTS_KO.md'):
+            document = (ROOT / path).read_text(encoding='utf-8')
+            self.assertIn('residual-obligation-review-page', document)
+            self.assertIn('capital.residual_review --workspace DIR', document)
+            self.assertIn('integrity, not authentication', document)
+
     def test_bundled_policy_runtime_is_documented_with_provenance_and_override_failure(self):
         handbook = HANDBOOK.read_text(encoding='utf-8')
         start = handbook.index('<!-- handbook-section:artifact-docs-bundling -->')

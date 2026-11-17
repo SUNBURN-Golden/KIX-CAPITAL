@@ -832,6 +832,42 @@ witness만 사용하고 payee 줄·baseline이 없으면 과거 witness나 현�
 saved_at/saved_by_instance는 그대로 남긴다.
 
 면제, 환불/현금 해제, 추심, 슬라이스 상각, 법적 회수 가능성, 회계 인식은 결정하지
-않는다. 새 영속 포맷·명세서 재분류·외부 호출·HTTP/UI 변경도 없다.
+않는다. 새 영속 포맷·명세서 재분류·외부 호출은 없다. HTTP route, application
+navigation, desk, served-UI 변경은 없으며 별도 read-only offline HTML renderer가
+기존 보고서를 소비한다.
+
+<!-- /handbook-section -->
+
+
+<!-- handbook-section:residual-obligation-review-page -->
+
+### residual-obligation-review-page
+
+`python3 -m capital.residual_review --workspace DIR > /tmp/residual-review.html`
+명령은 `capital.residuals.report_workspace`를 한 번 호출하고 self-contained UTF-8
+HTML을 stdout에 출력한다. 반드시 source workspace 밖의 경로에 저장한다. 실패해도
+진단 HTML이 출력되므로 셸 종료 코드를 함께 확인한다: COMPLETE 0,
+INCOMPLETE/AUDIT_FAILED 1, 인자 오류 2. 브라우저에서 저장 파일을 로컬로 연다.
+서버·HTTP route·application navigation·desk·served-UI 변경은 없다.
+
+5개 native table의 제목과 열 머리글로 독립 금액을 비교하고 fragment navigation으로
+이동한다. details를 펼쳐 case/slice 신원, reasons, basis, remainders, 7개
+fold_values 블록과 원본 저널 journal/index/entry_id/kind/after_journal_index/sim_day를
+확인한다. index는 0부터 시작하며 F04 날짜 null은 not recorded다. CLOSED,
+DEFAULTED, 상각 후에도 잔존 의무와 원본 저널 참조가 남는다.
+
+known_subtotal_krw, unknown_rows, total_krw는 각각 별도 표시한다. NOT_BOUND — unknown은
+0이 아니며 정확한 원 미만 분수는 정수 합계에서 제외한다. 범주 총합, cash netting,
+F04 노출 추가, shortfall + outstanding 합산은 없다. 감사/복원 실패의 unavailable
+모집단은 감사된 empty 모집단과 구분한다. NOT_CHECKED 대사와 감사 메타데이터·해시는
+그대로 남긴다. Hashes identify integrity, not authentication.
+
+SIMULATED / READ_ONLY_RESIDUAL_REGISTER이며 authentication, actual_payments,
+legal_collectability는 NOT_BOUND, funds_executed/workspace_mutated는 false다.
+COMPLETE는 선언된 recorded population의 감사·대사만 뜻한다. 이후 정산, 법적 회수,
+전체 정산 이력·인증을 보증하지 않는다. INCOMPLETE와 AUDIT_FAILED의 status/reasons를
+먼저 읽는다. 추심·면제·cash-release controls·실제 금융 계산·PDF 의존성은 없다.
+원본 바이트와 모드·디렉터리 목록은 변경하지 않는다. 스크립트·외부 리소스 없이
+native tables/details만 사용하며 식별자와 이유 문자열은 literal text로 표시한다.
 
 <!-- /handbook-section -->
