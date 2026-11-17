@@ -83,6 +83,7 @@ ROUTE_NEEDLES = {
     ('GET', '/api/overlay/slices'): ('- `GET /api/overlay/slices`:',),
     ('GET', '/api/portfolio/snapshot'): ('- `GET /api/portfolio/snapshot`:',),
     ('GET', '/api/risk'): ('- `GET /api/risk`:',),
+    ('GET', '/api/risk/shared-caps'): ('- `GET /api/risk/shared-caps`:',),
     ('GET', '/api/risk/covenants'): ('- `GET /api/risk/covenants`:',),
     ('GET', '/api/risk/scenarios'): ('`GET /api/risk/scenarios/{id}`',),
     ('GET', '/api/policy'): (
@@ -91,6 +92,11 @@ ROUTE_NEEDLES = {
     ('GET', '/api/preview/'): ('`GET /api/preview/{advance_id}',),
     ('GET', '/api/underwrite/'): ('`GET /api/underwrite/{advance_id}',),
     ('GET', '/api/operations/'): ('`GET /api/operations/{operation_id}',),
+    ('GET', '/api/read/'): (
+        '`GET /api/read/credit_advance/{id}`',
+        '`GET /api/read/credit_claim/{id}`',
+        '`GET /api/read/settlement/{id}`',
+    ),
     ('GET', '/api/export'): ('- `GET /api/export`:',),
     ('GET', '/api/export/manifest'): ('- `GET /api/export/manifest`:',),
     ('GET', '/api/export/facts'): ('- `GET /api/export/facts`:',),
