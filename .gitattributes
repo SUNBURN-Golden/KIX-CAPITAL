@@ -1,0 +1,9 @@
+# 11-10: append-only shared docs -> keep both sides on merge (no AI conflict-fix)
+README.md merge=union
+docs/VALIDATION.md merge=union
+docs/INTEGRATION.md merge=union
+docs/CAPITAL_REQUIREMENTS_KO.md merge=union
+docs/CAP_COVERAGE.md merge=union
+docs/RELEASES.md merge=union
+docs/ACCEPTANCE_KO.md merge=union
+docs/SEAMS.md merge=union
