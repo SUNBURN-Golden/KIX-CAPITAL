@@ -835,3 +835,11 @@ saved_at/saved_by_instance는 그대로 남긴다.
 않는다. 새 영속 포맷·명세서 재분류·외부 호출·HTTP/UI 변경도 없다.
 
 <!-- /handbook-section -->
+
+<!-- handbook-section:minimum-cure-quote -->
+
+### minimum-cure-quote
+
+`python3 -m capital.cure_quote [--scenario ID | --list]`는 고정 아홉 일회용 시나리오 위에서 기록된 CALLED 마진 상태의 최소 치유 견적(`KIX_CAPITAL_CURE_QUOTE_V1`, `SIMULATED`/`READ_ONLY_CAPTURED_INPUT_ADVISORY`)을 canonical JSON으로 낸다. 기존 `margin.measure` 술어를 뒤집어 최소 정수 원금 감소 R을 구하고, 미지급 게시 이자는 분자·분모 witness를 유지하며, G = I + R, A = min(H, G), N = G - A로 총 상환 자원·적격 보유 현금·신규 현금을 나눈다(R = 0이면 셋 다 0, 이자는 계속 공시). 충족 witness는 N을, 최소성 witness는 N - 1을 일회용 복원 사본의 `post_repayment`로만 확인하고, 출발 저널·receipt·sim_day·작업공간 바이트는 변하지 않는다. `arithmetic_sufficient`, `command_admissibility`(`ADMISSIBLE_AT_SNAPSHOT`/`REFUSED`/`UNKNOWN`), `recorded_cure`를 분리 보고하고 기록된 CURE는 기존 tick 순서로만 생긴다. 기한 포함(`AT_DEADLINE`), 기한 경과·가속·종결·미기록 콜은 금액 null의 명시 결과다. 용량 거절은 산술을 유지하고 `REFUSED`를 남긴다. `input_digest`·`quote_digest`는 서명이 아닌 로컬 진단 식별자고 `is_stale`이 재검증한다. 종료 코드는 평가 0, 내부 실패 1, 인자 오류 2다. `python3 scripts/cure_quote_vectors.py --check`가 `tests/vectors/cure_quote.json` 바이트를 비교한다.
+
+<!-- /handbook-section -->

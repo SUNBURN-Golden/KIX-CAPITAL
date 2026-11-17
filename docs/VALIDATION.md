@@ -1,5 +1,34 @@
 # Validation scope
 
+## minimum-cure-quote — builder verification
+
+2026-11-05, worktree `agent/capital-minimum-cure-quote`. All checks use local
+SIMULATED fixtures on disposable `ScenarioReplaySource` books.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_cure_quote -v` | Exit 0; 25 passed |
+| `python3 -m capital.cure_quote --list` / `--scenario breach-tier1` | Exit 0; canonical JSON |
+| `python3 scripts/cure_quote_vectors.py --check` | Exit 0; bytes match |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; six entries CONSUMED by `capital/cure_quote.py` + `tests/test_cure_quote.py` |
+| `python3 scripts/docs_surface.py --check` | Exit 0 |
+| `python3 -m unittest discover -s tests -v` | Exit 0 |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 (unchanged file) |
+
+Evidence: the quote inverts `margin.measure` only (R = outstanding - base when
+breached); sufficiency and minimality witnesses run `post_repayment` on
+`PinnedFsmProducer.restored` disposable copies; `whole(service)` digests
+(journal, receipts, overlay entries, workspace document) are byte-identical
+before and after `quote`. Held cash is provably zero in every reachable
+breached state (the fold only admits `unapplied_cash` when principal is fully
+paid), so the §3.2 H/A/N formula is covered by the note's own synthetic
+fixtures in `test_held_cash_formula_matches_the_note_worked_examples`.
+`WINDOW_EXPIRED` is unreachable through real commands (the fold accelerates
+inside the same tick); it is covered on a crafted capture, clearly labeled.
+No decision note, vendor, golden, persistence or `.aiops/` file changed.
+
 ## Residual obligations report — PR fix round 2
 
 2026-11-04, reviewed head `bbe1b48b51e86744d65158af754e33dc3d640fc4`.
