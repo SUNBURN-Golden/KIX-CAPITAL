@@ -96,6 +96,24 @@ def aging_class(sim_day, maturity_day, phase):
     return AGING_IDS[-2]
 
 
+def reserve_bucket(weights, tier, *, defaulted=False, past_due=False):
+    """Shared stage mapping; callers supply their own recorded lifecycle facts."""
+    if type(weights) is not dict:
+        return None
+    if defaulted:
+        return _DEFAULTED if _DEFAULTED in weights else None
+    if past_due:
+        return _PAST_DUE if _PAST_DUE in weights else None
+    matches = [key for key in weights if key.split('_', 1)[0] == tier]
+    return matches[0] if len(matches) == 1 else None
+
+
+def provision_level(principal, bps):
+    if not _nonneg_int(principal) or not _nonneg_int(bps) or bps > BPS_SCALE:
+        raise ValueError('invalid provision inputs')
+    return principal * bps // BPS_SCALE
+
+
 def advance_rows(drawn, terms, sim_day):
     """One fact row per drawn advance. Tier follows the draw receipt gate through the terms."""
     standard = _value(terms, 'term')['standard_term_days']
@@ -108,14 +126,7 @@ def advance_rows(drawn, terms, sim_day):
         maturity = subject['draw_day'] + standard
         phase = case['phase']
         past_due = outstanding > 0 and phase != _DEFAULTED and sim_day > maturity
-        reserve_class = None
-        if type(weights) is dict:
-            if phase == _DEFAULTED:
-                reserve_class = _DEFAULTED
-            elif past_due:
-                reserve_class = _PAST_DUE
-            else:
-                reserve_class = next((key for key in weights if key.split('_', 1)[0] == tier), None)
+        reserve_class = reserve_bucket(weights, tier, defaulted=phase == _DEFAULTED, past_due=past_due)
         rows.append({
             'advance_id': subject['advance_id'], 'phase': phase, 'tier': tier,
             'outstanding_krw': outstanding, 'amount': case.get('amount'),
@@ -188,7 +199,7 @@ def _reserve(terms, rows):
             unrated += row['outstanding_krw']
             continue
         classes[name]['outstanding_krw'] += row['outstanding_krw']
-        classes[name]['provision_krw'] += row['outstanding_krw'] * weights[name] // BPS_SCALE
+        classes[name]['provision_krw'] += provision_level(row['outstanding_krw'], weights[name])
     return {
         'status': 'BOUND', 'reason': None, 'label': RESERVE_LABEL,
         'rows': [{'bucket': name, 'bps': weights[name], **classes[name]} for name in weights],
