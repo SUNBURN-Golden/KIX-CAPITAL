@@ -6238,3 +6238,16 @@ The browser output directories were isolated from the worktree's existing
 symlinks for the local runs. The original symlinks were restored after
 verification. Process inspection found zero builder servers or acceptance
 processes in the worktree or disposable rehearsal trees.
+
+### PR fix round 1
+
+The `browser` and `acceptance` jobs failed during Chromium setup when
+`ubuntu-latest` selected Ubuntu 26.04. Playwright 1.58.2 supports Ubuntu 24.04,
+so both jobs now select that standard runner. Both jobs still install Chromium
+with system dependencies. The acceptance job requires the JSON evidence artifact.
+
+Local acceptance on Python 3.12.15 and Node 24 with cached Chromium passed all
+nine stages, including 1,579 unit tests and 85 browser tests. The run produced
+`build/acceptance-evidence.json` with `ok: true`, and the closeout digest matched
+the fresh evidence. The Ubuntu 24.04 Chromium install plan was checked with
+Playwright's dry run on the Debian host. Hosted CI verification is pending.
