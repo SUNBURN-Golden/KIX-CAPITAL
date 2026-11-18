@@ -6137,3 +6137,117 @@ left unchanged; the successful run's browser servers stopped on completion.
 No CI/test requirement was relaxed. Vendor, legacy export, `.aiops/` and the
 root decision-file state are unchanged against both parents. No commit, push,
 deployment or external publication was performed.
+
+## KIX Protocol delivery 8ba7f6c
+
+The November 13 KIX pin announcement superseded the preliminary `19cdc1c`
+target. Capital uses kix-protocol
+`8ba7f6c36373ac0ec49246f51f7471c164ac3a28`, tree
+`d3f5412ef84f64fe83c5d3a3d3ada173921bfbf9`. The bundle covers both complete
+reference directories, both OpenAPI files, the FSM command contract and
+the BOOTSTRAP SDK inputs. The 69 vendor entries are bound by manifest
+SHA256 `62056902f9344c4f092d1652baeac607b31ea0ecf4672b86638ac9a740a72d36`.
+The SDK manifest SHA256 is
+`eec1750532d319ea06d8ae61bafa77316067088a84a9b70d20a1f6966dfba1e0`.
+Its `bootstrap-2` catalogue-input SHA remains upstream provenance.
+`build/kix-vendor-bump-pr-body.md` lists all vendor SHA256 digests for
+the supervisor's PR. The upstream checkout was read through Git blobs.
+
+### Compatibility changes
+
+- Protocol #442 changes partial refunds from B0 to B5 `REQUESTER`.
+  Settlement distribution follows available simulated cash and the frozen
+  order. Payee faces are preserved. The one-shot full-gross reclassification
+  and F04 `REFUND_OBLIGATION_OPEN` refusal still apply. Capital's reason-class
+  refund split stays `SHADOW_NOT_APPLIED`.
+- The margin and recovery rehearsals observe the pre-distribution refund cut.
+  T05 and N1 exercise the B5 distribution on a second disposable book.
+  The historical T05 replay uses the original prefix and an explicit
+  test projection back to the frozen settlement fields and legacy F04 digest.
+- F04 adds `open_terms` to advance and claim views. The facade requires the
+  five closed unfilled terms and preserves the raw bodies. The read-query draft
+  lists 25/51/24 keys in settlement, advance and claim order. The raw responses
+  contain 25/52/25. Citation drift verified all 113 rows. The execution run
+  counted 111 passes and two documented divergences.
+- The added field changes F04 state and covering digests. Workspace restore and
+  the offline auditor verify the replay against the current digest or the exact
+  pre-`open_terms` case shape. The envelope checksum, journal replay and link
+  checks still apply. The workspace remains byte-identical on a read-only reopen.
+  Golden changes are fenced by specific old and new leaves.
+- Protocol #440 and #441 provide read-only variance and exposure observations
+  through `capital.protocol`. Callers supply tolerance and limit, including zero.
+  Both calculations observe frozen KRW views and return fail-closed diagnostics.
+  Stage-5 evidence is database-free. The economics-credit tests exercise actual
+  false execution flags. Capital simulation remains loopback-only, with
+  `POINT_F4` limited to a labelled simulator outside settlement and credit.
+  Upstream query, source-map, Stage-5 runtime and CAP-16 adoption stay `NOT_BOUND`.
+
+### Local verification
+
+| Command | Result |
+| --- | --- |
+| `git rev-list --left-right --count HEAD...origin/main` | `0 0` at baseline `d6ccd93`. |
+| `python3 scripts/protocol_bundle.py --write --protocol-dir /workspace/capital-run/kixproto-ro`, then `--check` | 69 byte-identical vendor files and exact SDK/OpenAPI copies verified against Git blobs. |
+| `python3 scripts/protocol_bundle.py --test-vendor --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0. F04 236 tests, F01–F03 224 tests, database-free Stage-5 30 tests. Economics-credit consumer vectors ran inside F04. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0. 8 tests. |
+| Focused `python3 -m unittest discover -s tests -p PATTERN -v` runs | Passed delivery and observer, gate, facade, historical replay, workspace audit, margin, finance, COA, read model, policy, recovery, claim slices, provider-capture, crash replay and repin checks. |
+| `python3 scripts/compat_preflight.py --bundle . --manifest sdk/compat/manifests/manifest.bootstrap-2.json --expected sdk/compat/delivery.expected.json` and `python3 scripts/compat_preflight.py --check` | Both matched in BOOTSTRAP, HOLD and NOT_BOUND. The synthetic negative corpus remains separate from delivery evidence. |
+| `python3 scripts/gate_faults.py --check` | Exit 0. All 7 loopback fault cases matched. |
+| Claim checkers with `--protocol-dir /workspace/capital-run/kixproto-ro` | Citation checks verified upstream 87, FSM 35, CE1 49, readiness 13, read model 113, invariants 6, AI 94, lifecycle 12 and adapter identity 30. The read-model and AI draft citations also matched their separately pinned Git blobs. |
+| `python3 scripts/upstream_repin_check.py --check --root .`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check` | Exit 0. Repin report HOLD with zero findings, decision bindings matched, docs cover 38 routes, 276 artifacts and 9 stages. |
+| `npm ci --offline`, `npx playwright install chromium`, `npm run test:browser` | Exit 0. Used locked dependencies and cached Chromium. All 85 browser tests passed. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/build_release.py --out dist`, `python3 scripts/build_release.py --out dist2`, `cmp dist/capital-*.pyz dist2/capital-*.pyz`, `python3 scripts/smoke_release.py dist/capital-*.pyz` | Exit 0. Byte-identical zipapps, all 11 packaged smoke checks passed. |
+| `git diff --exit-code HEAD -- .aiops capital/export.py capital/projection.py docs/decisions/CAPITAL_UPSTREAM_BINDING.md tests/historical DECISION_REQUIRED.md .github` | Exit 0. |
+| `git diff --check -- . ':!tests/vectors/facts/corrupt/whitespace/page-0000.json'` | Exit 0. The excluded negative fixture retains its generator-produced trailing space. |
+
+The first bundle attempt used pretty JSON for the SDK expectation input.
+Canonical encoding fixed preflight. The staged vendor suites then exposed
+missing imports for economics and the database-free durable checks. The
+staging tree now supplies those pinned dependencies. The first acceptance
+attempt found stale crash, fold, overlay and claim evidence. The standalone
+unit run identified the affected assertions and their narrow reruns passed.
+
+The generators rewrote the demo, overlay and journey goldens with
+`seed_demo.py --update-golden`, `seed_overlay_recovery.py --update-golden`,
+`seed_overlay_observations.py --write`, `seed_overlay_slices.py --write` and
+`sim_journeys.py --update-golden`. The seeded overlay-demo comparison uses
+the existing test's deterministic scenario builder. The demo generator
+refreshes the two cross-references in the empty-overlay golden.
+The manifest, workspace, facts, pack, dossier, event-stress, finance,
+forecast, risk-scenario, crash-matrix and fold-fuzz generators also ran
+with `--write`. The final per-generator verification commands and results
+are in `build/kix-vendor-generator-checks.log`.
+
+The successful disposable closeout bootstrap used the exact `origin/main`
+closeout, embedded finance copy, demo and vendor manifest for the committed
+closeout assertions. Other assertions used candidate data. All nine
+acceptance stages passed with 1,579 unit tests and 85 browser tests.
+`python3 scripts/closeout_digest.py --write --evidence build/kix-vendor-bootstrap-evidence.json`
+then generated the current digest. `python3 scripts/finance_vectors.py --write`
+embedded it. Both `--check` and the bootstrap `--check-evidence` passed.
+
+| Final command | Result |
+| --- | --- |
+| `python3 scripts/acceptance.py` | Exit 0. Nine of nine stages passed. The embedded `python3 -m unittest discover -s tests -v` ran 1,579 tests, storage conformance ran 19, the browser ran 85, packaged smoke ran 11 and all six synthetic journeys passed. The default claim stage passed 283 of 285 rows with two documented readiness divergences. The explicit read-model run separately verified all 113 citations and counted 111 passes with two documented divergences. |
+| `python3 scripts/closeout_digest.py --check`, `python3 scripts/closeout_digest.py --check-evidence` and `python3 scripts/finance_vectors.py --check` | Exit 0. The 8,035-byte digest matches the final evidence and its exact copy in the 106,620-byte finance pack. |
+| `cmp dist/capital-0.2.0.pyz build/acceptance-dist/capital-0.2.0.pyz` | Exit 0. Final acceptance produced the same package SHA256 `affb50c3bd46ce0a89bad1af37d689ee5b1673bbe725beb308f1bfcdc23b59ed`. Every packaged vendor file matched the manifest. |
+| `python3.12 -m unittest discover -s tests -p test_protocol_delivery.py -v` and `python3.12 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0. 5 delivery and observer tests and 8 vendor mock tests on Python 3.12.15. |
+
+The browser output directories were isolated from the worktree's existing
+symlinks for the local runs. The original symlinks were restored after
+verification. Process inspection found zero builder servers or acceptance
+processes in the worktree or disposable rehearsal trees.
+
+### PR fix round 1
+
+The `browser` and `acceptance` jobs failed during Chromium setup when
+`ubuntu-latest` selected Ubuntu 26.04. Playwright 1.58.2 supports Ubuntu 24.04,
+so both jobs now select that standard runner. Both jobs still install Chromium
+with system dependencies. The acceptance job requires the JSON evidence artifact.
+
+Local acceptance on Python 3.12.15 and Node 24 with cached Chromium passed all
+nine stages, including 1,579 unit tests and 85 browser tests. The run produced
+`build/acceptance-evidence.json` with `ok: true`, and the closeout digest matched
+the fresh evidence. The Ubuntu 24.04 Chromium install plan was checked with
+Playwright's dry run on the Debian host. Hosted CI verification is pending.

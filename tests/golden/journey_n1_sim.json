@@ -1,5 +1,5 @@
 {
-  "digest": "2ebfc1d0d764b94fc51435c3868c06279427090db9daf314cd4d9daa3aaad4d1",
+  "digest": "7cc6ecc6e75b60981150550c45fe7a9256267a2c34a08d49e599230c895318df",
   "funds_executed": false,
   "integrated": false,
   "journey": "N1-sim",
@@ -98,11 +98,12 @@
         ],
         [
           "apply_distribution",
-          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          null,
           true
         ]
       ],
       "facts": {
+        "allocation_scope": "SEPARATE_DISPOSABLE_BOOK",
         "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
         "scope": "DISPOSABLE_BOOK_ONLY"
       },
@@ -122,7 +123,7 @@
         ],
         [
           "apply_distribution",
-          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          null,
           true
         ]
       ]

@@ -38,6 +38,7 @@ from capital.service import CapitalService
 from capital.store import FILE_NAME, FileWorkspace
 
 GOLDEN = ROOT / 'tests' / 'golden' / 'demo.json'
+EMPTY_OVERLAY_GOLDEN = GOLDEN.with_name('overlay_empty.json')
 VOLATILE_KEYS = frozenset({
     'instance_id', 'created_at', 'saved_at', 'timestamp', 'timestamps',
     'local_token', 'saved_by_instance',
@@ -295,6 +296,11 @@ def main(argv=None) -> int:
         service = build_service(storage, producer_name=args.producer)
         body = capture(service)
         drifted = check_or_update(body, args.golden, args.update_golden)
+        if args.update_golden and args.golden.resolve() == GOLDEN:
+            empty_overlay = load_golden(EMPTY_OVERLAY_GOLDEN)
+            empty_overlay.update(export_manifest_v2_content_digest=body['content_digest'],
+                                 f04_state_digest=body['state_digest'])
+            EMPTY_OVERLAY_GOLDEN.write_text(render(empty_overlay), encoding='utf-8')
     except SeedError as exc:
         print(f'seed demo failed: {exc}', file=sys.stderr)
         return 1
