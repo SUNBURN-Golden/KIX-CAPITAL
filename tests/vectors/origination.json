@@ -1,0 +1,13 @@
+{
+  "format": "KIX_CAPITAL_ORIGINATION_SCENARIOS_V1",
+  "label": "SIMULATED",
+  "amounts": "Boundary amounts are derived from loaded existing policy and fixture evidence; no financial terms are established here.",
+  "scenarios": [
+    {"advance_id": "sim-ready", "fixture_id": "sim-committed", "amount_rule": "half_base", "phase": "APPROVED", "preview": "WOULD_ACCEPT", "proposal": "APPROVE", "failed_check": null},
+    {"advance_id": "sim-fsm-refusal", "fixture_id": "sim-pending", "amount_rule": "one", "phase": "APPROVED", "preview": "WOULD_REJECT", "proposal": "DECLINE", "failed_check": "U1_SETTLEMENT_EVIDENCE"},
+    {"advance_id": "sim-policy-decline", "fixture_id": "sim-committed", "amount_rule": "base_plus_one", "phase": "APPROVED", "preview": "WOULD_ACCEPT", "proposal": "DECLINE", "failed_check": "U3_BORROWING_BASE"},
+    {"advance_id": "sim-proposed", "fixture_id": "sim-committed", "amount_rule": "one", "phase": "OFFERED", "preview": "NOT_APPLICABLE", "proposal": "APPROVE", "failed_check": null},
+    {"advance_id": "sim-slice-constrained", "fixture_id": "demo-delta-small", "amount_rule": "reduced_base_plus_one", "phase": "APPROVED", "preview": "WOULD_ACCEPT", "proposal": "DECLINE", "failed_check": "U3_BORROWING_BASE"}
+  ],
+  "excluded": ["sim-drawn", "sim-repaid-unclosed", "sim-rejected", "sim-cancelled", "sim-closed", "sim-defaulted"]
+}

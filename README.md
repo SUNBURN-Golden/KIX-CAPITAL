@@ -501,6 +501,34 @@ and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-re
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
 
+### Offline origination review inventory (SIMULATED)
+
+`python3 -m capital.origination --workspace DIR` reads `DIR/workspace.json`
+once, audits that capture, and emits canonical JSON in stable `advance_id`
+order for every undrawn, nonterminal F04 case. Each row keeps its recorded
+amount and phase, its independent F04 draw preview, and the separate advisory
+U1–U6 underwriting record. The proposed phase is `OFFERED`.
+`COMPLETE` means inventory coverage. Exit codes are **0** for complete inventory,
+**1** for incomplete policy evidence or failed audit/restoration/invariants,
+and **2** for argument misuse. Audit failure yields `AUDIT_FAILED` with
+`cases: null`; restoration/invariant failure also suppresses all case conclusions.
+Missing policy evidence remains `NOT_BOUND` and makes the report `INCOMPLETE`.
+
+Individually acceptable previews do not establish simultaneous fundability.
+Underwriting remains advisory. F04 previews do not evaluate every live command
+guard, including the separate slice draw guard. This offline tool takes no
+workspace lock, repairs nothing, issues no command, and creates no reservation
+or receipt. Authentication and historical policy provenance remain `NOT_BOUND`;
+the policy provenance describes currently loaded local inputs. It computes no
+combined approval score, funding sequence, shared-cap optimization or admission
+decision, and changes no offer, term, live facade or UI.
+
+The labelled synthetic scenarios in `tests/vectors/origination.json` exercise
+approved, FSM-refused, policy-declined, proposed and slice-constrained cases.
+Amounts are derived from existing policy boundaries. Verify them with
+`python3 -m unittest discover -s tests -p test_origination.py -v` and run
+`python3 scripts/docs_surface.py --check`. The report contract is documented in
+[docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ### Loss allowance candidate V2
 

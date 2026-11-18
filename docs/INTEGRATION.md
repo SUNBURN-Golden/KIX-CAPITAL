@@ -993,6 +993,83 @@ slice write-off, legal collectability or accounting recognition. It changes no
 workspace, persistence format, statement classification, HTTP/UI or upstream
 readiness claim.
 
+### Offline origination review inventory
+
+`capital.origination.report_workspace(directory) -> dict` and
+`python3 -m capital.origination --workspace DIR` compose the existing offline
+auditor, `evidence.offline_service`, `preview_draw` and `underwrite` readers.
+The CLI uses only Python stdlib and emits `store.canonical_bytes(report)` plus
+one newline. It opens `workspace.json` once and passes precisely those captured
+bytes to `audit_workspace_bytes`; it takes no workspace lock and never repairs
+or writes. After a successful audit, strict parsing and in-memory restoration
+must yield `workspace_status == ACTIVE`. Observability closes in `finally`.
+
+The report format is `KIX_CAPITAL_ORIGINATION_READINESS_V1`, labelled `SIMULATED`,
+with mode `READ_ONLY_ORIGINATION_REVIEW`. `cases` includes exactly the restored
+cases where `drawn_exposure == 0` and `terminal is False`, ordered by
+`advance_id`. A fully repaid but unclosed case is still drawn and is excluded;
+terminal cases are excluded. `OFFERED` is the existing proposed F04 phase.
+Each row carries `advance_id`, `fixture_id`, `claim_id`, recorded `phase` and
+`amount`, verbatim `fsm_preview` and `underwriting` reader outputs, and
+`source_references`. No combined approval score is produced. Underwriting uses
+the recorded overlay `sim_day` and synthetic `auditor` evaluation context,
+which supplies no authenticated authority. No candidate offers are invented.
+
+`source` binds the supplied workspace path, file name, captured-byte SHA256,
+payload SHA256, F04 state digest, folded overlay digest, recorded sim day,
+fixture digest, vendor manifest pin, audit report and loaded policy provenance.
+`loaded_policy` contains the terms status (including note SHA256), slice policy
+and a digest over the loaded parsed terms and slice policy. These describe
+current local evidence, not the policy historically in effect when the
+workspace was saved: `historical_policy_provenance` and `authentication` remain
+`NOT_BOUND`.
+
+`source.references` indexes the complete captured portfolio, including drawn
+and terminal cases excluded from inventory. `f04` and `overlay` entries give
+zero-based indexes, workspace JSON pointers, operation/overlay IDs and entry
+hashes. `fixtures` indexes the loaded built-in fixture views with claim/view
+hashes, profile and beneficiary identity. `portfolio` lists every restored
+advance with a view hash and its F04 indexes. Row `source_references` names
+its supporting `f04_indexes` and `fixture_index`; `portfolio_indexes` and
+`overlay_indexes` deliberately cite the entire portfolio and overlay, since
+aggregate exposure, shared reservations and slice constraints can depend on
+other cases and claims. `policy_note_sha256` links the underwriting source to
+`loaded_policy.terms`. Hash encoding follows existing `service.digest` rules;
+`captured_sha256` hashes the exact file bytes. References are local evidence
+locators, not authenticated external attestations.
+
+Every preview replays a disposable FSM from the same restored cut. State,
+journal, receipts, case mappings, overlay, fixtures and loaded policy inputs
+are checked for equality around each reader; each reader's observed state
+digest must match the original. Reordering enumeration leaves each result
+unchanged and creates no reservations or receipts. Determinism requires the
+same captured bytes, supplied path and loaded policy/fixture inputs. The tool
+adds no timestamps or random identifiers to the report.
+
+`COMPLETE` describes coverage, not approval: FSM refusals and policy declines
+are complete results. Missing required policy evidence keeps the existing
+`NOT_BOUND` record without fabricated checks or numeric policy outputs and
+produces `INCOMPLETE`. Audit failure produces `AUDIT_FAILED`; restoration,
+reader or invariant failure produces `INCOMPLETE`. Both suppress conclusions
+with `cases: null`, with stable reasons and the underlying audit result;
+there are no partial case conclusions after such failures. CLI exit codes:
+0 complete, 1 incomplete/failed report, 2 argument misuse. An empty inventory
+is complete when its evidence is bound. `funds_executed`, `workspace_mutated`
+and `write_authorized` are always false.
+
+Individually acceptable previews do not establish simultaneous fundability.
+Underwriting remains advisory. F04 previews do not evaluate every live command
+guard, including the separate slice draw guard. No draw-order permutations,
+shared-cap optimization, admission enforcement, new offers, maturity extensions
+or changes to the live facade/UI are included.
+
+When a restored slice registry has missing slice-policy evidence, the existing
+`underwrite` reader can raise `NOT_BOUND` before constructing its record. The
+offline adapter converts only that explicit exception through the existing
+underwriting `_unbound` constructor and terms envelope. It preserves the
+number-free `NOT_BOUND` shape, marks the inventory `INCOMPLETE`, and evaluates
+no subject with slice constraints removed. Other reader errors suppress all
+case conclusions. The live reader and facade retain their existing behavior.
 
 ### loss-allowance-postings
 
