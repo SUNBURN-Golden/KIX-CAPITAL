@@ -4414,3 +4414,81 @@ Logs, checker results and selected-stage evidence are under ignored
 No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
+
+## origination-readiness-report — builder verification (2026-11-05)
+
+Implemented the offline stdlib `capital.origination` CLI and report over one
+captured workspace. It audits before restoration, inventories undrawn
+nonterminal cases in stable ID order, and preserves separate F04 previews and
+advisory U1–U6 records. References bind the capture, complete portfolio,
+fixtures, overlay, vendor pin and currently loaded policy inputs. The five
+synthetic scenarios cover drawable approval, FSM refusal, policy-only decline,
+`OFFERED` and slice borrowing-base constraints. No combined approval score or
+simultaneous-funding claim is introduced. All outputs remain SIMULATED;
+authentication and historical policy provenance remain NOT_BOUND.
+
+The design matches the repository's disposable preview producer and existing
+`OFFERED` phase. One implementation deviation was required: with a restored
+slice registry, absent policy can make `underwrite` raise `NOT_BOUND` before
+it constructs a record. The offline adapter uses the existing `_unbound`
+constructor and terms envelope for that explicit exception, preserving the
+number-free record and INCOMPLETE status. It does not bypass the slice guard,
+remove slice inputs, change rules or change the live facade.
+
+The first focused run had 11/12 passing tests: the proposed fixture incorrectly
+expected DECLINE, while its existing advisory rule result is APPROVE even
+though the FSM preview is NOT_APPLICABLE. Correcting that expected fixture
+produced 12/12, then expanded coverage passed 15/15. A first full suite passed
+1,343 tests in 321.640 s. A subsequent manual missing-policy-at-restoration
+assertion exited 1 because that case yielded INVENTORY_FAILED; this exposed
+the pre-record NOT_BOUND path described above. The diagnostic confirmed
+ACTIVE restoration and a successful audit with absent slice policy. After
+the adapter fix, focused runs passed 16/16 and then the final 17/17 tests,
+including the real construction-time missing/unusable policy path, missing
+slice policy alone, and a slice-only empty inventory. These earlier results
+are historical within this builder run, not substitutes for final checks.
+
+Local verification logs are retained under ignored
+`build/origination-verification/`; `unit-before-not-bound-adapter.log` preserves
+the first full run. No git commit, push, PR, issue or external post was made.
+No provider, credential, money, deployment or new financial/legal/product
+choice was needed. The pre-existing root `DECISION_REQUIRED.md` concerns an
+older integration baseline and was left unchanged as required by the plan.
+
+Final local verification commands and measured results:
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -p test_origination.py -v` | Exit 0; **17 tests passed** in 8.954 s on the final implementation. Includes direct-reader parity, stable ordering, shared-face independence, no commands/saves/locks or disk mutation, missing-policy preservation, audit corruption, invariant suppression, CLI canonical bytes and exit codes. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,345 tests passed** in 315.246 s on the final implementation, including the unchanged legacy export/golden byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital` | Exit 0, including the final adapter. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 274 artifacts, nine stages. The new vector and focused command are registered with matching README needles. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only, pending anchors are not implementation. |
+| `npm ci` | Exit 0; three development packages installed from the unchanged lockfile; four packages audited, zero vulnerabilities reported. |
+| `python3 scripts/build_release.py --out build/origination-verification/dist` | Exit 0; final artifact SHA256 `25607617d998f07521959cd1afda7b7c60aab88036406eda022d10edb021f3d7`. |
+| `python3 scripts/build_release.py --out build/origination-verification/dist2` | Exit 0; identical final artifact SHA256. |
+| `cmp build/origination-verification/dist/capital-*.pyz build/origination-verification/dist2/capital-*.pyz` | Exit 0; final package builds are byte-identical. |
+| `python3 scripts/smoke_release.py build/origination-verification/dist/capital-0.2.0.pyz` | Exit 0; all 11 packaged smoke checks passed, including bundled policy, restart, receipts, source integrity and the synthetic lifecycle. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 Chromium tests passed** in 2.0 min with installed headless-shell build 1208 and unchanged Playwright configuration/assertions. |
+| `python3 build/origination-verification/check_preservation.py` | Exit 0; all five vendor SHA256 locks match; all eight captured protected baseline files are byte-identical, including the manifest, legacy export and CI workflow. |
+| `git diff --exit-code -- capital/vendor/ capital/export.py .aiops/ .github/ DECISION_REQUIRED.md` | Exit 0; no protected-path or historical decision-file edits. |
+| `pgrep -af '^python3 -m capital.server([[:space:]]\|$)'` | Exit 1 with no matches after verification: no Capital server processes from these runs remain. Smoke and Playwright servers were stopped. |
+
+The final full suite stdout/stderr is `unit.log`, focused results are
+`focused.log`, browser results are `browser.log`, and packaged results are
+`package-smoke.log`, all under `build/origination-verification/`. Each logged
+long command ran in the foreground with stdout/stderr redirected to its log;
+no long-running shell job was backgrounded. The preservation script compares
+against the before-edit byte snapshot retained at
+`/tmp/origination-protected-before.json` and separately verifies the five
+manifest locks.
+
+Runner deviation: default browser ports 8765–8767 were already occupied by
+unrelated services. An `unshare -Urn -- ip link set lo up` probe exited 0, so the
+unchanged browser command ran in an isolated network namespace with loopback
+up. No unrelated process was stopped, public endpoint exposed, test weakened,
+retry configured or committed runner setting changed. The full 76-test run
+passed on its first invocation in this builder run. The package is local,
+unsigned and unpublished. There is no new DECISION_REQUIRED condition.

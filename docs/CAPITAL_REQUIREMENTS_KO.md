@@ -124,3 +124,22 @@ F04 노출 중복 합산·케이스 간 현금 상계·shortfall 중복 합산�
 결정하지 않는다. 새 저장 형식·workspace 변경·명세서 재분류·HTTP/UI 변경도 없다.
 Protocol/Commerce 및 CAP-11/CAP-16 등 upstream readiness와 NOT_BOUND 경계는 그대로다.
 검증 계약과 종료 코드는 [INTEGRATION.md](INTEGRATION.md#residual-obligations-report)에 있다.
+
+### CAP-01 / CAP-08 한정 확장: 오프라인 인출 전 검토 목록
+
+`python3 -m capital.origination --workspace DIR`은 캡처한 로컬 작업공간을
+먼저 감사한 뒤, 아직 인출하지 않았고 종료되지 않은 F04 건을 ID 순서로
+나열합니다. 기존 제안 단계는 `OFFERED`이며 각 행은 기존 F04 인출 미리보기와
+U1–U6 자문 심사 기록을 분리해서 보존합니다. 슬라이스의 차입기준액 차감과
+집중도 노출도 기존 규칙을 사용하며 새 금리·수수료·한도를 정하지 않습니다.
+
+라벨은 `SIMULATED`, 모드는 `READ_ONLY_ORIGINATION_REVIEW`입니다.
+`COMPLETE`는 목록의 완전성만 뜻합니다. 개별 미리보기의 수락은 동시 자금조달
+가능성을 보장하지 않으며 심사는 자문입니다. F04 미리보기에는 별도 슬라이스
+인출 가드를 포함한 모든 실시간 명령 가드가 들어 있지 않습니다. 인가·과거
+정책 출처는 `NOT_BOUND`이고, 정책 근거 누락은 `INCOMPLETE`와 기존
+`NOT_BOUND` 기록으로 남습니다. 감사 실패 시 `cases: null`, 종료 코드 1로
+검토 결론을 억제합니다. 정상 완전 목록은 0, 인자 오류는 2입니다.
+작업공간 잠금·수정·예약·영수증 생성이나 실제 자금 이동은 없고, 인출 순서
+최적화·입장 집행·신규 제안·만기 연장·라이브 화면 변경은 범위 밖입니다.
+이는 CAP-01/CAP-08의 제한된 로컬 검토 보조이며 운영 준비 완료를 뜻하지 않습니다.

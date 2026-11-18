@@ -115,6 +115,9 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'origination.json': (
+        'tests/vectors/origination.json',
+        'python3 -m unittest discover -s tests -p test_origination.py -v'),
     'dossiers/': ('tests/vectors/dossiers/', 'scripts/dossier_vectors.py --check'),
     'provider_facts.json': ('tests/vectors/provider_facts.json', 'scripts/observation_vectors.py --check'),
     'facts/': ('tests/vectors/facts/', 'scripts/facts_vectors.py --check'),
