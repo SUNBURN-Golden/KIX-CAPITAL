@@ -7,7 +7,7 @@ JSON diagnostic IDs, retains full scoped keys and rejects alias collisions. No
 16-byte alias, KIX-BCS encoding, domain/schema allocation or provider key is adopted.
 The contract document is pinned separately at `e2a029d8ac3af7575888dac22fc4bf173ebec232`
 with SHA256 `e640151bbdff15b67584337e6cdb6e95b2cc9c060f48dcc9de45df84f8de5345`;
-`7481b0e` is the FSM pin and does not contain this document.
+The observation citation has its own pin. The FSM delivery is `8ba7f6c`.
 
 Registry of Capital facade ports. A later node adds its port as a new row here and a `typing.Protocol` in `capital/ports.py`. The test in `tests/test_seams.py` fails when a Protocol has no row, or when a row says `ADOPTED` without an upstream receipt reference.
 

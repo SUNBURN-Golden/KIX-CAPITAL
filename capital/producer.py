@@ -63,7 +63,7 @@ class FixtureViews:
                 book.commit(fixture_id, idempotency_key='commit', movement_id='sim-movement',
                             gross=100_000, amount=97_000, fee=3_000, tax=0, held=0, adjustment=0)
             # Adverse fixture: one synthetic partial refund through the pinned FSM, so
-            # bearer UNDEFINED and the distribution block are derived, never hand-set.
+            # B5 REQUESTER bearer and the open obligation come from the FSM.
             if refund:
                 book.bind_refund(fixture_id, idempotency_key='refund', refund_id='sim-fixture-refund',
                                  amount=10_000, beneficiary_role='fixture-buyer', reason='SYNTHETIC_FIXTURE')

@@ -50,7 +50,7 @@ def requirements_header_errors(header, registry_note):
     """The header must scope the two executable/reference pins and mark each
     decision note's recorded research baseline as provenance, not a binding."""
     errors = []
-    for needle in ('7481b0e16ce9b903abbffa62249bb91cd9e63cfe',
+    for needle in ('8ba7f6c36373ac0ec49246f51f7471c164ac3a28',
                    'e2a029d8ac3af7575888dac22fc4bf173ebec232'):
         if needle not in header:
             errors.append('requirements header lacks executable pin ' + needle[:7])

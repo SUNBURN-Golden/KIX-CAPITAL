@@ -3,7 +3,7 @@ digest framing to the pinned CANONICAL_ENCODING_V1 (CE1) byte rules.
 
 Each row in tests/ce1_claims.json cites the pinned
 docs/CANONICAL_ENCODING_V1.md (kix-protocol
-7481b0e16ce9b903abbffa62249bb91cd9e63cfe, the vendor pin), names one check,
+8ba7f6c36373ac0ec49246f51f7471c164ac3a28, the vendor pin), names one check,
 carries the row input, and stores the value that check must observe.
 
 The gate is the binding's input validation, not a Capital encoder change:

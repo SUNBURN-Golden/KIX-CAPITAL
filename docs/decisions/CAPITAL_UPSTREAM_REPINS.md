@@ -18,13 +18,13 @@ Capital 자체 참조의 **시뮬레이션·제품 설계용** 거버넌스다. 
 | item | decision | CAP rows | consumer |
 |---|---|---|---|
 | `pin_class_vocabulary` | **ADOPTED:** vendor 바이트 구속, 인용 구속, 연구 출처의 세 클래스 | CAP-01, CAP-20 | 참조 목록·클레임 표·결정 노트 |
-| `executable_pin_inventory` | **ADOPTED:** vendor `7481b0e`, AI 인용 `e2a029d`와 지정 소비 범위 유지 | CAP-11, CAP-15, CAP-16 | manifest·클레임 표 다섯 종 |
+| `executable_pin_inventory` | **ADOPTED:** vendor `8ba7f6c`, AI 인용 `e2a029d`와 지정 소비 범위 유지 | CAP-11, CAP-15, CAP-16 | manifest·클레임 표 다섯 종 |
 | `research_baseline_rule` | **ADOPTED:** 역사적 출처 보존; 실행 핀과 동일성 강제 금지 | CAP-01, CAP-20 | 노트의 `기준`·`bases` |
 | `repin_trigger_procedure` | **ADOPTED:** 수용 근거·영향 분석·원자적 PR·검증 필수 | CAP-11, CAP-15, CAP-16, CAP-20 | 향후 리핀 구현·리뷰 |
 | `dual_pin_handling` | **ADOPTED:** 활성 구속 표면당 하나의 핀; 일반 이중 핀 전환 창 없음 | CAP-15, CAP-16 | 실행·참조 소비 경로 |
 | `claim_table_regeneration_rule` | **ADOPTED:** 핀 이동 시 해당 표·벡터를 항상 같은 PR에서 재생성 | CAP-13, CAP-14, CAP-15 | 클레임 표·벡터·관련 골든 |
 | `drift_fence_integration` | **ADOPTED:** 여덟 binding 등록 유지·정렬 수정; 후보 전체 findings 0 필수 | CAP-15, CAP-20 | decision-binding·문서·벡터 검사 |
-| `current_pin_assessment` | **ADOPTED:** 두 현행 핀 모두 `HOLD`; 지금 리핀하지 않음 | CAP-11, CAP-15, CAP-16 | 현행 실행·참조 소비자 |
+| `current_pin_assessment` | **ADOPTED:** 현행 실행·인용 핀의 시뮬레이션 외 소비는 `HOLD` | CAP-11, CAP-15, CAP-16 | 현행 실행·참조 소비자 |
 
 ## 2. KIX 비전 연결
 
@@ -56,18 +56,18 @@ Capital의 금융 기능을 확장하려면 계약 출처, 소비 범위, 주장
 
 ### 3.2 `executable_pin_inventory`
 
-**ADOPTED.** 현재 실행·참조 핀은 다음 두 개다.
+**ADOPTED.** 이 결정의 기본 실행·참조 핀은 아래 두 개다. 읽기 모델 인용 재배정은 별도 `CAPITAL_READ_MODEL_QUERY_PIN.md`에 기록한다.
 
 | 클래스 | 전체 SHA | 구속 범위 |
 |---|---|---|
-| `EXECUTABLE_VENDOR` | `7481b0e16ce9b903abbffa62249bb91cd9e63cfe` | F04·F01–F03 FSM reference 다섯 파일, vendor manifest SHA256, `tests/upstream_claims.json`·`tests/fsm_contract_claims.json`·`tests/read_model_claims.json`의 관련 인용, `tests/ce1_claims.json`의 `docs/CANONICAL_ENCODING_V1.md` 바이트 규칙 인용(main `cde0bc7` 병합으로 합류; 같은 SHA, 새 소비 범위) |
+| `EXECUTABLE_VENDOR` | `8ba7f6c36373ac0ec49246f51f7471c164ac3a28` | F04·F01–F03 reference 전체 69개 파일, vendor manifest SHA256 및 OpenAPI·SDK·로컬 게이트 전달 튜플, `tests/upstream_claims.json`·`tests/fsm_contract_claims.json`의 관련 인용, `tests/ce1_claims.json`의 `docs/CANONICAL_ENCODING_V1.md` 바이트 규칙 인용(main `cde0bc7` 병합으로 합류; 같은 SHA, 새 소비 범위) |
 | `EXECUTABLE_CITATION` | `e2a029d8ac3af7575888dac22fc4bf173ebec232` | AI 위임 권한 계약 초안 0.1, `reference/ai_delegation/` mock의 읽기 전용 인용, `tests/agent_claims.json` |
 
 AI mock은 vendor되지 않았고 manifest 해시도 없다. 인용 핀 검사를 vendor 바이트 검증으로 표시하지 않는다.
 
 팩의 Commerce `7c2452645c50b8ede17bdd762794adeabe42319e`는 확인 출처다. 이 문서가 Commerce에 새 실행 구속을 만들지는 않는다. 이번 Capital `cde0bc7`과 Protocol `93cec6a`도 문서의 연구 기준이다.
 
-향후 핀 등록에는 저장소, 전체 SHA, 대상 경로·계약 범위, 소비자, 검증 방법과 수용 근거를 기록한다. 현재 목록의 바이트·SHA·소비 범위는 변경하지 않는다.
+향후 핀 등록에는 저장소, 전체 SHA, 대상 경로·계약 범위, 소비자, 검증 방법과 수용 근거를 기록한다. 향후 전달 핀 이동은 §3.4의 승인과 원자적 갱신을 따른다.
 
 ### 3.3 `research_baseline_rule`
 
@@ -171,9 +171,9 @@ round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP de
 
 ### 3.8 `current_pin_assessment`
 
-**ADOPTED. 두 핀 모두 `HOLD`; 지금 리핀하지 않는다.**
+**ADOPTED. 2026-11-13 KIX 공지에 따른 전달 핀 갱신 이후에도 소비 평가는 `HOLD`다.**
 
-- **vendor `7481b0e`: HOLD.** 요구사항이 다섯 reference 파일과 세 클레임 표의 기준으로 명시하고, main `cde0bc7` 병합으로 합류한 CE1 표 `tests/ce1_claims.json`도 같은 SHA의 `docs/CANONICAL_ENCODING_V1.md`를 인용한다. 대체할 특정 수정 수용 결정이나 실제 채택 영수증이 팩에 없다.
+- **vendor `8ba7f6c`: HOLD.** 2026-11-13 KIX 공지로 전체 reference 두 디렉터리와 OpenAPI, SDK, 로컬 게이트를 한 전달 SHA에 고정했다. 시뮬레이션 외 소비는 계속 HOLD다.
 - **AI 인용 `e2a029d`: HOLD.** 초안 0.1·mock 인용과 agent 표의 기준이다. 다른 계약·조항으로 이동할 구체 근거가 제공되지 않았다.
 
 연구 기준 `93cec6a`는 자동 대체 후보가 아니다. HOLD는 안전성 인증이나 영구 동결이 아니며 §3.4의 근거가 생기면 재평가한다. CAP-11·CAP-15·CAP-16의 해당 미구속 범위는 계속 `NOT_BOUND`다.
@@ -208,9 +208,9 @@ round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP de
       "status": "ADOPTED",
       "value": {
         "vendor_pin": {
-          "sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+          "sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
           "class": "EXECUTABLE_VENDOR",
-          "file_count": 5,
+          "file_count": 69,
           "manifest": "capital/vendor/manifest.json",
           "bound_tables": ["tests/upstream_claims.json", "tests/fsm_contract_claims.json", "tests/read_model_claims.json", "tests/ce1_claims.json"]
         },
@@ -361,7 +361,7 @@ round 3 로컬 결과: pack 17개·binding 22개·결정 파서 9개·비HTTP de
     "current_pin_assessment": {
       "status": "ADOPTED",
       "value": {
-        "vendor_pin_7481b0e": "HOLD",
+        "vendor_pin_8ba7f6c": "HOLD",
         "ai_draft_pin_e2a029d": "HOLD",
         "reason": "no_specific_repin_trigger_evidence_in_supplied_pack",
         "next_review": "on_any_authorized_repin_trigger",
