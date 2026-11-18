@@ -248,7 +248,7 @@ before verification. Never use fixture keys outside tests.
 | approve / reject / cancel / bind_settlement / draw / close / default / reconcile | empty object |
 | repay | amount, sequence (next positive integer) |
 
-API wraps the pinned FSM without inventing financial terms. `reject`, `cancel`, `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map: `fixture-organizer` for fixture-v1, the `demo-org-*` synthetic role for each demo-book claim. No caller-supplied settlement body, product terms, identities, credentials, filenames or URLs. The refund fixture is explicitly adverse: 10000 synthetic refund face with burden UNDEFINED; it is not a new executed refund policy. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` only (T1 COMMITTED, T2 CAPTURED, `demo-epsilon-refund` with a 60,000,000 open refund face) so U4 single/beneficiary/portfolio caps bind on real `DECLINE` proposals; cap values stay cited from the terms note, never restated.
+The API delegates to the pinned FSM. `reject`, `cancel` and `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map (`fixture-organizer` for fixture-v1 and the `demo-org-*` synthetic role for each demo-book claim). The API takes a fixture ID and amount for an offer. `sim-refund` has a 10,000 KRW synthetic refund face with bearer `REQUESTER` and is declined with `REFUND_OBLIGATION_OPEN`. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` (T1 `COMMITTED`, T2 `CAPTURED`, and `demo-epsilon-refund` with a 60,000,000 KRW open refund face). The underwriting desk evaluates U4 single, beneficiary and portfolio caps on those simulated proposals using the terms note.
 
 Every bound draw reads the immutable settlement view and does not call settlement mutations. F04 also explicitly permits an unbound draw; it reports UNBOUND and does not claim a COMMITTED observation. UI's guided flow binds first. A process-wide lock serializes commands, snapshot and export in this single-process demo. First transport receipt is returned after later transitions too; GET state is current. Domain errors are stored as REJECTED. Schema/boundary errors reject before applying. Reconcile is read/replay and does not clear UNKNOWN.
 
@@ -1063,15 +1063,30 @@ The fake gate requires the delivery tuple from `GET /v1/delivery` before each lo
 and checks the `X-Kix-Protocol-Commit` request header. Byte agreement grants BOOTSTRAP
 catalogue binding. CAP-16, upstream query and source-map adoption stay `NOT_BOUND`.
 
-`capital.protocol` exposes the pinned `observe_settlement_variance` and `observe_shared_exposure`.
-The caller supplies the KRW tolerance or limit, including zero. Variance is settlement outstanding
-minus frozen credit open face for the same claim and trade. Shared exposure totals each advance
-and counts open face and reservation once per claim in the caller's group. Both observers return
-fail-closed diagnostics with `authorizes_exposure: false` and `refund_component: NOT_BOUND`.
-Command admission and the Capital shared-cap policy use their own inputs.
+| Seam | SIMULATED binding | Contract at `8ba7f6c` |
+| --- | --- | --- |
+| ProducerPort | `PinnedFsmProducer` passes the raw inner settlement claim to `offer`. The first accepted draw note freezes the entire face. Open face is the sum of obligation `outstanding`. Cash and recovery are companion fields. A later valid changed face fails at note creation with `FACE_SNAPSHOT_FROZEN`. A bound draw requires a matching mock `COMMITTED` view with false execution flags. | `CREDIT_ADVANCE_F04.md` §§2–3, 7.2, 7.5 |
+| SettlementPolicyPort | The pinned settlement FSM binds refund obligations and keeps payee faces and prior distributions intact for partial refunds (`REQUESTER`). Distribution can continue in the frozen caller order. Mock cancel acceptance reduces refund outstanding and increases the open PG adjustment. A first one-shot gross refund uses `FIXTURE_FULL_GROSS_RECLASS`. Partial refunds summing to gross stay `REQUESTER`. F04 rejects an offer with positive non-reclassified refund face as `REFUND_OBLIGATION_OPEN`. Capital's provisional reason-class split is `SHADOW_NOT_APPLIED`. | `SETTLEMENT_DISTRIBUTION_F01_F03.md` §§3–5, 7.6, 9.2 and `CREDIT_ADVANCE_F04.md` §§2–3, 5 |
+| Settlement variance | `observe_settlement_variance` subtracts frozen credit open face from the settlement obligations' outstanding total for the same KRW claim and trade. The absolute variance is compared with the caller's tolerance. | `CREDIT_ADVANCE_F04.md` §7.11 |
+| Shared exposure | `observe_shared_exposure` reads frozen KRW views in `DRAWN`, `CLOSED` or `DEFAULTED`. It counts exposure once per advance and capacity once per claim in the caller's group. The group's outstanding exposure is compared with the caller's limit. | `CREDIT_ADVANCE_F04.md` §7.12 |
 
-B5 sets a partial refund's bearer to `REQUESTER`. Distribution follows available simulated
-cash and the existing order, preserving payee faces. F04 still returns `REFUND_OBLIGATION_OPEN`
-for open partial refunds. The reason-class refund split continues as `SHADOW_NOT_APPLIED`.
-Stage-5 coverage runs database-free. `POINT_F4` is a labelled simulator outside ledger,
-settlement and credit calculations.
+The observer thresholds are required nonnegative integers, including zero, with
+no defaults. Both observers return `fail_closed: true`, `authorizes_exposure: false`
+and `mutates_state: false`. Refund attribution and disposition remain `NOT_BOUND`
+with `repair: NONE`. The observers supply no admission or shared-cap policy inputs.
+[Open contract shapes](KIX_CHANGE_REQUESTS.md)
+
+The provisional settlement policy note describes the B0 settlement behavior at
+its original `7481b0e` pin. The B5 behavior in the table applies to the current
+delivery. [Settlement policy note](decisions/CAPITAL_SETTLEMENT_POLICY.md)
+
+`tests/test_protocol_delivery.py` compares the producer's refund and frozen-face
+flows with the vendored settlement-credit boundary vectors and exercises every
+vendored variance and shared-exposure case. The staged Protocol suite also runs
+the economics-credit vectors and database-free Stage-5 checks. Stage-5 runtime
+adoption is `NOT_BOUND` and `runtime_enabled` is false. Commerce inputs come
+through Protocol.
+
+**POINT_F4 pool simulator — NOT an accounting ledger**. The upstream workbench
+sits outside settlement and credit calculations. This seam has no ledger
+aggregation or accounting export.
