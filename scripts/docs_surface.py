@@ -142,6 +142,8 @@ VECTOR_NEEDLES = {
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'risk_scenarios.json': (
         'tests/vectors/risk_scenarios.json', 'scripts/risk_scenario_vectors.py --check'),
+    'cure_quote.json': (
+        'tests/vectors/cure_quote.json', 'scripts/cure_quote_vectors.py --check'),
     'workspace_crash.json': (
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'fold_fuzz.json': (

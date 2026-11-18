@@ -184,6 +184,7 @@ python3 scripts/smoke_release.py dist/capital-0.2.0.pyz
 - 호환 manifest 사전점검 리허설(`tests/vectors/compat/`, 형식 `capital-compat-expected/1`, 라벨 `READ_ONLY_FIXTURE`/`SIMULATED`). `capital/compat_preflight.py`가 합성 `kix-compat-manifest/1` 번들을 호출자가 따로 핀한 expected tuple(`tests/vectors/compat/expected.json`)과 오프라인으로 대조합니다. producer identity·profile·두 contract 파일·generator/toolchain·SDK 출력·vector 해시와 `manifest_sha256`을 모두 검사하고, 중복 키·자기 digest 필드·누락 파일·루트 밖 경로를 거절합니다. 인코딩은 인용된 `kix-canonical-json/1`(kix-protocol `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915`의 `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md`)이고 Capital의 레거시 ASCII 이스케이프 인코딩과 별도로 둡니다. `python3 scripts/compat_preflight.py --check`가 코퍼스 해시·인벤토리·canonical 벡터·expected tuple을 검사해 어긋남이면 1로 끝나고 아무것도 다시 쓰지 않습니다. 바이트 일치(`MATCHED`)는 `semantic_consumption` `HOLD`·`adoption` `NOT_BOUND`를 바꾸지 않고, 자기 선언 `SEMANTIC_CONFORMANCE` 문자열은 어댑터를 승인하지 않습니다. 계약은 [docs/COMPAT_PREFLIGHT.md](docs/COMPAT_PREFLIGHT.md)에 있습니다.
 - 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_CASH_FORECAST`). 오버레이 원장의 `sim_day`·인출일과 `CAPITAL-TERMS-V1`을 접어 날짜가 박힌 세 레그(`SETTLEMENT_CASH_IN` 예상 정산 입금일, `CONTRACT_INTEREST` 만기, `PRINCIPAL` 만기)를 건별로 보여 주고 0-7/8-30/31-60/61-90/91+ sim 일 버킷으로 묶습니다. 버킷마다 정확한 유리수 합을 한 번만 1원에 내리고, 상환 레그는 미상환 원금+만기 계약 이자와 대사(`reconciliation.matched`)합니다. 가정(`SETTLEMENT_ARRIVES_IN_FULL_ON_EXPECTED_DAY`, `NO_DEFAULT_CONTRACTUAL_SCHEDULE`, `NO_PREPAYMENT_BEYOND_RECORDED_ENTRIES`)은 SIMULATED 표시이고, 확률 가중·할인/NPV·FX·자금 이동은 범위 밖입니다. `instance_id`·`expected_settlement_cash_day` 외의 질의 인자는 `400 INVALID_ARGUMENTS`이고 노트가 쓸 수 없으면 `NOT_BOUND`에 숫자가 없습니다. 읽기는 아무것도 쓰지 않습니다. 시드 데모 장부의 예측은 `tests/vectors/forecast_vectors.json`에 바이트로 고정되고 `python3 scripts/forecast_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - 가상 시나리오(`GET /api/risk/scenarios`, `GET /api/risk/scenarios/{id}`, 권한 `projection:read`, 라벨 `SIMULATED`, `mode` `SIMULATED_WHATIF`). 고정 네 가지(`largest-advance-default`, `refund-shock`, `all-watch-breach`, `concentration-cap-hit`)가 `GET /api/risk`와 `GET /api/risk/covenants`의 같은 정수 입력을 깊은 복사로 받아 하나의 가정만 적용해 다시 접습니다. `reconciliation`이 시나리오 합계를 라이브 `GET /api/risk`로 되맞추고(`matched`), `applied`·`enforced`는 항상 거짓입니다. 모르는 id는 `400 SCENARIO_UNKNOWN`, 노트가 쓸 수 없으면 숫자 없는 `NOT_BOUND`이고, 저널·오버레이 항목·receipt·예약은 변하지 않습니다. 시드 데모 장부의 응답은 `tests/vectors/risk_scenarios.json`에 바이트로 고정되고 `python3 scripts/risk_scenario_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
+- 최소 치유 견적(`python3 -m capital.cure_quote`, 형식 `KIX_CAPITAL_CURE_QUOTE_V1`, 라벨 `SIMULATED`, `mode` `READ_ONLY_CAPTURED_INPUT_ADVISORY`). 기록된 CALLED 마진 상태 하나에 대해 기존 `margin.measure` 술어를 뒤집어 최소 정수 원금 감소 R, 게시된 미지급 이자 구성(분자·분모 witness 포함), 적격 보유 현금 H와 최소 신규 현금 N = G - A를 계산합니다. `--list`가 고정 아홉 시나리오를, `--scenario ID`가 하나를 canonical JSON으로 냅니다. 충족·최소성 witness는 `post_repayment`을 일회용 복원 사본에서만 실행하고 출발 저널·receipt·시계·작업공간 바이트는 변하지 않으며, 산술 충족·명령 수용 여부·기록된 CURED 상태를 분리해 보고합니다. 용량 거절은 산술을 지우지 않고 `REFUSED`로 남기며, 기한 경과·가속·종결·미기록 콜은 금액 null의 명시 결과를 냅니다. 응답 전체는 `tests/vectors/cure_quote.json`에 바이트로 고정되고 `python3 scripts/cure_quote_vectors.py --check`가 어긋남·누락이면 1로 끝납니다.
 - AI 위임 클레임 표(`tests/agent_claims.json`)와 실행 스크립트(`scripts/agent_claims_check.py`). 각 행은 고정된 upstream 초안 `docs/contracts/AI_DELEGATION_AUTHORITY.md`(kix-protocol `e2a029d8ac3af7575888dac22fc4bf173ebec232`)의 클레임 문자열·절·needle을 인용하고, `capital/agent_claims.py`의 검사가 SIMULATED agent lane을 loopback facade로 실행합니다. 표의 `HUMAN_PENDING`은 초안 `PROPOSED` 메모 단계의 Capital 라벨이고, 실행 거절 `EXECUTE_AUTHORITY_DISABLED`(403)는 초안의 항상 거절 `attempt_execution`을 반영합니다. organizer 명령은 pending `proposal_id`를 receipt에 인용으로 새기고 메모를 실행하지 않습니다. `--protocol-dir` 없이는 `SKIPPED`이며 통과가 아니고, `upstream-claims` 수용 단계가 이 스크립트를 두 번째 명령으로 실행해 라벨 `CLAIM_CONFORMANCE` 아래 합산합니다. `ai_delegation_mock.py`는 vendor하지 않고 ActionPermit·EXECUTE·인가 변경은 범위 밖입니다.
 - 읽기 모델 질의 클레임 표(`tests/read_model_claims.json`, `KIX_CAPITAL_READ_MODEL_CLAIMS_V1`)와 실행 스크립트(`scripts/read_model_claims_check.py`). `GET /api/read/credit_advance/{id}`, `/api/read/credit_claim/{id}`, `/api/read/settlement/{id}`는 kix-protocol `244595db1524cbb1a01148baa07d6d28cd1b8dc6`의 초안 `docs/contracts/READ_MODEL_QUERIES.md`(0.1) §2.11–2.13 질의를 본뜬 읽기 전용 로컬 소비자 리허설입니다. 본문은 기존 view dict 그대로이고 §3 봉투(`read_schema_version` `0.1`, `query_digest`, `fixture_mode` `REFERENCE_IN_MEMORY`, `accepted_through`)만 감쌉니다. 권한은 `projection:read`이며 observer와 agent는 403이고, 가시성 클래스는 상류에서 UNDETERMINED이므로 응답이 `visibility_enforced: false`라고 적습니다. `list_*`·페이지·`ReadObservationV1` 필드는 만들지 않았습니다. 초안 키 집합은 정산·여신 advance·여신 claim 순서로 25·51·24개입니다. 원본 응답은 25·52·25개이며 두 여신 응답에 `open_terms`만 추가됩니다. 111행은 통과, 두 키 집합은 `DOCUMENTED_DIVERGENCE`로 기록하고,, 드리프트 검사는 `--protocol-dir` 체크아웃의 작업 트리에서 절 단위로 키 목록을 다시 읽습니다. `--protocol-dir` 없이는 행을 실행하지 않고 `SKIPPED`이며 통과가 아닙니다. `upstream-claims` 수용 단계가 이 스크립트를 세 번째 명령으로 실행하고, 건너뛴 사실을 evidence의 `skipped`에 남깁니다. SIMULATED이며 읽기 모델이 아닙니다.
 
@@ -221,6 +222,7 @@ python3 scripts/compat_preflight.py --check
 python3 -m unittest discover -s tests -p test_port_composition.py -v
 python3 scripts/forecast_vectors.py --check
 python3 scripts/risk_scenario_vectors.py --check
+python3 scripts/cure_quote_vectors.py --check
 python3 scripts/docs_surface.py --check
 npm ci
 npx playwright install chromium
@@ -501,6 +503,35 @@ and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-re
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
 
+### Minimum cure quote for a simulated margin call
+
+`python3 -m capital.cure_quote [--scenario ID | --list]` emits canonical JSON
+(`KIX_CAPITAL_CURE_QUOTE_V1`, `SIMULATED` / `READ_ONLY_CAPTURED_INPUT_ADVISORY`)
+from a bounded registry of built-in disposable scenarios; stdlib only. For one
+drawn advance under a recorded `CALLED` margin state it inverts the existing
+`margin.measure` predicate: `required_principal_reduction_krw` (R) is the
+smallest integer reduction that ends the breach, `posted_interest_due_krw` (I)
+keeps the unpaid posted dues and their accrual numerator/denominator witness
+visible, and `G = I + R`, `A = min(H, G)`, `N = G - A` separate gross
+repayment resources, applied held cash and minimum new cash (all zero when
+R = 0, with interest still disclosed).
+
+Applying the quote is verified on disposable service copies
+(`PinnedFsmProducer.restored`): posting N satisfies the coverage predicate,
+posting one KRW less fails when N is positive, and `plan_cures` shows the
+existing tick would record the cure. `arithmetic_sufficient`,
+`command_admissibility` (`ADMISSIBLE_AT_SNAPSHOT` / `REFUSED` / `UNKNOWN`)
+and `recorded_cure` are reported separately; the source journal, receipts,
+clock and workspace bytes never change. Refusals keep independently
+established arithmetic; missing bindings are `NOT_BOUND` with named fields;
+expired windows, accelerations, terminal and recordless cases carry null
+amounts. `input_digest` and `quote_digest` bind the captured inputs and the
+whole report; `is_stale` invalidates any earlier quote (`STALE_QUOTE`).
+Exit codes: 0 evaluated, 1 internal failure, 2 argument misuse. The full
+scenario responses are pinned in `tests/vectors/cure_quote.json` and
+`python3 scripts/cure_quote_vectors.py --check` compares bytes.
+Focused checks: `python3 -m unittest tests.test_cure_quote -v`
+and `python3 scripts/docs_surface.py --check`.
 
 ### Loss allowance candidate V2
 

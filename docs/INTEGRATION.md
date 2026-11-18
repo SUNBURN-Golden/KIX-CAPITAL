@@ -993,6 +993,59 @@ slice write-off, legal collectability or accounting recognition. It changes no
 workspace, persistence format, statement classification, HTTP/UI or upstream
 readiness claim.
 
+## minimum-cure-quote
+
+Offline stdlib API: `capital.cure_quote.quote(service, advance_id) -> dict`;
+capture/classify/evaluate are separate pure stages; `is_stale(service, quoted)`
+revalidates. CLI: `python3 -m capital.cure_quote [--scenario ID | --list]`;
+`main(argv=None) -> int`. The CLI runs only the bounded `SCENARIOS` registry of
+built-in disposable books (no workspace input) and emits
+`store.canonical_bytes(report) + b'\n'` on stdout.
+
+The envelope fields are `format` = `KIX_CAPITAL_CURE_QUOTE_V1`, `label` =
+`SIMULATED`, `mode` = `READ_ONLY_CAPTURED_INPUT_ADVISORY`, `provisional`,
+`advisory` (true), `executionAuthorized`, `funds_executed` (false),
+`decision_id` = `cure-quote-scope-decision`, `advance_id`, `outcome`,
+`reasons`, `sim_day`, `cure_deadline`, `tier`, `terms_version`,
+`margin_record`, `recorded_cure`, `amounts`, `arithmetic_sufficient`,
+`allocation_projection`, `command_admissibility`, `monotonicity`,
+`witnesses`, `notes` (per-note sha256), `producer`, `input_digest`,
+`quote_digest`, `stale_check`, `version`. `amounts` is null whenever the
+outcome has no quote; otherwise it carries the eleven KRW integers
+(`required_principal_reduction_krw`, `posted_interest_due_krw`,
+`interest_due_krw`, `default_interest_due_krw`,
+`gross_repayment_resources_krw`, `eligible_held_cash_krw`,
+`held_cash_applied_krw`, `minimum_new_cash_krw`,
+`outstanding_principal_krw`, `base_krw`, `eligible_face_krw`).
+
+| `outcome` | amounts | meaning |
+| --- | --- | --- |
+| `QUOTED` | integers | active CALLED call, `t < D`; sufficiency/minimality witnessed on disposable copies |
+| `AT_DEADLINE` | integers | `t == D`; arithmetic eligible, existing command ordering still controls |
+| `NO_REDUCTION_REQUIRED` | integers | predicate already satisfied; G = A = N = 0, interest disclosed |
+| `WINDOW_EXPIRED` | null | CALLED record past `D` without an acceleration marker |
+| `ALREADY_ACCELERATED` | null | acceleration recorded at any day; irreversible |
+| `TERMINAL_CASE` | null | case not DRAWN or recovery anchor present |
+| `NO_ACTIVE_MARGIN_CALL` | null | no recorded call or the call is recorded CURED |
+| `NO_FEASIBLE_CURE` | null | no sufficient amount within repayment bounds |
+| `NOT_BOUND` | null | missing entries/evidence, named in `reasons` |
+| `INVALID_INPUT` | null | malformed or inconsistent inputs, named in `reasons` |
+| `UNSUPPORTED_PRODUCER` | null | producer cannot restore a disposable copy |
+| `UNSUPPORTED_CALCULATION` | null | repayment moves the borrowing base or the waterfall diverges |
+| `STALE_QUOTE` | n/a | `is_stale` result, not a quote-time outcome |
+
+`command_admissibility` is `ADMISSIBLE_AT_SNAPSHOT`, `REFUSED` (with the
+original code; independently established arithmetic is preserved) or
+`UNKNOWN`. `witnesses` runs `post_repayment` on `PinnedFsmProducer.restored`
+copies only: `sufficiency` (N posted, `COVERAGE_SATISFIED` when the predicate
+then holds with the same eligible face), `minimality` (N - 1 posted,
+`STILL_BREACHED` or `COMMAND_REFUSED` when N > 0), and the pure
+`cure_would_record` plan check. `recorded_cure` echoes the folded margin
+status and is never synthesized. `input_digest` and `quote_digest` are
+versioned local canonical SHA256 identifiers, not signatures. Determinism
+requires identical captured inputs; the vectors in
+`tests/vectors/cure_quote.json` pin the bounded scenario reports. Exit 0
+when evaluated, 1 on internal failure, 2 on argument misuse.
 
 ### loss-allowance-postings
 
