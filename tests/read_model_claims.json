@@ -43,6 +43,8 @@
     },
     {
       "id": "rm-keyset-credit-advance",
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "rationale": "Pinned F04 exposes required open_terms in the raw view. The unadopted query draft does not list that field.",
       "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
       "section": "### 2.12 `get_credit_advance`",
       "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",
@@ -106,6 +108,8 @@
     },
     {
       "id": "rm-keyset-credit-claim",
+      "disposition": "DOCUMENTED_DIVERGENCE",
+      "rationale": "Pinned F04 exposes required open_terms in the raw view. The unadopted query draft does not list that field.",
       "source_doc": "docs/contracts/READ_MODEL_QUERIES.md",
       "section": "### 2.13 `get_credit_claim`",
       "pinned_sha": "244595db1524cbb1a01148baa07d6d28cd1b8dc6",

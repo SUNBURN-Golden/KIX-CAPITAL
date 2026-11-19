@@ -490,12 +490,12 @@ class ServiceShadowTests(unittest.TestCase):
             self.assertIs(body[flag], False)
         self.assertEqual(before, (self.service.machine.state_digest(),
                                   self.service.machine.canonical_state(), len(self.service.receipts)))
-        # The pinned FSM still blocks distribution on the open-refund fixture.
+        # The pinned FSM permits B5 distribution independently of the shadow split.
         final = self.service.scenario_results['partial-after']['final']
-        self.assertEqual(final['refund_bearer_policy'], 'UNDEFINED')
-        self.assertTrue(final['distribution_blocked'])
+        self.assertEqual(final['refund_bearer_policy'], 'REQUESTER')
         errors = [step['error'] for step in self.service.scenario_results['partial-after']['steps']]
-        self.assertIn('DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED', errors)
+        self.assertEqual(errors, [None, None, None, None])
+        self.assertFalse(final['distribution_blocked'])
 
     def test_unbound_shadow_reports_not_bound(self):
         with tempfile.TemporaryDirectory() as tmp:

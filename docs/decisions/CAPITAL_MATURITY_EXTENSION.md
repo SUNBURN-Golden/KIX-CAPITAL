@@ -32,7 +32,7 @@
 
 ## 2. KIX 비전 연결
 
-- `docs/CAPITAL_REQUIREMENTS_KO.md`: 실행·참조 핀과 결정 문서의 역사적 출처를 구분한다. `3c2cfaf`·`5efab69`는 이번 출처 기준이며 재핀이 아니다. FSM 핀 `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, AI 위임 초안 핀 `e2a029d8ac3af7575888dac22fc4bf173ebec232`, 수명 계약 핀 `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`의 기존 소비 범위를 유지한다. 실행 기준 변경은 별도 재핀 정책·검증·영수증을 요구하며 이 노트로 대체하지 않는다.
+- [재핀 정책 §3.3–3.4](CAPITAL_UPSTREAM_REPINS.md)에 따라 `3c2cfaf`·`5efab69`는 결정 당시의 출처로 보존한다. 당시 FSM 핀은 `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`였다. 이후 main의 PR #191에서 실행 핀을 `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`로 갱신했다. 실행 파일별 SHA256은 [vendor manifest](../../capital/vendor/manifest.json)에, AI 위임 초안 핀 `e2a029d8ac3af7575888dac22fc4bf173ebec232`와 수명 계약 핀 `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`의 인용 범위는 [요구사항](../CAPITAL_REQUIREMENTS_KO.md)에 기록한다.
 - `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` §4.1: 가속 만기 `M* = min(현재 만기, 앵커일)`, 연체 시작 `M*+1`, 부도 적격일 `M*+유예+1`, 가속 철회·연장 금지를 계승한다. 연장 뒤 가속할 때는 연장된 현재 만기를 사용한다.
 - `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`: `CAPITAL-TERMS-V1` 상수 소유권과 `overlay_id`/`kind`/`payload` 엔트리 형태를 계승한다.
 - `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md`: 문서 번들은 구현·서명·게시의 증거가 아니다.

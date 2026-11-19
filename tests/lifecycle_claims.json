@@ -4,7 +4,7 @@
   "simulation": "SIMULATED",
   "funds_executed": false,
   "pinned_sha": "e2313ab473ea1b5a7b5b9246a564749188c1c2c8",
-  "note": "Local lifecycle analogues only. No SEMANTIC_CONFORMANCE, LC-TERM operational closure, provider custody, distributed fencing, stage5 durability or financial execution. Source pin is separate from the unchanged 7481b0e FSM vendor pin. Missing Protocol checkout means citation SKIPPED, never pass.",
+  "note": "Local lifecycle analogues only. No SEMANTIC_CONFORMANCE, LC-TERM operational closure, provider custody, distributed fencing, stage5 durability or financial execution. Source pin is separate from the 8ba7f6c FSM delivery pin. Missing Protocol checkout means citation SKIPPED, never pass.",
   "claims": [
     {
       "id": "first-accepted",
