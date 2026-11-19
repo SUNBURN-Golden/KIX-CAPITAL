@@ -459,8 +459,8 @@ class AgentLaneTests(unittest.TestCase):
         self.assertIs(doc['definitions']['agent_proposal_view']['properties']['decision']['const'], None)
         report = source_integrity(VENDOR, vendor_manifest())
         self.assertIs(report['all_matched'], True)
-        self.assertEqual(vendor_manifest()['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
-        self.assertEqual(len(vendor_manifest()['files']), 5)
+        self.assertEqual(vendor_manifest()['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
+        self.assertEqual(len(vendor_manifest()['files']), 69)
         names = {path.name for path in (ROOT / 'capital' / 'vendor').rglob('*') if path.is_file()}
         self.assertNotIn('ai_delegation_mock.py', names)
         text = (ROOT / 'docs' / 'SEAMS.md').read_text(encoding='utf-8')

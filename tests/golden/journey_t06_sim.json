@@ -1,5 +1,5 @@
 {
-  "digest": "614f735a7411b2b0bb8374c4ab67a8ab5f900941236610b9f0be9679014f0efb",
+  "digest": "c4fed573b0bd76b4ee65bdaa301ec1e3cda56a841691790c46439eb204b9b07e",
   "funds_executed": false,
   "integrated": false,
   "journey": "T06-sim",
@@ -208,18 +208,18 @@
     },
     {
       "expect": [
-        "3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7",
+        "08c9c6e59fd208e24e77abce2986f4bbf982ba503c3896ac2ba761f203723f77",
         4
       ],
       "facts": {
         "operation_count": 4,
-        "state_digest": "3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7"
+        "state_digest": "08c9c6e59fd208e24e77abce2986f4bbf982ba503c3896ac2ba761f203723f77"
       },
       "kind": "HTTP",
       "n": 13,
       "name": "refused agent calls changed nothing",
       "status": [
-        "3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7",
+        "08c9c6e59fd208e24e77abce2986f4bbf982ba503c3896ac2ba761f203723f77",
         4
       ]
     },
@@ -307,7 +307,7 @@
         "operation_count": 6,
         "overlay_state_digest": "8d7d3e1b54eb0b4ddd4b570ae9a42f852e76343e282c75474789bd048d9bae6b",
         "sim_day": 5,
-        "state_digest": "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9"
+        "state_digest": "194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252"
       },
       "kind": "HTTP",
       "n": 19,
@@ -378,19 +378,19 @@
     },
     {
       "expect": [
-        "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9",
+        "194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252",
         6,
         "8d7d3e1b54eb0b4ddd4b570ae9a42f852e76343e282c75474789bd048d9bae6b"
       ],
       "facts": {
         "operation_count": 6,
-        "state_digest": "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9"
+        "state_digest": "194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252"
       },
       "kind": "HTTP",
       "n": 25,
       "name": "digests and counts survive the restart unchanged",
       "status": [
-        "cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9",
+        "194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252",
         6,
         "8d7d3e1b54eb0b4ddd4b570ae9a42f852e76343e282c75474789bd048d9bae6b"
       ]
@@ -514,7 +514,7 @@
       "facts": {
         "funds_executed": false,
         "operation_count": 8,
-        "state_digest": "57def9bb0561bcaba6d730ffb67ea5c735162648604ed48f7db2ab2cf8c978b3"
+        "state_digest": "1d7990d7d6a95afe1efa978a2c5d7925591be391db2e7a4cc78e29cfdd7c9d2e"
       },
       "kind": "HTTP",
       "n": 32,
