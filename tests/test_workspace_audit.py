@@ -18,6 +18,7 @@ from pathlib import Path
 from capital.audit import CHECK_ORDER, audit_workspace, audit_workspace_bytes
 from capital.recon import CHECK_IDS
 from capital.server import make_server
+from capital.service import CapitalService
 from capital.store import FILE_NAME, FileWorkspace, WorkspaceError, canonical_bytes, section_checksum
 from tests.test_overlay import seed, tick
 
@@ -82,6 +83,30 @@ class AuditCliTests(unittest.TestCase):
         self.assertEqual(report['repair'], 'NOT_IMPLEMENTED')
         self.assertEqual(report['stage5_durable_transactions'], 'NOT_BOUND')
         self.assertEqual(snapshot(self.dir), before)
+
+    def test_pre_open_terms_workspace_verifies_and_reopens_without_rewrite(self):
+        seed_workspace(self.dir)
+        path = self.dir / FILE_NAME
+        document = json.loads(path.read_bytes())
+        current = document['payload']['state_digest']
+        legacy = 'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45'
+        self.assertNotEqual(current, legacy)
+        document['payload']['state_digest'] = legacy
+        document['payload_sha256'] = hashlib.sha256(canonical_bytes(document['payload'])).hexdigest()
+        path.write_bytes(canonical_bytes(document))
+        before = path.read_bytes()
+        code, report = self.audit()
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report['state_digest'], legacy)
+        port = FileWorkspace.open(self.dir)
+        try:
+            service = CapitalService(port)
+            self.assertEqual(service.workspace_status, 'ACTIVE')
+            self.assertEqual(service.machine.state_digest(), current)
+            self.assertEqual(service.machine.view('sim-unbound')['open_terms']['mock_boundary'], 'UNFILLED')
+        finally:
+            port.close()
+        self.assertEqual(path.read_bytes(), before)
 
     def test_audit_succeeds_while_the_file_lock_is_held(self):
         seed_workspace(self.dir)

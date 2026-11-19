@@ -21,7 +21,7 @@ from pathlib import Path
 from capital import coa, store
 from capital.producer import FixtureViews
 from capital.projection import SimulationProjection
-from capital.protocol import CreditMachine
+from capital.protocol import CreditMachine, matches_workspace_state_digest
 from capital.recon import build_reconciliation
 from capital.service import MAX_OPERATIONS, CapitalService, digest
 from capital.store import FILE_NAME, StoragePort, overlay_section, verify_document
@@ -242,7 +242,7 @@ def audit_workspace_bytes(raw, *, workspace, mode=None):
     except Exception:
         return unreadable('journal_replay')
 
-    if restored.state_digest() != payload['state_digest']:
+    if not matches_workspace_state_digest(restored, payload['state_digest']):
         return unreadable('state_digest')
 
     try:

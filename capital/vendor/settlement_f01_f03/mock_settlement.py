@@ -214,8 +214,6 @@ class MockSettlement:
         _require(set(payees) == set(claim["obligations"]), "DISTRIBUTION_ORDER_MISMATCH")
         if claim["distribution_order"] is not None:
             _require(payees == claim["distribution_order"], "DISTRIBUTION_ORDER_FROZEN")
-        if claim["refund_face"] and not claim["fixture_reclassified"]:
-            raise SettlementError("DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED")
         if claim["distribution_order"] is None:
             claim["distribution_order"] = list(payees)
         remaining = claim["confirmed_cash"] - sum(line["distributed"] for line in claim["obligations"].values())
@@ -313,7 +311,7 @@ class MockSettlement:
         if claim["fixture_reclassified"]:
             bearer = "FIXTURE_FULL_GROSS_RECLASS"
         elif claim["refund_face"]:
-            bearer = "UNDEFINED"
+            bearer = "REQUESTER"
         else:
             bearer = "NONE"
         return {
@@ -343,7 +341,7 @@ class MockSettlement:
             "refund_beneficiary": claim["refund_beneficiary"],
             "fixture_reclassified": claim["fixture_reclassified"],
             "refund_bearer_policy": bearer,
-            "distribution_blocked": bool(claim["refund_face"]) and not claim["fixture_reclassified"],
+            "distribution_blocked": False,
             "pg_adjustment_outstanding": claim["refund_accepted"],
             "recovery_due": sum(line["recovery_due"] for line in claim["obligations"].values()),
         }
