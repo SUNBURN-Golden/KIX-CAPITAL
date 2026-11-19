@@ -13,8 +13,8 @@ import ast
 import importlib.util
 import json
 import sys
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,26 +46,36 @@ def literal(node):
     return node.value if isinstance(node, ast.Constant) and type(node.value) is str else None
 
 
-def inventory(root, findings, *, inspect=ast.parse):
+@lru_cache(maxsize=4096)
+def literal_name(value):
+    """Cache only lexical basename extraction, never file contents or findings."""
+    return Path(value).name
+
+
+def inventory(root, findings, *, references=None, tree_paths=None):
     trees = {}
     for folder in ('capital', 'scripts'):
         for path in sorted((root / folder).rglob('*.py')):
             if 'vendor' in path.relative_to(root).parts or path.is_symlink():
                 continue
             try:
-                trees[path.relative_to(root).as_posix()] = inspect(path.read_text(encoding='utf-8'))
-            except (OSError, UnicodeError, SyntaxError) as exc:
+                source = path.read_text(encoding='utf-8')
+                relative = path.relative_to(root).as_posix()
+                if references is not None:
+                    references[relative] = source_references(source)
+                if tree_paths is None or relative in tree_paths:
+                    trees[relative] = ast.parse(source)
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 findings.append(f'{path.relative_to(root)}: cannot inspect: {exc}')
     return trees
 
 
-def _syntax_references(tree):
-    strings = set()
-    names = set()
+def tree_references(tree):
+    strings, names = set(), set()
     for node in ast.walk(tree):
         value = literal(node)
         if value:
-            strings.add(Path(value).name)
+            strings.add(literal_name(value))
         if isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Attribute):
@@ -84,12 +94,16 @@ def _syntax_references(tree):
 
 
 @lru_cache(maxsize=256)
-def _source_references(source):
-    """Immutable syntax facts keyed by complete text, never a path or mtime."""
-    return _syntax_references(ast.parse(source))
+def source_references(source):
+    """Immutable syntax facts keyed by exact text freshly read by inventory.
+
+    File metadata, AST objects, note statuses and findings are never cached. A changed,
+    deleted or malformed input is still inspected on the next invocation.
+    """
+    return tree_references(ast.parse(source))
 
 
-def _consumer_references(references, rows):
+def referenced_consumers(references, rows):
     found = set()
     by_note = {Path(row['note']).name: row for row in rows}
     for path, (strings, names) in references.items():
@@ -102,8 +116,8 @@ def _consumer_references(references, rows):
 
 
 def discover_consumers(trees, rows):
-    return _consumer_references({path: _syntax_references(tree)
-                                 for path, tree in trees.items()}, rows)
+    # Caller-owned ASTs can change between calls; inspect those without caching.
+    return referenced_consumers({path: tree_references(tree) for path, tree in trees.items()}, rows)
 
 
 def live_routes(trees):
@@ -141,17 +155,11 @@ def collect_findings(root, mapping):
         for name, status in row['entries'].items():
             if status == 'ADOPTED':
                 adopted[(decision, name)] = row['note']
-    # Read every file on every scan. Only immutable reference summaries are
-    # cached, so edits, deletion, malformed replacements and new files stay live.
-    sources = inventory(root, findings, inspect=lambda source: source)
-    references, trees = {}, {}
-    for path, source in sources.items():
-        try:
-            references[path] = _source_references(source)
-            if path in ('capital/server.py', 'capital/auth.py'):
-                trees[path] = ast.parse(source)
-        except (SyntaxError, ValueError) as exc:
-            findings.append(f'{path}: cannot inspect: {exc}')
+    # Read every file on every scan. Only the dispatch registries need fresh ASTs
+    # when the consumer scan already has immutable reference summaries.
+    references = {}
+    trees = inventory(root, findings, references=references,
+                      tree_paths={'capital/server.py', 'capital/auth.py'})
     try:
         routes = live_routes(trees)
     except (KeyError, ValueError, TypeError, AttributeError):
@@ -210,7 +218,7 @@ def collect_findings(root, mapping):
                 consumed.add((*identity, relative.as_posix()))
     for identity in adopted.keys() - listed:
         findings.append(f'{"/".join(identity)}: ADOPTED entry lacks binding')
-    for decision, name, path in _consumer_references(references, rows) - consumed:
+    for decision, name, path in referenced_consumers(references, rows) - consumed:
         findings.append(f'{decision}/{name}: unlisted CONSUMED module {path} (absent or mislabeled pending)')
     return sorted(set(findings))
 

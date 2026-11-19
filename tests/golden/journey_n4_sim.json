@@ -1,5 +1,5 @@
 {
-  "digest": "1a64726029bfac61a293347d7be62e834b1458e3afef896ad19e20fb232a0f80",
+  "digest": "b8537892e84f3e9ef659998b255cb1a6ba382e39f99f38f26a29b7ef2ca60671",
   "funds_executed": false,
   "integrated": false,
   "journey": "N4-sim",
@@ -365,7 +365,7 @@
         161,
         "267136/365",
         [],
-        "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5",
+        "1542ac865778115071cad58b0ebe23c15c356b92d5aa5b3aaa07ed8bb047ed37",
         true
       ],
       "kind": "AUDIT",
@@ -377,7 +377,7 @@
         161,
         "267136/365",
         [],
-        "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5",
+        "1542ac865778115071cad58b0ebe23c15c356b92d5aa5b3aaa07ed8bb047ed37",
         true
       ]
     },
@@ -388,7 +388,7 @@
         "overlay_entry_count": 15,
         "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
         "settlement_book_persisted": false,
-        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+        "state_digest": "1542ac865778115071cad58b0ebe23c15c356b92d5aa5b3aaa07ed8bb047ed37"
       },
       "kind": "AUDIT",
       "n": 23,
@@ -401,7 +401,7 @@
         "journal_count": 5,
         "overlay_entry_count": 15,
         "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
-        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+        "state_digest": "1542ac865778115071cad58b0ebe23c15c356b92d5aa5b3aaa07ed8bb047ed37"
       },
       "kind": "AUDIT",
       "n": 24,
@@ -1278,7 +1278,7 @@
         "journal_count": 5,
         "overlay_entry_count": 15,
         "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
-        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+        "state_digest": "1542ac865778115071cad58b0ebe23c15c356b92d5aa5b3aaa07ed8bb047ed37"
       },
       "kind": "AUDIT",
       "n": 34,
@@ -1361,11 +1361,11 @@
         true
       ],
       "facts": {
-        "cut_id": "2e9ad15a35d0f0ad0d6bb088fd320961c7b22d7cec9a4739d1544b9c157ec679",
+        "cut_id": "f07862f5df43f413c9a157e8cdc739c3580f7bb79708c3ac162852805e5174bb",
         "overlay_state_digest": "7688854df8fb27f07d1013bf0b30c9a942538b78ecae6feb16b477ac09dd56ab",
         "pages": 7,
         "rows": 20,
-        "state_digest": "3dea3d13917f755f7547332bd1f681240b40bb5ebb7ec7b45b3047d6116e52e5"
+        "state_digest": "1542ac865778115071cad58b0ebe23c15c356b92d5aa5b3aaa07ed8bb047ed37"
       },
       "kind": "AUDIT",
       "n": 39,

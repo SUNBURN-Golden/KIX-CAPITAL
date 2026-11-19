@@ -13,7 +13,7 @@ import json
 from capital import coa
 from capital.projection import ProjectionError
 from capital import overlay as overlay_ledger
-from capital.protocol import CreditError, CreditMachine
+from capital.protocol import CreditError, CreditMachine, matches_workspace_state_digest
 
 
 def _digest(value):
@@ -154,7 +154,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
     restored, restore_error = _restore(journal, settlement_source)
     keys_ok, key_detail = _keys_match(receipts, journal)
     rejected_ok = _rejected_absent(receipts, journal)
-    replay_ok = restore_error is None and restored is not None and restored.state_digest() == state_digest
+    replay_ok = restore_error is None and restored is not None and matches_workspace_state_digest(restored, state_digest)
     map_ok = _map_matches(mapping, journal, restored)
     projection_ok = _projection_matches(
         journal, receipts, restored, fixture_rows, projection_port, restore_error,

@@ -22,7 +22,7 @@ run as subprocesses. The auditor token can neither advance the clock nor post a 
 
 T05-sim: partial allocation of the shared open face by two advances, ticks, a repay, a
 partial refund on the settlement book mid-repay (the pinned refusal REFUND_OBLIGATION_OPEN
-and DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED, shown beside the shadow refund split), a
+with B5 REQUESTER distribution, shown beside the shadow refund split), a
 margin call, a cure, an acceleration, late cash quoted and repaid by a human, a close, and a
 DEFAULT_ELIGIBLE proposal that a human turns into a default. Capital has no HTTP route for
 settlement events, so the refund is replayed on the disposable in-process book out of
@@ -488,13 +488,18 @@ def run_t05():
         _drive(journey, session, 'repay sim-b', 'repay', b, 'b-repay-1', amount=T05_B_REPAY, sequence=1)
 
         # Settlement event: partial refund on the disposable book, out of band.
-        outcomes = source.replay('sim-committed', 'partial-before')
+        refund_outcomes = source.replay_refund_before_distribution('sim-committed')
+        assert len(refund_outcomes) == 2 and all(item['matched'] for item in refund_outcomes)
+        # B5 distribution is exercised on a second disposable book so the margin path
+        # observes the pre-distribution refund cut.
+        outcomes = margin.ScenarioReplaySource().replay('sim-committed', 'partial-before')
         journey.step(
             'partial refund before allocation replayed on the disposable settlement book', 'SETTLEMENT_EVENT',
             [(item['op'], item['error'], item['matched']) for item in outcomes],
             [('observe_settlement_statement', None, True), ('bind_refund', None, True),
-             ('apply_distribution', 'DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED', True)],
-            label=OUT_OF_BAND, scope='DISPOSABLE_BOOK_ONLY')
+             ('apply_distribution', None, True)],
+            label=OUT_OF_BAND, scope='DISPOSABLE_BOOK_ONLY',
+            allocation_scope='SEPARATE_DISPOSABLE_BOOK')
 
         # The pinned refusal beside the shadow split.
         refused = session.command('offer', 'sim-c', 'c-offer', fixture_id='sim-committed', amount=1_000)
@@ -958,12 +963,17 @@ def run_n1():
         for op, args in (('offer', {'fixture_id': 'sim-committed', 'amount': T05_A}),
                          ('approve', {}), ('bind_settlement', {}), ('draw', {})):
             _drive(journey, session, op, op, advance, f'sim-n1-{op.replace("_", "-")}', **args)
-        outcomes = source.replay('sim-committed', 'partial-before')
+        refund_outcomes = source.replay_refund_before_distribution('sim-committed')
+        assert len(refund_outcomes) == 2 and all(item['matched'] for item in refund_outcomes)
+        # B5 distribution is exercised on a second disposable book so the margin path
+        # observes the pre-distribution refund cut.
+        outcomes = margin.ScenarioReplaySource().replay('sim-committed', 'partial-before')
         journey.step('partial refund on disposable book', 'SETTLEMENT_EVENT',
                      [(item['op'], item['error'], item['matched']) for item in outcomes],
                      [('observe_settlement_statement', None, True), ('bind_refund', None, True),
-                      ('apply_distribution', 'DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED', True)],
-                     label=OUT_OF_BAND, scope='DISPOSABLE_BOOK_ONLY')
+                      ('apply_distribution', None, True)],
+                     label=OUT_OF_BAND, scope='DISPOSABLE_BOOK_ONLY',
+                     allocation_scope='SEPARATE_DISPOSABLE_BOOK')
         _tick(journey, session, 'sim-n1-call', 0, 1)
         called = session.advance_row(advance)
         journey.step('call-fire', 'HTTP', called['margin']['state'], 'CALLED', **_margin_facts(called))

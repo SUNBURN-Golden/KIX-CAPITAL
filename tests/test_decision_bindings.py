@@ -303,6 +303,55 @@ class BindingTests(unittest.TestCase):
             ('financial-terms-decision', 'fees', 'capital/new.py'),
             ('financial-terms-decision', 'term', 'capital/new.py')})
 
+    def test_repeated_scans_observe_changed_trees_and_adoption_status(self):
+        rows = [{'note': 'docs/decisions/SIMULATED.md', 'decision_id': 'simulated',
+                 'entries': {'fees': 'ADOPTED', 'term': 'ADOPTED'}}]
+        tree = ast.parse("NOTE='docs/decisions/SIMULATED.md'\nvalue=entries['fees']\n")
+        trees = {'capital/simulated.py': tree}
+        self.assertEqual(checker.discover_consumers(trees, rows), {
+            ('simulated', 'fees', 'capital/simulated.py')})
+        # Reusing the same objects must not reuse earlier findings.
+        access = next(node for node in ast.walk(tree) if isinstance(node, ast.Subscript))
+        access.slice.value = 'term'
+        self.assertEqual(checker.discover_consumers(trees, rows), {
+            ('simulated', 'term', 'capital/simulated.py')})
+        rows[0]['entries']['term'] = 'PENDING'
+        self.assertEqual(checker.discover_consumers(trees, rows), set())
+        rows[0]['entries']['term'] = 'ADOPTED'
+        tree.body[0].value.value = 'docs/decisions/OTHER.md'
+        self.assertEqual(checker.discover_consumers(trees, rows), set())
+
+    def test_source_cache_cannot_hide_edits_removals_or_parse_failures(self):
+        rows = [{'note': 'docs/decisions/SIMULATED.md', 'decision_id': 'simulated',
+                 'entries': {'fees': 'ADOPTED', 'term': 'ADOPTED'}}]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'capital').mkdir()
+            path = root / 'capital/simulated.py'
+            source = "NOTE='docs/decisions/SIMULATED.md'\nvalue=entries['fees']\n"
+
+            def scan():
+                findings, references = [], {}
+                trees = checker.inventory(root, findings, references=references)
+                consumers = checker.referenced_consumers(references, rows)
+                self.assertEqual(consumers, checker.discover_consumers(trees, rows))
+                return findings, consumers
+
+            path.write_text(source)
+            stamp = path.stat().st_mtime_ns
+            self.assertEqual(scan(), ([], {('simulated', 'fees', 'capital/simulated.py')}))
+            path.write_text(source.replace('fees', 'term'))
+            os.utime(path, ns=(stamp, stamp))
+            self.assertEqual(scan(), ([], {('simulated', 'term', 'capital/simulated.py')}))
+            rows[0]['entries']['term'] = 'PENDING'
+            self.assertEqual(scan(), ([], set()))
+            path.write_text('invalid python !')
+            findings, consumers = scan()
+            self.assertTrue(any('cannot inspect' in finding for finding in findings))
+            self.assertEqual(consumers, set())
+            path.unlink()
+            self.assertEqual(scan(), ([], set()))
+
     def test_cli_read_only_and_malformed_json(self):
         root = self.fixture()
         path = root / 'tests/decision_bindings.json'
