@@ -3,8 +3,8 @@
 
 Stages: unit, storage-conformance, pinned vendor, upstream claim checks,
 node --check, browser, packaged-artifact smoke, the seeded demo, and the
-integrated-journeys stage (SIMULATED T03-sim, T04-sim, T05-sim and T06-sim over
-the loopback API).
+integrated-journeys stage (eight SIMULATED journeys T03-sim through T06-sim and
+N1-sim through N4-sim over the loopback API).
 Evidence is written to
 build/acceptance-evidence.json (untracked). A failed or missing stage exits
 non-zero. This is a SIMULATED ladder, not human product acceptance and not a
@@ -48,9 +48,9 @@ _UNIT_FAILED = re.compile(r'^FAILED \((.+)\)$')
 _SMOKE = re.compile(r'^smoke ok: (.+)$')
 _SEED = re.compile(r'^seed demo (ok|updated) ')
 _JOURNEYS = re.compile(r'^sim journeys ok SIMULATED (.+)$')
-_JOURNEY_STEPS = re.compile(r'(T0[3-6]-sim|N[12]-sim) steps=(\d+)')
+_JOURNEY_STEPS = re.compile(r'(T0[3-6]-sim|N[1-4]-sim) steps=(\d+)')
 _JOURNEY_SUMMARY = re.compile(r'^SIM_JOURNEYS (\{.+\})$')
-JOURNEY_IDS = ('T03-sim', 'T04-sim', 'T05-sim', 'T06-sim', 'N1-sim', 'N2-sim')
+JOURNEY_IDS = ('T03-sim', 'T04-sim', 'T05-sim', 'T06-sim', 'N1-sim', 'N2-sim', 'N3-sim', 'N4-sim')
 _CLAIMS = re.compile(
     r'^CLAIM_CONFORMANCE passed=(\d+) total=(\d+) failed=(\d+)'
     r'(?: documented_divergences=(\d+))?$')
@@ -561,7 +561,7 @@ def execute_plan(plan, *, root, evidence_path, required=REQUIRED_STAGES):
             'claimed': False,
             'ladder': 'Q0 local acceptance ladder',
             'note': (
-                'T03-sim, T04-sim, T05-sim, T06-sim, N1-sim and N2-sim are Capital-local synthetic variants inside Q0. '
+                'T03-sim, T04-sim, T05-sim, T06-sim, N1-sim, N2-sim, N3-sim and N4-sim are Capital-local synthetic variants inside Q0. '
                 'They are not integrated acceptance and no T01-T06 qualification is claimed.'
             ),
         },

@@ -7,7 +7,7 @@
 ## Capital-local 추가 여정 (SIMULATED)
 
 `python3 scripts/sim_journeys.py --check`는 `integrated-journeys` 단계에서 기존
-T03-sim–T06-sim과 N1-sim, N2-sim을 모두 검사한다. N 이름은 Capital-local이며
+T03-sim–T06-sim과 N1-sim–N4-sim 여덟 여정을 모두 검사한다. N 이름은 Capital-local이며
 upstream T-rung 의미나 자격을 주장하지 않는다. `funds_executed: false`,
 `integrated: false`, `qualification_claimed: false`를 유지한다.
 
@@ -20,6 +20,24 @@ upstream T-rung 의미나 자격을 주장하지 않는다. `funds_executed: fal
   실행하지 않았다는 뜻이다. auditor는 receipt와 journal을 대조하고 manifest와
   workspace를 offline 검증한다. 변조된 citation은 검증 실패해야 한다.
   고정 증거: `tests/golden/journey_n2_sim.json`.
+
+- N3-sim: interest-only payment on day 15, final principal-bearing payment on day 30,
+  advisory CLEAR, then explicit close. Expected allocations and fractional carry are
+  calculated independently from adopted terms. Pin: `tests/golden/journey_n3_sim.json`.
+- N4-sim: human default on the adopted eligibility day, bounded recovery, refusal one
+  day before write-off eligibility, explicit write-off at the boundary, then late
+  recovery. No F04 revival or interest beyond the stop day; loss-reserve absorption
+  is zero and `NOT_BOUND`. Pin: `tests/golden/journey_n4_sim.json`.
+
+Both new journeys restart file workspaces, preserve original posting receipt cores
+and both digests, and probe duplicates/conflicting identities without a second economic
+effect. Each verifies a V3 manifest, read-only workspace audit and every facts page
+(limit 3, through the terminal cursor), including truncated/tampered evidence refusal.
+N4 uses a `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` on a disposable settlement book.
+After closing it, the ordinary workspace server reopens immutable `READ_ONLY_FIXTURE`
+inputs; the exported cut describes that reopened context, not a persisted settlement
+book. Existing principal-only journeys and their six goldens remain unchanged.
+No COA payment postings, allowance mechanics or upstream qualification are added.
 
 실자금·외부 제공자·인증은 없고 제안 자체는 프로세스 메모리 메모다.
 

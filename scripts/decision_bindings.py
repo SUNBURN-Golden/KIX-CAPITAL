@@ -52,7 +52,7 @@ def literal_name(value):
     return Path(value).name
 
 
-def inventory(root, findings, *, references=None):
+def inventory(root, findings, *, references=None, tree_paths=None):
     trees = {}
     for folder in ('capital', 'scripts'):
         for path in sorted((root / folder).rglob('*.py')):
@@ -61,10 +61,11 @@ def inventory(root, findings, *, references=None):
             try:
                 source = path.read_text(encoding='utf-8')
                 relative = path.relative_to(root).as_posix()
-                trees[relative] = ast.parse(source)
                 if references is not None:
                     references[relative] = source_references(source)
-            except (OSError, UnicodeError, SyntaxError) as exc:
+                if tree_paths is None or relative in tree_paths:
+                    trees[relative] = ast.parse(source)
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 findings.append(f'{path.relative_to(root)}: cannot inspect: {exc}')
     return trees
 
@@ -154,8 +155,11 @@ def collect_findings(root, mapping):
         for name, status in row['entries'].items():
             if status == 'ADOPTED':
                 adopted[(decision, name)] = row['note']
+    # Read every file on every scan. Only the dispatch registries need fresh ASTs
+    # when the consumer scan already has immutable reference summaries.
     references = {}
-    trees = inventory(root, findings, references=references)
+    trees = inventory(root, findings, references=references,
+                      tree_paths={'capital/server.py', 'capital/auth.py'})
     try:
         routes = live_routes(trees)
     except (KeyError, ValueError, TypeError, AttributeError):

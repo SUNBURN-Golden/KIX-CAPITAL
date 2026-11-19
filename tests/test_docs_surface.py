@@ -69,6 +69,12 @@ class CurrentTreeTests(unittest.TestCase):
 
 
 class JourneyDocTests(unittest.TestCase):
+    def test_servicing_goldens_require_names_and_paths(self):
+        for suffix in ('3', '4'):
+            name = f'journey_n{suffix}_sim.json'
+            self.assertEqual(docs_surface.JOURNEY_NEEDLES[name],
+                             (f'N{suffix}-sim', f'tests/golden/{name}'))
+
     def test_names_paths_and_check_command_are_required_in_both_docs(self):
         needles = {docs_surface.JOURNEY_COMMAND}
         for values in docs_surface.JOURNEY_NEEDLES.values():

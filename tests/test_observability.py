@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -187,6 +188,28 @@ class ObservabilityHttpTests(unittest.TestCase):
         self.assertEqual(hist['count'], sum(hist[key] for key in BUCKETS))
         self.assertEqual(hist['count'], expected_count)
         self.assertGreaterEqual(hist['max_ms'], 0)
+
+    def test_http_counter_is_visible_before_response_headers(self):
+        self.start()
+        handler = self.server.RequestHandlerClass
+        original_end_headers = handler.end_headers
+        counters_at_headers = []
+
+        def capture_headers(request):
+            counters_at_headers.append(
+                self.server.observability.snapshot()['counters']['http_requests'])
+            return original_end_headers(request)
+
+        with patch.object(handler, 'end_headers', capture_headers):
+            self.assertEqual(self.request('GET', '/api/decisions')[0], 200)
+            status, raw = self.request('GET', '/api/metrics')
+
+        self.assertEqual(status, 200)
+        self.assertEqual(counters_at_headers[0]['/api/decisions']['2xx'], 1)
+        self.assertEqual(counters_at_headers[1]['/api/metrics']['2xx'], 1)
+        metrics = json.loads(raw)['counters']['http_requests']
+        self.assertEqual(metrics['/api/decisions']['2xx'], 1)
+        self.assertEqual(metrics['/api/metrics']['2xx'], 0)
 
     def test_scripted_journey_counters_match_and_do_not_touch_the_book(self):
         self.start()
