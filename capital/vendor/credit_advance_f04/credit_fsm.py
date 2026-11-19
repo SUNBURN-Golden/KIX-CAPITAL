@@ -32,6 +32,7 @@ from mock_credit import (
     _ident,
     _money,
     _parse_face,
+    open_terms,
 )
 
 AUTHORITY = "IN_MEMORY_FSM"
@@ -814,6 +815,7 @@ class CreditMachine:
             "accepted_entries": sum(
                 1 for entry in self._journal if entry["advance_id"] == case["advance_id"]
             ),
+            "open_terms": open_terms(),
         }
         body.update(_flags())
         return body
@@ -882,6 +884,14 @@ class CreditMachine:
             _require(view["ownership_mutated"] is False, "MOCK_INVARIANT")
             _require(view["exposure_ledger"] == "MOCK_EXPOSURE", "MOCK_INVARIANT")
             _require(view["provenance"] == PROVENANCE, "MOCK_INVARIANT")
+            terms = view["open_terms"]
+            _require(terms == open_terms(), "MOCK_INVARIANT")
+            _require(terms["decided_value"] is None, "MOCK_INVARIANT")
+            _require(terms["adopted_option"] == "A", "MOCK_INVARIANT")
+            _require(terms["policy_number_status"] == "UNDETERMINED", "MOCK_INVARIANT")
+            _require(view["priority_bound"] is False, "MOCK_INVARIANT")
+            _require(view["collateral_perfected"] is False, "MOCK_INVARIANT")
+            _require(view["legal_debtor_bound"] is False, "MOCK_INVARIANT")
             if case["claim_id"] in seen:
                 continue
             seen.add(case["claim_id"])

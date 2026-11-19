@@ -8,7 +8,7 @@ Stdlib HTTP server that wraps ``PinnedFsmProducer`` and speaks the
 rejected. ``operationId`` must equal ``operation_id``.
 
 This process binds ``127.0.0.1`` (or another loopback address) only. It does
-not pin OpenAPI, ship a TypeScript SDK, or claim SEMANTIC_CONFORMANCE.
+pin the OpenAPI and SDK catalogue for local byte checks, not SEMANTIC_CONFORMANCE.
 CAP-16 stays NOT_BOUND. No real money moves. ``funds_executed`` stays false.
 
 Fault hooks, armed in-process or with ``--fault OPERATION_ID:KIND``:
@@ -46,6 +46,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from capital.producer import CreditError, PinnedFsmProducer
+from capital.protocol_delivery import PIN_HEADER, read_delivery
 
 LABEL = 'LOCAL_FAKE_GATE'
 LOOPBACK = '127.0.0.1'
@@ -186,6 +187,7 @@ class FakeGate:
     """One pinned producer behind a loopback socket. Receipts are SIMULATED."""
 
     def __init__(self, fault_delay=1.0):
+        self.delivery = read_delivery(ROOT)
         self.fault_delay = fault_delay
         self.producer = PinnedFsmProducer()
         self.lock = threading.Lock()
@@ -404,7 +406,11 @@ class Handler(BaseHTTPRequestHandler):
         path = parts.path
         gate = self.server.gate
         try:
-            if not mutate and path == '/v1/state' and not parts.query:
+            if mutate and self.headers.get_all(PIN_HEADER) != [gate.delivery['commit']]:
+                self._error(409, 'PROTOCOL_DELIVERY_MISMATCH')
+            elif not mutate and path == '/v1/delivery' and not parts.query:
+                self._json(200, _stamp(delivery=gate.delivery))
+            elif not mutate and path == '/v1/state' and not parts.query:
                 self._json(200, gate.read_state())
             elif not mutate and path == '/v1/journal' and not parts.query:
                 self._json(200, gate.read_journal())
