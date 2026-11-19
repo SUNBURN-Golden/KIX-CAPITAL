@@ -1,0 +1,6045 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KIX protocol local-call catalogue (contract-only)",
+    "version": "0.3-rc1+sha256:ed827de1a8bfe7c48612473965793dcaab65137e575f862761fd160f77ae4c1e",
+    "summary": "Contract-only. No live HTTP server. No production endpoint.",
+    "description": "CONTRACT-ONLY catalogue of the KIX v0.3-rc1 local call. There is no live HTTP server and no production endpoint. The version is pinned to the sha256 of reference/v0.3-rc1/protocol_contract.json.\n\nThis document does not publish a REST resource tree, an authentication scheme, a retry policy, or a transport guarantee. The single path exists only so this file is an OpenAPI document. It is marked x-kix-transport: contract-only-placeholder and is not protocol law. POST is an OpenAPI grammar slot, not a published HTTP method of the protocol.\n\nThe authoritative local call is Core.execute(operationId, actor, action, body). Each command key is one action. The body schema is that command JSON Schema, copied under components.schemas. x-kix-local-call-operations[].operationId is the command name. unknownFields, sourceAuthentication, handlerConstraints, and additionalProperties false are preserved from the source. The exported catalogue is not a full business validator.\n\nSpecification envelope fields are protocolDomain, operationId, actorContext, action, and body. The Python function takes operationId, actor, action, and body, and checks body.domain. A caller-supplied actor string must not be treated as authority.\n\nThe 40 core command schemas are copied from protocol_contract.json. The FSM command schemas are copied from docs/contracts/openapi/fsm-command-contract.json. Wire names are machine_op. consume_admission is not a catalogue name. Queries, reconcile, export_journal, restore, reject, and attempt_execution are not in this catalogue. There is still no live HTTP server and no production endpoint."
+  },
+  "x-kix-contract-status": "contract-only",
+  "x-kix-live-http-server": false,
+  "x-kix-production-endpoint": false,
+  "x-kix-omitted-commands": [],
+  "x-kix-source": {
+    "path": "reference/v0.3-rc1/protocol_contract.json",
+    "gitBlob": "619ae21c82ca3df5661bd3831613f15fa65225ff",
+    "sha256": "ed827de1a8bfe7c48612473965793dcaab65137e575f862761fd160f77ae4c1e",
+    "domain": "kix:fixture:lifecycle:0.3",
+    "unknownFields": "REJECT",
+    "sourceAuthentication": "FIXTURE_ONLY",
+    "handlerConstraints": "Positive monetary postings, enums, actor scopes, policy checks, current versions, balances and conditional bindings are additionally enforced in handlers. This exported catalog alone is not a full business validator.",
+    "commandCount": 84,
+    "coreCommandCount": 40,
+    "fsmSource": {
+      "path": "docs/contracts/openapi/fsm-command-contract.json",
+      "gitBlob": "3771a8739b906a478b54c597df37e27d1afc5f21",
+      "sha256": "342e97cb37b199622d7bb436ca9164690d969b797058aaa539ff417cab01411c",
+      "domain": "kix:fixture:fsm-catalogue:0.3",
+      "unknownFields": "REJECT",
+      "sourceAuthentication": "FIXTURE_ONLY",
+      "handlerConstraints": "Ident checks, monetary signs, enums, windows, versions, balances, conditional bindings, and real-funds refusals are enforced in the FSM handlers. This exported catalogue is not a full business validator. Field limits that are not parameters of the public operation are not added here. Real payment, KYC, and public endpoints are not defined.",
+      "commandCount": 44
+    }
+  },
+  "x-kix-specification-envelope": {
+    "source": "reference/v0.1/KIX_프로토콜_통합명세_v0.1.md §9.1",
+    "fields": [
+      "protocolDomain",
+      "operationId",
+      "actorContext",
+      "action",
+      "body"
+    ],
+    "pythonLocalCall": {
+      "source": "reference/v0.3-rc1/core.py Core.execute",
+      "parameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "bodyDomainCheck": "body.domain must equal x-kix-source.domain"
+    },
+    "actorContext": "Named by the specification as an authentication and signature verification result. The current Python local call does not take this argument. No authentication scheme is defined here.",
+    "protocolDomain": "Named by the specification. The Python local call checks body.domain rather than a separate argument.",
+    "sourceAuthenticationMeaning": "FIXTURE_ONLY is the exported label. It is not an HTTP security scheme and not production authentication."
+  },
+  "x-kix-action-body-map": {
+    "abort_effect": "#/components/schemas/abort_effect",
+    "abort_trade": "#/components/schemas/abort_trade",
+    "accept_gift": "#/components/schemas/accept_gift",
+    "accept_trade": "#/components/schemas/accept_trade",
+    "adjust_pg_cancel": "#/components/schemas/adjust_pg_cancel",
+    "admit": "#/components/schemas/admit",
+    "advance_clock": "#/components/schemas/advance_clock",
+    "authorize_marketing": "#/components/schemas/authorize_marketing",
+    "cancel_event": "#/components/schemas/cancel_event",
+    "cancel_gift": "#/components/schemas/cancel_gift",
+    "cancel_listing": "#/components/schemas/cancel_listing",
+    "capture": "#/components/schemas/capture",
+    "claim_effect": "#/components/schemas/claim_effect",
+    "close_delegation": "#/components/schemas/close_delegation",
+    "close_sales": "#/components/schemas/close_sales",
+    "commit_trade": "#/components/schemas/commit_trade",
+    "complete_event": "#/components/schemas/complete_event",
+    "create_event": "#/components/schemas/create_event",
+    "create_listing": "#/components/schemas/create_listing",
+    "delegate": "#/components/schemas/delegate",
+    "dispatch_effect": "#/components/schemas/dispatch_effect",
+    "expire_trade": "#/components/schemas/expire_trade",
+    "finalize_effect": "#/components/schemas/finalize_effect",
+    "issue_invitation": "#/components/schemas/issue_invitation",
+    "observe_dispatch_lookup": "#/components/schemas/observe_dispatch_lookup",
+    "observe_effect": "#/components/schemas/observe_effect",
+    "observe_funding": "#/components/schemas/observe_funding",
+    "observe_recovery": "#/components/schemas/observe_recovery",
+    "observe_return": "#/components/schemas/observe_return",
+    "offer_gift": "#/components/schemas/offer_gift",
+    "open_admission": "#/components/schemas/open_admission",
+    "prepare_effect": "#/components/schemas/prepare_effect",
+    "prepare_trade": "#/components/schemas/prepare_trade",
+    "refund_ticket": "#/components/schemas/refund_ticket",
+    "release_inventory": "#/components/schemas/release_inventory",
+    "reserve_listing": "#/components/schemas/reserve_listing",
+    "send_effect": "#/components/schemas/send_effect",
+    "set_consent": "#/components/schemas/set_consent",
+    "settle_capture": "#/components/schemas/settle_capture",
+    "void_unissued": "#/components/schemas/void_unissued",
+    "settlement_initiate": "#/components/schemas/settlement_initiate",
+    "settlement_authorize": "#/components/schemas/settlement_authorize",
+    "settlement_capture": "#/components/schemas/settlement_capture",
+    "settlement_commit": "#/components/schemas/settlement_commit",
+    "settlement_fail": "#/components/schemas/settlement_fail",
+    "settlement_cancel": "#/components/schemas/settlement_cancel",
+    "settlement_observe_statement": "#/components/schemas/settlement_observe_statement",
+    "settlement_distribute": "#/components/schemas/settlement_distribute",
+    "settlement_bind_refund": "#/components/schemas/settlement_bind_refund",
+    "settlement_observe_mock_cancel_acceptance": "#/components/schemas/settlement_observe_mock_cancel_acceptance",
+    "reservation_set_clock": "#/components/schemas/reservation_set_clock",
+    "reservation_register_show": "#/components/schemas/reservation_register_show",
+    "reservation_hold": "#/components/schemas/reservation_hold",
+    "reservation_release": "#/components/schemas/reservation_release",
+    "reservation_confirm": "#/components/schemas/reservation_confirm",
+    "reservation_cancel": "#/components/schemas/reservation_cancel",
+    "reservation_observe_payment": "#/components/schemas/reservation_observe_payment",
+    "reservation_bind_settlement": "#/components/schemas/reservation_bind_settlement",
+    "reservation_issue": "#/components/schemas/reservation_issue",
+    "reservation_authorize_admission": "#/components/schemas/reservation_authorize_admission",
+    "reservation_consume": "#/components/schemas/reservation_consume",
+    "resale_set_clock": "#/components/schemas/resale_set_clock",
+    "resale_adopt_issued": "#/components/schemas/resale_adopt_issued",
+    "resale_list_resale": "#/components/schemas/resale_list_resale",
+    "resale_hold_buy": "#/components/schemas/resale_hold_buy",
+    "resale_release_hold": "#/components/schemas/resale_release_hold",
+    "resale_cancel_listing": "#/components/schemas/resale_cancel_listing",
+    "resale_observe_resale_payment": "#/components/schemas/resale_observe_resale_payment",
+    "resale_bind_settlement": "#/components/schemas/resale_bind_settlement",
+    "resale_accept_resale": "#/components/schemas/resale_accept_resale",
+    "resale_close": "#/components/schemas/resale_close",
+    "admission_set_clock": "#/components/schemas/admission_set_clock",
+    "admission_adopt_issued": "#/components/schemas/admission_adopt_issued",
+    "admission_authorize_admission": "#/components/schemas/admission_authorize_admission",
+    "admission_consume": "#/components/schemas/admission_consume",
+    "credit_offer": "#/components/schemas/credit_offer",
+    "credit_approve": "#/components/schemas/credit_approve",
+    "credit_reject": "#/components/schemas/credit_reject",
+    "credit_cancel": "#/components/schemas/credit_cancel",
+    "credit_bind_settlement": "#/components/schemas/credit_bind_settlement",
+    "credit_draw": "#/components/schemas/credit_draw",
+    "credit_repay": "#/components/schemas/credit_repay",
+    "credit_close": "#/components/schemas/credit_close",
+    "credit_default": "#/components/schemas/credit_default"
+  },
+  "x-kix-local-call-operations": [
+    {
+      "operationId": "abort_effect",
+      "action": "abort_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/abort_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "abort_trade",
+      "action": "abort_trade",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/abort_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "accept_gift",
+      "action": "accept_gift",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/accept_gift",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "accept_trade",
+      "action": "accept_trade",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/accept_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "adjust_pg_cancel",
+      "action": "adjust_pg_cancel",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/adjust_pg_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "admit",
+      "action": "admit",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/admit",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "advance_clock",
+      "action": "advance_clock",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/advance_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "authorize_marketing",
+      "action": "authorize_marketing",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/authorize_marketing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "cancel_event",
+      "action": "cancel_event",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/cancel_event",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "cancel_gift",
+      "action": "cancel_gift",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/cancel_gift",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "cancel_listing",
+      "action": "cancel_listing",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/cancel_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "capture",
+      "action": "capture",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/capture",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "claim_effect",
+      "action": "claim_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/claim_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "close_delegation",
+      "action": "close_delegation",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/close_delegation",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "close_sales",
+      "action": "close_sales",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/close_sales",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "commit_trade",
+      "action": "commit_trade",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/commit_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "complete_event",
+      "action": "complete_event",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/complete_event",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "create_event",
+      "action": "create_event",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/create_event",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "create_listing",
+      "action": "create_listing",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/create_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "delegate",
+      "action": "delegate",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/delegate",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "dispatch_effect",
+      "action": "dispatch_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/dispatch_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "expire_trade",
+      "action": "expire_trade",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/expire_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "finalize_effect",
+      "action": "finalize_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/finalize_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "issue_invitation",
+      "action": "issue_invitation",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/issue_invitation",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "observe_dispatch_lookup",
+      "action": "observe_dispatch_lookup",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/observe_dispatch_lookup",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "observe_effect",
+      "action": "observe_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/observe_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "observe_funding",
+      "action": "observe_funding",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/observe_funding",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "observe_recovery",
+      "action": "observe_recovery",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/observe_recovery",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "observe_return",
+      "action": "observe_return",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/observe_return",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "offer_gift",
+      "action": "offer_gift",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/offer_gift",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "open_admission",
+      "action": "open_admission",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/open_admission",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "prepare_effect",
+      "action": "prepare_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/prepare_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "prepare_trade",
+      "action": "prepare_trade",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/prepare_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "refund_ticket",
+      "action": "refund_ticket",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/refund_ticket",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "release_inventory",
+      "action": "release_inventory",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/release_inventory",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reserve_listing",
+      "action": "reserve_listing",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reserve_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "send_effect",
+      "action": "send_effect",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/send_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "set_consent",
+      "action": "set_consent",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/set_consent",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settle_capture",
+      "action": "settle_capture",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settle_capture",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "void_unissued",
+      "action": "void_unissued",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/void_unissued",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_initiate",
+      "action": "settlement_initiate",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_initiate",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_authorize",
+      "action": "settlement_authorize",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_authorize",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_capture",
+      "action": "settlement_capture",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_capture",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_commit",
+      "action": "settlement_commit",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_commit",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_fail",
+      "action": "settlement_fail",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_fail",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_cancel",
+      "action": "settlement_cancel",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_observe_statement",
+      "action": "settlement_observe_statement",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_observe_statement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_distribute",
+      "action": "settlement_distribute",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_distribute",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_bind_refund",
+      "action": "settlement_bind_refund",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_bind_refund",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "settlement_observe_mock_cancel_acceptance",
+      "action": "settlement_observe_mock_cancel_acceptance",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/settlement_observe_mock_cancel_acceptance",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_set_clock",
+      "action": "reservation_set_clock",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_set_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_register_show",
+      "action": "reservation_register_show",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_register_show",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_hold",
+      "action": "reservation_hold",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_hold",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_release",
+      "action": "reservation_release",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_release",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_confirm",
+      "action": "reservation_confirm",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_confirm",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_cancel",
+      "action": "reservation_cancel",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_observe_payment",
+      "action": "reservation_observe_payment",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_observe_payment",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_bind_settlement",
+      "action": "reservation_bind_settlement",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_bind_settlement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_issue",
+      "action": "reservation_issue",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_issue",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_authorize_admission",
+      "action": "reservation_authorize_admission",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_authorize_admission",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "reservation_consume",
+      "action": "reservation_consume",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/reservation_consume",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_set_clock",
+      "action": "resale_set_clock",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_set_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_adopt_issued",
+      "action": "resale_adopt_issued",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_adopt_issued",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_list_resale",
+      "action": "resale_list_resale",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_list_resale",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_hold_buy",
+      "action": "resale_hold_buy",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_hold_buy",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_release_hold",
+      "action": "resale_release_hold",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_release_hold",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_cancel_listing",
+      "action": "resale_cancel_listing",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_cancel_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_observe_resale_payment",
+      "action": "resale_observe_resale_payment",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_observe_resale_payment",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_bind_settlement",
+      "action": "resale_bind_settlement",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_bind_settlement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_accept_resale",
+      "action": "resale_accept_resale",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_accept_resale",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "resale_close",
+      "action": "resale_close",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/resale_close",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "admission_set_clock",
+      "action": "admission_set_clock",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/admission_set_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "admission_adopt_issued",
+      "action": "admission_adopt_issued",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/admission_adopt_issued",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "admission_authorize_admission",
+      "action": "admission_authorize_admission",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/admission_authorize_admission",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "admission_consume",
+      "action": "admission_consume",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/admission_consume",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_offer",
+      "action": "credit_offer",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_offer",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_approve",
+      "action": "credit_approve",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_approve",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_reject",
+      "action": "credit_reject",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_reject",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_cancel",
+      "action": "credit_cancel",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_bind_settlement",
+      "action": "credit_bind_settlement",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_bind_settlement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_draw",
+      "action": "credit_draw",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_draw",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_repay",
+      "action": "credit_repay",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_repay",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_close",
+      "action": "credit_close",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_close",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    },
+    {
+      "operationId": "credit_default",
+      "action": "credit_default",
+      "x-kix-transport": "contract-only-placeholder",
+      "x-kix-not-a-published-http-service": true,
+      "requestBodySchema": "#/components/schemas/credit_default",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Local-call analogue of this command. Not bound to an HTTP path. operationId here is the command name (Python action), not the per-invocation operationId argument."
+    }
+  ],
+  "x-kix-reference-receipt-observed": {
+    "sources": [
+      "reference/v0.1/KIX_프로토콜_통합명세_v0.1.md §9.1",
+      "reference/v0.3-rc1/core.py Core.execute"
+    ],
+    "keys": [
+      "domain",
+      "operationId",
+      "sequence",
+      "action",
+      "result"
+    ],
+    "note": "The specification says a receipt carries domain, operationId, sequence, action, and result. The reference model stores that in-process receipt. result is handler-specific and is not in protocol_contract.json, so this catalogue does not schema it. The specification also says an external consumer stores its own cursor and receipt id. No message broker or consumer is defined. These keys are not an HTTP response contract."
+  },
+  "paths": {
+    "/x-kix-contract-only/local-call": {
+      "post": {
+        "operationId": "invokeLocalCall",
+        "x-kix-transport": "contract-only-placeholder",
+        "x-kix-not-a-published-http-service": true,
+        "summary": "Local-call analogue. Not a published HTTP operation.",
+        "description": "Placeholder path required to carry one OpenAPI operation. It is not a published HTTP service and not protocol law. Command identities are x-kix-local-call-operations, not this operationId.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalCallEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "OpenAPI requires a responses object. protocol_contract.json defines no response schema. This entry is not a live HTTP response and the status code is not a transport contract. Observed in-process receipt keys are x-kix-reference-receipt-observed.",
+            "x-kix-transport": "contract-only-placeholder",
+            "x-kix-http-status": "not-a-transport-contract"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "abort_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "effectId"
+        ],
+        "type": "object"
+      },
+      "abort_trade": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "accept_gift": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "giftId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "termsHash": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "giftId",
+          "termsHash"
+        ],
+        "type": "object"
+      },
+      "accept_trade": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "termsHash": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "termsHash",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "adjust_pg_cancel": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "basis": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "contractRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "movementId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "paymentId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "basis",
+          "contractRef",
+          "currency",
+          "domain",
+          "movementId",
+          "paymentId",
+          "provenance",
+          "scope",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "admit": {
+        "additionalProperties": false,
+        "properties": {
+          "admissionEpoch": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "holder": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "admissionEpoch",
+          "domain",
+          "expectedVersion",
+          "holder",
+          "ticketId"
+        ],
+        "type": "object"
+      },
+      "advance_clock": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "now": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "domain",
+          "now"
+        ],
+        "type": "object"
+      },
+      "authorize_marketing": {
+        "additionalProperties": false,
+        "properties": {
+          "business": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "channel": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedConsentVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "purpose": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "subject": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "business",
+          "channel",
+          "domain",
+          "eventId",
+          "expectedConsentVersion",
+          "purpose",
+          "subject"
+        ],
+        "type": "object"
+      },
+      "cancel_event": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "eventId"
+        ],
+        "type": "object"
+      },
+      "cancel_gift": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "giftId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "giftId"
+        ],
+        "type": "object"
+      },
+      "cancel_listing": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "listingId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "listingId"
+        ],
+        "type": "object"
+      },
+      "capture": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "buyer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "orderId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "paymentId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "buyer",
+          "currency",
+          "domain",
+          "orderId",
+          "paymentId",
+          "provenance",
+          "scope",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "claim_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "leaseSeconds": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "workerId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "effectId",
+          "leaseSeconds",
+          "workerId"
+        ],
+        "type": "object"
+      },
+      "close_delegation": {
+        "additionalProperties": false,
+        "properties": {
+          "admissionEpoch": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "session": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "used": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "admissionEpoch",
+          "domain",
+          "provenance",
+          "session",
+          "ticketId",
+          "used"
+        ],
+        "type": "object"
+      },
+      "close_sales": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "eventId"
+        ],
+        "type": "object"
+      },
+      "commit_trade": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "complete_event": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "eventId"
+        ],
+        "type": "object"
+      },
+      "create_event": {
+        "additionalProperties": false,
+        "properties": {
+          "admissionStatus": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "invitationQuota": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "issuerId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "organizer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "policy": {
+            "type": "object"
+          },
+          "reservationSeconds": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "seats": {
+            "type": "array"
+          },
+          "sessionId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "eventId",
+          "organizer",
+          "policy",
+          "seats"
+        ],
+        "type": "object"
+      },
+      "create_listing": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expiresAt": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "listingId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "domain",
+          "expectedVersion",
+          "expiresAt",
+          "listingId",
+          "ticketId"
+        ],
+        "type": "object"
+      },
+      "delegate": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "expectedVersion",
+          "ticketId"
+        ],
+        "type": "object"
+      },
+      "dispatch_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "claimGeneration": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "workerId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "claimGeneration",
+          "domain",
+          "effectId",
+          "workerId"
+        ],
+        "type": "object"
+      },
+      "expire_trade": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "finalize_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "beneficiary": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "contractRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fenceRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "observedAt": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "paymentId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerOperationId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "sourceCursor": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sourceId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "unexecutedAmount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount",
+          "beneficiary",
+          "contractRef",
+          "currency",
+          "domain",
+          "effectId",
+          "fenceRef",
+          "observedAt",
+          "paymentId",
+          "provenance",
+          "providerOperationId",
+          "scope",
+          "sourceCursor",
+          "sourceId",
+          "unexecutedAmount"
+        ],
+        "type": "object"
+      },
+      "issue_invitation": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedInventoryVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inventoryId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recipient": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "expectedInventoryVersion",
+          "inventoryId",
+          "recipient"
+        ],
+        "type": "object"
+      },
+      "observe_dispatch_lookup": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "lookupRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "observedAt": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerOperationId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "requestHash": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "result": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "domain",
+          "effectId",
+          "idempotencyKey",
+          "lookupRef",
+          "observedAt",
+          "provenance",
+          "requestHash",
+          "result",
+          "scope"
+        ],
+        "type": "object"
+      },
+      "observe_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "beneficiary": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fenceProvenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fenceRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "movementId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "paymentId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "phase": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerOperationId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "sourceId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "amount",
+          "beneficiary",
+          "currency",
+          "domain",
+          "effectId",
+          "paymentId",
+          "phase",
+          "provenance",
+          "providerOperationId",
+          "scope",
+          "sourceId"
+        ],
+        "type": "object"
+      },
+      "observe_funding": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contractRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "movementId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "payer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "contractRef",
+          "currency",
+          "domain",
+          "movementId",
+          "payer",
+          "provenance",
+          "scope",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "observe_recovery": {
+        "additionalProperties": false,
+        "properties": {
+          "allocationId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "movementId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "payer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "sourceId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "allocationId",
+          "amount",
+          "currency",
+          "domain",
+          "movementId",
+          "payer",
+          "provenance",
+          "scope",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "observe_return": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "movementId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "payer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "paymentId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "domain",
+          "effectId",
+          "movementId",
+          "payer",
+          "paymentId",
+          "provenance",
+          "scope"
+        ],
+        "type": "object"
+      },
+      "offer_gift": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expiresAt": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "giftId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recipient": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "expectedVersion",
+          "expiresAt",
+          "giftId",
+          "recipient",
+          "ticketId"
+        ],
+        "type": "object"
+      },
+      "open_admission": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "eventId"
+        ],
+        "type": "object"
+      },
+      "prepare_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "allocationId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "beneficiaryAccountRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contractRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "retryOf": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "routeProfile": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "contractRef",
+          "domain",
+          "effectId",
+          "kind",
+          "routeProfile",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "prepare_trade": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "buyer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedInventoryVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expectedVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expiresAt": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inventoryId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "listingHash": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "listingId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "buyer",
+          "domain",
+          "expectedVersion",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "refund_ticket": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "expectedVersion",
+          "ticketId"
+        ],
+        "type": "object"
+      },
+      "release_inventory": {
+        "additionalProperties": false,
+        "properties": {
+          "closedRightId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedInventoryVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inventoryId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "closedRightId",
+          "domain",
+          "expectedInventoryVersion",
+          "inventoryId"
+        ],
+        "type": "object"
+      },
+      "reserve_listing": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expiresAt": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "listingHash": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "listingId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "expiresAt",
+          "listingHash",
+          "listingId",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "send_effect": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effectId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "effectId"
+        ],
+        "type": "object"
+      },
+      "set_consent": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "business": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "channel": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eventId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedConsentVersion": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "purpose": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowed",
+          "business",
+          "channel",
+          "domain",
+          "eventId",
+          "expectedConsentVersion",
+          "purpose"
+        ],
+        "type": "object"
+      },
+      "settle_capture": {
+        "additionalProperties": false,
+        "properties": {
+          "adjustmentAmount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "adjustmentReason": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "amount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contractRef": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "currency": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "feeAmount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "feeBearer": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "grossAmount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "heldAmount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "movementId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "paymentId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provenance": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "type": "object"
+          },
+          "sourceId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "taxAmount": {
+            "maximum": 1000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tradeId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "adjustmentAmount",
+          "amount",
+          "contractRef",
+          "currency",
+          "domain",
+          "feeAmount",
+          "feeBearer",
+          "grossAmount",
+          "heldAmount",
+          "movementId",
+          "paymentId",
+          "provenance",
+          "scope",
+          "taxAmount",
+          "tradeId"
+        ],
+        "type": "object"
+      },
+      "void_unissued": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ticketId": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "ticketId"
+        ],
+        "type": "object"
+      },
+      "settlement_initiate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "trade_id",
+          "gross",
+          "debtor_role",
+          "policy"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "trade_id": {
+            "type": "string"
+          },
+          "gross": {
+            "type": "integer"
+          },
+          "debtor_role": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "object"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "settlement_authorize": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "settlement_capture": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "settlement_commit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "movement_id",
+          "gross",
+          "amount",
+          "fee",
+          "tax",
+          "held",
+          "adjustment"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "movement_id": {
+            "type": "string"
+          },
+          "gross": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "fee": {
+            "type": "integer"
+          },
+          "tax": {
+            "type": "integer"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "adjustment": {
+            "type": "integer"
+          },
+          "adjustment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "settlement_fail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "reason"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "settlement_cancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "reason"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "settlement_observe_statement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "movement_id",
+          "gross",
+          "amount",
+          "fee",
+          "tax",
+          "held",
+          "adjustment"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "movement_id": {
+            "type": "string"
+          },
+          "gross": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "fee": {
+            "type": "integer"
+          },
+          "tax": {
+            "type": "integer"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "adjustment": {
+            "type": "integer"
+          },
+          "adjustment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "settlement_distribute": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "order"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "order": {
+            "type": "array"
+          }
+        }
+      },
+      "settlement_bind_refund": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "refund_id",
+          "amount",
+          "beneficiary_role",
+          "reason"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "refund_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "beneficiary_role": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "settlement_observe_mock_cancel_acceptance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settlement_id",
+          "idempotency_key",
+          "source_id",
+          "amount"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          }
+        }
+      },
+      "reservation_set_clock": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject_id",
+          "idempotency_key",
+          "now_ms"
+        ],
+        "properties": {
+          "subject_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "now_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "reservation_register_show": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "show_id",
+          "idempotency_key",
+          "organizer_role",
+          "capacity",
+          "gate_roles",
+          "primary_price",
+          "resale_cap",
+          "resale_allowed",
+          "organizer_bps",
+          "platform_bps"
+        ],
+        "properties": {
+          "show_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "organizer_role": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "gate_roles": {
+            "type": "array"
+          },
+          "primary_price": {
+            "type": "integer"
+          },
+          "resale_cap": {
+            "type": "integer"
+          },
+          "resale_allowed": {
+            "type": "boolean"
+          },
+          "organizer_bps": {
+            "type": "integer"
+          },
+          "platform_bps": {
+            "type": "integer"
+          }
+        }
+      },
+      "reservation_hold": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reservation_id",
+          "idempotency_key",
+          "show_id",
+          "slot",
+          "buyer_role",
+          "expires_ms"
+        ],
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "show_id": {
+            "type": "string"
+          },
+          "slot": {
+            "type": "integer"
+          },
+          "buyer_role": {
+            "type": "string"
+          },
+          "expires_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "reservation_release": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reservation_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "reservation_confirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order_id",
+          "idempotency_key",
+          "reservation_id",
+          "amount"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "quote_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "reservation_cancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reservation_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "reservation_observe_payment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order_id",
+          "idempotency_key",
+          "payment_ref",
+          "amount"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "payment_ref": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          }
+        }
+      },
+      "reservation_bind_settlement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reservation_id",
+          "idempotency_key",
+          "settlement_id"
+        ],
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "settlement_id": {
+            "type": "string"
+          }
+        }
+      },
+      "reservation_issue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "issuance_id",
+          "idempotency_key",
+          "order_id"
+        ],
+        "properties": {
+          "issuance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          }
+        }
+      },
+      "reservation_authorize_admission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "admission_id",
+          "idempotency_key",
+          "right_id",
+          "version",
+          "holder_role",
+          "gate_role",
+          "request",
+          "expires_ms"
+        ],
+        "properties": {
+          "admission_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "right_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "holder_role": {
+            "type": "string"
+          },
+          "gate_role": {
+            "type": "string"
+          },
+          "request": {
+            "type": "string"
+          },
+          "expires_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "reservation_consume": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "consume_id",
+          "idempotency_key",
+          "right_id",
+          "version",
+          "gate_role",
+          "request"
+        ],
+        "properties": {
+          "consume_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "right_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "gate_role": {
+            "type": "string"
+          },
+          "request": {
+            "type": "string"
+          }
+        }
+      },
+      "resale_set_clock": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject_id",
+          "idempotency_key",
+          "now_ms"
+        ],
+        "properties": {
+          "subject_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "now_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "resale_adopt_issued": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "right_id",
+          "idempotency_key",
+          "show_id",
+          "organizer_role",
+          "capacity",
+          "gate_roles",
+          "primary_price",
+          "resale_cap",
+          "resale_allowed",
+          "organizer_bps",
+          "platform_bps",
+          "slot",
+          "buyer_role",
+          "expires_ms",
+          "order_id",
+          "amount",
+          "payment_ref"
+        ],
+        "properties": {
+          "right_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "show_id": {
+            "type": "string"
+          },
+          "organizer_role": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "gate_roles": {
+            "type": "array"
+          },
+          "primary_price": {
+            "type": "integer"
+          },
+          "resale_cap": {
+            "type": "integer"
+          },
+          "resale_allowed": {
+            "type": "boolean"
+          },
+          "organizer_bps": {
+            "type": "integer"
+          },
+          "platform_bps": {
+            "type": "integer"
+          },
+          "slot": {
+            "type": "integer"
+          },
+          "buyer_role": {
+            "type": "string"
+          },
+          "expires_ms": {
+            "type": "integer"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "payment_ref": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "resale_list_resale": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listing_id",
+          "idempotency_key",
+          "right_id",
+          "version",
+          "seller_role",
+          "recipient_role",
+          "amount",
+          "expires_ms"
+        ],
+        "properties": {
+          "listing_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "right_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "seller_role": {
+            "type": "string"
+          },
+          "recipient_role": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "expires_ms": {
+            "type": "integer"
+          },
+          "reservation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "resale_hold_buy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hold_id",
+          "idempotency_key",
+          "listing_id",
+          "buyer_role"
+        ],
+        "properties": {
+          "hold_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "listing_id": {
+            "type": "string"
+          },
+          "buyer_role": {
+            "type": "string"
+          }
+        }
+      },
+      "resale_release_hold": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hold_id",
+          "idempotency_key",
+          "buyer_role"
+        ],
+        "properties": {
+          "hold_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "buyer_role": {
+            "type": "string"
+          }
+        }
+      },
+      "resale_cancel_listing": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listing_id",
+          "idempotency_key",
+          "seller_role"
+        ],
+        "properties": {
+          "listing_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "seller_role": {
+            "type": "string"
+          }
+        }
+      },
+      "resale_observe_resale_payment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listing_id",
+          "idempotency_key",
+          "payment_ref",
+          "amount"
+        ],
+        "properties": {
+          "listing_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "payment_ref": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "buyer_role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "resale_bind_settlement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listing_id",
+          "idempotency_key",
+          "settlement_id"
+        ],
+        "properties": {
+          "listing_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "settlement_id": {
+            "type": "string"
+          }
+        }
+      },
+      "resale_accept_resale": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transfer_id",
+          "idempotency_key",
+          "listing_id"
+        ],
+        "properties": {
+          "transfer_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "listing_id": {
+            "type": "string"
+          }
+        }
+      },
+      "resale_close": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listing_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "listing_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "admission_set_clock": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject_id",
+          "idempotency_key",
+          "now_ms"
+        ],
+        "properties": {
+          "subject_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "now_ms": {
+            "type": "integer"
+          }
+        }
+      },
+      "admission_adopt_issued": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "right_id",
+          "idempotency_key",
+          "show_id",
+          "organizer_role",
+          "capacity",
+          "gate_roles",
+          "primary_price",
+          "resale_cap",
+          "resale_allowed",
+          "organizer_bps",
+          "platform_bps",
+          "slot",
+          "buyer_role",
+          "expires_ms",
+          "order_id",
+          "amount",
+          "payment_ref"
+        ],
+        "properties": {
+          "right_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "show_id": {
+            "type": "string"
+          },
+          "organizer_role": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "gate_roles": {
+            "type": "array"
+          },
+          "primary_price": {
+            "type": "integer"
+          },
+          "resale_cap": {
+            "type": "integer"
+          },
+          "resale_allowed": {
+            "type": "boolean"
+          },
+          "organizer_bps": {
+            "type": "integer"
+          },
+          "platform_bps": {
+            "type": "integer"
+          },
+          "slot": {
+            "type": "integer"
+          },
+          "buyer_role": {
+            "type": "string"
+          },
+          "expires_ms": {
+            "type": "integer"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "payment_ref": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "admission_authorize_admission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "admission_id",
+          "idempotency_key",
+          "right_id",
+          "version",
+          "holder_role",
+          "gate_role",
+          "request",
+          "expires_ms"
+        ],
+        "properties": {
+          "admission_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "right_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "holder_role": {
+            "type": "string"
+          },
+          "gate_role": {
+            "type": "string"
+          },
+          "request": {
+            "type": "string"
+          },
+          "expires_ms": {
+            "type": "integer"
+          },
+          "external_dependency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "admission_consume": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "consume_id",
+          "idempotency_key",
+          "right_id",
+          "version",
+          "gate_role",
+          "request"
+        ],
+        "properties": {
+          "consume_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "right_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "gate_role": {
+            "type": "string"
+          },
+          "request": {
+            "type": "string"
+          },
+          "external_dependency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "credit_offer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "face",
+          "amount",
+          "beneficiary_role"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "face": {
+            "type": "object"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "beneficiary_role": {
+            "type": "string"
+          },
+          "product": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "credit_approve": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "credit_reject": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "reason"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "credit_cancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "reason"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "credit_bind_settlement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "settlement_id"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "settlement_id": {
+            "type": "string"
+          }
+        }
+      },
+      "credit_draw": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "draw_id"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "draw_id": {
+            "type": "string"
+          }
+        }
+      },
+      "credit_repay": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "repay_id",
+          "sequence",
+          "amount"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "repay_id": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "integer"
+          }
+        }
+      },
+      "credit_close": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "credit_default": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "advance_id",
+          "idempotency_key",
+          "reason"
+        ],
+        "properties": {
+          "advance_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "LocalCallEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Fixed parameter list of the Python local call Core.execute(operation_id, actor, action, body). additionalProperties false records that fixed list. It is not an HTTP media type and not a field of protocol_contract.json. protocolDomain and actorContext are named by the v0.1 specification and are recorded under x-kix-specification-envelope. They are not extra arguments of the current Python call. No authentication scheme, retry policy, or transport guarantee is defined.",
+        "required": [
+          "operationId",
+          "actor",
+          "action",
+          "body"
+        ],
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "description": "Per-invocation identity. First argument of Core.execute. This is not the command name. The command name is action. No HTTP Idempotency-Key or retry policy is defined.",
+            "x-kix-reference-model-observed": {
+              "check": "ident",
+              "error": "INVALID_ID",
+              "rule": "non-empty string, length at most 100, no leading or trailing whitespace",
+              "sameInvocation": "In the reference model, the same operationId with the same actor, action, and body returns the stored receipt. A different fingerprint for the same operationId is OPERATION_ID_CONFLICT. That is an in-process SQLite rule, not an HTTP retry contract.",
+              "notInExportedCommandSchema": true
+            }
+          },
+          "actor": {
+            "type": "string",
+            "description": "Second argument of Core.execute. The v0.1 specification names the corresponding envelope field actorContext and says it must be an authentication and signature-verification result. This Python call does not take actorContext. The fixture actor string is not that result and is not authority. This document defines no authentication scheme.",
+            "x-kix-specification-field": "actorContext",
+            "x-kix-reference-model-observed": {
+              "check": "ident",
+              "error": "INVALID_ID",
+              "rule": "non-empty string, length at most 100, no leading or trailing whitespace",
+              "notInExportedCommandSchema": true
+            }
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "abort_effect",
+              "abort_trade",
+              "accept_gift",
+              "accept_trade",
+              "adjust_pg_cancel",
+              "admit",
+              "advance_clock",
+              "authorize_marketing",
+              "cancel_event",
+              "cancel_gift",
+              "cancel_listing",
+              "capture",
+              "claim_effect",
+              "close_delegation",
+              "close_sales",
+              "commit_trade",
+              "complete_event",
+              "create_event",
+              "create_listing",
+              "delegate",
+              "dispatch_effect",
+              "expire_trade",
+              "finalize_effect",
+              "issue_invitation",
+              "observe_dispatch_lookup",
+              "observe_effect",
+              "observe_funding",
+              "observe_recovery",
+              "observe_return",
+              "offer_gift",
+              "open_admission",
+              "prepare_effect",
+              "prepare_trade",
+              "refund_ticket",
+              "release_inventory",
+              "reserve_listing",
+              "send_effect",
+              "set_consent",
+              "settle_capture",
+              "void_unissued",
+              "settlement_initiate",
+              "settlement_authorize",
+              "settlement_capture",
+              "settlement_commit",
+              "settlement_fail",
+              "settlement_cancel",
+              "settlement_observe_statement",
+              "settlement_distribute",
+              "settlement_bind_refund",
+              "settlement_observe_mock_cancel_acceptance",
+              "reservation_set_clock",
+              "reservation_register_show",
+              "reservation_hold",
+              "reservation_release",
+              "reservation_confirm",
+              "reservation_cancel",
+              "reservation_observe_payment",
+              "reservation_bind_settlement",
+              "reservation_issue",
+              "reservation_authorize_admission",
+              "reservation_consume",
+              "resale_set_clock",
+              "resale_adopt_issued",
+              "resale_list_resale",
+              "resale_hold_buy",
+              "resale_release_hold",
+              "resale_cancel_listing",
+              "resale_observe_resale_payment",
+              "resale_bind_settlement",
+              "resale_accept_resale",
+              "resale_close",
+              "admission_set_clock",
+              "admission_adopt_issued",
+              "admission_authorize_admission",
+              "admission_consume",
+              "credit_offer",
+              "credit_approve",
+              "credit_reject",
+              "credit_cancel",
+              "credit_bind_settlement",
+              "credit_draw",
+              "credit_repay",
+              "credit_close",
+              "credit_default"
+            ],
+            "description": "Command name. Third argument of Core.execute. Selects the body schema. Equal to a core command key or an FSM catalogue key of the form machine_op."
+          },
+          "body": {
+            "description": "Fourth argument of Core.execute. Validate it against components.schemas[action]. Several actions share an identical body schema, so the action name is the discriminator. unknownFields REJECT is the exported catalogue rule."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "abort_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/abort_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "abort_trade"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/abort_trade"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "accept_gift"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/accept_gift"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "accept_trade"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/accept_trade"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "adjust_pg_cancel"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/adjust_pg_cancel"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "admit"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/admit"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "advance_clock"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/advance_clock"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "authorize_marketing"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/authorize_marketing"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "cancel_event"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/cancel_event"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "cancel_gift"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/cancel_gift"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "cancel_listing"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/cancel_listing"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "capture"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/capture"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "claim_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/claim_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "close_delegation"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/close_delegation"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "close_sales"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/close_sales"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "commit_trade"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/commit_trade"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "complete_event"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/complete_event"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "create_event"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/create_event"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "create_listing"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/create_listing"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "delegate"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/delegate"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "dispatch_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/dispatch_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "expire_trade"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/expire_trade"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "finalize_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/finalize_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "issue_invitation"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/issue_invitation"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "observe_dispatch_lookup"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/observe_dispatch_lookup"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "observe_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/observe_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "observe_funding"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/observe_funding"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "observe_recovery"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/observe_recovery"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "observe_return"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/observe_return"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "offer_gift"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/offer_gift"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "open_admission"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/open_admission"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "prepare_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/prepare_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "prepare_trade"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/prepare_trade"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "refund_ticket"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/refund_ticket"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "release_inventory"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/release_inventory"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reserve_listing"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reserve_listing"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "send_effect"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/send_effect"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "set_consent"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/set_consent"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settle_capture"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settle_capture"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "void_unissued"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/void_unissued"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_initiate"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_initiate"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_authorize"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_authorize"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_capture"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_capture"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_commit"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_commit"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_fail"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_fail"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_cancel"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_cancel"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_observe_statement"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_observe_statement"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_distribute"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_distribute"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_bind_refund"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_bind_refund"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "settlement_observe_mock_cancel_acceptance"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/settlement_observe_mock_cancel_acceptance"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_set_clock"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_set_clock"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_register_show"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_register_show"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_hold"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_hold"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_release"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_release"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_confirm"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_confirm"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_cancel"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_cancel"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_observe_payment"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_observe_payment"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_bind_settlement"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_bind_settlement"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_issue"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_issue"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_authorize_admission"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_authorize_admission"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "reservation_consume"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/reservation_consume"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_set_clock"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_set_clock"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_adopt_issued"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_adopt_issued"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_list_resale"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_list_resale"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_hold_buy"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_hold_buy"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_release_hold"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_release_hold"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_cancel_listing"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_cancel_listing"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_observe_resale_payment"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_observe_resale_payment"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_bind_settlement"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_bind_settlement"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_accept_resale"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_accept_resale"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resale_close"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/resale_close"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "admission_set_clock"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/admission_set_clock"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "admission_adopt_issued"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/admission_adopt_issued"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "admission_authorize_admission"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/admission_authorize_admission"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "admission_consume"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/admission_consume"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_offer"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_offer"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_approve"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_approve"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_reject"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_reject"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_cancel"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_cancel"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_bind_settlement"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_bind_settlement"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_draw"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_draw"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_repay"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_repay"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_close"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_close"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "credit_default"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            },
+            "then": {
+              "properties": {
+                "body": {
+                  "$ref": "#/components/schemas/credit_default"
+                }
+              }
+            }
+          }
+        ],
+        "x-kix-body-domain-check": {
+          "specificationField": "protocolDomain",
+          "localCall": "body.domain is compared with the pinned domain",
+          "error": "DOMAIN_MISMATCH",
+          "pinnedDomain": "kix:fixture:lifecycle:0.3",
+          "notASeparatePythonArgument": true,
+          "constNotAddedToCommandSchema": true
+        }
+      }
+    }
+  }
+}
