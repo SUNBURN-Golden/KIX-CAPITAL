@@ -134,6 +134,6 @@ test('late scenario response cannot replace the selected scenario',async({page})
  await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
  let release;const gate=new Promise(resolve=>release=resolve);let seen;const started=new Promise(resolve=>seen=resolve);
  await page.route('**/api/scenarios/full-after',async route=>{const response=await route.fetch();seen();await gate;await route.fulfill({response});});
- await page.locator('#scenario-select').selectOption('full-after');await started;await page.locator('#scenario-select').selectOption('partial-before');await expect(page.locator('#scenario-diagnostic')).toContainText('DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED');
- release();await expect(page.locator('#scenario-select')).toHaveValue('partial-before');await expect(page.locator('#scenario-description')).toContainText('환불 부담자가 미정');
+ await page.locator('#scenario-select').selectOption('full-after');await started;await page.locator('#scenario-select').selectOption('partial-before');await expect(page.locator('#scenario-diagnostic')).toContainText('기존 계약의 검사와 일치합니다');
+ release();await expect(page.locator('#scenario-select')).toHaveValue('partial-before');await expect(page.locator('#scenario-description')).toContainText('부분 환불 부담자는 요청자');await expect(page.locator('#scenario-facts')).toContainText('REQUESTER');
 });

@@ -304,6 +304,6 @@ class ContractInvariantTests(unittest.TestCase):
         vendor = ROOT / 'capital/vendor'
         manifest = json.loads((vendor / 'manifest.json').read_text())
         self.assertEqual(manifest['commit'], inv.PINNED_SHA)
-        self.assertEqual(len(manifest['files']), 5)
+        self.assertEqual(len(manifest['files']), 69)
         for path, wanted in manifest['files'].items():
             self.assertEqual(hashlib.sha256((vendor / path).read_bytes()).hexdigest(), wanted)
