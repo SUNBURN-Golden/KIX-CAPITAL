@@ -10,7 +10,7 @@ import uuid
 
 from capital import __version__
 from capital.assets import declared as declared_assets, matches as asset_matches
-from capital import coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif
+from capital import assets, coa, covenants, dossier, forecast, margin, overlay, portfolio_snapshot, recovery, risk, risk_whatif, shared_caps
 from capital.agent_lane import AgentLane, AgentLaneError, ident as agent_ident
 from capital.auth import (
     AGENT_PROPOSE, AGENT_PROPOSE_CHANGE, AGENT_QUERY, AGENT_QUERY_SUBJECT, AGENT_WITHDRAW,
@@ -23,7 +23,7 @@ from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manife
 from capital.gate_producer import GateProtocolError, TransportLost
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
-from capital.protocol import VENDOR, MockSettlement, SettlementMachine
+from capital.protocol import VENDOR, MockSettlement, SettlementMachine, matches_workspace_state_digest
 from capital.recon import build_reconciliation
 from capital.policy import (
     POLICY_LABEL, POLICY_NOT_BOUND, SCENARIO_ID, DecisionNoteSettlementPolicy,
@@ -224,7 +224,7 @@ class CapitalService:
                 restored = self.producer.restored(copy.deepcopy(journal))
             except CreditError as exc:
                 raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
-            if restored.state_digest() != state_digest:
+            if not matches_workspace_state_digest(restored, state_digest):
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
             expected = {}
             seen = []
@@ -1020,6 +1020,36 @@ class CapitalService:
                     'entries': projected['entries'], 'accounts': projected['accounts'],
                     'read_model': projected['read_model'], 'conservation': projected['conservation']}
 
+    def _allowance_context(self):
+        """Caller holds lock: detached facts for the separate read-only V2 candidate."""
+        policy = coa.allowance_policy()
+        journal = self.machine.export_journal()
+        state = overlay.fold(self.overlay_entries)
+        cut = {'f04_state_digest': self.machine.state_digest(),
+               'overlay_digest': overlay.state_digest(state), 'overlay_sim_day': state['sim_day']}
+        population = {'asset': copy.deepcopy(assets.KRW), 'advance_ids': sorted(self.case_fixtures)}
+        try:
+            drawn = {r['advance_id']: r for r in self._overlay_subjects(self.overlay_entries)}
+            advances = []
+            for ref in population['advance_ids']:
+                ledger = self._ledger_terms(drawn[ref]) if ref in drawn else None
+                advances.append({'advance_id': ref, 'case': copy.deepcopy(self.machine.view(ref)),
+                                 'ledger_terms': ledger})
+            risk_body = self.risk()
+        except (ApiError, ValueError, KeyError, TypeError):
+            return None
+        reserve = risk_body.get('reserve', {})
+        risk_evidence = {'source_cut': copy.deepcopy(cut), 'population': copy.deepcopy(population),
+                         'policy_context': copy.deepcopy(policy),
+                         'requirement_krw': reserve.get('requirement_krw'),
+                         'provision_total_krw': (sum(r['provision_krw'] for r in reserve['rows'])
+                                                 if reserve.get('complete') else None),
+                         'complete': reserve.get('complete', False)}
+        return copy.deepcopy({'source_cut': cut, 'population': population, 'policy_context': policy,
+                              'journal_digest': risk._digest(journal), 'advances': advances,
+                              'terms_version': self.terms.status()['terms_version'],
+                              'reserve_terms': risk._value(self.terms, 'reserve'), 'risk': risk_evidence})
+
     def _projection_coa(self):
         """Additive CAPITAL-COA-V1 candidate. Folds copies; V1 output and state are untouched."""
         with self.lock:
@@ -1030,7 +1060,8 @@ class CapitalService:
                 cut = self.machine.state_digest()
                 try:
                     projected = self.coa_projection.project(
-                        journal, evidence, overlay_entries=copy.deepcopy(self.overlay_entries))
+                        journal, evidence, overlay_entries=copy.deepcopy(self.overlay_entries),
+                        allowance_context=self._allowance_context())
                 except ProjectionError as exc:
                     raise ApiError(exc.code, 500) from exc
                 return {'instance_id': self.instance_id, 'mode': 'LOCAL_PROJECTION_COA_CANDIDATE',
@@ -2473,6 +2504,37 @@ class CapitalService:
                 if before != (self._frozen(), self.case_fixtures, self.terms.__dict__, self.overlay_bounds):
                     raise ApiError('READ_ONLY_INVARIANT', 500)
 
+    def shared_caps(self):
+        """One lock-held read of existing shared-cap policy; never persist."""
+        with self.lock:
+            body = shared_caps.diagnostic()
+            if (type(self.producer) is not PinnedFsmProducer
+                    or not callable(getattr(self.producer, 'snapshot_inputs', None))):
+                return shared_caps.not_bound(body, 'COHERENT_SNAPSHOT_UNSUPPORTED')
+            if type(self.terms) is not DecisionNoteTermsPolicy:
+                return shared_caps.not_bound(body, 'FROZEN_TERMS_UNSUPPORTED')
+            try:
+                captured = self.producer.snapshot_inputs()
+            except ValueError as exc:
+                return shared_caps.not_bound(body, str(exc))
+            before = (self._frozen(), copy.deepcopy(self.case_fixtures), copy.deepcopy(self.fixtures.__dict__),
+                      copy.deepcopy(self.terms.__dict__), copy.deepcopy(self.overlay_bounds), copy.deepcopy(self.slice_policy))
+            try:
+                frozen = portfolio_snapshot.FrozenInputs.capture(
+                    captured, self.receipts, self.case_fixtures, self.overlay_entries, self.terms, self.overlay_bounds)
+                policy = copy.deepcopy(self.slice_policy)
+                body = shared_caps.captured_diagnostic(frozen, policy)
+                error = portfolio_snapshot.storage_health(self.storage, self.workspace_status, frozen.detached())
+                if error:
+                    return shared_caps.not_bound(body, error)
+                return shared_caps.build(frozen, policy)
+            except (CreditError, ValueError, KeyError, TypeError, ArithmeticError, AttributeError):
+                return shared_caps.not_bound(body, 'CAPTURE_RECONCILIATION_FAILED')
+            finally:
+                if before != (self._frozen(), self.case_fixtures, self.fixtures.__dict__,
+                              self.terms.__dict__, self.overlay_bounds, self.slice_policy):
+                    raise ApiError('READ_ONLY_INVARIANT', 500)
+
     def risk(self):
         """Read-only portfolio risk analytics. Nothing is accrued, journaled or written here."""
         with self.lock:
@@ -2610,7 +2672,7 @@ class CapitalService:
     def reconciliation(self, probe_operation_id=None, mode=None, *, _export_legacy=False):
         """Read-only exception report. No receipt is written and nothing is retried.
 
-        mode=coa-candidate appends the two COA candidate checks; the default report and the
+        mode=coa-candidate appends the six COA candidate checks; the default report and the
         manifest are unchanged.
         """
         with self.lock:
@@ -2633,6 +2695,7 @@ class CapitalService:
                     coa_port=self.coa_projection if mode == coa.MODE else None,
                     overlay_entries=entries or None,
                     overlay_persisted=persisted,
+                    allowance_context=self._allowance_context() if mode == coa.MODE else None,
                 )
             finally:
                 if not self._same_frozen(frozen):

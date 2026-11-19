@@ -96,9 +96,17 @@ test('two tabs serialize a delayed recovery and preserve the next unknown reques
  await page.route('**/api/operations/**',async route=>{const response=await route.fetch();seen();await gate;await route.fulfill({response});});
  await page.getByRole('button',{name:'원 요청 결과 조회'}).click();await requested;
  await other.getByRole('button',{name:'원 요청 결과 조회'}).click();await expect(other.locator('#notice')).toContainText('다른 탭');await expect(other.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();
- release();await expect(page.locator('#recovery')).toBeHidden();await expect(other.locator('#recovery')).toBeHidden();
- await other.route('**/api/commands',route=>route.abort('failed'));
- await other.getByRole('button',{name:'모의 제안 생성'}).click();await expect(other.locator('#recovery')).toBeVisible();await expect(page.locator('#recovery')).toBeVisible();
+ // Keep the first tab's post-recovery refresh in flight while the second tab writes.
+ let finishRefresh;const refreshGate=new Promise(resolve=>finishRefresh=resolve);
+ await page.route('**/api/risk/scenarios',async route=>{await refreshGate;await route.continue();});
+ const refreshing=page.waitForRequest('**/api/risk/scenarios');
+ release();await refreshing;
+ try{
+  await expect(page.locator('#recovery')).toBeHidden();await expect(other.locator('#recovery')).toBeHidden();
+  await other.route('**/api/commands',route=>route.abort('failed'));
+  await other.getByRole('button',{name:'모의 제안 생성'}).click();await expect(other.locator('#recovery')).toBeVisible();await expect(page.locator('#recovery')).toBeVisible();
+ }finally{finishRefresh();}
+ await expect(page.locator('#refresh')).toBeEnabled();
  const record=await page.evaluate(()=>JSON.parse(localStorage.getItem('kix-capital-pending-v1')));expect(record.op).toBe('offer');await expect(page.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();
 });
 test('old process acknowledgment never resends previous command',async({page})=>{
@@ -134,6 +142,6 @@ test('late scenario response cannot replace the selected scenario',async({page})
  await page.goto('/');await expect(page.locator('#notice')).toContainText('합성 데이터');
  let release;const gate=new Promise(resolve=>release=resolve);let seen;const started=new Promise(resolve=>seen=resolve);
  await page.route('**/api/scenarios/full-after',async route=>{const response=await route.fetch();seen();await gate;await route.fulfill({response});});
- await page.locator('#scenario-select').selectOption('full-after');await started;await page.locator('#scenario-select').selectOption('partial-before');await expect(page.locator('#scenario-diagnostic')).toContainText('DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED');
- release();await expect(page.locator('#scenario-select')).toHaveValue('partial-before');await expect(page.locator('#scenario-description')).toContainText('환불 부담자가 미정');
+ await page.locator('#scenario-select').selectOption('full-after');await started;await page.locator('#scenario-select').selectOption('partial-before');await expect(page.locator('#scenario-diagnostic')).toContainText('기존 계약의 검사와 일치합니다');
+ release();await expect(page.locator('#scenario-select')).toHaveValue('partial-before');await expect(page.locator('#scenario-description')).toContainText('부분 환불 부담자는 요청자');await expect(page.locator('#scenario-facts')).toContainText('REQUESTER');
 });

@@ -4,8 +4,10 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const input = JSON.parse(fs.readFileSync(0,'utf8'));
 const app = fs.readFileSync('capital/static/app.js','utf8');
-class Element {
-  constructor(tag='div', text='') {this.tag=tag;this.textContent=String(text);this.children=[];this.dataset={};}
+class Element extends EventTarget {
+  constructor(tag='div', text='') {super();this.tag=tag;this.textContent=String(text);this.children=[];this.dataset={};this.attributes=new Map();}
+  setAttribute(name,value) {this.attributes.set(name,String(value));}
+  getAttribute(name) {return this.attributes.get(name)??null;}
   append(...nodes) {this.children.push(...nodes);}
   replaceChildren(...nodes) {this.children=nodes;this.textContent='';}
   focus() {this.focused=true;}
@@ -94,8 +96,11 @@ async function main(){
   const old=vm.runInContext('refresh()',scope),newer=vm.runInContext('refresh()',scope);
   waiting[1].resolve(response);await newer;
   assert.equal(scope.sessionToken,'new-token');assert.equal(posted.length,1);
+  assert.equal($('risk-comparison').dataset.status,'forbidden');
+  assert.equal($('risk-comparison-refresh').getAttribute('aria-disabled'),'true');
   waiting[0].resolve({...response,local_token:'old-token'});assert.equal(await old,false);
   assert.equal(scope.sessionToken,'new-token');assert.equal(posted.length,1);
+  assert.equal($('risk-comparison').dataset.status,'forbidden');
   // Obsolete errors must resolve quietly and never release a newer busy fence.
   waiting=[];scope.busy=true;
   const failed=vm.runInContext('refresh()',scope),active=vm.runInContext('refresh()',scope);
