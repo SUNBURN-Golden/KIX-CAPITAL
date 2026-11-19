@@ -6,17 +6,17 @@
 |---|---|
 | 결정 노드 | `maturity-extension-decision` |
 | 결정자 | Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07) |
-| 결정일 | 2026-10-30 |
-| 기준 | KIX-CAPITAL main `81536bb`; kix-protocol `6dfb03a` — supervisor 제공 기준 |
+| 결정일 | 2026-11-10 |
+| 기준 | KIX-CAPITAL main `3c2cfaf`; kix-protocol `5efab69` — supervisor 제공 기준(역사적 출처 증명이며 실행 핀 재지정이 아니다) |
 | 의존 | `financial-terms-decision`, `default-recovery-decision`, `margin-cure-default`, `decision-guard-additions` |
-| 구현 소유자·소비 노드 | `maturity-extension-command` |
+| 소비 노드 | `maturity-extension-command` |
 | 범위 | 시뮬레이션·제품 설계만. 청약 아님, 실자금 없음, production `NOT_AUTHORIZED` |
 
 위임 원문: “금융 조건, 정산 정책, 상위 연동, 회계·세무·법무는 일단 Fable이랑 진행해. 우리의 원대한 포부를 고려해서 진행하라고 해.”
 
-결정자 표기는 요청된 위임 메타데이터다. 이번 개정에서 Claude CLI 실행이나 모델 전환을 검증했다는 뜻은 아니다. 최초 근거는 supervisor pack과 제공 리뷰다. 2026-11-10 fix round 3에서는 병합 HEAD `7f41d46`의 선행 금융 조건·부도 회수 결정과 리핀 정책을 직접 확인했다. 법률·회계상 효력과 이자 인식은 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`다. upstream 채택·영수증·운영 권한을 주장하지 않는다.
+이 문서는 KIX-CAPITAL 저장소 안의 시뮬레이션·제품 설계용 결정이다. 청약·대출 제안이 아니고 실자금이 움직이지 않으며 production은 계속 `NOT_AUTHORIZED`다. 어떤 upstream 계약의 채택·영수증·운영 권한도 주장하지 않는다. 법률·세무·회계 효력과 연체이자 인식은 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`다. 결정자 표기는 요청된 위임 메타데이터이며 Claude CLI 실행·모델 전환을 별도로 검증했다는 뜻이 아니다.
 
-`ADOPTED`는 로컬 잠정 제품 정책이며 구현 완료가 아니다. 일곱 항목 모두 ADOPTED이고 구현 소유자는 `maturity-extension-command`다.
+이번 개정의 근거는 supervisor pack 발췌, 허용 경로 `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` 전문, 제공 리뷰다. `CREDIT_ADVANCE_F04.md` §5 원문과 `CAPITAL_FINANCIAL_TERMS.md` 정본 전체는 이번 개정에서 직접 열지 않았고, TERMS 값 일치는 제공 리뷰의 확인을 인용한다. `ADOPTED`는 로컬 잠정 제품 정책이며 구현 완료가 아니다. 일곱 항목 모두 ADOPTED이고 구현 소유자는 `maturity-extension-command`다.
 
 ## 1. 결정 요약
 
@@ -32,24 +32,20 @@
 
 ## 2. KIX 비전 연결
 
-만기 변경을 재생 가능한 사실로 남겨 명령 처리·예측·감사가 같은 날짜와 금리를 사용하게 한다. 근거는 다음 pack 발췌에 한정한다.
-
-- `docs/CAPITAL_REQUIREMENTS_KO.md`: 실행·참조 핀과 결정 문서의 역사적 출처를 구분한다. `81536bb`·`6dfb03a`는 이번 출처 기준이며 재핀이 아니다. FSM 핀 `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, 위임 초안 핀 `e2a029d8ac3af7575888dac22fc4bf173ebec232`, 수명 계약 핀 `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`의 기존 소비 범위를 유지한다. 실행 기준 변경은 별도 재핀 정책·검증·영수증을 요구하며 이 노트로 대체하지 않는다.
-- `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md`: 가속 만기 `M* = min(현재 만기, 앵커일)`, 연체 시작 `M*+1`, 부도 적격일 `M*+유예+1`, 가속 철회·연장 금지를 계승한다. 연장 뒤 가속할 때는 연장된 현재 만기를 사용한다.
-- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`: TERMS 상수의 소유권과 `overlay_id`/`kind`/`payload` 형태를 계승한다.
-- `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md`: 문서 번들은 구현 완료·서명·게시의 증거가 아니다.
-- `docs/SEAMS.md`, `docs/VALIDATION.md`: 로컬 검증과 upstream 채택을 구분한다. 결과는 `SIMULATED`이며 SEMANTIC_CONFORMANCE를 주장하지 않는다.
+- `docs/CAPITAL_REQUIREMENTS_KO.md`: 실행·참조 핀과 결정 문서의 역사적 출처를 구분한다. `3c2cfaf`·`5efab69`는 이번 출처 기준이며 재핀이 아니다. FSM 핀 `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`, AI 위임 초안 핀 `e2a029d8ac3af7575888dac22fc4bf173ebec232`, 수명 계약 핀 `e2313ab473ea1b5a7b5b9246a564749188c1c2c8`의 기존 소비 범위를 유지한다. 실행 기준 변경은 별도 재핀 정책·검증·영수증을 요구하며 이 노트로 대체하지 않는다.
+- `docs/decisions/CAPITAL_DEFAULT_RECOVERY.md` §4.1: 가속 만기 `M* = min(현재 만기, 앵커일)`, 연체 시작 `M*+1`, 부도 적격일 `M*+유예+1`, 가속 철회·연장 금지를 계승한다. 연장 뒤 가속할 때는 연장된 현재 만기를 사용한다.
+- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`: `CAPITAL-TERMS-V1` 상수 소유권과 `overlay_id`/`kind`/`payload` 엔트리 형태를 계승한다.
+- `docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md`: 문서 번들은 구현·서명·게시의 증거가 아니다.
+- `docs/SEAMS.md`·`docs/VALIDATION.md`: 로컬 검증과 upstream 채택을 구분한다. 결과는 `SIMULATED`이며 SEMANTIC_CONFORMANCE를 주장하지 않는다.
 - `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`: 법률·회계 관련 사항은 전문가 검토 전 작업 가정이다.
 
-**kix-protocol `docs/contracts/CREDIT_ADVANCE_F04.md` §5 open items** 중 이자·수수료·APR·기간·상환 일정·연체·손실 귀속·상각을 상위 공백으로 인용한다. 2026-11-10에 읽기 전용 Protocol 체크아웃의 역사적 연구 기준 `6dfb03a` 원문을 `git show`로 확인했다. §5.1의 `interest-apr-schedule` 목 경계는 금융 값을 정의하지 않으므로 아래 정책은 Capital의 잠정 오버레이 결정이다. F04 계약·FSM 채택이나 변경이 아니다.
-
-[CAPITAL_UPSTREAM_REPINS.md](CAPITAL_UPSTREAM_REPINS.md) §3.3 `research_baseline_rule`에 따라 위 `bases`의 역사적 연구 출처를 보존한다. §3.4 `repin_trigger_procedure`·§3.6 `claim_table_regeneration_rule`에 따라 연구 기준 확인이나 Capital main 병합만으로 실행 핀을 옮기지 않는다. 이 개정은 vendor 다섯 파일·manifest와 Protocol·Commerce를 변경하지 않는다.
+kix-protocol `docs/contracts/CREDIT_ADVANCE_F04.md` §5 open items(이자·수수료·APR·기간·상환 일정·연체·손실 귀속·상각)를 상위 공백으로 인용한다. 이 노트의 값은 Capital 잠정 오버레이이며 F04 계약·FSM의 채택·변경이 아니다. 원문 대조는 supervisor 제공 기준에 따르며 이번 개정에서 해당 파일을 직접 열지 않았다.
 
 ## 3. 항목별 결정
 
 공통 기호: `d0`는 인출일, `M`은 연장 직전 예정 만기, `E`는 명령일, `k`는 요청 연장일, `M' = M+k`, `G`는 TERMS 유예일이다. 날짜·일수는 정수 논리 일 `sim_day`다. 명령은 현재 논리 일에 기록하며 시계를 움직이지 않는다.
 
-직접 확인한 [CAPITAL_FINANCIAL_TERMS.md](CAPITAL_FINANCIAL_TERMS.md) §3.1–§3.5와 `capital-decision-v1` 정본 `CAPITAL-TERMS-V1`의 **선지급당 1회, 최대 30일, 총기간 180일 하드캡, HUMAN_OPERATOR 승인, 연장 수수료 0**을 변경 없이 인용한다. 소비자는 정본에서 값을 로드하며 설명용 숫자를 별도 설정값으로 복사하지 않는다. 아래 경로는 해당 블록의 `entries` 기준이다.
+`CAPITAL-TERMS-V1`의 **선지급당 1회, 최대 30일, 총기간 180일 하드캡, HUMAN_OPERATOR 승인, 연장 수수료 0**을 변경 없이 인용한다. 소비자는 정본 `entries.*.value`에서 값을 로드하며 아래 경로를 쓴다.
 
 | 적용 값 | 정본 경로 |
 |---|---|
@@ -60,11 +56,11 @@
 | 인출 티어 고정·계약 금리·연체 가산·총비용 상한 | `interest_rate.value` |
 | 2인 승인 임계 | `underwriting_depth.value.two_person_threshold_krw` |
 
-[CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md) §4.1과 `entries.acceleration_interest_rebase.value`의 가속 만기·연체 시작·부도 적격일·가속 후 연장 금지를 적용한다. 이미 ADOPTED인 값을 미정으로 돌리지 않는다.
+`CAPITAL_DEFAULT_RECOVERY.md` §4.1과 `entries.acceleration_interest_rebase.value`의 가속 만기·연체 시작·부도 적격일·가속 후 연장 금지를 적용한다. 이미 ADOPTED인 값을 미정으로 돌리지 않는다.
 
 ### 3.1 `extension_eligibility_window` — ADOPTED
 
-적격 창은 `d0 ≤ E ≤ M+G`다. 만기 당일도 허용한다. 선지급은 인출되어 생존하고 실효 미상환 원금이 양수여야 한다. 이전 연장·가속·미해결 마진콜이 없어야 하며 사람 운영자가 명령을 제출한다.
+적격 창은 `d0 ≤ E ≤ M+G`다. 만기 당일과 마지막 유예일도 허용한다. 선지급은 인출되어 생존하고 실효 미상환 원금이 양수여야 한다. 이전 연장·가속·미해결 마진콜이 없어야 하며 사람 운영자가 명령을 제출한다.
 
 치유 마감이 지나도 미해결 마진콜이 있으면 거절한다. 가속 기록 부재로 치유 의무를 우회할 수 없다. 치유가 먼저 유효하게 기록되어 종료된 마진콜은 다른 조건을 충족하면 장애가 아니다.
 
@@ -88,25 +84,20 @@
 | `E > M` | `M < t ≤ E`에 기존 연체 금리; `E < t ≤ M'`에 계약 금리 |
 | `t > M'` | 새 만기 기준 기존 연체 정책 |
 
-이는 금리 선택 규칙이다. 기존 상환일 제외 규칙 등으로 발생하지 않는 이자를 새로 만들지 않는다. 보존 스냅샷을 구간 계산 결과에 다시 더하지 않는다.
-
-기존 총비용 상한 검사를 계속 적용한다. 연체 가산의 법적 적합성을 자동 인정하지 않는다. 이후 가속은 DEFAULT_RECOVERY 규칙으로 전향 적용하고 과거 발생 구간을 다시 쓰지 않는다. 소유자는 `maturity-extension-command`다.
+이는 금리 선택 규칙이다. 기존 상환일 제외 규칙 등으로 발생하지 않는 이자를 새로 만들지 않는다. 보존 스냅샷을 구간 계산 결과에 다시 더하지 않는다. 기존 총비용 상한 검사를 계속 적용한다. 연체 가산의 법적 적합성을 자동 인정하지 않는다. 이후 가속은 DEFAULT_RECOVERY 규칙으로 전향 적용하고 과거 발생 구간을 다시 쓰지 않는다. 소유자는 `maturity-extension-command`다.
 
 ### 3.4 `hard_cap_180_interaction_with_settlement_linked_term` — ADOPTED
 
 정산 연동 산식은 원 만기를 정한다. 연장 명령은 산식을 재실행하거나 정산일 변경을 자동 반영하지 않는다.
 
 - `k_min = max(1, E−M)`
-- `k_max = max(0, min(TERMS.term.extension.days_max, TERMS.term.extension.hard_cap_total_days−(M−d0)))` (`TERMS`는 정본 `entries.*.value`를 읽은 값)
-- 허용 범위: 정수 `k`에 대해 `k_min ≤ k ≤ k_max`
+- `k_max = max(0, min(TERMS.term.extension.days_max, TERMS.term.extension.hard_cap_total_days−(M−d0)))`
 
-최대 30일·총기간 180일이라는 TERMS 값을 유지한다. 범위 밖 요청은 `409 EXTENSION_CAP_EXCEEDED`와 `min_admissible_extension_days`, `max_admissible_extension_days`를 반환한다. 최소가 최대보다 크면 가능한 연장이 없다. 자동 절사·원 만기 수정·새 인출 처리는 없다. 소유자는 `maturity-extension-command`다.
+허용 범위는 정수 `k`에 대해 `k_min ≤ k ≤ k_max`다. 최대 30일·총기간 180일이라는 TERMS 값을 유지한다. 범위 밖 요청은 `409 EXTENSION_CAP_EXCEEDED`와 `min_admissible_extension_days`, `max_admissible_extension_days`를 반환한다. 최소가 최대보다 크면 가능한 연장이 없다. 자동 절사·원 만기 수정·새 인출 처리는 없다. 하드캡은 예정 만기에서 인출일을 뺀 기간에 적용하며 유예를 단축하지 않는다. 소유자는 `maturity-extension-command`다.
 
 ### 3.5 `acceleration_and_default_eligible_refusal` — ADOPTED
 
 권한과 입력 형식을 먼저 확인한다. agent 게시에는 `403 EXTENSION_AGENT_FORBIDDEN`을 반환한다. 권한 있는 동일 `overlay_id`·동일 요청 재생은 원 결과를 반환하고, 같은 ID의 다른 요청은 `409` 충돌이다. 재생은 현재 상태에서 새 연장을 승인하는 행위가 아니다.
-
-신규 명령의 사업 거절 우선순위는 다음과 같다.
 
 | 순서 | 조건 | 응답 |
 |---|---|---|
@@ -145,9 +136,7 @@
 
 `terms_refs`는 `terms_version`, 사용 노트의 `note_sha256`, 적용한 연장·유예·금리·승인 조항의 정본 참조(§3의 경로)를 기록한다. AI 제안은 `MATURITY_EXTENSION_CANDIDATE`, `executionAuthorized=false`이며 운영자의 별도 명령이 있어야 사실을 기록한다.
 
-서버가 날짜·원금·티어·보존액을 산출한다. 금액은 정수 KRW, 날짜·일수는 정수다. 자유 텍스트·개인정보·wall-clock 필드를 추가하지 않는다. 파생 부도일·금리 구간·잔여 여유일은 재생 시 계산한다.
-
-폴드는 `state.maturity_extension[advance_id]`에 성공 사실 하나를 보존하며 연장이 없으면 키가 없다. 같은 `after_journal_index`의 사실은 기존 오버레이 저널 순서로 구분한다. 공통 메타데이터의 물리적 위치·스키마 버전은 기존 계약을 준수한다.
+서버가 날짜·원금·티어·보존액을 산출한다. 금액은 정수 KRW, 날짜·일수는 정수다. 자유 텍스트·개인정보·wall-clock 필드를 추가하지 않는다. 파생 부도일·금리 구간·잔여 여유일은 재생 시 계산한다. 폴드는 `state.maturity_extension[advance_id]`에 성공 사실 하나를 보존하며 연장이 없으면 키가 없다. 같은 `after_journal_index`의 사실은 기존 오버레이 저널 순서로 구분한다. 공통 메타데이터의 물리적 위치·스키마 버전은 기존 계약을 준수한다.
 
 F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 digest·골든은 유지한다. 연장 있는 책의 오버레이 digest와 이를 포함한 export `content_digest`는 재계산한다. export 구조와 recon 식별자 유지가 digest 값 불변을 뜻하지 않는다. 소유자는 `maturity-extension-command`다.
 
@@ -159,11 +148,12 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
   "decision_id": "maturity-extension-decision",
   "status": "PROVISIONAL_PRODUCT_DECISION",
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-  "date": "2026-10-30",
+  "date": "2026-11-10",
   "provisional": true,
+  "scope": "KIX-CAPITAL simulation and product design only; not an offer; no real money; production NOT_AUTHORIZED; legal, tax and accounting content are working assumptions pending professional review; no upstream contract claimed adopted",
   "bases": {
-    "capital_main": "81536bb",
-    "kix_protocol": "6dfb03a",
+    "capital_main": "3c2cfaf",
+    "kix_protocol": "5efab69",
     "basis_kind": "SUPERVISOR_SUPPLIED_HISTORICAL_PROVENANCE",
     "terms_version": "CAPITAL-TERMS-V1"
   },
@@ -176,19 +166,15 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
       "status": "ADOPTED",
       "value": {
         "window": "d0 <= E <= M + G",
-        "conditions": [
-          "drawn and live",
-          "positive outstanding principal",
-          "unused extension",
-          "no acceleration",
-          "no unresolved margin call"
-        ],
+        "last_grace_day_inclusive": true,
+        "conditions": ["drawn and live", "positive outstanding principal", "unused extension", "no acceleration", "no unresolved margin call", "human operator command"],
         "count_max_ref": "CAPITAL-TERMS-V1 extension.count_max (1, unchanged)",
+        "uncured_margin_call": "still bars after cure deadline; absence of an acceleration record does not bypass cure; validly cured and closed is not a bar",
         "atomicity": "evaluate and append atomically; one success per advance; replay is not another use",
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Allow adjustment through the final grace day without bypassing default or unresolved cure obligations.",
       "provisional": true,
@@ -198,15 +184,16 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
       "status": "ADOPTED",
       "value": {
         "grace_extension": "ALLOWED",
-        "accrued_interest": "preserve existing accrual through E; no forgiveness, retroactive repricing, capitalization or duplicate charge",
+        "accrued_interest": "preserve existing accrual through E; no forgiveness, retroactive repricing, capitalization, compounding or duplicate charge; effect starts next logical day",
         "new_maturity": "M_prime = M + k >= E",
+        "minimum_extension_days": "max(1, E - M)",
         "new_default_eligible_day": "M_prime + G + 1",
-        "evidence": "accrued_default_interest_kept_krw is an observational snapshot; existing payments remain credited",
+        "evidence": "accrued_default_interest_kept_krw is an observational snapshot; no new receivable; existing payments remain credited",
         "professional_review": "WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW",
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Preserve prior accrual while establishing the new maturity and full grace period.",
       "provisional": true,
@@ -229,7 +216,7 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01"],
       "rationale": "Retain agreed pricing and deterministic daily boundaries without new charges.",
       "provisional": true,
@@ -238,19 +225,16 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
     "hard_cap_180_interaction_with_settlement_linked_term": {
       "status": "ADOPTED",
       "value": {
-        "settlement_formula": "original maturity only; never rerun for extension",
+        "settlement_formula": "original maturity only; never rerun for extension and never auto-update the settlement date",
         "minimum_days": "max(1, E - M)",
         "maximum_days": "max(0, min(terms.extension.days_max, terms.extension.hard_cap_total_days - (M - d0)))",
-        "terms_citations": [
-          "extension.days_max = 30 unchanged",
-          "extension.hard_cap_total_days = 180 unchanged"
-        ],
-        "invalid_request": "409 EXTENSION_CAP_EXCEEDED with min_admissible_extension_days and max_admissible_extension_days; no clamping",
+        "terms_citations": ["extension.days_max = 30 unchanged", "extension.hard_cap_total_days = 180 unchanged"],
+        "invalid_request": "409 EXTENSION_CAP_EXCEEDED with min_admissible_extension_days and max_admissible_extension_days; no clamping, original-maturity rewrite or new draw",
         "cap_scope": "scheduled maturity minus draw day; grace is not shortened",
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Apply both extension limits to the original settlement-linked term without silently changing requests.",
       "provisional": true,
@@ -276,7 +260,7 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01", "CAP-04", "CAP-19"],
       "rationale": "Enforce acceleration and default eligibility independently of later command recording.",
       "provisional": true,
@@ -294,7 +278,7 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01", "CAP-04"],
       "rationale": "Reflect the revised schedule while preserving exposure and historical underwriting evidence.",
       "provisional": true,
@@ -341,7 +325,7 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
         "consumer": "maturity-extension-command"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
-      "date": "2026-10-30",
+      "date": "2026-11-10",
       "cap_rows": ["CAP-01", "CAP-11", "CAP-19"],
       "rationale": "Record deterministic evidence and human approval within existing local overlay boundaries.",
       "provisional": true,
@@ -353,22 +337,22 @@ F04 상태·FSM·COA 게시를 변경하지 않는다. 연장 없는 책의 dige
 
 ## 5. 수용 기준 매핑
 
-- **문서·파싱·조회:** 저장 경로는 `docs/decisions/CAPITAL_MATURITY_EXTENSION.md`다. 블록은 하나이며 일곱 ADOPTED 항목에 귀속·날짜·CAP·근거·소유자가 있다. 제공 리뷰는 이전 문서의 파싱과 pack 노출을 확인했다. 이번 최종 바이트의 파싱·`GET /api/decisions` 노출은 저장 후 검증한다.
-- **TERMS·증거:** 1회·30일·180일·사람 승인·수수료 0을 유지한다. §3.7과 JSON이 소비 노드와 필수 엔트리 필드를 지정한다.
-- **바인딩:** 제공 리뷰에 따르면 `tests/decision_bindings.json`의 일곱 항목은 `PENDING_CONSUMER`, `consumer_node: maturity-extension-command`로 등록되어 있다. 이 상태를 유지하고 최종 저장 후 `python3 scripts/decision_bindings.py --check`를 실행한다.
-- **역사적 요청 문서:** 현재 사용자 지시에 따라 루트 `DECISION_REQUIRED.md`를 편집·삭제하지 않는다. 과거 요청 문서의 존재를 이번 ADOPTED 잠정 정책의 재결정 조건으로 삼지 않는다. 이번 수정 범위는 본 노트·binding 목록·pack 벡터다.
+- **문서·파싱·조회:** 경로는 `docs/decisions/CAPITAL_MATURITY_EXTENSION.md`다. `capital-decision-v1` 블록은 하나이며 일곱 ADOPTED 항목에 귀속·날짜·CAP·근거·소유자가 있다. `scripts/decision_ledger.py` 파싱과 `GET /api/decisions` 노출은 supervisor가 저장 후 확인한다.
+- **TERMS·증거:** 1회·30일·180일·사람 승인·수수료 0을 정본 참조로 유지한다. §3.7과 JSON이 소비 노드 `maturity-extension-command`와 `MATURITY_EXTENSION` 필수 필드를 지정한다.
+- **바인딩:** `tests/decision_bindings.json`의 일곱 항목은 `PENDING_CONSUMER`, `consumer_node: maturity-extension-command`로 등록되어 있다. 최종 저장 후 `python3 scripts/decision_bindings.py --check`를 실행한다.
+- **범위:** 이 결정의 변경 대상은 본 노트, `tests/decision_bindings.json`, `tests/vectors/pack/`뿐이다. 루트 `DECISION_REQUIRED.md`는 이 결정·PR의 범위 밖이며 이 개정은 그 파일을 추가·편집·복원하지 않는다. main의 삭제 상태가 유지되어야 한다.
 
 ## 6. Open risks
 
-- TERMS 정본 조항과 F04 §5 원문은 이번 개정에서 직접 확인했다. 새 `MATURITY_EXTENSION` 직렬화·폴드·명령은 `PENDING_CONSUMER`이며 소유자는 `maturity-extension-command`다. §3.7의 기존 공통 엔트리 형태와 미래 확장을 구분하며 구현 완료를 주장하지 않는다.
+- 새 `MATURITY_EXTENSION` 직렬화·폴드·명령은 `PENDING_CONSUMER`이며 소유자는 `maturity-extension-command`다. 구현 완료를 주장하지 않는다.
 - 연체이자 보존의 법적 효력·회계 인식은 전문가 검토 전이다. 소유자는 `accounts-tax-legal-decision` 후속 검토다.
 - 명령일 발생분·부분 상환·같은 날 명령 순서는 소비 노드가 기존 발생 관행과 함께 검증한다.
 - 승인 라벨·해시·로컬 재생 성공은 인증이나 대외 채무 변경 효력을 입증하지 않는다.
 
 ## 7. 후속 작업
 
-1. **Supervisor:** 일곱 pending 앵커를 유지하고 문서 변경에 영향받는 pack 산출물을 정본 생성기로 갱신한다. 루트 `DECISION_REQUIRED.md`는 이번 지시에 따라 보존한다.
-2. **검증 담당:** 최종 저장 바이트에 대해 `python3 scripts/decision_bindings.py --check`, 결정 파서·API 조회, `python3 scripts/docs_surface.py --check` 결과와 허용 변경 범위를 확인한다. 제공 리뷰의 이전 확인과 후속 실행 결과를 구분한다.
+1. **Supervisor:** 일곱 pending 앵커를 유지하고 문서 변경에 영향받는 pack 산출물을 정본 생성기로 갱신한다. 루트 `DECISION_REQUIRED.md`는 이 PR에서 제외하여 main의 삭제를 유지한다.
+2. **검증 담당:** 최종 저장 바이트에 대해 `python3 scripts/decision_bindings.py --check`, 결정 파서·API 조회, `python3 scripts/docs_surface.py --check` 결과와 허용 변경 범위를 확인한다.
 3. **`maturity-extension-command`:** 적격 창 양 끝, 마지막 유예일·첫 부도 적격일, 180일 경계, 미해결 마진콜, 가속 전후, 부분 상환, 경쟁 명령·재생·충돌, 승인 임계·agent 거절, 시계 점프와 일별 진행의 동등성을 검증한다. 새 벡터는 기존 등록 규칙을 따른다.
 
-이번 산출물은 결정 문서다. 코드·FSM 변경, 실자금 실행, commit·push·게시 또는 파일 삭제를 수행하지 않는다. 현재 작업 트리의 로컬 검증 결과는 builder의 최종 증거 표로 보고하며 과거 리뷰 결과와 구분한다.
+이번 산출물은 결정 문서다. 코드·FSM 변경, 실자금 실행, commit·push·게시 또는 파일 삭제를 수행하지 않는다.
