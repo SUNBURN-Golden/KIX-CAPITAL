@@ -6,13 +6,13 @@
 >
 > Date: **2026-11-10** · Capital main: **`a791651`** · kix-protocol: **`61e581a`**.
 >
+> Revised 2026-11-19 to specify how advance-linked commands share a daily total and how receipts cite each applicable total.
+>
 > Simulation/product design only; no real money, offer or real sign-off authority. Production remains **`NOT_AUTHORIZED`**. Approver labels are synthetic and carry **`LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED`**. Authentication remains **`NOT_BOUND`**. No upstream adoption is claimed.
 >
 > Provenance: model attribution and revisions are supervisor-prescribed. This revision does not claim verified Claude CLI execution, three failures, Fable takeover or independently verified checkouts.
 
 Node: `second-approver-decision`. Dependencies: `agent-proposal-lane`, `auth-matrix-freeze`, `decision-guard-additions`. `user_merge: false`.
-
-**Revision disposition.** The blocking scope finding is accepted: the replacement of root `DECISION_REQUIRED.md` must be absent from the PR’s base-relative diff, preserving applicable main bytes. This document-only delivery neither edits that forbidden path nor claims the checkout correction occurred. The supervisor must remove that change before acceptance. Permitted PR changes remain this note, `tests/decision_bindings.json` and `tests/vectors/pack/`. Previously reported verification results describe the supplied earlier checkout, not verification of this revision.
 
 ## 1. 결정 요약
 
@@ -31,16 +31,7 @@ Node: `second-approver-decision`. Dependencies: `agent-proposal-lane`, `auth-mat
 
 ## 2. KIX 비전 연결
 
-This decision uses the supervisor’s excerpts and supplied current decision, without expanding truncated files or treating references to unavailable documents as independently verified contracts.
-
-- `docs/CAPITAL_REQUIREMENTS_KO.md`: executable and citation pins have distinct scopes. A local approval convention cannot establish production identity, upstream binding or an authenticated authority contract.
-- `docs/SEAMS.md`: local ports and passing fixture gates do not establish upstream adoption or semantic conformance. The proposed approval evaluator remains a local policy behind existing admission checks.
-- `docs/decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md`: monetary limits are referenced by `underwriting_depth` field names. Its supplied excerpt also preserves the `overlay_id`/`kind`/`payload` entry convention.
-- `docs/decisions/CAPITAL_ACCOUNTS_TAX_LEGAL.md`: production remains unauthorized and professional matters remain provisional. Synthetic approval evidence establishes no legal effectiveness.
-- `docs/decisions/CAPITAL_AGENT_CASE_DISCLOSURE.md`: requested model attribution must be distinguished from verified execution provenance.
-- `docs/VALIDATION.md`: observed local test results remain bounded simulation evidence. They do not establish this revision’s implementation or production authority.
-
-The ambition is a reusable approval policy with explicit evidence and a clear future authentication boundary. It must remain useful for replay and integration without suggesting that two labels prove two humans participated.
+Underwriting rule U5 reserves approval for a human operator and assigns proposals to the agent lane. The recovery and slice decisions already define the amount basis and simulated authority for their respective commands. This note gives those consumers a common way to count labels, apply the threshold and cite the result. [Financial terms](CAPITAL_FINANCIAL_TERMS.md) · [Default and recovery](CAPITAL_DEFAULT_RECOVERY.md) · [Claim slice registry](CAPITAL_CLAIM_SLICE_REGISTRY.md)
 
 ## 3. 항목별 결정
 
@@ -68,13 +59,13 @@ Evidence retains the reference, terms evidence digest and evaluated threshold am
 
 ### 3.4 `same_advance_aggregation` — ADOPTED
 
-Use `(command_family, target_key, sim_day)` buckets. Recovery, writeoff, acceleration and default share one recovery family keyed by `advance_id`; individual verbs cannot create fresh buckets. Slice commands use a slice family keyed by `slice_key`. Waiver/writeoff uses a waiver family keyed by a stable `waiver_id`, falling back to `advance_id`.
+For every covered command against an advance, resolve its canonical `advance_id` from workspace state and use the bucket `(advance_id, sim_day)`. Default, recovery, acceleration and writeoff share that bucket with any waiver or slice command targeting the same advance. A new verb, waiver ID or slice ID cannot restart the total. Every slice command also uses the registry’s own `(slice_key, sim_day)` bucket, where `slice_key = (claim_id, payee_label)`. A standalone slice has only that bucket.
 
-The evaluator compares the sum of accepted amounts in the bucket **plus the candidate amount** against the threshold. The crossing command itself needs two labels. Subsequent commands in that bucket also require them while its total exceeds the threshold. Reject an insufficient submission with `409 TWO_PERSON_REQUIRED`.
+In each applicable bucket, add the candidate amount once to the previously accepted total. If **any** resulting total exceeds the threshold, the crossing command itself needs two labels. Compare each bucket separately. Reject an insufficient submission with `409 TWO_PERSON_REQUIRED`.
 
-Denied commands and proposals contribute nothing. Idempotent replay does not count twice. Reversals do not erase already consumed approval aggregation. Evaluation and accepted append must share one serialized or atomic boundary so concurrent commands cannot both pass against the same stale total.
+An agent proposal or a rejected submission contributes zero. An accepted human `SLICE_PROPOSE` command counts at its decided slice amount. Idempotent replay returns the recorded evaluation and adds zero. Reversals preserve the amount already counted. Evaluate and append atomically so that a concurrent command sees the first accepted amount.
 
-Consumers must define stable target resolution and a nonnegative monetary amount for each supported command. Caller-selected aliases, newly minted waiver identifiers or verb changes must not reset an existing target’s bucket. An unmappable command remains blocked pending its consumer decision. Cross-family, cross-slice and cross-day aggregation are outside this local rule and remain explicit limitations.
+Consumers use the amount basis from their adopted command decision. A missing amount basis or an unresolved required target blocks the command before append. Each new simulation day starts a fresh total.
 
 ### 3.5 `agent_proposal_not_approval` — ADOPTED
 
@@ -88,7 +79,7 @@ An admitted human operator may cite a proposal in `proposal_refs`, but must supp
 
 Retain the overlay envelope `overlay_id`/`kind`/`payload`. Place synthetic approval evidence in `payload.authority`, including `mode`, `approvals`, `proposal_refs`, `threshold_ref` and `evaluation`.
 
-The server supplies approval `sim_day` from the workspace simulation clock. The evaluation records the bucket, previously accepted amount, candidate amount, evaluated total, observed threshold, terms evidence digest, requirement result and distinct-label count. Persist the evaluation with the accepted entry; the receipt echoes it under `two_person` and cites `overlay_id`.
+The server supplies approval `sim_day` from the workspace simulation clock. For each applicable bucket, `evaluation.buckets[]` records its key, previously accepted amount and evaluated total. The evaluation also records the candidate amount, observed threshold, terms evidence digest, requirement result and distinct-label count. The accepted entry retains that evaluation. Its receipt echoes the evaluation under `two_person` and cites the entry by `overlay_id`.
 
 A rejection creates no accepted entry and no success citation. Its diagnostic response may explain the policy requirement without representing a successful approval. Replay returns the original accepted evidence; it does not create fresh approval.
 
@@ -162,7 +153,7 @@ Do not add a second login, signature widget or pending-approval queue. Browser a
       "value": {
         "threshold_ref": "CAPITAL-TERMS-V1.underwriting_depth.two_person_threshold_krw",
         "read_via": "TermsPolicyPort",
-        "comparison": "evaluated_total > threshold",
+        "comparison": "any applicable bucket's evaluated_total > threshold",
         "independent_numeric_constant": false,
         "unavailable_terms": "BLOCK_WITHOUT_WRITE",
         "evidence": "Persist observed threshold and terms evidence digest; retain historical evaluation"
@@ -177,15 +168,13 @@ Do not add a second login, signature widget or pending-approval queue. Browser a
     "same_advance_aggregation": {
       "status": "ADOPTED",
       "value": {
-        "bucket": ["command_family", "target_key", "sim_day"],
-        "target_keys": {
-          "recovery_writeoff_acceleration_default": "advance_id",
-          "claim_slice": "slice_key",
-          "waiver_writeoff": "stable waiver_id, otherwise advance_id"
-        },
-        "evaluation": "accepted bucket amount + candidate amount",
+        "advance_bucket": ["advance_id", "sim_day"],
+        "advance_scope": "All covered commands targeting the same advance, across command families",
+        "slice_bucket": ["slice_key", "sim_day"],
+        "slice_scope": "Every slice command uses (claim_id, payee_label) as slice_key, including when an advance bucket also applies",
+        "evaluation": "For each applicable bucket, compare its accepted total plus the candidate amount to the terms threshold",
         "crossing_command_requires_two": true,
-        "denials_proposals_replays_count": false,
+        "denials_agent_proposals_replays_count": false,
         "reversals_reduce_aggregate": false,
         "atomic_evaluation_and_append": true,
         "target_alias_reset": "FORBIDDEN",
@@ -233,16 +222,15 @@ Do not add a second login, signature widget or pending-approval queue. Browser a
         "proposal_refs": ["proposal_id"],
         "threshold_ref": "CAPITAL-TERMS-V1.underwriting_depth.two_person_threshold_krw",
         "evaluation_fields": [
-          "amount_bucket",
-          "prior_accepted_amount",
+          "buckets",
           "candidate_amount",
-          "evaluated_total",
           "threshold_observed_krw",
           "terms_evidence_sha256",
           "required",
           "satisfied",
           "distinct_approver_labels"
         ],
+        "bucket_fields": ["amount_bucket", "prior_accepted_amount", "evaluated_total"],
         "receipt_echo": "two_person",
         "citation_key": "overlay_id",
         "rejection_creates_entry": false,
@@ -301,18 +289,11 @@ Do not add a second login, signature widget or pending-approval queue. Browser a
 - Synthetic identity and `LOCAL_OPERATOR_SESSION_NOT_AUTHENTICATED` are explicit in identity, evidence and UI decisions.
 - Agent proposals contribute no approval or bucket amount.
 - All three parked consumers are named; their bindings remain `PENDING_CONSUMER`.
-- Scope acceptance additionally requires removal of the root `DECISION_REQUIRED.md` change by the supervisor. This document does not certify that correction.
 
 ## 6. Open risks
 
-Synthetic labels cannot establish independent human participation. Cross-day and cross-family splitting remain outside the chosen aggregation boundary. Slice and waiver consumers must establish stable target mappings before enabling commands.
-
-Exact implementation behavior, guard status and current pack validity are unverified from the supplied excerpts. Earlier passing test counts must not be presented as this revision’s results. Production authentication and real sign-off remain unbound.
+One operator can supply both labels in this simulation. Production authentication and real sign-off remain `NOT_BOUND`. The daily aggregation window permits a new total on the next simulation day.
 
 ## 7. 후속 작업
 
-The supervisor removes the out-of-scope root-file replacement, preserves applicable main content and verifies the base-relative diff. This is required scope cleanup, not permission for this decision author to edit that path.
-
-The three parked consumers implement the policy, stable target mapping, atomic evaluation and evidence. Their acceptance cases cover equality, threshold crossing through split commands, duplicate labels, agent rejection, retry deduplication, concurrent submissions, unavailable terms and historical receipt replay.
-
-Update all eight decision bindings without marking consumers implemented. Regenerate affected pack fixtures after the final document bytes are installed. Run the decision-binding, pack and docs-surface checks, including `python3 scripts/docs_surface.py --check`, and required exact-head verification. Preserve existing guard policy, legacy export construction, vendor bytes and unrelated files.
+Consumer acceptance includes an advance whose accepted recovery reaches the threshold exactly. A positive waiver against that advance on the same day must then require two distinct labels, even with a fresh waiver ID. A rejected attempt leaves the prior total intact. Replay of the accepted retry returns its original receipt and counts once. Other cases cover concurrent submissions, independent advances and days, the slice bucket, duplicate labels, agent rejection and unavailable terms.
