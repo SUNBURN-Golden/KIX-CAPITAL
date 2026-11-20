@@ -194,6 +194,16 @@
     },
     {
       "method": "GET",
+      "route": "/api/risk/shared-caps",
+      "children": false,
+      "handler": "_get_shared_caps",
+      "permission": "projection:read",
+      "probes": [
+        "/api/risk/shared-caps"
+      ]
+    },
+    {
+      "method": "GET",
       "route": "/api/risk/covenants",
       "children": false,
       "handler": "_get_covenants",
@@ -1077,6 +1087,57 @@
     {
       "method": "GET",
       "route": "/api/risk",
+      "caller": "no-token",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/shared-caps",
+      "caller": "organizer",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/shared-caps",
+      "caller": "auditor",
+      "outcome": "ALLOW",
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/shared-caps",
+      "caller": "observer",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "observer"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/shared-caps",
+      "caller": "agent",
+      "outcome": "DENY",
+      "expect": {
+        "status": 403,
+        "error": "ROLE_FORBIDDEN",
+        "permission": "projection:read",
+        "role": "agent"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/risk/shared-caps",
       "caller": "no-token",
       "outcome": "ALLOW",
       "expect": {

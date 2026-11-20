@@ -8,12 +8,16 @@ Lifecycle acceptance (offer, approve, reject, draw, repay, close, default,
 cancel, reconcile) lives in credit_fsm.py. This module remains the open-face
 reservation predicate. attempt_execution is unchanged.
 
-Contract: docs/contracts/CREDIT_ADVANCE_F04.md
+Contract: docs/contracts/CREDIT_ADVANCE_F04.md §5.1.
+open_terms records the adopted unfilled boundary. It does not adopt an APR,
+rank, party, or recalculation formula. Policy numbers stay UNDETERMINED.
 """
 
 from __future__ import annotations
 
 import json
+
+from open_terms import boundary as open_terms
 
 MONEY_MAX = 10**12
 PROVENANCE = "MOCK_CREDIT_F04_ONLY"
@@ -156,7 +160,7 @@ def _parse_face(face: object) -> dict:
         _require(bearer == "FIXTURE_FULL_GROSS_RECLASS", "SETTLEMENT_FACE_MISMATCH")
         _require(all(line["outstanding"] == 0 for line in lines), "SETTLEMENT_FACE_MISMATCH")
     elif refund_face:
-        _require(bearer == "UNDEFINED", "SETTLEMENT_FACE_MISMATCH")
+        _require(bearer == "REQUESTER", "SETTLEMENT_FACE_MISMATCH")
         _require(all(line["cancelled_unpaid"] == 0 for line in lines), "SETTLEMENT_FACE_MISMATCH")
     else:
         _require(bearer == "NONE", "SETTLEMENT_FACE_MISMATCH")
@@ -296,6 +300,7 @@ class MockCredit:
             "confirmed_cash_on_face": claim["confirmed_cash"],
             "recovery_due_on_face": claim["recovery_due"],
             "snapshot_frozen": True,
+            "open_terms": open_terms(),
         }
         body.update(_flags())
         return body
@@ -308,3 +313,16 @@ class MockCredit:
             _require(row["status"] in ("NOTED", "RELEASED"), "MOCK_INVARIANT")
             _require(row["claim_id"] in self._claims, "MOCK_INVARIANT")
             _require(0 < row["amount"] <= MONEY_MAX, "MOCK_INVARIANT")
+            view = self._view_advance(row)
+            terms = view["open_terms"]
+            _require(terms == open_terms(), "MOCK_INVARIANT")
+            _require(terms["decided_value"] is None, "MOCK_INVARIANT")
+            _require(terms["adopted_option"] == "A", "MOCK_INVARIANT")
+            _require(terms["policy_number_status"] == "UNDETERMINED", "MOCK_INVARIANT")
+            _require("apr_bps" not in terms and "schedule" not in terms, "MOCK_INVARIANT")
+            _require(view["interest_defined"] is False, "MOCK_INVARIANT")
+            _require(view["priority_bound"] is False, "MOCK_INVARIANT")
+            _require(view["collateral_perfected"] is False, "MOCK_INVARIANT")
+            _require(view["external_pledge_complete"] is False, "MOCK_INVARIANT")
+            _require(view["legal_debtor_bound"] is False, "MOCK_INVARIANT")
+            _require(view["snapshot_frozen"] is True, "MOCK_INVARIANT")

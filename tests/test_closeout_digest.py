@@ -224,11 +224,11 @@ class StageTableTests(unittest.TestCase):
             'content_digest': recorded['content_digest'], 'debit': 385000, 'credit': 385000,
         })
         pinned = vendor_manifest()
-        self.assertEqual(pinned['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
-        self.assertEqual(self.digest['vendor']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(pinned['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
+        self.assertEqual(self.digest['vendor']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertIs(self.digest['vendor']['verified'], True)
         self.assertEqual(self.digest['vendor']['files'], {name: True for name in sorted(pinned['files'])})
-        self.assertEqual(len(self.digest['vendor']['files']), 5)
+        self.assertEqual(len(self.digest['vendor']['files']), 69)
         self.assertEqual(self.digest['packaged'], {'sha256': FAKE_SMOKE_SHA, 'artifact_kind': 'LOCAL_SIMULATION_ARTIFACT'})
 
     def test_a_vendor_file_that_does_not_match_its_pin_is_refused(self):
@@ -645,7 +645,7 @@ class CommittedArtifactTests(unittest.TestCase):
         self.assertEqual(self.digest['golden'], {
             'status': 'recorded', 'state_digest': recorded['state_digest'],
             'content_digest': recorded['content_digest'], 'debit': 385000, 'credit': 385000})
-        self.assertEqual(self.digest['vendor']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(self.digest['vendor']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertEqual(sorted(self.digest['vendor']['files']), sorted(vendor_manifest()['files']))
         self.assertTrue(all(value is True for value in self.digest['vendor']['files'].values()))
         self.assertRegex(self.digest['packaged']['sha256'], r'^[0-9a-f]{64}$')

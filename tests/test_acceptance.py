@@ -114,7 +114,7 @@ class AcceptanceTests(unittest.TestCase):
         self.assertFalse(data['funds_executed'])
         self.assertEqual(data['head_sha'], acceptance.head_sha(ROOT)[0])
         self.assertTrue(data['vendor_hashes']['verified'])
-        self.assertEqual(data['vendor_hashes']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(data['vendor_hashes']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertEqual(data['golden_digests']['status'], 'recorded')
         self.assertEqual(len(data['golden_digests']['state_digest']), 64)
         self.assertEqual(len(data['golden_digests']['content_digest']), 64)

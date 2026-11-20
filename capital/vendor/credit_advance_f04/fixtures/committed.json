@@ -1,0 +1,92 @@
+{
+  "fixture_version": 1,
+  "provenance": "MOCK_CREDIT_F04_ONLY",
+  "settlement_setup": [
+    {
+      "body": {
+        "debtor_role": "fixture-merchant",
+        "gross": 100000,
+        "policy": {
+          "fee_bps": 500,
+          "fee_payee": "platform",
+          "kind": "PRIMARY_FEE_BPS",
+          "residual_payee": "organizer"
+        },
+        "trade_id": "trade-claim-1"
+      },
+      "idempotency_key": "setup-init-claim-1",
+      "operation": "initiate",
+      "settlement_id": "claim-1"
+    },
+    {
+      "body": {},
+      "idempotency_key": "setup-auth-claim-1",
+      "operation": "authorize",
+      "settlement_id": "claim-1"
+    },
+    {
+      "body": {},
+      "idempotency_key": "setup-cap-claim-1",
+      "operation": "capture",
+      "settlement_id": "claim-1"
+    },
+    {
+      "body": {
+        "adjustment": 0,
+        "adjustment_reason": null,
+        "amount": 97000,
+        "fee": 3000,
+        "gross": 100000,
+        "held": 0,
+        "movement_id": "move-claim-1",
+        "tax": 0
+      },
+      "idempotency_key": "setup-commit-claim-1",
+      "operation": "commit",
+      "settlement_id": "claim-1"
+    },
+    {
+      "body": {
+        "debtor_role": "fixture-merchant",
+        "gross": 50000,
+        "policy": {
+          "fee_bps": 500,
+          "fee_payee": "platform",
+          "kind": "PRIMARY_FEE_BPS",
+          "residual_payee": "organizer"
+        },
+        "trade_id": "trade-claim-2"
+      },
+      "idempotency_key": "setup-init-claim-2",
+      "operation": "initiate",
+      "settlement_id": "claim-2"
+    },
+    {
+      "body": {},
+      "idempotency_key": "setup-auth-claim-2",
+      "operation": "authorize",
+      "settlement_id": "claim-2"
+    },
+    {
+      "body": {},
+      "idempotency_key": "setup-cap-claim-2",
+      "operation": "capture",
+      "settlement_id": "claim-2"
+    },
+    {
+      "body": {
+        "adjustment": 0,
+        "adjustment_reason": null,
+        "amount": 49000,
+        "fee": 1000,
+        "gross": 50000,
+        "held": 0,
+        "movement_id": "move-claim-2",
+        "tax": 0
+      },
+      "idempotency_key": "setup-commit-claim-2",
+      "operation": "commit",
+      "settlement_id": "claim-2"
+    }
+  ]
+}
