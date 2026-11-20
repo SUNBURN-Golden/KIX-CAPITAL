@@ -440,12 +440,12 @@ class OperatorReasonPackTests(unittest.TestCase):
             manifest = pack['sections']['export_manifest']['body']['document']
             receipts = manifest['sections']['receipts']['body']['receipts']
             self.assertEqual(receipts['reason-offer']['receipt']['operator_reason'], 'SIMULATED offer context')
-            self.assertEqual(pack['sections']['workspace_audit']['body']['document']['operator_reasons']['count'], 3)
+            self.assertEqual(pack['sections']['workspace_audit']['body']['document']['operator_reasons']['count'], 4)
             from tests import facade_schema
             contract = facade_schema.load_contract()
             route = next(r for r in contract['routes'] if r['path'] == '/api/export/manifest')
             facade_schema.validate(manifest, route['response'], contract)
-            for target in ['f04', 'clock', 'repayment']:
+            for target in ['f04', 'clock', 'repayment', 'EXTERNAL_FACT']:
                 changed = copy.deepcopy(pack)
                 sections = changed['sections']['export_manifest']['body']['document']['sections']
                 if target == 'f04':

@@ -828,6 +828,57 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 
 <!-- /handbook-section -->
 
+<!-- handbook-section:slice-registry-desk -->
+
+### slice-registry-desk
+
+`/#desk`의 **Claim-slice registry · 읽기 전용 검사**는 organizer와 auditor의
+`projection:read` 조회 화면이다. observer 또는 권한 거절 세션은 등록부 GET을
+보내지 않는다. 이 패널에는 명령 폼이 없고 command POST를 보내지 않는다.
+`GET /api/overlay/slices`의 PROPOSED, OPEN, IMPAIRED, RESOLVED, VOID 행에서
+검사 버튼을 누르면 서버의 `outstanding_krw`, `encumbered_face_krw`,
+`served_krw`, `eligible_line_krw`, `exposure_krw`, `shortfall_krw`,
+`recourse_received_krw`, `shadow_discount`, `shadow_price`, holder-first 및
+lifecycle 플래그를 읽는다. recourse quotes 원본에는 `source_ref`,
+`available_krw`, `amount_krw`, `waterfall_step`, `quote_ref`와 provenance가 있다.
+은행 회수 실적·채권 소유권·실명 인증으로 해석하지 않는다.
+
+청구 링크는 기존 정산 근거 행에 키보드 초점을 옮긴다. advance 연결은
+현재 서버 사례의 claim_id 또는 settlement_id가 정확히 같은 경우에만
+`?case=…#desk`의 타임라인·dossier로 이동한다. 일치 사례가 없으면
+`no linked advance`다. beneficiary나 holder_role만으로 연결하지 않는다.
+좁은 화면에서는 등록부 영역에 Tab으로 초점을 두고 가로 스크롤할 수 있으며,
+검사 버튼은 Enter로 열고 상세 제목으로 초점을 옮긴다.
+
+견적은 fixture의 청구·수취인을 선택하고 `expected_days`에 0 이상 정수 가정을
+직접 입력한 다음 **견적 검사 (GET)**를 누른다. 자동 채택되는 금융 조건은 없다.
+`quote_claim_id`, `quote_payee_label`, `expected_days`를 함께 보내며
+`instance_id`를 이 경로에 추가하지 않는다. 서버 `quote.status`, `detail`,
+`missing_inputs`, 크기·가격, `input_source`, `result_digest` 및
+`registry_check`의 상태·순서 있는 codes·가용액·capacity를 그대로 표시한다.
+SHADOW_NOT_BOUND, SHADOW_INPUT_UNKNOWN, SHADOW_INCONSISTENT는 사용할 수
+없는 근거를 설명하며 없는 금액을 0으로 바꾸지 않는다. 액면·매입가·advance
+노출을 브라우저에서 합산하지 않는다. capacity counts/bounds도 서버 보고값이다.
+
+빈 등록부는 EMPTY, 정책 미연결은 NOT_BOUND, 용량 거절은 CAPACITY,
+세션/역할/서버 인스턴스 오류는 STALE_SESSION이다. 입력 변경, 새로고침 시작,
+역할 변경, 데스크 이탈은 기존 견적을 즉시 지운다. 상태 GET 실패·잘못된 JSON·
+응답 shape 불일치·겹친 늦은 응답도 이전 견적을 현재값으로 복구하지 않는다.
+일반 조회 실패는 데스크 새로고침 뒤 가정을 다시 검사한다. STALE_SESSION은
+역할을 확인하고 **세션 다시 조회 · 페이지 다시 열기**로 명시적으로 페이지를
+다시 열어 새 로컬 세션을 조회한다. 기존 세션 토큰을 조용히 재발급하지 않는다.
+등록부 전후 overlay GET에서 instance·F04 digest·overlay digest·sim_day를
+검사하지만 atomic snapshot이나 계속 유효한 견적을 보장하지 않는다.
+
+모든 예시는 SIMULATED / SHADOW_NOT_APPLIED /
+SIMULATION_ONLY_NOT_OFFERED_V1이다. 실제 집행·명의 이전·multi-payee 배분·새
+금융 합계는 없다. 기존 parked shadow-policy workbench는 바뀌지 않는다.
+테스트 `tests/browser/slice-registry-desk.spec.cjs`는 disposable memory registry와
+명시적으로 표시한 합성 오류 응답으로 검증한다. 실제 PG·은행·KYC·제공자를
+호출하지 않는다.
+
+<!-- /handbook-section -->
+
 <!-- handbook-section:risk-scenario-desk -->
 ### risk-scenario-desk
 
@@ -992,9 +1043,9 @@ saved_at/saved_by_instance는 그대로 남긴다.
 
 ## 운영자 명령 사유 (`operator_reason`)
 
-선택 필드 `operator_reason`은 organizer의 F04 명령과 overlay `advance_day` / `post_repayment`에 붙이는 free-form operator context다. Printable ASCII 0x20–0x7E, 1–200자만 받는다. 빈 문자열·null·비문자열·제어문자·비ASCII·201자 이상은 apply나 idempotency 조회 전에 400 `INVALID_REASON`이다. 기존 clock `reason`은 별도 필드다. no personal data: 개인정보를 적지 않는다. not authentication or approval evidence: 인증이나 승인 증거가 아니다. 필수 사유나 추가 승인자는 도입하지 않는다. agent는 사유를 제안에 붙일 수 없고 organizer만 자신의 명령 receipt에 기록한다. UI 입력란은 추가하지 않으며 두 desk의 timeline은 사유를 text node로 표시한다.
+선택 필드 `operator_reason`은 organizer의 F04 명령과 모든 overlay 명령(시계, 상환, 회수, 슬라이스, 외부 사실)의 최상위에 붙이는 free-form operator context다. Printable ASCII 0x20–0x7E, 1–200자만 받는다. 빈 문자열·null·비문자열·제어문자·비ASCII·201자 이상은 apply나 idempotency 조회 전에 400 `INVALID_REASON`이다. 기존 clock `reason`은 별도 필드다. no personal data: 개인정보를 적지 않는다. not authentication or approval evidence: 인증이나 승인 증거가 아니다. 필수 사유나 추가 승인자는 도입하지 않는다. agent는 사유를 제안에 붙일 수 없고 organizer만 자신의 명령 receipt에 기록한다. UI 입력란은 추가하지 않으며 두 desk의 timeline은 사유를 text node로 표시한다.
 
-F04 receipt의 선택 키는 journal fingerprint 밖에 둔다. 재전송의 사유가 달라지면 409 `IDEMPOTENCY_CONFLICT`다. Overlay clock/repayment entry와 재구성 receipt에 사유가 남는다. 기존 용량에 JSON escaping 후 크기로 합산하므로 200자 이하도 1,024-byte repayment entry 한도를 넘으면 409 `SIMULATION_CAPACITY` (`REPAYMENT_ENTRY_MAX_BYTES`)다. envelope version과 금융 한도는 바뀌지 않는다.
+F04 receipt의 선택 키는 journal fingerprint 밖에 둔다. 재전송의 사유가 달라지면 409 `IDEMPOTENCY_CONFLICT`다. Overlay entry와 재구성 receipt에 사유가 남는다. 외부 사실 재전송에서 사유가 달라지면 409 `FACT_IDEMPOTENCY_CONFLICT`다. 기존 용량에 JSON escaping 후 크기로 합산하므로 200자 이하도 1,024-byte repayment entry 한도를 넘으면 409 `SIMULATION_CAPACITY` (`REPAYMENT_ENTRY_MAX_BYTES`)다. envelope version과 금융 한도는 바뀌지 않는다.
 
 Offline workspace audit의 선택 `operator_reasons` 블록은 count와 F04 operation id / overlay id별 사유의 SHA256을 제공한다. Evidence pack의 manifest 및 workspace audit section digest에도 포함된다. 원시 변조는 checksum으로, 잘못된 형식의 reseal은 restore 검증으로 검출한다. 유효한 사유로 바꾸고 unkeyed checksum을 다시 계산한 경우 이전 신뢰 digest와 비교하거나 DEV_ONLY shared-HMAC manifest로 검증해야 한다. 이것은 원격 인증 증거가 아니다.
 

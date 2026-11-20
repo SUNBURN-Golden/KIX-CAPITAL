@@ -360,6 +360,8 @@ def plan_payload(state, e):
             base['reason'] = command['reason']
     amount = authority_amount(state, (ident['claim_id'], ident['payee_label']), e['sim_day'], kind, amount, sid)
     base['authority'] = authorize(command, amount, policy)
+    if 'operator_reason' in p:
+        base['operator_reason'] = p['operator_reason']
     return base
 
 
@@ -400,8 +402,10 @@ def entry(operation_id, kind, state, index, payload):
 
 
 def receipt(e):
-    return {'operation_id': e['overlay_id'], 'op': e['payload']['command']['op'], 'outcome': 'APPLIED',
-            'sim_day': e['sim_day'], 'entry': copy.deepcopy(e['payload']), **labels()}
+    payload = e['payload']
+    return {'operation_id': e['overlay_id'], 'op': payload['command']['op'], 'outcome': 'APPLIED',
+            'sim_day': e['sim_day'], 'entry': copy.deepcopy(payload), **labels(),
+            **({'operator_reason': payload['operator_reason']} if 'operator_reason' in payload else {})}
 
 
 def validate_command(command):
@@ -436,7 +440,8 @@ def validate_entry(e):
             elif type(v) is str:
                 if len(v.encode()) > p['policy']['bounds']['max_string_bytes']: raise ValueError('string bound')
             elif type(v) not in (int, bool, type(None)) or (type(v) is int and v < 0): raise ValueError('value')
-        walk(p)
+        overlay._validate_operator_reason(p)
+        walk({key: value for key, value in p.items() if key != 'operator_reason'})
         for obs in p['witness']['observations'].values():
             if type(obs['fixture_reclassified']) is not bool or not re.fullmatch(r'[0-9a-f]{64}', obs['claim_view_sha']):
                 raise ValueError('observation')
@@ -471,7 +476,7 @@ def fold_entry(state, e):
             reg['sources'][key] = reg['sources'].get(key, 0) + p['amount_krw']
         elif kind == 'SLICE_RESOLVE': row.update(status='RESOLVED', served_krw=p['served_krw'], resolution=p['resolution'])
         elif kind == 'SLICE_VOID': row['status'] = 'VOID'
-        reg['entries'].append(copy.deepcopy(e))
+        reg['entries'].append(copy.deepcopy({**e, 'payload': {key: value for key, value in p.items() if key != 'operator_reason'}}))
     except (ValueError, KeyError, TypeError, ArithmeticError) as exc:
         raise overlay.OverlayError('claim slice semantic fold') from exc
 

@@ -222,32 +222,46 @@ class OperatorReasonTests(unittest.TestCase):
         self.assertEqual(before, (service.receipts, service.machine.export_journal(), service.machine.state_digest()))
 
     def test_reason_capacity_admission_is_before_every_producer(self):
+        import tempfile
         from unittest import mock
-        from capital import overlay
-        from capital.store import canonical_bytes
+        from capital.store import FileWorkspace, canonical_bytes
         from capital.gate_producer import GateHttpProducer
+
+        def tick(service):
+            service.overlay_command(dict(instance_id=service.instance_id, operation_id='before-offer',
+                                         op='advance_day', from_sim_day=0, to_sim_day=1, reason='SIMULATED test'))
+
+        reason = '\\' * 200
+        sample = CapitalService()
+        tick(sample)
+        self.assertEqual(sample.execute(self.command(sample, operator_reason=reason))['outcome'], 'ACCEPTED')
+        boundary = len(canonical_bytes(sample.storage.load()))
+
         for gated in [False, True]:
-            producer = GateHttpProducer() if gated else None
-            try:
-                service = CapitalService(producer=producer) if gated else CapitalService()
-                payload = {'receipts': service.receipts, 'journal': service.machine.export_journal(),
-                           'case_fixtures': service.case_fixtures, 'state_digest': service.machine.state_digest()}
-                reason = '\\' * 200
-                boundary = overlay.section_size(payload, service.overlay_entries) + len(canonical_bytes(reason)) + len('"operator_reason":') + 1
-                service.overlay_bounds = {**service.overlay_bounds, 'ENVELOPE_MAX_BYTES': boundary - 1}
-                before = copy.deepcopy((service.receipts, service.machine.export_journal(), service.machine.state_digest()))
-                with mock.patch.object(service.producer, 'apply', wraps=service.producer.apply) as apply:
-                    with self.assertRaises(ApiError) as caught:
-                        service.execute(self.command(service, operator_reason=reason))
-                    self.assertEqual(caught.exception.code, 'SIMULATION_CAPACITY')
-                    self.assertEqual(caught.exception.detail['bound'], 'ENVELOPE_MAX_BYTES')
-                    apply.assert_not_called()
-                self.assertEqual(before, (service.receipts, service.machine.export_journal(), service.machine.state_digest()))
-                service.overlay_bounds['ENVELOPE_MAX_BYTES'] = boundary
-                self.assertEqual(service.execute(self.command(service, operator_reason=reason))['outcome'], 'ACCEPTED')
-            finally:
-                if producer is not None:
-                    producer.close()
+            with self.subTest(gated=gated), tempfile.TemporaryDirectory() as directory, FileWorkspace.open(directory) as storage:
+                producer = GateHttpProducer() if gated else None
+                try:
+                    service = CapitalService(storage, producer=producer)
+                    tick(service)
+                    request = self.command(service, operator_reason=reason)
+                    before = storage.path.read_bytes(), service._frozen()
+                    service.overlay_bounds = {**service.overlay_bounds, 'ENVELOPE_MAX_BYTES': boundary - 1}
+                    with mock.patch.object(service.producer, 'apply', wraps=service.producer.apply) as apply:
+                        with self.assertRaises(ApiError) as caught:
+                            service.execute(request)
+                        self.assertEqual((caught.exception.status, caught.exception.code, caught.exception.detail),
+                                         (409, 'SIMULATION_CAPACITY', {'bound': 'ENVELOPE_MAX_BYTES'}))
+                        apply.assert_not_called()
+                    self.assertEqual((storage.path.read_bytes(), service._frozen()), before)
+                    self.assertEqual(service.case_fixtures, {})
+                    self.assertEqual(service.operation('reason-offer', service.instance_id)['outcome'], 'UNKNOWN')
+                    service.overlay_bounds['ENVELOPE_MAX_BYTES'] = boundary
+                    self.assertEqual(service.execute(request)['outcome'], 'ACCEPTED')
+                    self.assertEqual(len(storage.path.read_bytes()), boundary)
+                    self.assertEqual(service.case_fixtures, {'sim-reason': 'sim-committed'})
+                finally:
+                    if producer is not None:
+                        producer.close()
 
     def test_http_validation_and_agent_precedence_leave_workspace_unchanged(self):
         import tempfile

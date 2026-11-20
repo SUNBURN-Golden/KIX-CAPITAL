@@ -119,14 +119,20 @@ test('server reasons are literal text and incompatible snapshots are withheld',a
  await expect(page.locator('#desk-audit-chain tr')).toHaveCount(0);
 });
 
-test('auditor evidence chain shows literal operator reasons from all three command kinds', async ({page, request}) => {
+test('auditor evidence chain shows literal operator reasons from F04, clock, repayment and external facts', async ({page, request}) => {
  const state = await (await request.get(base+'/api/state')).json();
  const headers = {'X-Capital-Token':state.local_token};
  const operator_reason = '<b>x</b>';
+ const claim_id = state.cases.find(row=>row.advance_id==='sim-unbound').claim_id;
  const commands = [
   ['/api/commands',{op:'repay',advance_id:'sim-unbound',args:{amount:1,sequence:1}}],
   ['/api/overlay/commands',{op:'advance_day',from_sim_day:0,to_sim_day:1,reason:'SIMULATED test'}],
   ['/api/overlay/commands',{op:'post_repayment',advance_ref:'sim-unbound',at_sim_day:1,amount_krw:1}],
+  ['/api/overlay/commands',{op:'record_external_fact',at_sim_day:1,payload:{
+   claim_id,fact_class:'PROVIDER_PAYMENT_CAPTURE',order_ref:'sim-order-audit',claimed_provider_ref:'sim-provider-audit',
+   amount_krw:1,sim_day:1,effective_sim_day:1,captured_sim_day:1,authority:{role:'organizer',approvals:[]},
+   label:'SIMULATED',verification:'UNVERIFIED_ASSERTED',funds_executed:false,provider_call_made:false,legal_effect:'NOT_ASSESSED',
+  }}],
  ];
  for(const [index,[route,body]] of commands.entries()){
   const response=await request.post(base+route,{headers,data:{...body,instance_id:state.instance_id,operation_id:'audit-reason-'+index,operator_reason}});
@@ -134,8 +140,7 @@ test('auditor evidence chain shows literal operator reasons from all three comma
  }
  await auditor(page);
  const cells=page.locator('#desk-audit-chain tr td:nth-child(6)').filter({hasText:operator_reason});
- await expect(cells).toHaveCount(3);
- await expect(cells).toHaveText([operator_reason,operator_reason,operator_reason]);
+ await expect(cells).toHaveText(Array(commands.length).fill(operator_reason));
  await expect(page.locator('#desk-audit-chain b')).toHaveCount(0);
  const receipt=page.locator('#desk-audit-chain tr').filter({hasText:'audit-reason-0'}).locator('td').nth(6);
  await expect(receipt).toContainText('"operator_reason":"<b>x</b>"');

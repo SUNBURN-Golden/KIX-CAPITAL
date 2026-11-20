@@ -302,7 +302,7 @@ def effective_maturity(state, ref, standard):
 
 
 def fold_entry(state, entry):
-    p = entry['payload']
+    p = {key: value for key, value in entry['payload'].items() if key != 'operator_reason'}
     ref, kind = p['advance_id'], entry['kind']
     if state['terms_binding'] is None or p['policy']['terms_version'] != state['terms_binding']['terms_version']:
         raise overlay.OverlayError('recovery terms binding')
@@ -360,6 +360,10 @@ def validate_entry(entry):
     if type(command) is not dict:
         raise overlay.OverlayError('recovery command witness')
     kind = entry['kind']
+    if 'operator_reason' in p:
+        if kind == 'default_anchor':
+            raise overlay.OverlayError('payload operator_reason')
+        overlay._validate_operator_reason(p)
     common = {'op', 'approvals'}
     optional = {'proposal_id'}
     if kind != 'default_anchor':
@@ -396,9 +400,11 @@ def entry(operation_id, kind, state, index, payload):
 
 
 def receipt(entry):
-    return {'operation_id': entry['overlay_id'], 'op': entry['payload']['command']['op'],
+    payload = entry['payload']
+    return {'operation_id': entry['overlay_id'], 'op': payload['command']['op'],
             'outcome': 'APPLIED', 'sim_day': entry['sim_day'], 'recorded_posting': True,
-            'f04_journal_written': False, 'label': 'SIMULATED', 'entry': copy.deepcopy(entry['payload'])}
+            'f04_journal_written': False, 'label': 'SIMULATED', 'entry': copy.deepcopy(payload),
+            **({'operator_reason': payload['operator_reason']} if 'operator_reason' in payload else {})}
 
 
 def validate_links(entries, journal):

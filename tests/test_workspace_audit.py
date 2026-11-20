@@ -334,6 +334,7 @@ class AuditBytesTests(unittest.TestCase):
 
 def seed_reason_workspace(directory):
     from capital.service import CapitalService
+    from test_provider_capture_recon import command, payload
     from tests.test_capital import OperatorReasonTests
     from tests.test_repayment_posting import body
     from tests.test_overlay import draw_book
@@ -345,6 +346,9 @@ def seed_reason_workspace(directory):
         service.overlay_command(dict(instance_id=service.instance_id, operation_id='reason-clock', op='advance_day',
             from_sim_day=0, to_sim_day=1, reason='SIMULATED tick', operator_reason='SIMULATED clock context'))
         service.overlay_command(body(service, 'reason-payment', 1, operator_reason='SIMULATED payment context'))
+        fact = command(service, 'reason-fact',
+                       payload(sim_day=1, effective_sim_day=1, captured_sim_day=1), at_sim_day=1)
+        service.overlay_command({**fact, 'operator_reason': 'SIMULATED fact context'})
     finally:
         port.close()
 
@@ -363,8 +367,9 @@ class OperatorReasonAuditTests(unittest.TestCase):
             self.assertEqual(report['checks']['receipt_journal_fingerprints'], 'MATCHED')
             self.assertEqual(report['recon_status'], 'MATCHED')
             reasons = {'f04': {'reason-offer': 'SIMULATED offer context'},
-                       'overlay': {'reason-clock': 'SIMULATED clock context', 'reason-payment': 'SIMULATED payment context'}}
-            self.assertEqual(report['operator_reasons'], {'count': 3, 'sha256': digest(reasons)})
+                       'overlay': {'reason-clock': 'SIMULATED clock context', 'reason-payment': 'SIMULATED payment context',
+                                   'reason-fact': 'SIMULATED fact context'}}
+            self.assertEqual(report['operator_reasons'], {'count': 4, 'sha256': digest(reasons)})
             self.assertEqual(path.read_bytes(), before)
             for target, invalid, reseal, expected in [
                 ('f04', False, False, 'payload_sha256'),
@@ -373,6 +378,9 @@ class OperatorReasonAuditTests(unittest.TestCase):
                 ('overlay', True, True, 'service_restore'),
                 ('f04', False, True, None),
                 ('overlay', False, True, None),
+                ('external_fact', False, False, 'service_restore'),
+                ('external_fact', True, True, 'service_restore'),
+                ('external_fact', False, True, None),
             ]:
                 with self.subTest(target=target, invalid=invalid, reseal=reseal):
                     doc = copy.deepcopy(original)
@@ -381,7 +389,8 @@ class OperatorReasonAuditTests(unittest.TestCase):
                         doc['payload']['receipts']['reason-offer']['receipt']['operator_reason'] = reason
                         if reseal: doc['payload_sha256'] = digest(doc['payload'])
                     else:
-                        entry = next(e for e in doc['overlay']['journal'] if e['kind'] == 'clock')
+                        overlay_id = 'reason-fact' if target == 'external_fact' else 'reason-clock'
+                        entry = next(e for e in doc['overlay']['journal'] if e['overlay_id'] == overlay_id)
                         entry['payload']['operator_reason'] = reason
                         if reseal: doc['overlay']['section_sha256'] = section_checksum(doc['overlay'])
                     path.write_bytes(canonical_bytes(doc))
