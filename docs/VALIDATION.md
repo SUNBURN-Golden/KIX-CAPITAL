@@ -1,5 +1,77 @@
 # Validation scope
 
+## Operator health desk — PR fix round 2
+
+2026-11-16. All evidence below is local SIMULATED / READ_ONLY_FIXTURE
+verification. No financial reconciliation, durability or release readiness is
+inferred from health success.
+
+Fixed the blocking stale-diagnostics finding. `refreshCore()` now invalidates
+the health, capacity, receipt-counter, event-log and NOT_BOUND rows when any
+prerequisite fails, including `/api/state`, role binding and `/api/evidence`.
+It also invalidates as soon as a different instance is observed, before another
+await can retain a dead process's values. A successful refresh replaces the
+diagnostics and clears the unavailable state. No retry, polling, repair control
+or UNKNOWN command-fencing change was added.
+
+Four added Chromium cases keep the loaded page through state/evidence failures,
+a real local server restart with the old token, and a changed-instance snapshot
+whose evidence request fails. The last case holds evidence pending and verifies
+that old values disappear before the failure handler runs; manual refresh then
+recovers the new process's zero counters without navigation. The existing
+keyboard walkthrough now exercises unavailable states and recovery with
+Tab/Enter. The handbook documents these paths.
+
+Completed the inherited merge conflict resolutions in CSS and the handbook,
+retaining both the diagnostics panel and incoming risk-comparison material.
+The incoming main handbook's lines remain in their original order. The merge
+remains uncommitted; no commit, push or external post was performed.
+
+| Local command/check | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; all 1,583 tests passed in 599.481s. |
+| `PYTHONPATH=tests python3 -m unittest test_health_desk test_operator_desk test_observability test_handbook -v` | Exit 0; all 44 passed. |
+| Final `PYTHONPATH=tests python3 -m unittest test_health_desk test_handbook test_docs_surface -v` | Exit 0; all 40 passed after the validation record was added. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; all seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js`; browser spec syntax | Exit 0 for each. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/auth_matrix.py --check` | Exit 0; documentation inventory reports 38 routes, 276 artifacts and nine stages. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --output=/tmp/operator-health-r2-browser-rerun-results --reporter=list'` | Exit 0; all 94 Chromium cases passed in 2.9m, including all nine diagnostics cases. |
+| Vendor SHA256 and reference comparisons | All five locks match; five references plus manifest are byte-identical to HEAD, MERGE_HEAD and origin/main. |
+| Protected paths and merge hygiene | `.aiops/` and legacy export unchanged; root decision-file state matches incoming main. No unmerged entries; staged/unstaged whitespace checks pass. |
+
+The first isolated browser run finished with 93 passes and a timeout in the
+existing malformed-accepted-receipt recovery case. Its trace shows a long
+runner pause after the server completed the initial page expectation. The
+fresh full run above passed the unchanged recovery case in 716ms. Both runs
+used the tracked configuration and unchanged tests, assertions, timeouts and
+retries; only loopback was enabled in separate network namespaces. No host
+listener was stopped. The initial failure is retained as evidence, not counted
+as a pass. Logs are `/tmp/operator-health-r2-unit.log`,
+`/tmp/operator-health-r2-focused.log`, `/tmp/operator-health-r2-browser.log`
+and `/tmp/operator-health-r2-browser-rerun.log`; the failed trace remains under
+`/tmp/operator-health-r2-browser-results/`. Tracked report symlinks were restored
+byte-for-byte, with inherited generated directories/config preserved under
+`/tmp/operator-health-r2-inherited-*`.
+
+## Operator health desk — supervisor conflict-fix round 1
+
+2026-11-08. Resolved the supervisor-started merge of `origin/main`
+`15c2900a2ba9f468e131304e5d3ece199279fe20` into node HEAD
+`0ae4fe75104d75a98ea6d038a883119e5eb682f2`. All runtime verification below
+uses local SIMULATED fixtures; no real funds or production readiness is claimed.
+
+Resolved `docs/OPERATOR_HANDBOOK_KO.md` by retaining the complete health-desk
+section alongside main's local upstream re-pin evidence and residual-obligations
+instructions, with separate section boundaries. Resolved `docs/VALIDATION.md`
+by retaining both complete validation histories. An ordered-line preservation
+check confirms that each resolved document contains every line of each parent
+document in its original order. Main's code, tests, decisions and vectors remain
+intact, together with this node's diagnostics UI, API-role/static tests and five
+browser cases. No runtime or test repair was needed.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,383 passed in 472.646s, including the legacy baseline byte guards and health-desk API-role/static tests |
 ## Offline evidence cross-cut check — PR fix round 1
 
 2026-11-08, node `evidence-crosscut-check`, reviewed head `71dceae` (branch
@@ -63,6 +135,70 @@ earlier validation records below describe their own rounds only.
 | `python3 -m compileall -q capital` | Exit 0 |
 | `node --check capital/static/app.js` | Exit 0 |
 | `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/auth_matrix.py --check` | Exit 0 |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 scripts/upstream_repin_check.py --check --root .` | Exit 0; HOLD, no findings; adoption and approval remain NOT_BOUND |
+| `npm run test:browser` | Exit 1 at startup; existing loopback port 8765 collision (`Errno 98`) |
+| `npm run test:browser -- --config /tmp/operator-health-conflict-checks/playwright.config.cjs` | Exit 0; all 81 Chromium tests passed in 2.0m, including all five health-desk cases |
+| Vendor integrity and protected paths | All five manifest SHA256 locks match; five references and manifest are byte-identical to HEAD, MERGE_HEAD and origin/main. `.aiops/` and historical root `DECISION_REQUIRED.md` remain unchanged. |
+| Merge hygiene | No conflict markers or unmerged index entries; staged, unstaged and origin/main whitespace checks pass. Both document histories preserved. |
+
+The temporary browser config requires the tracked config, retains all tests,
+assertions, projects, workers, retries and timeouts, and remaps only loopback
+ports 8765–8768 to 29765–29768 plus test/output paths and server working
+directory. No unrelated service was stopped. Logs are local under
+`/tmp/operator-health-conflict-checks/`. The keyboard refresh, readable capacity
+labels, unavailable reads, role restrictions and restart clearing all passed.
+
+The merge is staged and remains uncommitted for the supervisor. No merge abort,
+commit, push, rebase, reset, external post or Protocol/Commerce modification was
+performed. No product decision is outstanding for this conflict repair.
+
+## Operator health desk — manually refreshed diagnostics panel
+
+2026-11-02. Baseline HEAD `c4114c7` ([CAPITAL-READINESS-RUNTIME-CLAIMS]).
+All verification uses local SIMULATED fixtures; no real payments or
+authenticated ownership are inferred.
+
+`#desk-diag` is a new sub-section inside `#desk` (outside `#desk-body`) that
+renders existing `GET /api/health`, `GET /api/state`, `GET /api/overlay` and
+`GET /api/metrics` responses verbatim on a manual `진단 새로고침` only: health
+status/workspace_status, command `operation_count/operation_capacity`, overlay
+`capacity` (`DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY`), per-op
+ACCEPTED/REJECTED receipt counters (transport-duplicate re-returns are counted,
+matching server semantics), rejections, operation_lookups, http_requests and
+`event_log` enabled/written/errors/dropped/max_bytes, plus the four NOT_BOUND
+exporter rows. No server route, permission, telemetry schema, polling, retry,
+repair control or client arithmetic was added — `capital/*.py` is untouched.
+organizer/auditor see the full panel; observer sees health only with the
+server `metrics:read` denial text and sends no restricted request; agent has
+no UI role. `diag.instance_id !== state.instance_id` clears stale values;
+failed reads render `unavailable`.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest tests.test_health_desk tests.test_operator_desk tests.test_observability tests.test_handbook -v` | Exit 0; 40 passed in 8.2s |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,311 passed in 338.7s (includes 9 new `test_health_desk` tests) |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/auth_matrix.py --check` | Exit 0 |
+| `npm run test:browser` (default config) | Exit 1 at startup; default loopback port 8765 already occupied (`Errno 98`), same baseline collision recorded by previous nodes |
+| `npx playwright test --config /tmp/operator-health-desk-playwright.config.cjs` | Exit 0; all 81 Chromium tests passed in 2.5m, including the 5 new `operator-health-desk` cases |
+| Vendor integrity | `capital/vendor/` untouched; no edits under `.aiops/` |
+| Baseline artifact | root `DECISION_REQUIRED.md` (prior node) left untouched and unmodified |
+
+The temporary browser configuration requires the tracked configuration and
+preserves every test, assertion, project, timeout and retry. It remaps only
+loopback ports 8765–8768 to 29765–29768 and supplies absolute test/output
+paths and the repository server working directory. `npm ci` installed the
+pinned `@playwright/test` 1.58.2 and `npx playwright install chromium`
+fetched its matching chromium-headless-shell; no committed browser
+configuration was changed and no unrelated service was stopped.
+
+Merge remains uncommitted for the supervisor. No commit, push, rebase, reset,
+external post or Protocol/Commerce modification was performed.
 | `python3 scripts/compat_preflight.py --check` | Exit 0; MATCHED, BOOTSTRAP, semantic HOLD, adoption NOT_BOUND |
 | `python3 scripts/gate_faults.py --check` | Exit 0; all 7 pinned cases match |
 | `python3 scripts/auth_matrix.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0 |
