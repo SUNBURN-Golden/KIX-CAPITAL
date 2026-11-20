@@ -1,0 +1,1681 @@
+{
+  "commands": {
+    "abort_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "effectId"
+      ],
+      "type": "object"
+    },
+    "abort_trade": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "accept_gift": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "giftId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "termsHash": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "giftId",
+        "termsHash"
+      ],
+      "type": "object"
+    },
+    "accept_trade": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "termsHash": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "termsHash",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "adjust_pg_cancel": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "basis": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "contractRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "movementId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paymentId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "basis",
+        "contractRef",
+        "currency",
+        "domain",
+        "movementId",
+        "paymentId",
+        "provenance",
+        "scope",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "admit": {
+      "additionalProperties": false,
+      "properties": {
+        "admissionEpoch": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "holder": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "admissionEpoch",
+        "domain",
+        "expectedVersion",
+        "holder",
+        "ticketId"
+      ],
+      "type": "object"
+    },
+    "advance_clock": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "now": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "domain",
+        "now"
+      ],
+      "type": "object"
+    },
+    "authorize_marketing": {
+      "additionalProperties": false,
+      "properties": {
+        "business": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "channel": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedConsentVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "purpose": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "subject": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "business",
+        "channel",
+        "domain",
+        "eventId",
+        "expectedConsentVersion",
+        "purpose",
+        "subject"
+      ],
+      "type": "object"
+    },
+    "cancel_event": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "eventId"
+      ],
+      "type": "object"
+    },
+    "cancel_gift": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "giftId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "giftId"
+      ],
+      "type": "object"
+    },
+    "cancel_listing": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "listingId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "listingId"
+      ],
+      "type": "object"
+    },
+    "capture": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "buyer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "orderId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paymentId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "buyer",
+        "currency",
+        "domain",
+        "orderId",
+        "paymentId",
+        "provenance",
+        "scope",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "claim_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "leaseSeconds": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "workerId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "effectId",
+        "leaseSeconds",
+        "workerId"
+      ],
+      "type": "object"
+    },
+    "close_delegation": {
+      "additionalProperties": false,
+      "properties": {
+        "admissionEpoch": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "session": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "used": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "admissionEpoch",
+        "domain",
+        "provenance",
+        "session",
+        "ticketId",
+        "used"
+      ],
+      "type": "object"
+    },
+    "close_sales": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "eventId"
+      ],
+      "type": "object"
+    },
+    "commit_trade": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "complete_event": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "eventId"
+      ],
+      "type": "object"
+    },
+    "create_event": {
+      "additionalProperties": false,
+      "properties": {
+        "admissionStatus": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "invitationQuota": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "issuerId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "organizer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "policy": {
+          "type": "object"
+        },
+        "reservationSeconds": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seats": {
+          "type": "array"
+        },
+        "sessionId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "eventId",
+        "organizer",
+        "policy",
+        "seats"
+      ],
+      "type": "object"
+    },
+    "create_listing": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expiresAt": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "listingId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "domain",
+        "expectedVersion",
+        "expiresAt",
+        "listingId",
+        "ticketId"
+      ],
+      "type": "object"
+    },
+    "delegate": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "expectedVersion",
+        "ticketId"
+      ],
+      "type": "object"
+    },
+    "dispatch_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "claimGeneration": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "claimGeneration",
+        "domain",
+        "effectId",
+        "workerId"
+      ],
+      "type": "object"
+    },
+    "expire_trade": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "finalize_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "beneficiary": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "contractRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fenceRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "observedAt": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "paymentId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "providerOperationId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "sourceCursor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sourceId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "unexecutedAmount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "amount",
+        "beneficiary",
+        "contractRef",
+        "currency",
+        "domain",
+        "effectId",
+        "fenceRef",
+        "observedAt",
+        "paymentId",
+        "provenance",
+        "providerOperationId",
+        "scope",
+        "sourceCursor",
+        "sourceId",
+        "unexecutedAmount"
+      ],
+      "type": "object"
+    },
+    "issue_invitation": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedInventoryVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "inventoryId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "recipient": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "expectedInventoryVersion",
+        "inventoryId",
+        "recipient"
+      ],
+      "type": "object"
+    },
+    "observe_dispatch_lookup": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "lookupRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "observedAt": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "providerOperationId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "requestHash": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "result": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "domain",
+        "effectId",
+        "idempotencyKey",
+        "lookupRef",
+        "observedAt",
+        "provenance",
+        "requestHash",
+        "result",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "observe_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "beneficiary": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fenceProvenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fenceRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "movementId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paymentId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "phase": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "providerOperationId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "sourceId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "amount",
+        "beneficiary",
+        "currency",
+        "domain",
+        "effectId",
+        "paymentId",
+        "phase",
+        "provenance",
+        "providerOperationId",
+        "scope",
+        "sourceId"
+      ],
+      "type": "object"
+    },
+    "observe_funding": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "contractRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "movementId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "payer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "contractRef",
+        "currency",
+        "domain",
+        "movementId",
+        "payer",
+        "provenance",
+        "scope",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "observe_recovery": {
+      "additionalProperties": false,
+      "properties": {
+        "allocationId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "movementId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "payer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "sourceId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "allocationId",
+        "amount",
+        "currency",
+        "domain",
+        "movementId",
+        "payer",
+        "provenance",
+        "scope",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "observe_return": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "movementId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "payer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paymentId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "amount",
+        "currency",
+        "domain",
+        "effectId",
+        "movementId",
+        "payer",
+        "paymentId",
+        "provenance",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "offer_gift": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expiresAt": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "giftId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "recipient": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "expectedVersion",
+        "expiresAt",
+        "giftId",
+        "recipient",
+        "ticketId"
+      ],
+      "type": "object"
+    },
+    "open_admission": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "eventId"
+      ],
+      "type": "object"
+    },
+    "prepare_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "allocationId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "beneficiaryAccountRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contractRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "retryOf": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "routeProfile": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "contractRef",
+        "domain",
+        "effectId",
+        "kind",
+        "routeProfile",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "prepare_trade": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "buyer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedInventoryVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expectedVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expiresAt": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "inventoryId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "listingHash": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "listingId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "buyer",
+        "domain",
+        "expectedVersion",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "refund_ticket": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "expectedVersion",
+        "ticketId"
+      ],
+      "type": "object"
+    },
+    "release_inventory": {
+      "additionalProperties": false,
+      "properties": {
+        "closedRightId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedInventoryVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "inventoryId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "closedRightId",
+        "domain",
+        "expectedInventoryVersion",
+        "inventoryId"
+      ],
+      "type": "object"
+    },
+    "reserve_listing": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expiresAt": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "listingHash": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "listingId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "expiresAt",
+        "listingHash",
+        "listingId",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "send_effect": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effectId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "effectId"
+      ],
+      "type": "object"
+    },
+    "set_consent": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "business": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "channel": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eventId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedConsentVersion": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "purpose": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowed",
+        "business",
+        "channel",
+        "domain",
+        "eventId",
+        "expectedConsentVersion",
+        "purpose"
+      ],
+      "type": "object"
+    },
+    "settle_capture": {
+      "additionalProperties": false,
+      "properties": {
+        "adjustmentAmount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "adjustmentReason": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "contractRef": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "feeAmount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "feeBearer": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "grossAmount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "heldAmount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "movementId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paymentId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "sourceId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "taxAmount": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tradeId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "adjustmentAmount",
+        "amount",
+        "contractRef",
+        "currency",
+        "domain",
+        "feeAmount",
+        "feeBearer",
+        "grossAmount",
+        "heldAmount",
+        "movementId",
+        "paymentId",
+        "provenance",
+        "scope",
+        "taxAmount",
+        "tradeId"
+      ],
+      "type": "object"
+    },
+    "void_unissued": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ticketId": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "ticketId"
+      ],
+      "type": "object"
+    }
+  },
+  "domain": "kix:fixture:lifecycle:0.3",
+  "handlerConstraints": "Positive monetary postings, enums, actor scopes, policy checks, current versions, balances and conditional bindings are additionally enforced in handlers. This exported catalog alone is not a full business validator.",
+  "sourceAuthentication": "FIXTURE_ONLY",
+  "unknownFields": "REJECT"
+}

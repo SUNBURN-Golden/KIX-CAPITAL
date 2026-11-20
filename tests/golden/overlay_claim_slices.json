@@ -16,7 +16,7 @@
   "manifest_verified": true,
   "mode": "SHADOW_NOT_APPLIED",
   "offering": "SIMULATION_ONLY_NOT_OFFERED_V1",
-  "overlay_digest": "5a0303469ccca253d573a3a67a074634bff922f538dc687a1d437b308ba38132",
+  "overlay_digest": "8ec7100d7804d70663970bec95fb2166ab072c2f8b9836be4f2570971e8277f5",
   "overlay_fold_check": "MATCHED",
   "policy_adopted": false,
   "provisional": true,

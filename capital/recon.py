@@ -13,7 +13,7 @@ import json
 from capital import coa
 from capital.projection import ProjectionError
 from capital import overlay as overlay_ledger
-from capital.protocol import CreditError, CreditMachine
+from capital.protocol import CreditError, CreditMachine, matches_workspace_state_digest
 
 
 def _digest(value):
@@ -33,6 +33,10 @@ CHECK_IDS = (
 COA_CHECK_IDS = (
     'coa_candidate_totals_vs_v1',
     'interest_ledger_vs_projection',
+    'payment_ledger_vs_projection',
+    'recovery_ledger_vs_projection',
+    'writeoff_ledger_vs_projection',
+    'allowance_vs_risk_reserve',
 )
 
 NOT_BOUND_GAPS = (
@@ -100,7 +104,8 @@ def _credit(stored):
 
 def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, settlement_source,
                          projection_port, probe_operation_id, instance_id, operation_capacity,
-                         workspace_status, coa_port=None, overlay_entries=None, overlay_persisted=None):
+                         workspace_status, coa_port=None, overlay_entries=None, overlay_persisted=None,
+                         allowance_context=None):
     """Fold copies. `settlement_source.view` is read while replaying a scratch machine."""
     gaps = not_bound_gaps()
     if unreadable:
@@ -149,7 +154,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
     restored, restore_error = _restore(journal, settlement_source)
     keys_ok, key_detail = _keys_match(receipts, journal)
     rejected_ok = _rejected_absent(receipts, journal)
-    replay_ok = restore_error is None and restored is not None and restored.state_digest() == state_digest
+    replay_ok = restore_error is None and restored is not None and matches_workspace_state_digest(restored, state_digest)
     map_ok = _map_matches(mapping, journal, restored)
     projection_ok = _projection_matches(
         journal, receipts, restored, fixture_rows, projection_port, restore_error,
@@ -164,6 +169,7 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
         _check('fixtures_digest', fixtures_ok, 'fixture_face'),
     ]
     overlay_digest = None
+    observation_check = None
     if overlay_entries:
         # Conditional on a non-empty overlay (CAPITAL_OVERLAY_DIGEST_EXPORT.md 3.2).
         overlay_ok, overlay_digest, overlay_detail = overlay_fold_check(
@@ -180,12 +186,20 @@ def build_reconciliation(*, payload, unreadable, fixture_rows, fixtures_digest, 
                 validate_slice_links(overlay_entries, journal, settlement_source)
         except ValueError:
             overlay_ok, overlay_detail = False, 'claim_slice_link'
+        if overlay_ok:
+            try:
+                from capital.observation_record import capture_check
+                observation_check = capture_check(overlay_entries, journal, settlement_source)
+            except ValueError:
+                overlay_ok, overlay_detail = False, 'observation_link'
         checks.append(_check(OVERLAY_CHECK_ID, overlay_ok, overlay_detail))
     if coa_port is not None:
         checks.extend(_coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error,
-                                  overlay_entries or []))
+                                  overlay_entries or [], allowance_context, state_digest))
     unknown = _unknowns(receipts, journal, probe_operation_id)
     status = 'MATCHED' if all(row['status'] == 'MATCHED' for row in checks) else 'RECON_MISMATCH'
+    if observation_check is not None:
+        checks.append(observation_check)
     report = _envelope(
         instance_id=instance_id, status=status, replay_matched=replay_ok, entry_count=len(journal),
         cut=state_digest, fixtures_digest=fixtures_digest, operation_capacity=operation_capacity,
@@ -207,21 +221,83 @@ def _coa_labels():
             'tax': 'NOT_BOUND', 'policy_adopted': False}
 
 
-def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error, overlay_entries):
-    """The two COA candidate checks. A failed projection is a mismatch, never a repair."""
+def _coa_checks(coa_port, journal, fixture_rows, projection_port, restore_error, overlay_entries,
+                allowance_context=None, state_digest=None):
+    """The additive COA candidate checks. A failed projection is a mismatch, never a repair."""
     if restore_error is not None:
         return [_check(check_id, False, 'replay') for check_id in COA_CHECK_IDS]
     evidence = [copy.deepcopy(fixture_rows[key]) for key in sorted(fixture_rows)]
     try:
-        candidate = coa_port.project(copy.deepcopy(journal), evidence, overlay_entries=copy.deepcopy(overlay_entries))
+        candidate = coa_port.project(copy.deepcopy(journal), evidence, overlay_entries=copy.deepcopy(overlay_entries),
+                                     allowance_context=copy.deepcopy(allowance_context))
         base = projection_port.project(copy.deepcopy(journal), evidence)
     except ProjectionError as exc:
         return [_check(check_id, False, exc.code) for check_id in COA_CHECK_IDS]
     return [
-        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base), 'coa_vs_v1_totals'),
+        _check('coa_candidate_totals_vs_v1', coa.totals_match_v1(candidate, base, overlay_entries), 'coa_vs_v1_totals'),
         _check('interest_ledger_vs_projection', coa.interest_matches_ledger(candidate, overlay_entries),
                'interest_vs_overlay_fold'),
+        _check('payment_ledger_vs_projection', coa.payments_match_ledger(candidate, overlay_entries),
+               'payment_vs_overlay_fold'),
+        _check('recovery_ledger_vs_projection', coa.recoveries_match_ledger(candidate, overlay_entries),
+               'recovery_vs_overlay_fold'),
+        _check('writeoff_ledger_vs_projection', coa.writeoffs_match_ledger(candidate, overlay_entries),
+               'writeoff_vs_overlay_fold'),
+        allowance_check(candidate, allowance_context, state_digest),
     ]
+
+
+def allowance_check(candidate, context, state_digest=None):
+    """Compare independent risk evidence, actual 1190 lines and the TERMS pool memo."""
+    a, memo = candidate.get('allowance', {}), candidate.get('reserve_pool', {})
+    evidence = (context or {}).get('risk', {})
+    outcome = 'NOT_BOUND'
+    delta = None
+    amount = a.get('allowance_component_krw')
+    floor = memo.get('portfolio_floor_krw')
+    target = memo.get('pool_target_krw')
+    requirement = evidence.get('requirement_krw')
+    auxiliary = None
+    if (a.get('status') == 'BOUND' and memo.get('status') == 'MEMO_NOT_POSTED'
+            and evidence.get('complete') is True
+            and all(evidence.get(key) is not None for key in ('source_cut', 'population', 'policy_context'))
+            and all(type(v) is int and v >= 0 for v in (amount, floor, target, requirement))):
+        comparable = all(a.get(key) is not None and a.get(key) == evidence.get(key)
+                         and a.get(key) == memo.get(key) for key in ('source_cut', 'population', 'policy_context'))
+        if state_digest is not None:
+            comparable = comparable and a['source_cut']['f04_state_digest'] == state_digest
+        if not comparable:
+            outcome = 'CUT_MISMATCH'
+        else:
+            delta = target - requirement
+            auxiliary = amount == evidence.get('provision_total_krw')
+            # Recompute the journal and account balance: a planted posting drift cannot
+            # hide behind an unchanged memo or aggregate row.
+            posted = sum((1 if line['side'] == 'credit' else -1) * line['amount']
+                         for entry in candidate['entries'] for line in entry['lines'] if line['account'] == '1190')
+            accounts = {r['code']: r for r in candidate['accounts']}
+            actual = accounts.get('1190', {}).get('balance', 0)
+            allowed = all(line['account'] in ('1190', '5100') for e in candidate['entries']
+                          if e['source'] == 'ALLOWANCE' for line in e['lines'])
+            expense = sum((1 if line['side'] == 'debit' else -1) * line['amount']
+                          for e in candidate['entries'] for line in e['lines'] if line['account'] == '5100')
+            allowed = allowed and all(e['source'] == 'ALLOWANCE' for e in candidate['entries']
+                                      if any(l['account'] in ('1190', '5100') for l in e['lines']))
+            try:
+                coa.check_entries(candidate['entries'])
+            except ProjectionError:
+                allowed = False
+            outcome = ('MATCH' if delta == 0 and auxiliary and posted == actual == amount == expense
+                       and target == max(amount, floor) and allowed else 'MISMATCH')
+    detail = {**coa._ALLOWANCE_LABELS, 'outcome': outcome, 'allowance_component_krw': amount,
+              'portfolio_floor_krw': floor, 'pool_target_krw': target,
+              'requirement_krw': requirement, 'binding_component': memo.get('binding_component'),
+              'delta_krw': delta, 'per_advance_total_matches': auxiliary,
+              'source_cut': a.get('source_cut'), 'population': a.get('population'),
+              'policy_context': a.get('policy_context'), 'risk_source_cut': evidence.get('source_cut'),
+              'risk_population': evidence.get('population'), 'risk_policy_context': evidence.get('policy_context')}
+    return {'id': 'allowance_vs_risk_reserve',
+            'status': 'MATCHED' if outcome == 'MATCH' else 'RECON_MISMATCH', 'allowance': detail}
 
 
 OVERLAY_CHECK_ID = 'overlay_fold_digest_equals_persisted'
