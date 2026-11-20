@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NOTE = ROOT / 'docs' / 'decisions' / 'CAPITAL_SETTLEMENT_POLICY.md'
 POLICY_PY = ROOT / 'capital' / 'policy.py'
 QUOTE = 'PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md (CAPITAL-SETTLEMENT-POLICY-V1)'
-REPLAY_DIGEST = '9fe00869ff007e628402859abc0c1070133d664ed98e3b230b025f478fd215d0'
+REPLAY_DIGEST = 'c5827c4d726815cdbabe2c78a9c36dac09203a1f0bea84003deb2a65ebce27a1'
 _FENCE = re.compile(r'```capital-decision-v1[ \t]*\n(.*?)```', re.DOTALL)
 _CASH = (0, 1, 3000, 5000, 5001, 50000, 97000, 100000)
 

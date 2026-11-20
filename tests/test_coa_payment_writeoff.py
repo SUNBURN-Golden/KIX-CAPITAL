@@ -63,7 +63,7 @@ def combined(service=None, source=None):
 
 
 class PostingTests(unittest.TestCase):
-    def assert_book(self, service):
+    def assert_book(self, service, allowance_delta=0):
         before = service._frozen()
         plain = (canonical_bytes(service.projection()), canonical_bytes(service.reconciliation()),
                  canonical_bytes(service.export_manifest()))
@@ -75,8 +75,11 @@ class PostingTests(unittest.TestCase):
         self.assertTrue(body['balance_groups'])
         self.assertTrue(all(r['debit'] == r['credit'] for r in body['balance_groups']))
         self.assertTrue(all(r['matched'] for r in body['conservation']))
-        self.assertEqual({r['id']: r['status'] for r in report['checks'] if r['id'] in recon.COA_CHECK_IDS},
-                         dict.fromkeys(recon.COA_CHECK_IDS, 'MATCHED'))
+        self.assertEqual({r['id']: r['status'] for r in report['checks'] if r['id'] in recon.COA_CHECK_IDS[:-1]},
+                         dict.fromkeys(recon.COA_CHECK_IDS[:-1], 'MATCHED'))
+        allowance = report['checks'][-1]
+        self.assertEqual(allowance['allowance']['delta_krw'], allowance_delta)
+        self.assertEqual(allowance['allowance']['outcome'], 'MATCH' if allowance_delta == 0 else 'MISMATCH')
         self.assertEqual(body['accounting_policy'], 'SYNTHETIC_UNADOPTED')
         for label in ('tax', 'legal', 'operating_ledger'):
             self.assertEqual(body[label], 'NOT_BOUND')
@@ -117,8 +120,8 @@ class PostingTests(unittest.TestCase):
 
     def test_combined_book_has_all_checks_matched_and_exact_writeoff_legs(self):
         service = combined()
-        body = self.assert_book(service)
-        self.assertEqual(service.reconciliation(None, 'coa-candidate')['status'], 'MATCHED')
+        body = self.assert_book(service, allowance_delta=-45000)
+        self.assertEqual(service.reconciliation(None, 'coa-candidate')['status'], 'RECON_MISMATCH')
         self.assertEqual(service.machine.view('sim-a')['outstanding_exposure'], 0)
         recognized = formula(45000 * 10, 700)
         suspended = formula(45000 * 90, 1000)
@@ -138,11 +141,12 @@ class PostingTests(unittest.TestCase):
         self.assertFalse(coa.totals_match_v1(body, service.projection()))
         status = {r['code']: r['status'] for r in body['chart_status']}
         self.assertEqual((status['4300'], status['5200']), ('POSTED', 'POSTED'))
-        self.assertTrue(all(status[c] == 'NOT_RECORDED' for c in ('1190', '3100', '3200', '5100')))
+        self.assertTrue(all(status[c] == 'NOT_RECORDED' for c in ('3100', '3200')))
+        self.assertEqual((status['1190'], status['5100']), ('POSTED', 'POSTED'))
 
     def test_seeded_disposable_recovery_book_and_principal_conservation(self):
         service, _ = seed.build()
-        body = self.assert_book(service)
+        body = self.assert_book(service, allowance_delta=-48000)
         # Seed: 48,000 drawn, 5,000 recovered, 1,000 recovered after write-off.
         contract = formula(48000 * 8, 700)
         default = formula(48000 * 11, 1000)
@@ -190,7 +194,7 @@ class PostingTests(unittest.TestCase):
         run(service, 'default', 'sim-a', 'default')
         tick(service, 'stop', 70, 160)
         service.overlay_command(cmd(service, 'post_writeoff', 'wo'))
-        body = self.assert_book(service)
+        body = self.assert_book(service, allowance_delta=-90000)
         got = amounts(selected(body, 'OVERLAY_WRITEOFF'))
         self.assertEqual(got[('4110', 'debit', 'DEFAULT')], formula(90000 * 10, 1000))
         self.assertEqual(got[('4100', 'debit', 'CONTRACT')], formula(90000 * 60, 700))
@@ -216,7 +220,8 @@ class PostingTests(unittest.TestCase):
                         self.assertEqual(set(e['source'] for e in result['entries']) & set(coa.NEW_SOURCES),
                                          set(coa.NEW_SOURCES))
                     else:
-                        self.assertEqual(result['status'], 'MATCHED')
+                        self.assertEqual(result['status'], 'RECON_MISMATCH')
+                        self.assertEqual(result['checks'][-1]['allowance']['delta_krw'], -45000)
                 finally:
                     client.close()
             self.assertEqual(server.service._frozen(), before)

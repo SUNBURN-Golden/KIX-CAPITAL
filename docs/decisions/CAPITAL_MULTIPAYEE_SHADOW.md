@@ -1,14 +1,16 @@
 # CAPITAL_MULTIPAYEE_SHADOW — 결정된 클래스 우선 배정을 위한 한정 다중 수취인 입력
 
-**PROVISIONAL PRODUCT DECISION (잠정 제품 결정)**  
-**결정자:** Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)  
-**결정일:** 2026-11-10 · **기준:** KIX-CAPITAL main `a791651` · kix-protocol `8a8a0fc`
+**PROVISIONAL PRODUCT DECISION (잠정 제품 결정)**
+
+**결정자:** Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)
+
+**결정일:** 2026-11-10 · **결정 출처:** KIX-CAPITAL main `a791651` · **실행 핀:** kix-protocol `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`
 
 시뮬레이션·제품 설계 전용이다. 청약이 아니며 실자금은 움직이지 않는다. production은 **`NOT_AUTHORIZED`**, 모든 그림자 효과는 **`SHADOW_NOT_APPLIED`**다. 법무·세무·회계 해석은 전문가 검토 전 작업 가정이다. upstream 계약 채택·영수증·SEMANTIC_CONFORMANCE를 주장하지 않는다.
 
 결정 노드는 `multipayee-shadow-input-decision`, 의존 노드는 `settlement-policy-decision`, `shadow-policy-decision`, `shadow-refund-resale`, `decision-guard-additions`다. 이미 결정된 금융 우선순위를 유지하면서 이를 시험할 Capital 로컬 합성 입력 계약을 정한다.
 
-근거는 supervisor pack의 발췌와 검토 결과다. 위 결정자 표기는 요청된 위임 귀속이며, 이번 개정 작성자는 Codex다. 지정 Claude CLI 실행·세 차례 실패·Fable 전환은 수행하거나 확인했다고 주장하지 않는다. 기준 커밋은 supervisor 제공값이다. 선행 정산·그림자 정책 원문은 직접 열지 않았으며 제공된 검토가 확인한 규칙을 계승한다.
+위 결정자 표기와 결정 출처는 최초 검토 기록의 위임 귀속을 따른다. 배정과 그림자 규칙은 [CAPITAL_SETTLEMENT_POLICY.md](CAPITAL_SETTLEMENT_POLICY.md) 및 [CAPITAL_SHADOW_POLICY.md](CAPITAL_SHADOW_POLICY.md)를 계승한다. 실행 핀은 [vendor manifest](../../capital/vendor/manifest.json)를 따른다.
 
 ## 1. 결정 요약
 
@@ -27,11 +29,11 @@
 
 ## 2. KIX 비전 연결
 
-[CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md)의 제공 발췌는 실행·참조 핀과 역사적 결정 출처를 구별한다. 이 문서의 기준 커밋은 출처이며 실행 핀을 교체하지 않는다. [SEAMS.md](../SEAMS.md)에 따라 로컬 합성 계산 성공은 upstream 채택이나 CAP-16 바인딩을 증명하지 않는다.
+[CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md)는 실행·참조 핀과 역사적 결정 출처를 구별한다. [SEAMS.md](../SEAMS.md)는 로컬 합성 계산과 CAP-16 바인딩의 증거 요건을 명시한다.
 
 [CAPITAL_CLAIM_SLICE_REGISTRY.md](CAPITAL_CLAIM_SLICE_REGISTRY.md)의 슬라이스 유일성·공유 한도·차입기초 보호는 기존 노드에 남긴다. 수취인 행은 참여 자격이나 클레임 슬라이스를 만들지 않는다. [CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md)의 전문가 검토 경계도 유지한다.
 
-[VALIDATION.md](../VALIDATION.md)의 합성 검증 경계처럼 결과는 미적용 진단이다. 확장 가능한 다중 수취인 시험 입력을 정하되 기존 FSM·정산 원장·운영 권한은 확장하지 않는다. 위 문서는 모두 pack에 실린 발췌 범위에서만 사용했다.
+[VALIDATION.md](../VALIDATION.md)의 합성 검증 경계처럼 결과는 미적용 진단이다. 입력 계약의 범위는 Capital 로컬 합성 스냅샷이다.
 
 ## 3. 항목별 결정
 
@@ -47,7 +49,7 @@
 
 ### 3.2 `class_mapping_and_unknowns`
 
-각 행은 `class_id`를 명시한다. 클래스 어휘·우선순위·동률 비교자는 채택된 `CAPITAL-ALLOC-V1`에서 로드한다. 제공된 검토가 확인한 순서는 다음과 같다.
+각 행은 `class_id`를 명시한다. 클래스 어휘·우선순위·동률 비교자는 채택된 `CAPITAL-ALLOC-V1`에서 로드한다. 정산 정책의 `allocation_order.value.class_table_ordered`에 있는 순서는 다음과 같다.
 
 1. `PROTECTED_THIRD_PARTY`
 2. `COUNTERPARTY_PROCEEDS`
@@ -58,7 +60,7 @@
 
 문법상 유효하지만 어휘에 없는 클래스는 `INVALID_INPUT/UNKNOWN_CLASS`, 필드 누락은 `INVALID_INPUT/MISSING_FIELD`, 클래스 형식 오류는 `INVALID_INPUT/INVALID_CLASS`다. 모두 전체 입력 거부다. 대체 클래스·조용한 생략·부분 배정은 없으며 의무 0 행도 검증한다.
 
-필수 배정·그림자 정책을 계산 전에 로드하고 출처 digest를 동결한다. 정책 부재 또는 읽기·파싱 실패는 `adapter_outcome: NOT_BOUND`와 null 금액을 반환한다. `NOT_BOUND`는 정책 로드 실패에 한정한다. 이미 채택된 규칙을 `DECISION_REQUIRED`로 되돌리지 않는다. 원문과 발췌가 충돌하면 선행 정책 원문이 우선한다.
+필수 배정·그림자 정책을 계산 전에 로드하고 출처 digest를 동결한다. 정책 부재 또는 읽기·파싱 실패는 `adapter_outcome: NOT_BOUND`와 null 금액을 반환한다. `NOT_BOUND`는 정책 로드 실패에 한정한다.
 
 ### 3.3 `single_cut_allocation_inputs`
 
@@ -87,7 +89,7 @@
 
 정확 정수 산술을 사용한다. 배정 `a_i`의 불변식은 `0 ≤ a_i ≤ r_i`, `remaining_after_i = r_i − a_i`, `Σa_i + unallocated = cash`다. 이는 수학 표기이며 출력 키가 아니다.
 
-**`fsm_expressible: false`.** 제공된 검토에 따르면 고정 FSM `7481b0e`의 두 수취인 기준선은 클래스당 복수 수취인·클래스 내 비례 배분·보호 제3자 라인을 표현하지 못한다. 이 계산은 FSM 명령·전이·행을 만들지 않는다. 비교를 맞추기 위한 fabricated row나 행 조작은 금지한다.
+**`fsm_expressible: false`.** 고정 FSM `8ba7f6c`의 `PRIMARY_FEE_BPS` 정책은 잔여 수취인과 수수료 수취인을 정의하고 `distribute(order=…)`는 순서대로 배정한다. 클래스당 복수 수취인, 클래스 내 비례 배분, 보호 제3자 라인을 표현하려면 별도 FSM 정책 종류가 필요하다. 이 계산은 FSM 명령·전이·행을 만들지 않는다. 비교를 맞추기 위한 fabricated row나 행 조작은 금지한다.
 
 아래는 실행 fixture가 아닌 산술 기대치다. `P`는 보호 클래스, `L`은 더 낮은 상속 클래스다. P1–P3과 L1은 각각 `fx-p1`–`fx-p3`, `fx-l1`의 별칭이다.
 
@@ -119,7 +121,7 @@
 
 ### 3.6 `shadow_comparison_labels`
 
-모든 결과는 `mode: SHADOW_NOT_APPLIED`, 라벨 `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE`, `PROVISIONAL_PRODUCT_DECISION`과 `funds_executed:false`, `effects_applied:false`, `production:NOT_AUTHORIZED`를 유지한다. mode는 성공 여부와 무관하다.
+모든 결과는 `mode: SHADOW_NOT_APPLIED`, 라벨 `SIMULATED`, `SYNTHETIC_FIXTURE_PROFILE`, `PROVISIONAL_PRODUCT_DECISION`과 `effects_applied:false`, `production:NOT_AUTHORIZED`를 유지한다. `funds_executed`를 포함해 선행 그림자 정책의 `shadow_label_vocabulary.value.constant_false_flags`는 모두 false다. mode와 플래그는 성공 여부와 무관하다.
 
 `shadow_status`는 선행 그림자 정책의 닫힌 어휘만 사용한다. 어댑터 진단은 별도 `adapter_outcome`과 `reason`이다.
 
@@ -219,7 +221,7 @@
         "arithmetic": "EXACT_INTEGER",
         "surplus_output": "shadow_unallocated_cash_krw",
         "fsm_expressible": false,
-        "fsm_baseline": "PINNED_TWO_PAYEE_7481b0e",
+        "fsm_baseline": "PINNED_TWO_PAYEE_8ba7f6c",
         "fabricated_fsm_rows": "FORBIDDEN"
       },
       "provided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
@@ -269,6 +271,7 @@
         "delta_direction": "CANDIDATE_MINUS_BASELINE",
         "amount_key_prefix": "shadow_",
         "failed_amounts_and_incompatible_deltas": null,
+        "constant_false_flags_source": "CAPITAL_SHADOW_POLICY:shadow_label_vocabulary.value.constant_false_flags",
         "funds_executed": false,
         "effects_applied": false,
         "production": "NOT_AUTHORIZED"
@@ -293,20 +296,13 @@
 | 상속 우선순위·최대 잉여·다섯 예시 | §3.4 |
 | 동결 스냅샷과 기존 노드 경계 | §3.3 |
 | 운영 금지·그림자 미적용 | 배너, §3.6, §4 |
-| 문서 색인·바인딩·팩 등록 | 제공 검토는 `docs/CAP_COVERAGE.md` 참조, 여섯 `PENDING_CONSUMER` 바인딩, 팩 결정 행을 확인했다. 기존 등록을 유지한다 |
-| 수정본 결정 원장·바인딩·문서 표면·팩 검사 | **UNDETERMINED** — 이번 산출물은 supervisor가 저장할 본문이며, 2026-11-10 수정본에 대한 명령 실행 결과는 없다 |
-
-**차단 소견 처리:** 무관한 `DECISION_REQUIRED.md` 변경은 최종 PR에서 제외해야 한다는 판정을 수용한다. 다만 최신 `REVISION SCOPE`는 해당 파일 수정을 허용하지 않으며 산출물도 이 문서로 제한한다. 따라서 이 응답으로 실제 복원이나 차단 해소를 주장할 수 없다. 제공된 복원 보고와 이후 검토의 “아직 수정됨” 판정 사이의 현재 상태는 **UNDETERMINED**다. 최종 PR 기준으로 해당 파일의 diff가 없어야 하며, 이 문서는 그 변경을 승인하거나 제품 결정의 근거로 삼지 않는다.
+| 문서 색인·바인딩·팩 등록 | [CAP 커버리지](../CAP_COVERAGE.md), [여섯 `PENDING_CONSUMER` 바인딩](../../tests/decision_bindings.json), [합성 팩의 결정 행](../../tests/vectors/pack/clean.json) |
 
 ## 6. Open risks
 
 소비 구현은 선행 정책 원문을 로드하여 클래스·비교자·status 의미를 검증해야 한다. 합성 잔여 의무는 법적 채무의 유효성이나 완전성을 증명하지 않는다. 다중 수취인 FSM 반영과 누적 현금 처리는 별도 과제다.
 
-제공된 이전 테스트 통과는 당시 트리의 증거다. 이번 수정본의 통과로 전환하지 않는다. 검증 기준선 변경·가드 완화·무관한 에스컬레이션 추가는 이 결정의 범위 밖이다.
-
 ## 7. 후속 작업
 
-- supervisor 적용 단계에서 문서를 저장하고 기존 색인 참조와 여섯 `PENDING_CONSUMER` 바인딩을 유지한다. 최종 PR의 `DECISION_REQUIRED.md` 변경이 제거됐는지 확인한다.
-- 통합된 트리에서 결정 원장·바인딩·팩 검증과 `python3 scripts/docs_surface.py --check`를 실행한다. 필요하면 허용된 기존 팩 벡터를 재생성한다. 새 벡터 파일은 문서 표면 등록과 README needle이 필요하므로 이 개정에서는 요구하지 않는다.
 - 구현 노드는 정책 로드·digest 동결, 입력 순열 독립성, 상속 동률, 중복·미지 클래스 거부, 용량 경계, 보존 불변식, 실패 null 및 비교 호환성을 검증한다.
 - 누적 늦은 현금·참여·클레임 슬라이스·UC1–UC4·upstream 변경은 기존 또는 별도 노드에서 다룬다. production은 `NOT_AUTHORIZED`, 그림자 효과는 미적용으로 유지한다.
