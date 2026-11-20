@@ -689,6 +689,40 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(CHECK_ID, [c['id'] for c in reply['checks']])
 
+    def test_operator_reason_on_external_fact_over_http(self):
+        from tests import facade_schema
+
+        _, state = self.call('GET', '/api/state')
+        body = command(self.server.service, 'fact-http-reason',
+                       payload(sim_day=0, effective_sim_day=0, captured_sim_day=0), at_sim_day=0)
+        route = '/api/overlay/commands'
+        organizer = state['local_token']
+        before = self.server.service._frozen()
+        for reason in ('x' * 201, 'é', '\n'):
+            status, reply = self.call('POST', route, {**body, 'operator_reason': reason}, organizer)
+            self.assertEqual((status, reply['error']), (400, 'INVALID_REASON'))
+        status, reply = self.call('POST', route, {**body, 'operator_reason': 'x' * 201}, self.token_for('agent'))
+        self.assertEqual((status, reply['error']), (403, 'FACT_AGENT_FORBIDDEN'))
+        self.assertEqual(self.server.service._frozen(), before)
+
+        reason = '<b>SIMULATED</b>'.ljust(200)
+        request = {**body, 'operator_reason': reason}
+        contract = facade_schema.load_contract()
+        facade_schema.validate(request, contract['definitions']['overlay_command_request'], contract)
+        status, reply = self.call('POST', route, request, organizer)
+        self.assertEqual(status, 200, reply)
+        self.assertEqual(reply['operator_reason'], reason)
+        self.assertEqual(reply['entry']['operator_reason'], reason)
+        facade_schema.validate(reply, contract['definitions']['overlay_command_receipt'], contract)
+        status, duplicate = self.call('POST', route, request, organizer)
+        self.assertEqual(status, 200, duplicate)
+        self.assertEqual(duplicate, {**reply, 'transport_duplicate': True})
+        status, conflict = self.call('POST', route, body, organizer)
+        self.assertEqual((status, conflict['error']), (409, 'FACT_IDEMPOTENCY_CONFLICT'))
+        status, view = self.call('GET', '/api/overlay?operation_id=fact-http-reason', token=organizer)
+        self.assertEqual(status, 200, view)
+        self.assertEqual(view['operation']['operator_reason'], reason)
+
 
 if __name__ == '__main__':
     unittest.main()

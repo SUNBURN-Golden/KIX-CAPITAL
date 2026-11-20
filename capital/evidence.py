@@ -1,5 +1,9 @@
 """Offline audit evidence pack and its verifier.
 
+Optional operator_reason context is included verbatim in export_manifest receipts
+and overlay entries, and in the workspace_audit operator_reasons digest. Section
+hashes cover this context; it is not authentication or approval evidence.
+
 `scripts/evidence_pack.py --workspace DIR --out DIR` composes one JSON document
 (format KIX_CAPITAL_EVIDENCE_PACK_V1) over DIR/workspace.json bytes: the export
 manifest, the offline workspace audit, the reconciliation report, the decision

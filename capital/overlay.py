@@ -93,7 +93,8 @@ _WITNESS_NUMERATORS = ('accrued_interest_num', 'accrued_default_num')
 _REPAYMENT_REQUIRED = frozenset({
     'advance_ref', 'amount_krw', 'unapplied_before_krw', 'allocation', 'witness', 'terms_binding',
     'f04_operation_id', 'f04_receipt_ref', 'label', 'basis'})
-_REPAYMENT_OPTIONAL = frozenset({'evidence_ref', 'proposal_id'})
+OPERATOR_REASON = re.compile(r'\A[\x20-\x7E]{1,200}\Z')
+_REPAYMENT_OPTIONAL = frozenset({'evidence_ref', 'proposal_id', 'operator_reason'})
 _NO_PAYMENTS = {'paid_default_krw': 0, 'paid_interest_krw': 0, 'principal_krw': 0,
                 'unapplied_cash_krw': 0, 'postings': 0}
 
@@ -223,6 +224,9 @@ def validate_entry(entry):
         shape = {**shape, 'recovery_witness': dict}
     if entry['kind'] == KIND_CLOCK and type(payload) is dict and 'tick_directive' in payload:
         shape = {**shape, 'tick_directive': dict}
+    if entry['kind'] == KIND_CLOCK and type(payload) is dict and 'operator_reason' in payload:
+        shape = {**shape, 'operator_reason': str}
+        _validate_operator_reason(payload)
     if shape is None or type(payload) is not dict or set(payload) != set(shape):
         raise OverlayError('payload keys')
     for key, kind in shape.items():
@@ -243,10 +247,17 @@ def _flat_ints(block, keys):
         raise OverlayError('repayment integers')
 
 
+def _validate_operator_reason(payload):
+    if 'operator_reason' in payload and (type(payload['operator_reason']) is not str
+            or OPERATOR_REASON.fullmatch(payload['operator_reason']) is None):
+        raise OverlayError('payload operator_reason')
+
+
 def _validate_repayment(payload):
     """Exact shape of a repayment payload: optional citations, nested blocks, nullable F04 refs."""
     if type(payload) is not dict or not _REPAYMENT_REQUIRED <= set(payload) <= _REPAYMENT_REQUIRED | _REPAYMENT_OPTIONAL:
         raise OverlayError('payload keys')
+    _validate_operator_reason(payload)
     if type(payload['advance_ref']) is not str or not payload['advance_ref']:
         raise OverlayError('payload advance_ref')
     if not _int(payload['amount_krw']) or not _int(payload['unapplied_before_krw']):
@@ -690,7 +701,7 @@ def accrual_postings(state, to_day, subjects):
 
 
 def advance_entries(operation_id, state, journal_length, *, to_day, reason, binding, subjects,
-                    margin_before=(), margin_after=()):
+                    margin_before=(), margin_after=(), operator_reason=None):
     """The entries one advance_day command appends, in order. Pure; nothing is stored here.
 
     `binding` is {'terms_version', 'status'} and is recorded only when no binding exists yet.
@@ -707,6 +718,8 @@ def advance_entries(operation_id, state, journal_length, *, to_day, reason, bind
                     'sim_day': to_day, 'kind': KIND_CLOCK,
                     'payload': {'from_sim_day': from_day, 'to_sim_day': to_day, 'reason': reason,
                                 'actor': ACTOR, 'clock_source': CLOCK_SOURCE}})
+    if operator_reason is not None:
+        entries[-1]['payload']['operator_reason'] = operator_reason
     for posting in accrual_postings(state, to_day, subjects):
         entries.append({'overlay_id': f"{operation_id}:interest:{posting['advance_id']}",
                         'after_journal_index': journal_length, 'sim_day': to_day,
@@ -716,7 +729,7 @@ def advance_entries(operation_id, state, journal_length, *, to_day, reason, bind
 
 
 def repayment_entry(operation_id, state, *, journal_index, advance_ref, amount, denominator, principal_before,
-                    terms_version, split, f04=None, evidence_ref=None, proposal_id=None):
+                    terms_version, split, f04=None, evidence_ref=None, proposal_id=None, operator_reason=None):
     """The one entry a post_repayment command appends. Pure; nothing is stored here.
 
     `split` is the shared allocation (terms.allocate); `f04` is (operation id, receipt ref) of the
@@ -733,6 +746,8 @@ def repayment_entry(operation_id, state, *, journal_index, advance_ref, amount, 
         'f04_operation_id': None if f04 is None else f04[0],
         'f04_receipt_ref': None if f04 is None else f04[1],
         'label': LABEL, 'basis': BASIS}
+    if operator_reason is not None:
+        payload['operator_reason'] = operator_reason
     if evidence_ref is not None:
         payload['evidence_ref'] = evidence_ref
     if proposal_id is not None:
@@ -760,7 +775,7 @@ def _repayment_receipt(position, entry):
             'operation_id': payload['f04_operation_id'], 'receipt_ref': payload['f04_receipt_ref']},
         'unapplied_after_krw': split['unapplied_after_krw'], 'close_gate': gate,
         'payment_basis': PAYMENT_BASIS, 'basis': BASIS}
-    for key in ('evidence_ref', 'proposal_id'):
+    for key in ('evidence_ref', 'proposal_id', 'operator_reason'):
         if key in payload:
             receipt[key] = payload[key]
     return receipt
@@ -787,6 +802,7 @@ def operation_receipt(entries, operation_id):
     prefix = f'{operation_id}:interest:'
     payload = clock['payload']
     return {
+        **({'operator_reason': payload['operator_reason']} if 'operator_reason' in payload else {}),
         'operation_id': operation_id, 'op': COMMAND_OP, 'outcome': 'APPLIED',
         'from_sim_day': payload['from_sim_day'], 'to_sim_day': payload['to_sim_day'],
         'reason': payload['reason'], 'sim_day': clock['sim_day'],
