@@ -81,6 +81,7 @@ GET_PROBES = {
     '/api/overlay/slices': ['/api/overlay/slices'],
     '/api/portfolio/snapshot': [f'/api/portfolio/snapshot?instance_id={INSTANCE}'],
     '/api/risk': ['/api/risk'],
+    '/api/risk/shared-caps': ['/api/risk/shared-caps'],
     '/api/risk/covenants': ['/api/risk/covenants'],
     '/api/risk/scenarios': ['/api/risk/scenarios', '/api/risk/scenarios/largest-advance-default'],
     '/api/policy': ['/api/policy', '/api/policy/simulation', '/api/policy/shadow'],

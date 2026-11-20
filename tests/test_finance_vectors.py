@@ -84,7 +84,6 @@ FRESH = ((0, 0, 0, 95000), (0, 0, 0, 5000))
 PLATFORM_FIRST = ((92000, 0, 0, 3000), (5000, 0, 0, 0))
 CANCELLED_AFTER_PAY = ((92000, 3000, 92000, 0), (5000, 0, 5000, 0))
 FROZEN = 'DISTRIBUTION_ORDER_FROZEN'
-BLOCKED = 'DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED'
 SCENARIO_STEPS = {
     'shortfall-platform': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
@@ -99,13 +98,13 @@ SCENARIO_STEPS = {
     'partial-before': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
         (REFUND, 'ACCEPTED', None, False, *FRESH, 97000, 40000, 0),
-        (DISTRIBUTE, 'REJECTED', BLOCKED, False, *FRESH, 97000, 40000, 0),
+        (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 40000, 0),
     ],
     'partial-after': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
         (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 0, 0),
         (REFUND, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 40000, 0),
-        (DISTRIBUTE, 'REJECTED', BLOCKED, False, *PLATFORM_FIRST, 0, 40000, 0),
+        (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 40000, 0),
     ],
     'full-after': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
@@ -120,7 +119,7 @@ SCENARIO_STEPS = {
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
         (REFUND, 'ACCEPTED', None, False, *FRESH, 97000, 40000, 0),
         (REFUND, 'ACCEPTED', None, False, *FRESH, 97000, 100000, 0),
-        (DISTRIBUTE, 'REJECTED', BLOCKED, False, *FRESH, 97000, 100000, 0),
+        (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 100000, 0),
     ],
     'duplicate-statement': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
@@ -234,6 +233,7 @@ FACADE_READS = [
     ('/api/overlay', ['overlay_state']),
     ('/api/overlay/slices', ['slice_registry_listing']),
     ('/api/risk', ['risk_state']),
+    ('/api/risk/shared-caps', ['shared_caps']),
     ('/api/risk/covenants', ['covenant_state']),
     ('/api/risk/scenarios', ['whatif_index']),
     ('/api/risk/scenarios/{id}', ['whatif_scenario']),
@@ -256,7 +256,7 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertEqual(a['vector_role'], 'INPUT_VECTOR_CANDIDATE')
         self.assertIs(a['semantic_conformance'], False)
         self.assertEqual(a['upstream_nodes_completed'], [])
-        self.assertEqual(a['source_commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(a['source_commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertIn('not SEMANTIC_CONFORMANCE', a['note'])
         self.assertIn('completes no upstream node', a['note'])
 
@@ -395,7 +395,7 @@ class ScenarioVectorTests(unittest.TestCase):
                     duplicates += 1
                     self.assertEqual(step['view_digest'], previous, (scenario['id'], step['ordinal']))
                 previous = step['view_digest']
-        self.assertEqual((rejected, duplicates), (7, 2))
+        self.assertEqual((rejected, duplicates), (4, 2))
 
     def test_view_digests_match_the_live_service_scenarios(self):
         service = CapitalService()
@@ -751,14 +751,14 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(group['cap16_exact_tuple'], 'NOT_BOUND')
         self.assertIs(group['catalogue'], False)
 
-    def test_exactly_the_thirty_nine_get_routes_in_contract_order(self):
-        self.assertEqual(self.group['route_count'], 39)
+    def test_exactly_the_forty_get_routes_in_contract_order(self):
+        self.assertEqual(self.group['route_count'], 40)
         self.assertEqual([(row['path'], [item['definition'] for item in row['response_definitions']])
                           for row in self.group['routes']], FACADE_READS)
 
     def test_post_and_static_routes_are_left_out(self):
         left_out = [route for route in self.contract['routes'] if route['kind'] != 'api' or route['method'] != 'GET']
-        self.assertEqual(len(self.contract['routes']), 51)
+        self.assertEqual(len(self.contract['routes']), 52)
         self.assertEqual(len(left_out), 12)
         self.assertTrue(any(route['method'] == 'POST' for route in left_out))
         self.assertTrue(any(route['kind'] == 'static' for route in left_out))
@@ -795,7 +795,7 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(self.by_path['/api/statement']['closure'], [
             'approved_row', 'exposure_row', 'gap', 'refund_row', 'reserved_row', 'scope', 'settlement_row', 'statement'])
         self.assertEqual(self.by_path['/api/operations/{operation_id}']['closure'], [
-            'accepted_receipt', 'command_result', 'credit_view', 'recovery_approvals',
+            'accepted_receipt', 'command_result', 'credit_open_terms', 'credit_view', 'recovery_approvals',
             'rejected_receipt', 'repayment', 'unknown_operation'])
         self.assertIn('statement', self.by_path['/api/export/manifest']['closure'])
         self.assertGreater(len(self.by_path['/api/export/manifest']['closure']), 40)

@@ -20,6 +20,7 @@ from capital.store import FileWorkspace, InMemoryStorage, WorkspaceError, canoni
 from capital.terms import DecisionNoteTermsPolicy, read_decision_block
 from capital.verify import verify_manifest
 from test_overlay import draw_book, formula, run, tick, terms_value, tier
+from protocol_history import legacy_f04_digest, legacy_settlement_views, replay_t05_prefix
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('seed_overlay_recovery', ROOT / 'scripts/seed_overlay_recovery.py')
@@ -384,7 +385,7 @@ class AuthorityAndRebaseTests(unittest.TestCase):
     def test_acceleration_split_and_jump_use_same_daily_amounts(self):
         def prepare():
             source, s = book(amount=48000)
-            source.replay('sim-committed', 'partial-before')
+            source.replay_refund_before_distribution('sim-committed')
             tick(s, 'call', 10, 20)
             return s
         a, b = prepare(), prepare()
@@ -437,15 +438,17 @@ class ReplayJourneyTests(unittest.TestCase):
         self.assertFalse(result['funds_executed'])
 
     def test_historical_t05_replays_original_overlay_and_f04_digests(self):
-        history = json.loads((ROOT / 'tests/historical/t05_replay.json').read_text())
+        raw = (ROOT / 'tests/historical/t05_replay.json').read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                         'ee6c01c9178f0bb3166d8f922df680792ddda2604df6b8405dbbcf7ac5949e2c')
+        history = json.loads(raw)
         state = overlay.fold(history['overlay']['journal'], len(history['journal']))
         self.assertEqual(overlay.state_digest(state), history['overlay']['overlay_state']['digest'])
         self.assertEqual(state, history['overlay']['overlay_state']['state'])
-        source = margin.ScenarioReplaySource()
-        for event in history['source_replay']:source.replay(event['fixture_id'], event['scenario_id'])
-        self.assertEqual(source.rows, history['final_source_views'])
+        source = replay_t05_prefix(history)
+        self.assertEqual(legacy_settlement_views(source), history['final_source_views'])
         producer = PinnedFsmProducer(fixtures=source).restored(history['journal'])
-        self.assertEqual(producer.state_digest(), history['f04_digest'])
+        self.assertEqual(legacy_f04_digest(producer), history['f04_digest'])
         self.assertNotIn('recovery', state)
         # Pin the preserved pre-rebase bytes independently of the current golden and git HEAD.
         historical_bytes = (ROOT / 'tests/historical/journey_t05_sim.json').read_bytes()
