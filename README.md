@@ -353,19 +353,18 @@ the first page. Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage
 returns 503, including for continuing cursors; no empty substitute book is exported.
 
 `python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
-cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
-It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
-`tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
-bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+cut counts, built-in fixtures, F04 replay, overlay fold and overlay links.
+It exits 1 on an input refusal or corruption. The pinned schema and tamper
+corpus are in `tests/vectors/facts/`. Run `python3 scripts/facts_vectors.py --check`
+to check their bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
 
-The read phase is bounded before any page is opened: a directory may hold at
-most 4096 entries, 2500 matched `page-*.json` files of at most 8 MiB each and
-64 MiB in aggregate, and JSON nesting no deeper than 32 levels
-(`capital.facts.INPUT_LIMITS`). Symlinks and other non-regular page files are
-refused without being followed or opened, and a page that is replaced, renamed
-or modified while it is read fails deterministically — including an atomic
-replacement after the file is opened, caught by rechecking the pathname's
-identity after the read. These input-budget failures report `INPUT_DIR_ENTRIES`,
+The read phase limits a directory to 4096 entries and 2500 matched `page-*.json`
+files before opening any page. It checks the 8 MiB per-page and 64 MiB aggregate
+budgets before each open and checks the 32-level JSON nesting budget before
+decoding (`capital.facts.INPUT_LIMITS`). The verifier refuses symlinks and other
+non-regular pages and uses no-follow, nonblocking opens to guard against races.
+It compares the pathname and descriptor before and after reading to detect
+page replacement and changes in file metadata. Input refusals report `INPUT_DIR_ENTRIES`,
 `INPUT_PAGES`, `INPUT_PAGE_TOO_LARGE:<file>`, `INPUT_TOTAL_TOO_LARGE:<file>`,
 `INPUT_NOT_REGULAR:<file>`, `INPUT_CHANGED:<file>` and `INPUT_JSON_DEPTH:<file>`,
 kept distinct from the semantic mismatch reasons. They are demo technical bounds

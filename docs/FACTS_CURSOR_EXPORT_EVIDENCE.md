@@ -227,3 +227,47 @@ preserved under `/tmp/facts-bounds-r2-final-browser-7sg8qihh` before restoration
 All inputs and replay results remain `SIMULATED`, source authority and
 authentication `NOT_BOUND`. No financial terms, real provider, credentials,
 deployment or funds were introduced. No commit, push or external post was made.
+
+## facts-verifier-input-bounds — PR fix round 3 (2026-11-20 KST)
+
+The supplied acceptance log ends at the missing `build/acceptance-evidence.json`
+upload. A separate CI run from the same runner rollout records Playwright 1.58.2
+failing Chromium setup on Ubuntu 26.04 before the same upload error. The
+previous PR head used `ubuntu-latest`. This branch already includes main's
+`4b0c8b4` runner fix, which pins both jobs that install Chromium to Ubuntu 24.04
+and retains the required artifact and every test step. Local Playwright package
+checks reproduced the Ubuntu 26.04 installation error in a network namespace
+and resolved the Chromium installation plan for Ubuntu 24.04 in a dry run.
+
+The defaults are 4096 directory entries, 2500 matched pages, 8 MiB per page,
+64 MiB aggregate, and 32 levels of JSON nesting. A bounded scan of each page's
+bytes now checks nesting before decoding and ignores delimiters in quoted strings.
+Even input beyond the decoder's recursion limit returns `INPUT_JSON_DEPTH`.
+Duplicate keys and truncated shallow pages still return `UNREADABLE`. The reader
+requires no-follow and nonblocking opens and compares device, inode, size, mtime
+and ctime across `lstat` and `fstat`. Tests substitute a symlink and a FIFO before
+open and retain the existing cases for swaps after open. The accuracy of in-place
+change detection depends on the filesystem's timestamp resolution.
+
+| Local check | Result |
+|---|---|
+| Full acceptance ladder on Python 3.12 | All nine stages passed, including 1,602 unit tests and 113 Chromium tests. `build/acceptance-evidence.json` reports `ok: true`. |
+| Facts unit tests and corpus byte check | 26 passed. All 133 corpus files matched, and the clean CLI run verified 7 pages and 27 rows. |
+| Replayable maximum page-count fixture | 2,500 pages and 2,500 rows verified. The largest page was 5,251 bytes and the aggregate was 11,317,587 bytes. |
+| Default directory and aggregate boundaries | 4,096 entries verified and 4,097 refused before page reads. Exactly 64 MiB reached semantic checks and one byte over returned `INPUT_TOTAL_TOO_LARGE`. |
+| Oversize CLI input | A sparse file one byte above 8 MiB gave exit 1 and `INPUT_PAGE_TOO_LARGE` with zero accepted pages and no contents in the output. |
+| File metadata change | Rewriting a page in place and restoring its size and mtime still returned `INPUT_CHANGED` after ctime changed. |
+| Vendored F04 tests | 8 passed. |
+| Docs surface, compileall, JavaScript syntax, and diff checks | Passed. |
+| Browser suite | All 113 Chromium tests passed. |
+| Release | Two builds matched byte for byte. All 11 packaged smoke checks passed. |
+
+The full ladder used a disposable checkout of `227b1d5` with the round-3
+verifier and test changes applied and only loopback enabled. The evidence file
+describes that local working tree.
+
+The checked-out baseline was already merged with `origin/main` at `b24f175`.
+Main's earlier vendor repin to `8ba7f6c` is present in that baseline. All 69
+file hashes match its manifest, and the vendor tree, manifest and legacy export
+match both HEAD and `origin/main`. The local verification evidence is `SIMULATED`
+with authentication `NOT_BOUND`.

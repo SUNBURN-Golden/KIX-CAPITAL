@@ -85,14 +85,12 @@ class BoundaryTests(unittest.TestCase):
             entries = list(os.scandir(d))
             names = sorted(entry.name for entry in entries)
             sizes = [os.lstat(Path(d) / name).st_size for name in names]
-            depth = max(facts._json_depth(facts.loads((Path(d) / name).read_bytes()))
-                        for name in names)
             cases = [
                 ('max_dir_entries', len(entries), 'INPUT_DIR_ENTRIES'),
                 ('max_pages', len(names), 'INPUT_PAGES'),
                 ('max_page_bytes', max(sizes), 'INPUT_PAGE_TOO_LARGE:'),
                 ('max_total_bytes', sum(sizes), 'INPUT_TOTAL_TOO_LARGE:'),
-                ('max_json_depth', depth, 'INPUT_JSON_DEPTH:'),
+                ('max_json_depth', 9, 'INPUT_JSON_DEPTH:'),  # The pinned clean corpus peaks at 9.
             ]
             for key, exact, reason in cases:
                 with self.subTest(bound=key):
@@ -157,9 +155,10 @@ class BoundaryTests(unittest.TestCase):
 
         real_open, real_read = os.open, os.read
 
-        def swap_once(target_name, act):
+        def swap_once(target_name, act, flag=0):
             def wrapper(path, flags, *args):
                 if Path(path).name == target_name:
+                    self.assertEqual(flags & flag, flag)
                     act(Path(path))
                 return real_open(path, flags, *args)
             return wrapper
@@ -177,6 +176,23 @@ class BoundaryTests(unittest.TestCase):
             with patch('capital.facts.os.open', swap_once('page-0004.json', Path.unlink)):
                 self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_CHANGED:page-0004.json')
             copy_clean(d)
+            def symlinked(path):
+                other = path.with_name('other.tmp')
+                path.rename(other)
+                path.symlink_to(other)
+            with patch('capital.facts.os.open', swap_once('page-0004.json', symlinked, os.O_NOFOLLOW)):
+                self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_CHANGED:page-0004.json')
+            (Path(d) / 'page-0004.json').unlink()
+            copy_clean(d)
+            if hasattr(os, 'mkfifo'):
+                def put_fifo(path):
+                    path.unlink()
+                    os.mkfifo(path)
+                with patch('capital.facts.os.open', swap_once('page-0000.json', put_fifo, os.O_NONBLOCK)), \
+                        patch('capital.facts.os.read', side_effect=AssertionError('must not read')):
+                    self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_CHANGED:page-0000.json')
+                (Path(d) / 'page-0000.json').unlink()
+                copy_clean(d)
             # A same-size rewrite observed through a distinct mtime; an in-place
             # rewrite inside the filesystem timestamp granularity is undetectable.
             def rewritten(path):
@@ -262,12 +278,12 @@ class BoundaryTests(unittest.TestCase):
         depth = facts.INPUT_LIMITS['max_json_depth'] + 1
         with tempfile.TemporaryDirectory() as d:
             page = Path(d) / 'page-0000.json'
-            # Nesting that parses but exceeds the depth budget.
             page.write_bytes(b'{"k":' * depth + b'1' + b'}' * depth)
             self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_JSON_DEPTH:page-0000.json')
-            # Nesting beyond the interpreter recursion limit stays a clean refusal.
+            # The same input-budget reason applies beyond the decoder's recursion limit.
             page.write_bytes(b'[' * 20000 + b'1' + b']' * 20000)
-            self.assertEqual(facts.verify_dir(d)['reason'], 'UNREADABLE:page-0000.json')
+            with patch('capital.facts.loads', side_effect=AssertionError('must not decode')):
+                self.assertEqual(facts.verify_dir(d)['reason'], 'INPUT_JSON_DEPTH:page-0000.json')
             page.write_bytes(b'{"a":1,"a":2}')
             self.assertEqual(facts.verify_dir(d)['reason'], 'UNREADABLE:page-0000.json')
             clean = (CORPUS / 'clean/page-0000.json').read_bytes()
@@ -275,7 +291,8 @@ class BoundaryTests(unittest.TestCase):
             self.assertEqual(facts.verify_dir(d)['reason'], 'UNREADABLE:page-0000.json')
             # A document exactly at the depth budget passes the depth check and
             # reaches the canonical-encoding check; one level over refuses.
-            raw = b'{"k":' * (depth - 1) + b'1' + b'}' * (depth - 1) + b' '
+            text = canonical_bytes('escaped quote: " escaped backslash: \\ then brackets: ' + '[{' * depth)
+            raw = b'{"k":' * (depth - 1) + text + b'}' * (depth - 1) + b' '
             page.write_bytes(raw)
             report = facts.verify_dir(d, limits={'max_json_depth': depth - 1})
             self.assertEqual(report['reason'], 'NONCANONICAL_ENCODING:page-0000.json')

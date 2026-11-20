@@ -46,6 +46,7 @@ INPUT_LIMITS = {
 }
 PAGE_GLOB = 'page-*.json'
 _CHANGED_ERRNOS = {errno.ENOENT, errno.ENOTDIR, getattr(errno, 'ELOOP', errno.ENOENT)}
+_JSON_STRUCTURE = re.compile(rb'["\\{}\[\]]')
 UINT_MAX = 99_999_999
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 CURSOR = re.compile(r'kfc1\.([0-9]{8})\.([0-9a-f]{64})\Z')
@@ -284,20 +285,25 @@ def _page_names(directory, bounds):
     return None, sorted(names)
 
 
+def _page_identity(info):
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+
 def _read_regular(path, before):
     """Read exactly `before.st_size` bytes from a regular file; refuse any observed change.
 
-    The descriptor is opened without following a final symlink (where the
-    platform offers O_NOFOLLOW) and fstat-compared to the pre-open lstat before
-    and after the bounded read, so replacement, truncation, growth and a
-    modify-in-place observed through inode, size or mtime all fail identically.
+    The descriptor is opened without following a final symlink and compared to
+    the pre-open lstat before and after the bounded read. Replacement, truncation,
+    growth and in-place changes observed through file metadata all fail identically.
     A non-regular fd is never read, so a substituted fifo cannot block the read.
     Because an open descriptor keeps the original inode even when the pathname
     is renamed away or atomically replaced mid-read, the pathname is checked
     again with lstat after the read and must still name the same regular file.
     """
-    flags = (os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0)
-             | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+    nofollow, nonblock = getattr(os, 'O_NOFOLLOW', 0), getattr(os, 'O_NONBLOCK', 0)
+    if not nofollow or not nonblock:
+        raise OSError(errno.ENOTSUP, 'safe page open unavailable')
+    flags = os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | nofollow | nonblock
     try:
         fd = os.open(path, flags)
     except OSError as exc:
@@ -306,9 +312,7 @@ def _read_regular(path, before):
         raise
     try:
         opened = os.fstat(fd)
-        if (not stat.S_ISREG(opened.st_mode)
-                or (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
-                != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)):
+        if not stat.S_ISREG(opened.st_mode) or _page_identity(opened) != _page_identity(before):
             raise _ChangedError()
         chunks, remaining = [], before.st_size
         while remaining:
@@ -319,9 +323,7 @@ def _read_regular(path, before):
             remaining -= len(chunk)
         if os.read(fd, 1):
             raise _ChangedError()
-        after = os.fstat(fd)
-        if (after.st_ino, after.st_size, after.st_mtime_ns) != (
-                opened.st_ino, opened.st_size, opened.st_mtime_ns):
+        if _page_identity(os.fstat(fd)) != _page_identity(opened):
             raise _ChangedError()
         try:
             named = os.lstat(path)
@@ -329,29 +331,37 @@ def _read_regular(path, before):
             if exc.errno in _CHANGED_ERRNOS:
                 raise _ChangedError() from exc
             raise
-        if (not stat.S_ISREG(named.st_mode)
-                or (named.st_dev, named.st_ino, named.st_size, named.st_mtime_ns)
-                != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)):
+        if not stat.S_ISREG(named.st_mode) or _page_identity(named) != _page_identity(opened):
             raise _ChangedError()
         return b''.join(chunks)
     finally:
         os.close(fd)
 
 
-def _json_depth(value):
-    """Nesting depth of a decoded document: a scalar is 0; []/{} each add one."""
-    depth, stack = 0, [(value, 0)]
-    while stack:
-        node, level = stack.pop()
-        if type(node) is dict:
-            children = node.values()
-        elif type(node) is list:
-            children = node
-        else:
-            continue
-        depth = max(depth, level + 1)
-        stack.extend((child, level + 1) for child in children)
-    return depth
+def _exceeds_json_depth(raw, limit):
+    """Count containers before decoding, ignoring brackets inside JSON strings."""
+    depth, escaped_at = 0, -1
+    in_string = False
+    for match in _JSON_STRUCTURE.finditer(raw):
+        token = match[0]
+        if in_string:
+            if match.start() == escaped_at:
+                continue
+            if token == b'\\':
+                escaped_at = match.end()
+            elif token == b'"':
+                in_string = False
+        elif token == b'"':
+            in_string = True
+        elif token in (b'{', b'['):
+            depth += 1
+            if depth > limit:
+                return True
+        elif token in (b'}', b']'):
+            if depth == 0:
+                return False  # Let the strict decoder reject the unmatched closer.
+            depth -= 1
+    return False
 
 
 def verify_dir(directory, *, limits=None):
@@ -393,13 +403,16 @@ def verify_dir(directory, *, limits=None):
             return report('INPUT_TOTAL_TOO_LARGE:' + name)
         try:
             raw = _read_regular(path, before)
-            page = loads(raw)
         except _ChangedError:
             return report('INPUT_CHANGED:' + name)
-        except (OSError, ValueError, UnicodeError, RecursionError):
+        except OSError:
             return report('UNREADABLE:' + name)
-        if _json_depth(page) > bounds['max_json_depth']:
+        if _exceeds_json_depth(raw, bounds['max_json_depth']):
             return report('INPUT_JSON_DEPTH:' + name)
+        try:
+            page = loads(raw)
+        except (ValueError, RecursionError):
+            return report('UNREADABLE:' + name)
         try:
             if raw != canonical_bytes(page):
                 return report('NONCANONICAL_ENCODING:' + name)

@@ -555,8 +555,8 @@ Empty overlays omit both overlay cut keys under the adopted
 [overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
 
 The offline verifier (`python3 -m capital.verify --facts DIR`,
-`capital.facts.verify_dir`) bounds its inputs before reading or accumulating
-anything (`capital.facts.INPUT_LIMITS`, a demo bound, not a financial limit):
+`capital.facts.verify_dir`) uses the following local demo input budgets from
+`capital.facts.INPUT_LIMITS`.
 
 | Bound | Default | Refusal |
 |---|---|---|
@@ -564,18 +564,16 @@ anything (`capital.facts.INPUT_LIMITS`, a demo bound, not a financial limit):
 | Matched `page-*.json` files | 2500 | `INPUT_PAGES` |
 | Bytes per page file (via lstat, before open) | 8 MiB | `INPUT_PAGE_TOO_LARGE:<file>` |
 | Aggregate page bytes | 64 MiB | `INPUT_TOTAL_TOO_LARGE:<file>` |
-| JSON nesting depth | 32 | `INPUT_JSON_DEPTH:<file>` |
+| JSON nesting depth (before decoding) | 32 | `INPUT_JSON_DEPTH:<file>` |
 
-Symlinks, fifos, directories and other non-regular `page-*.json` entries are
-refused with `INPUT_NOT_REGULAR:<file>` on `lstat`, without following or opening
-them — a fifo can never block the read. A page that is renamed, replaced or
-modified during the read fails deterministically with `INPUT_CHANGED:<file>`:
-the open descriptor is fstat-compared to the pre-open lstat (inode, size,
-mtime), and because an open descriptor keeps the original inode through an
-atomic pathname replacement, the pathname is checked again with lstat after
-the read and must still name the same regular file. An in-place rewrite inside
-the filesystem timestamp granularity is the documented undetectable case.
-`INPUT_*` reasons are input-budget failures, distinct from semantic
+The verifier refuses symlinks, FIFOs and directories with `INPUT_NOT_REGULAR:<file>`
+at `lstat`. It requires no-follow and nonblocking open flags to guard against
+substitutions between `lstat` and `open`. The descriptor must match the pre-open
+`lstat` and the post-read pathname in device, inode, size, mtime and ctime.
+Observed changes return `INPUT_CHANGED:<file>`. Detection of in-place changes
+depends on filesystem timestamp resolution. The depth scan counts JSON arrays
+and objects before decoding and ignores delimiters inside quoted strings.
+`INPUT_*` reasons identify input refusals, distinct from semantic
 mismatches (`PAGE_SHAPE`, `*_MISMATCH`, `UNREADABLE`, `NONCANONICAL_ENCODING`);
 the CLI still exits 0 on success, 1 on any refusal and 2 on misuse, prints only
 file names and reason codes — never page contents — and writes nothing. The
