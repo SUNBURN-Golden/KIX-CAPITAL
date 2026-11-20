@@ -24,6 +24,7 @@ body.desk-open main>:not(#desk):not(#notice):not(#recovery):not(footer){display:
 #desk :focus-visible,#desk-refresh:focus-visible,nav a:focus-visible,#role:focus-visible{outline:3px solid #1f6fd1;outline-offset:2px}
 @media(max-width:480px){.desk-tiles{grid-template-columns:1fr}.desk-bar{align-items:stretch}.desk-bar input,.desk-bar select{max-width:100%;width:100%}}
 
+#desk-cashflow{min-width:0;max-width:100%;overflow-wrap:anywhere;margin-top:24px}#desk-cashflow .table-wrap{max-width:100%;overflow:auto}#desk-cashflow table{min-width:42rem}#desk-cashflow td{white-space:normal;overflow-wrap:anywhere;max-width:24rem}#desk-cashflow a{display:inline-block;padding:8px 2px}#desk-cashflow h5{font-size:12px}#desk-cashflow section{margin:16px 0}#desk-cash-detail:focus{outline:3px solid #7e9c45;outline-offset:3px}
 #desk-slices{border-top:1px solid var(--line);margin-top:24px;padding-top:12px;min-width:0;max-width:100%;overflow-wrap:anywhere}
 #desk-slices .slices-query{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}
 #desk-slices pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:26rem}#desk-slices dl{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}#desk-slices dd{text-align:left;overflow-wrap:anywhere}
