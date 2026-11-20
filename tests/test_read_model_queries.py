@@ -159,7 +159,9 @@ class KeySetTests(unittest.TestCase):
         advance_body = service.read_query('credit_advance', advance)['body']
         claim_body = service.read_query('credit_claim', 'sim-committed')['body']
         settlement_body = service.read_query('settlement', 'sim-committed')['body']
-        self.assertEqual((len(settlement_body), len(advance_body), len(claim_body)), (25, 51, 24))
+        self.assertEqual((len(settlement_body), len(advance_body), len(claim_body)), (25, 52, 25))
+        self.assertEqual(advance_body['open_terms'], claim_body['open_terms'])
+        self.assertNotIn('open_terms', settlement_body)
         for name in FLAGS:
             self.assertIs(advance_body[name], False, name)
             self.assertIs(claim_body[name], False, name)

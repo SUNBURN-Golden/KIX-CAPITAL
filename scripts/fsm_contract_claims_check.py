@@ -237,9 +237,8 @@ def check_refund_open_no_journal():
 
 def check_distribution_blocked():
     book = _refunded_book(1000)
-    return _code(lambda: book.distribute(
-        'set-1', idempotency_key='dist-1', order=['organizer', 'platform'],
-    ))
+    book.distribute('set-1', idempotency_key='dist-1', order=['organizer', 'platform'])
+    return _claim(book)['distribution_blocked']
 
 
 def check_partial_bearer():

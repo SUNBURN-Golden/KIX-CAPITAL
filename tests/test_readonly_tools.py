@@ -60,7 +60,7 @@ class ReadOnlyTests(unittest.TestCase):
         self.assertFalse(full['external_return_closed']);self.assertFalse(full['bank_debit_observed'])
         self.assertEqual(split['refund_face'],100000)
         self.assertFalse(split['fixture_reclassified'])
-        self.assertEqual(split['refund_bearer_policy'],'UNDEFINED')
+        self.assertEqual(split['refund_bearer_policy'],'REQUESTER')
         self.assertEqual(split['recovery_due'],0)
 
     def test_late_cash_and_duplicate_facts_never_double_allocate(self):
@@ -73,18 +73,21 @@ class ReadOnlyTests(unittest.TestCase):
 
     def test_partial_after_does_not_automatically_claw_back(self):
         after=self.final('partial-after');before=self.final('partial-before')
-        self.assertEqual(after['distributed_cash'],97000);self.assertEqual(before['distributed_cash'],0)
+        self.assertEqual(after['distributed_cash'],97000);self.assertEqual(before['distributed_cash'],97000)
         self.assertEqual(after['recovery_due'],0)
-        self.assertTrue(after['distribution_blocked']);self.assertTrue(before['distribution_blocked'])
+        self.assertFalse(after['distribution_blocked']);self.assertFalse(before['distribution_blocked'])
+        self.assertEqual(before['obligations'], after['obligations'])
+        self.assertEqual({line['payee']: line['face'] for line in before['obligations']},
+                         {'organizer': 95000, 'platform': 5000})
 
     def test_refund_fixture_is_pinned_partial_bind_refund_and_offer_refused(self):
         row=self.service.fixtures.view('sim-refund');claim=row['claim']
         committed=self.service.fixtures.view('sim-committed')
         self.assertEqual((claim['refund_face'],claim['refund_accepted'],claim['refund_outstanding']),(10000,0,10000))
-        self.assertEqual(claim['refund_bearer_policy'],'UNDEFINED')
+        self.assertEqual(claim['refund_bearer_policy'],'REQUESTER')
         self.assertIs(claim['fixture_reclassified'],False)
-        # Bearer UNDEFINED must come from the pinned view, which also blocks distribution.
-        self.assertIs(claim['distribution_blocked'],True)
+        # B5 allows settlement distribution while the credit offer stays blocked.
+        self.assertIs(claim['distribution_blocked'],False)
         self.assertRegex(claim['refund_beneficiary'] or '',r'^fixture-[a-z-]+$')
         self.assertEqual((claim['recovery_due'],claim['pg_adjustment_outstanding']),(0,0))
         self.assertEqual((claim['confirmed_cash'],claim['distributed_cash'],claim['undistributed_cash']),(97000,0,97000))

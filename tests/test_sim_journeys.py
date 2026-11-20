@@ -220,7 +220,7 @@ class T05Tests(JourneyBase):
         self.assertEqual(event['facts']['label'], 'SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT')
         self.assertEqual(event['facts']['scope'], 'DISPOSABLE_BOOK_ONLY')
         self.assertEqual(event['status'][-1],
-                         ['apply_distribution', 'DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED', True])
+                         ['apply_distribution', None, True])
         refusal = _step(self.t05, 'pinned refusal while')
         self.assertEqual(refusal['status'], [200, 'REJECTED', 'REFUND_OBLIGATION_OPEN'])
         self.assertLess(refusal['n'], _step(self.t05, 'shadow refund split')['n'])

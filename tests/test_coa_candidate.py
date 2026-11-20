@@ -22,6 +22,7 @@ from capital.server import make_server
 from capital.service import ApiError, CapitalService
 from capital.terms import read_decision_block
 from test_overlay import draw_book, formula, run, tick, tier, row, terms_value
+from protocol_history import legacy_f04_digest, replay_t05_prefix
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTE = ROOT / 'docs' / 'decisions' / 'CAPITAL_ACCOUNTS_TAX_LEGAL.md'
@@ -29,6 +30,119 @@ _SPEC = importlib.util.spec_from_file_location('facade_schema', ROOT / 'tests' /
 facade_schema = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(facade_schema)
 USD = {'namespace': 'fiat', 'reference': 'USD', 'decimals': 2, 'max_atoms': 1_000_000_000_000}
+
+
+# Reviewed digest changes induced by the Protocol pin. All other leaves use the main baseline.
+PROTOCOL_GOLDEN_LEAVES = {
+    'demo.json': (
+        (('content_digest',),
+         '2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca',
+         'a8c8d22d2e9ae837e45272f093cde1512af9938f39dbcf37abaadb96af2d3718'),
+        (('state_digest',),
+         'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45',
+         'ccf70ca8792289fe6dd8704615a75259bbb028ff582c2fede51f7e5206dcea0c'),
+    ),
+    'journey_n2_sim.json': (
+        (('steps', 7, 'expect', 0),
+         'dd1b433bf3f025fcdb2111fe1524161ba3e247055c68c10520ddffe60f4dff0d',
+         'fbfd4284cf187eaee1edad852f82c1bbac95ec8b8de107f7225e21d7a438ccd5'),
+        (('steps', 7, 'status', 0),
+         'dd1b433bf3f025fcdb2111fe1524161ba3e247055c68c10520ddffe60f4dff0d',
+         'fbfd4284cf187eaee1edad852f82c1bbac95ec8b8de107f7225e21d7a438ccd5'),
+    ),
+    'journey_t03_sim.json': (
+        (('steps', 20, 'facts', 'state_digest'),
+         '680d8180075083a7c216127bdf6c9aabb74696b0ca885b323fd954ffa221cadd',
+         '9640c21810765573c1f3ff03cd2c3fbe5603a0f7347434f2f8807ccc9445f842'),
+    ),
+    'journey_t04_sim.json': (
+        (('steps', 23, 'expect'),
+         'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45',
+         'ccf70ca8792289fe6dd8704615a75259bbb028ff582c2fede51f7e5206dcea0c'),
+        (('steps', 23, 'status'),
+         'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45',
+         'ccf70ca8792289fe6dd8704615a75259bbb028ff582c2fede51f7e5206dcea0c'),
+        (('steps', 31, 'facts', 'content_digest'),
+         '00d77f9c6935b0b796abeac523db450e519c985157e487cc511b4bd15e40249a',
+         'c15ec12bb959a4d32435282a18e3b794c34f36a308bee8c01248354207cafb0f'),
+        (('steps', 33, 'facts', 'state_digest'),
+         'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45',
+         'ccf70ca8792289fe6dd8704615a75259bbb028ff582c2fede51f7e5206dcea0c'),
+        (('steps', 36, 'facts', 'state_digest'),
+         'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45',
+         'ccf70ca8792289fe6dd8704615a75259bbb028ff582c2fede51f7e5206dcea0c'),
+    ),
+    'journey_t06_sim.json': (
+        (('steps', 12, 'expect', 0),
+         '3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7',
+         '08c9c6e59fd208e24e77abce2986f4bbf982ba503c3896ac2ba761f203723f77'),
+        (('steps', 12, 'facts', 'state_digest'),
+         '3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7',
+         '08c9c6e59fd208e24e77abce2986f4bbf982ba503c3896ac2ba761f203723f77'),
+        (('steps', 12, 'status', 0),
+         '3349640c6bbb326ba8dc432e2be40258b33c99200cf1b9a4ef2a18829041b7f7',
+         '08c9c6e59fd208e24e77abce2986f4bbf982ba503c3896ac2ba761f203723f77'),
+        (('steps', 18, 'facts', 'state_digest'),
+         'cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9',
+         '194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252'),
+        (('steps', 24, 'expect', 0),
+         'cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9',
+         '194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252'),
+        (('steps', 24, 'facts', 'state_digest'),
+         'cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9',
+         '194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252'),
+        (('steps', 24, 'status', 0),
+         'cdbc043796b9ea8dd2a13ee1655b47b1b9a62ec304830671a7a7c4908c2ae1c9',
+         '194f337062371577bda2fcc23983ed2654fdab8b04a6e01367f1c64073311252'),
+        (('steps', 31, 'facts', 'state_digest'),
+         '57def9bb0561bcaba6d730ffb67ea5c735162648604ed48f7db2ab2cf8c978b3',
+         '1d7990d7d6a95afe1efa978a2c5d7925591be391db2e7a4cc78e29cfdd7c9d2e'),
+    ),
+    'overlay_claim_slices.json': (
+        (('overlay_digest',),
+         '5a0303469ccca253d573a3a67a074634bff922f538dc687a1d437b308ba38132',
+         '8ec7100d7804d70663970bec95fb2166ab072c2f8b9836be4f2570971e8277f5'),
+    ),
+    'overlay_demo.json': (
+        (('export_manifest_v3_content_digest',),
+         'f315060fc697a3d58ef2554a4c219c623f79b26627dba3e572c498fe01320db6',
+         'd113dac446853ee2b021b6116b5a7f42017568bbbc837433e9a660d03136c215'),
+    ),
+    'overlay_observations.json': (
+        (('f04_digest',),
+         '825db5553577bfc1c0f73d5f1b6dd925bbe72ae55e751aba26469924a7710d82',
+         'e41f1091f02508fc4616e68cbc3fdf3b56c7057fa739421ed0699f6b757cff75'),
+    ),
+    'overlay_empty.json': (
+        (('export_manifest_v2_content_digest',),
+         '2f71dab1a6b7ec3640f2c7c133b0b3acbe95036f8094f9f070bea3b37b651dca',
+         'a8c8d22d2e9ae837e45272f093cde1512af9938f39dbcf37abaadb96af2d3718'),
+        (('f04_state_digest',),
+         'a8609033d8b905c49dd6e5c26b5221a5ad2e5bb67596ef629815c8a230b7ef45',
+         'ccf70ca8792289fe6dd8704615a75259bbb028ff582c2fede51f7e5206dcea0c'),
+    ),
+    'overlay_recovery.json': (
+        (('f04_digest',),
+         '280297d96c9ffaa3f96e3101c79c93f497caadeef1794336f00a2311a6f27b1f',
+         'ae855db015d267e5f592c5b3e4e98e5015e0b4e7ed6560b6993fcdbdb20cb465'),
+    ),
+}
+
+# Only the provider-capture dispatch bytes may be removed before legacy hashing.
+OBSERVATION_DISPATCH = (
+    (b"    from capital import observation_record\n    if entry['kind'] == observation_record.KIND:\n        observation_record.validate_entry(entry)\n        return\n", b""),
+    (b"        from capital import observation_record\n        from capital import recovery, slices\n        if entry['kind'] == observation_record.KIND:\n            observation_record.fold_entry(state, entry)\n        elif entry['kind'] in slices.KINDS:\n",
+     b"        from capital import recovery, slices\n        if entry['kind'] in slices.KINDS:\n"),
+    (b"    from capital import observation_record\n    for entry in entries:\n        if entry['overlay_id'] == operation_id and entry['kind'] == observation_record.KIND:\n            return observation_record.receipt(entry)\n", b""),
+)
+
+
+def without_observation_dispatch(source):
+    for extension, original in OBSERVATION_DISPATCH:
+        if source.count(extension) != 1:
+            raise AssertionError('observation dispatch must occur exactly once')
+        source = source.replace(extension, original)
+    return source
 
 
 def note_value():
@@ -56,7 +170,7 @@ class ChartFenceTests(unittest.TestCase):
         note = {row['code']: (row['name'], row['class'], row['normal']) for row in note_value()['accounts']}
         self.assertEqual(len(note), 23)
         self.assertEqual({code: spec for code, spec in coa.CHART.items() if code not in coa.CANDIDATE_ONLY}, note)
-        self.assertEqual(set(coa.CHART) - set(note), {'9790'})
+        self.assertEqual(set(coa.CHART) - set(note), {'9790', '9810', '9890'})
         self.assertEqual(coa.CHART['9790'][2], 'credit')
         self.assertEqual(coa.CHART['9700'][2], 'debit')
 
@@ -87,7 +201,7 @@ class ChartFenceTests(unittest.TestCase):
                     for entry in v1['entries'] for line in entry['lines']]
         mapped = [(coa.V1_TO_COA[prefix], side, amount) for prefix, side, amount in v1_sides]
         got = [(line['account'], line['side'], line['amount'])
-               for entry in coa_body['entries'] if entry['source'] != 'OVERLAY_INTEREST' for line in entry['lines']]
+               for entry in coa_body['entries'] if entry['source'] in ('EVIDENCE', 'JOURNAL') for line in entry['lines']]
         self.assertEqual(got, mapped)
 
     def test_chart_status_covers_the_whole_chart(self):
@@ -96,7 +210,7 @@ class ChartFenceTests(unittest.TestCase):
         self.assertEqual(set(status), set(coa.CHART))
         self.assertEqual(status['9150'], 'DERIVED_MEMO')
         self.assertEqual(status['9160'], 'DERIVED_MEMO')
-        self.assertEqual(status['1190'], 'NOT_RECORDED')
+        self.assertEqual(status['1190'], 'POSTED')
         self.assertEqual(status['4200'], 'ZERO_FEE_PLACEHOLDER')
         self.assertEqual(status['1300'], 'NOT_MODELED_V1_FIELD_RESERVED')
         self.assertEqual(status['9200'], 'NOT_POSTED')
@@ -165,6 +279,44 @@ class V1UnchangedTests(unittest.TestCase):
     GUARDED = ('capital/projection.py', 'capital/ports.py', 'capital/overlay.py', 'capital/export.py',
                'tests/golden', 'capital/vendor', '.aiops', 'docs/decisions')
 
+    def assert_protocol_bundle(self):
+        vendor = ROOT / 'capital/vendor'
+        manifest = (vendor / 'manifest.json').read_bytes()
+        self.assertEqual(hashlib.sha256(manifest).hexdigest(),
+                         '62056902f9344c4f092d1652baeac607b31ea0ecf4672b86638ac9a740a72d36')
+        files = json.loads(manifest)['files']
+        self.assertEqual(set(files), {
+            path.relative_to(vendor).as_posix() for path in vendor.rglob('*')
+            if (path.is_file() or path.is_symlink()) and path != vendor / 'manifest.json'
+            and '__pycache__' not in path.parts and path.suffix != '.pyc'
+        })
+        for relative, digest in files.items():
+            path = vendor / relative
+            self.assertFalse(path.is_symlink(), relative)
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest, relative)
+        return {'capital/vendor/manifest.json', *(f'capital/vendor/{path}' for path in files)}
+
+    def apply_protocol_golden_migration(self, name, pinned):
+        # Both old and already-migrated main can be comparison baselines.
+        for location, before, after in PROTOCOL_GOLDEN_LEAVES.get(name, ()):
+            parent = pinned
+            for part in location[:-1]:
+                parent = parent[part]
+            leaf = location[-1]
+            self.assertIn(parent[leaf], (before, after), (name, location))
+            parent[leaf] = after
+        if name in ('journey_n1_sim.json', 'journey_t05_sim.json'):
+            step = pinned['steps'][4 if name == 'journey_n1_sim.json' else 12]
+            for field in ('expect', 'status'):
+                self.assertEqual(step[field][2][0], 'apply_distribution')
+                self.assertIn(step[field][2][1], ('DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED', None))
+                self.assertIs(step[field][2][2], True)
+                step[field][2][1] = None
+            scope = step['facts'].setdefault('allocation_scope', 'SEPARATE_DISPOSABLE_BOOK')
+            self.assertEqual(scope, 'SEPARATE_DISPOSABLE_BOOK')
+        if name.startswith('journey_'):
+            pinned['digest'] = hashlib.sha256(canonical_json(pinned['steps'])).hexdigest()
+
     @staticmethod
     def _git(*args):
         return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True)
@@ -199,6 +351,7 @@ class V1UnchangedTests(unittest.TestCase):
                 self.skipTest('git unavailable')
             self.assertEqual(status.stdout.split(), [])
             base = 'HEAD'
+        vendor_paths = self.assert_protocol_bundle()
         # Keep main's live byte guard as well as the original COA change's historical guard.
         # ports.py uses the authorized append-only ObservationPort check below; overlay.py is
         # byte-pinned below to the reviewed recovery implementation. The merged closeout binding
@@ -213,7 +366,15 @@ class V1UnchangedTests(unittest.TestCase):
                                   ('tests/golden', 'capital/ports.py', 'capital/overlay.py')],
                                 'tests/golden/demo.json', 'tests/golden/overlay_empty.json')
             self.assertEqual(guarded.returncode, 0, guarded.stderr)
-            changed = guarded.stdout.split()
+            changed = [path for path in guarded.stdout.split() if path not in vendor_paths]
+            # The JSON leaf fence below covers the two repin-derived demo digests.
+            changed = [path for path in changed if path not in
+                       ('tests/golden/demo.json', 'tests/golden/overlay_empty.json')]
+            repins = 'docs/decisions/CAPITAL_UPSTREAM_REPINS.md'
+            if repins in changed:
+                self.assertEqual(hashlib.sha256((ROOT / repins).read_bytes()).hexdigest(),
+                                 'b9e79b66e6be91254b112affffb7c1aab9308ef2c046e69b3690089a9e9c8804')
+                changed.remove(repins)
             clarification = 'docs/decisions/CAPITAL_ARTIFACT_BUNDLING.md'
             if clarification in changed:
                 # Adopted supervisor clarification: pin the entire reviewed note.
@@ -232,7 +393,7 @@ class V1UnchangedTests(unittest.TestCase):
         # CAPITAL_DEFAULT_RECOVERY.md requires the recovery fold and decided interest stop/rebase.
         # Preserve the exact reviewed overlay bytes from a5b2e2d5b5ecfa820462298cf075cbc223ee60f0,
         # rather than main's earlier overlay. Export, V1 projection and vendor remain pinned to main.
-        overlay_bytes = (ROOT / 'capital/overlay.py').read_bytes()
+        overlay_bytes = without_observation_dispatch((ROOT / 'capital/overlay.py').read_bytes())
         self.assertEqual(hashlib.sha256(overlay_bytes).hexdigest(),
                          '96542b38a60d00a2454038f496e5654efff05c7e80be92592070c15323eb5780')
         # Claim slices add only these three exact dispatch extensions. Keep the
@@ -262,9 +423,10 @@ class V1UnchangedTests(unittest.TestCase):
         self.assertEqual(listed.returncode, 0)
         names = listed.stdout.split()
         self.assertIn('tests/golden/demo.json', names)
-        # overlay_demo.json is this node's one sanctioned regeneration (see the comment above); its pins are
-        # the live reproductions in test_overlay.GoldenTests and test_repayment_posting, not the base values.
-        names = [name for name in names if name != 'tests/golden/overlay_demo.json']
+        # The reviewed repayment-posting migration predates this repin. Preserve it when
+        # comparing against the historical introduction, and fence the current demo on main.
+        if base != 'origin/main':
+            names = [name for name in names if name != 'tests/golden/overlay_demo.json']
         if base == 'origin/main':
             # A golden that main added after this branch's merge point is another node's file; the merge
             # cannot contain it, so it is pinned when a worktree holds it, not here. A golden this branch
@@ -304,12 +466,9 @@ class V1UnchangedTests(unittest.TestCase):
             if name == 'tests/golden/journey_t05_sim.json':
                 # CAPITAL_DEFAULT_RECOVERY.md §4.10: only these fresh-scenario fields
                 # change. Historical journals/golden stay byte-identical and replay below.
-                from capital.margin import ScenarioReplaySource
                 from capital.producer import PinnedFsmProducer
                 history = json.loads((ROOT / 'tests/historical/t05_replay.json').read_text())
-                source = ScenarioReplaySource()
-                for event in history['source_replay']:
-                    source.replay(event['fixture_id'], event['scenario_id'])
+                source = replay_t05_prefix(history)
                 accelerated = pinned['steps'][21]
                 accelerated['name'] = 'sim-a accelerated; interest is re-based (CAPITAL_DEFAULT_RECOVERY.md §4.10)'
                 accelerated['facts'].update(interest_rebased=True, interest_basis='REBASED')
@@ -325,11 +484,13 @@ class V1UnchangedTests(unittest.TestCase):
                 repayment = next(e for e in journal if e['idempotency_key'] == 'a-repay-late')
                 unchanged = repayment['body']['amount'] == principal
                 repayment['body']['amount'] = principal
-                f04_digest = PinnedFsmProducer(fixtures=source).restored(journal).state_digest()
+                restored = PinnedFsmProducer(fixtures=source).restored(journal)
                 if unchanged:
-                    self.assertEqual(f04_digest, history['f04_digest'])
-                pinned['steps'][33]['facts']['state_digest'] = f04_digest
-                pinned['digest'] = hashlib.sha256(json.dumps(pinned['steps'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                    self.assertEqual(legacy_f04_digest(restored), history['f04_digest'])
+                self.assertIn(pinned['steps'][33]['facts']['state_digest'],
+                              (legacy_f04_digest(restored), restored.state_digest(), history['f04_digest']))
+                pinned['steps'][33]['facts']['state_digest'] = restored.state_digest()
+            self.apply_protocol_golden_migration(Path(name).name, pinned)
             current = json.loads((ROOT / name).read_text(encoding='utf-8'))
             self.assertIsInstance(current, dict, name)
             for key, value in pinned.items():
@@ -456,7 +617,8 @@ class BalanceTests(unittest.TestCase):
         body = candidate(service)
         for entry in body['entries']:
             self.assertEqual(set(entry['dimensions']),
-                             {'asset', 'advance_id', 'claim_id', 'sim_day', 'chart_version', 'terms_version'})
+                             {'asset', 'advance_id', 'claim_id', 'sim_day', 'chart_version', 'terms_version'}
+                             | ({'tier'} if entry['source'] == 'ALLOWANCE' else set()))
             self.assertEqual(entry['dimensions']['chart_version'], 'SIMULATION_FIXED_V2')
             for line in entry['lines']:
                 self.assertNotIn(':', line['account'])
@@ -740,9 +902,29 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(body['status'], 'MATCHED')
         plain = json.loads(self.get('/api/reconciliation')[1])
         self.assertEqual(len(plain['checks']), 6 + (recon.OVERLAY_CHECK_ID in [c['id'] for c in plain['checks']]))
-        self.assertEqual(len(body['checks']), len(plain['checks']) + 2)
+        self.assertEqual(len(body['checks']), len(plain['checks']) + len(recon.COA_CHECK_IDS))
         self.assertNotIn('coa_candidate', plain)
         facade_schema.validate(plain, self.route('/api/reconciliation')['response'], self.doc)
+
+    def test_allowance_route_has_required_tier_provenance_and_strict_line_evidence(self):
+        body = json.loads(self.get('/api/projection?mode=coa-candidate')[1])
+        entry = next(e for e in body['entries'] if e['source'] == 'ALLOWANCE')
+        self.assertEqual(entry['dimensions']['tier'], 'T1')
+        self.assertEqual(entry['dimensions']['advance_id'], 'sim-a')
+        self.assertEqual(entry['evidence']['operation_id'], 'a-draw')
+        self.assertEqual(body['allowance']['allowance_component_krw'], 1350)
+        self.assertEqual(body['allowance']['export'], 'NOT_IN_EXPORT_V1')
+        for mutate in ('tier', 'leg', 'extra'):
+            bad = copy.deepcopy(body)
+            changed = next(e for e in bad['entries'] if e['source'] == 'ALLOWANCE')
+            if mutate == 'tier':
+                changed['dimensions'].pop('tier')
+            elif mutate == 'leg':
+                changed['lines'][0].pop('leg')
+            else:
+                changed['evidence']['not_in_contract'] = True
+            with self.assertRaises(facade_schema.SchemaError):
+                facade_schema.validate(bad, self.route('/api/projection')['response'], self.doc)
 
     def test_roles_and_bad_modes(self):
         for role in ('organizer', 'auditor'):
