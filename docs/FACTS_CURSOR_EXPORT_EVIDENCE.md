@@ -271,3 +271,33 @@ Main's earlier vendor repin to `8ba7f6c` is present in that baseline. All 69
 file hashes match its manifest, and the vendor tree, manifest and legacy export
 match both HEAD and `origin/main`. The local verification evidence is `SIMULATED`
 with authentication `NOT_BOUND`.
+
+## Supervisor conflict resolution
+
+The merge with main at `68bc735` preserves the bounds of 4096 directory
+entries, 2500 pages, 8 MiB per page, 64 MiB aggregate, and 32 JSON nesting
+levels. Both `capital.verify --facts` and the facts input to
+`capital.evidence_crosscut` capture pages through `facts.read_page_files`
+and replay them through `facts.verify_raw_pages`. The latter applies page
+count, byte and depth budgets to already-captured pages as well.
+
+The cross-cut check hashes captured files in page-name order and extracts the
+comparison data from those bytes. A complete, nonempty capture still has a
+digest when its verification fails. A filesystem refusal leaves the digest
+null and the dependent cross-cut checks `NOT_CHECKED`. The regression tests
+cover an oversized page, a dangling
+symlink, a malformed page with a complete capture, and a page changed after
+capture. The fixtures are `SIMULATED` and authentication stays `NOT_BOUND`.
+
+| Local check | Measured result |
+|---|---|
+| `python3 -m unittest discover -s tests -v` | 1,624 passed on the full rerun with `PYTHONDONTWRITEBYTECODE=1`. |
+| Facts and cross-cut checks | 26 facts tests and 18 cross-cut tests passed. All 133 corpus files match, and the clean CLI verified seven pages and 27 rows. |
+| Replayable maximum page count | 2,500 pages and 2,500 rows verified. The largest page was 8,123 bytes and the aggregate was 18,866,587 bytes. |
+| `npm run test:browser` | 113 passed from a temporary checkout of the merge index with browser output directed to temporary paths. |
+| Vendored F04 and SHA256 checks | Eight tests passed and all 69 SHA256 pins match. Both merge parents have the same vendor tree and manifest at `8ba7f6c`. |
+| Static and documentation checks | `compileall`, `node --check`, `docs_surface.py --check` and Git whitespace checks passed. |
+
+The first unit run overlapped a focused test invocation that updated an import
+cache during the fold-fuzz file snapshot. The full rerun passed that check
+with its assertions intact. The merge resolution is staged for the supervisor.

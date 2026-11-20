@@ -364,62 +364,99 @@ def _exceeds_json_depth(raw, limit):
     return False
 
 
-def verify_dir(directory, *, limits=None):
-    """Read canonical page files only; replay locally, never write or restore a service.
-
-    The read phase is bounded by INPUT_LIMITS (overridable through `limits`):
-    directory entries, page count, per-page bytes, aggregate bytes and JSON
-    depth refuse before unbounded reads or accumulation. Input-budget failures
-    report INPUT_* reasons; semantic mismatches keep their existing reasons.
-    """
+def _input_bounds(limits):
     bounds = dict(INPUT_LIMITS)
     if limits is not None:
         bounds.update(limits)
+    return bounds
+
+
+def _check_page_size(name, size, total, bounds):
+    if size > bounds['max_page_bytes']:
+        raise FactsError('INPUT_PAGE_TOO_LARGE:' + name)
+    if total + size > bounds['max_total_bytes']:
+        raise FactsError('INPUT_TOTAL_TOO_LARGE:' + name)
+
+
+def read_page_files(directory, *, limits=None):
+    """Yield sorted (name, bytes) pairs under the filesystem budgets.
+
+    Raise FactsError with the report reason when a page cannot be captured.
+    """
+    bounds = _input_bounds(limits)
+    try:
+        directory = Path(directory)
+        reason, names = _page_names(directory, bounds)
+    except (TypeError, ValueError):
+        raise FactsError('NO_PAGES') from None
+    if reason is not None:
+        raise FactsError(reason)
+    total = 0
+    for name in names:
+        path = directory / name
+        try:
+            before = path.lstat()
+        except (FileNotFoundError, NotADirectoryError) as exc:
+            raise FactsError('INPUT_CHANGED:' + name) from exc
+        except OSError as exc:
+            raise FactsError('UNREADABLE:' + name) from exc
+        if not stat.S_ISREG(before.st_mode):
+            raise FactsError('INPUT_NOT_REGULAR:' + name)
+        _check_page_size(name, before.st_size, total, bounds)
+        try:
+            raw = _read_regular(path, before)
+        except _ChangedError as exc:
+            raise FactsError('INPUT_CHANGED:' + name) from exc
+        except OSError as exc:
+            raise FactsError('UNREADABLE:' + name) from exc
+        total += len(raw)
+        yield name, raw
+
+
+def _report(reason=None, pages=0, rows=0):
+    return {'ok': reason is None, 'reason': reason, 'pages': pages, 'rows': rows,
+            'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
+
+
+def verify_raw_pages(raw_pages, *, limits=None):
+    """Verify already-captured page bytes; replay locally, never read the directory.
+
+    `raw_pages` yields ``(name, raw_bytes)`` pairs in verification order.
+    Use ``None`` for unreadable bytes or raise FactsError with a capture
+    failure reason. Check page count, byte budgets and JSON depth before
+    decoding. `verify_dir` feeds the bounded directory reader into this core.
+    """
+    bounds = _input_bounds(limits)
     pages, rows = [], []
 
     def report(reason=None):
-        return {'ok': reason is None, 'reason': reason, 'pages': len(pages), 'rows': len(rows),
-                'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
+        return _report(reason, len(pages), len(rows))
 
-    reason, names = _page_names(directory, bounds)
-    if reason is not None:
-        return report(reason)
-    if not names:
-        return report('NO_PAGES')
     total = 0
-    for name in names:
-        path = Path(directory) / name
-        try:
-            before = path.lstat()
-        except (FileNotFoundError, NotADirectoryError):
-            return report('INPUT_CHANGED:' + name)
-        except OSError:
-            return report('UNREADABLE:' + name)
-        if not stat.S_ISREG(before.st_mode):
-            return report('INPUT_NOT_REGULAR:' + name)
-        if before.st_size > bounds['max_page_bytes']:
-            return report('INPUT_PAGE_TOO_LARGE:' + name)
-        if total + before.st_size > bounds['max_total_bytes']:
-            return report('INPUT_TOTAL_TOO_LARGE:' + name)
-        try:
-            raw = _read_regular(path, before)
-        except _ChangedError:
-            return report('INPUT_CHANGED:' + name)
-        except OSError:
-            return report('UNREADABLE:' + name)
-        if _exceeds_json_depth(raw, bounds['max_json_depth']):
-            return report('INPUT_JSON_DEPTH:' + name)
-        try:
-            page = loads(raw)
-        except (ValueError, RecursionError):
-            return report('UNREADABLE:' + name)
-        try:
-            if raw != canonical_bytes(page):
+    try:
+        for name, raw in raw_pages:
+            if len(pages) >= bounds['max_pages']:
+                return report('INPUT_PAGES')
+            if raw is None:
+                return report('UNREADABLE:' + name)
+            _check_page_size(name, len(raw), total, bounds)
+            if _exceeds_json_depth(raw, bounds['max_json_depth']):
+                return report('INPUT_JSON_DEPTH:' + name)
+            try:
+                page = loads(raw)
+            except (ValueError, RecursionError):
+                return report('UNREADABLE:' + name)
+            try:
+                if raw != canonical_bytes(page):
+                    return report('NONCANONICAL_ENCODING:' + name)
+            except (ValueError, RecursionError):
                 return report('NONCANONICAL_ENCODING:' + name)
-        except (ValueError, RecursionError):
-            return report('NONCANONICAL_ENCODING:' + name)
-        total += before.st_size
-        pages.append(page)
+            total += len(raw)
+            pages.append(page)
+    except FactsError as exc:
+        return report(exc.code)
+    if not pages:
+        return report('NO_PAGES')
     for page in pages:
         if type(page) is not dict or set(page) != PAGE_KEYS or page['format'] != PAGE_FORMAT:
             return report('PAGE_SHAPE')
@@ -522,3 +559,8 @@ def verify_dir(directory, *, limits=None):
         if canonical_bytes(actual) != canonical_bytes({**rebuilt, 'row_sha256': row_digest(rebuilt)}):
             return report(f'ROW_MISMATCH:{index}')
     return report()
+
+
+def verify_dir(directory, *, limits=None):
+    """Replay a directory under INPUT_LIMITS with optional Python overrides."""
+    return verify_raw_pages(read_page_files(directory, limits=limits), limits=limits)

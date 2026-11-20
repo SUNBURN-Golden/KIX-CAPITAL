@@ -825,7 +825,9 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 `python3 -m capital.verify --facts DIR`는 디렉터리 항목 4096개, 일치하는
 `page-*.json` 2500개, 페이지당 8 MiB, 합계 64 MiB를 확인한 뒤 파일을 연다.
 JSON 디코딩 전 중첩이 32단계 이하인지 확인한다(`capital.facts.INPUT_LIMITS`,
-`verify_dir(..., limits=dict)`로 재정의 가능). 심볼릭 링크·FIFO·디렉터리 등
+`verify_dir(..., limits=dict)`로 재정의 가능). 교차 검사
+`capital.evidence_crosscut --facts DIR`에도 같은 상한이 적용된다.
+심볼릭 링크·FIFO·디렉터리 등
 비정규 페이지는 `lstat`에서 `INPUT_NOT_REGULAR:<file>`로 거절한다. `lstat`과
 열기 사이의 교체에 대비해 링크를 따라가지 않는 논블로킹 플래그가 필요하다.
 열기 전과 읽기 후에 파일 경로와 디스크립터의 장치·inode·크기·mtime·ctime을
