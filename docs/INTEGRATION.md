@@ -248,7 +248,7 @@ before verification. Never use fixture keys outside tests.
 | approve / reject / cancel / bind_settlement / draw / close / default / reconcile | empty object |
 | repay | amount, sequence (next positive integer) |
 
-API wraps the pinned FSM without inventing financial terms. `reject`, `cancel`, `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map: `fixture-organizer` for fixture-v1, the `demo-org-*` synthetic role for each demo-book claim. No caller-supplied settlement body, product terms, identities, credentials, filenames or URLs. The refund fixture is explicitly adverse: 10000 synthetic refund face with burden UNDEFINED; it is not a new executed refund policy. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` only (T1 COMMITTED, T2 CAPTURED, `demo-epsilon-refund` with a 60,000,000 open refund face) so U4 single/beneficiary/portfolio caps bind on real `DECLINE` proposals; cap values stay cited from the terms note, never restated.
+The API delegates to the pinned FSM. `reject`, `cancel` and `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map (`fixture-organizer` for fixture-v1 and the `demo-org-*` synthetic role for each demo-book claim). The API takes a fixture ID and amount for an offer. `sim-refund` has a 10,000 KRW synthetic refund face with bearer `REQUESTER` and is declined with `REFUND_OBLIGATION_OPEN`. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` (T1 `COMMITTED`, T2 `CAPTURED`, and `demo-epsilon-refund` with a 60,000,000 KRW open refund face). The underwriting desk evaluates U4 single, beneficiary and portfolio caps on those simulated proposals using the terms note.
 
 Every bound draw reads the immutable settlement view and does not call settlement mutations. F04 also explicitly permits an unbound draw; it reports UNBOUND and does not claim a COMMITTED observation. UI's guided flow binds first. A process-wide lock serializes commands, snapshot and export in this single-process demo. First transport receipt is returned after later transitions too; GET state is current. Domain errors are stored as REJECTED. Schema/boundary errors reject before applying. Reconcile is read/replay and does not clear UNKNOWN.
 
@@ -304,9 +304,9 @@ Envelope v2 (overlay): every save writes `envelope_version: 2` (`format` stays t
 
 `tests/test_producer_port.py` exports `run_producer_vectors(factory)`. The factory returns a fresh `ProducerPort`. Positive and negative command vectors run through it, so a later adapter must pass the same function. That pass is not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND` for the exact Protocol/Commerce producer, SDK, and profile tuple. The local schema does not replace that tuple.
 
-`python3 scripts/seed_demo.py --producer gate-fake` and `python3 -m capital.server --producer gate-fake` opt in to `GateHttpProducer`. The default remains `PinnedFsmProducer`. The fake gate is `scripts/fake_gate.py`, a stdlib server that binds a loopback address only and wraps the same pinned FSM. Its label is `LOCAL_FAKE_GATE`. It is not a promoted catalogue, not an OpenAPI pin, and not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND`. Command bodies reject unknown fields. `operationId` must equal `operation_id`. `actor` is not authentication. If the gate applies a command and drops the response, the client reports `UNKNOWN`, does not POST again, and a later GET of that receipt returns the original receipt. The gate also accepts armed fault hooks `drop-before`, `drop-after`, `timeout`, `error-5xx`, and `malformed-json`, and answers `409 IDEMPOTENCY_CONFLICT` when a replayed `operationId` carries a different action or body (the first receipt is never replaced). The facade maps a lost or dropped command response to an `UNKNOWN` outcome with `retry_authorized` false and never resends; a gate 5xx becomes a `502 GATE_FAILED` and an unparseable gate body `502 INVALID_JSON`, neither a business rejection. `tests/vectors/gate_faults.json` (format `KIX_CAPITAL_GATE_FAULTS_V1`) pins accept, 5xx, malformed JSON, dropped-connection, delayed-then-lost, and conflicting same-`operationId` replay cases; `python3 scripts/gate_faults.py --check` replays the corpus on `127.0.0.1` through the real facade and exits nonzero on drift. It rewrites nothing and is not SEMANTIC_CONFORMANCE.
+`python3 scripts/seed_demo.py --producer gate-fake` and `python3 -m capital.server --producer gate-fake` opt in to `GateHttpProducer`. The default remains `PinnedFsmProducer`. The fake gate is `scripts/fake_gate.py`, a stdlib server that binds a loopback address only and wraps the same pinned FSM. Its label is `LOCAL_FAKE_GATE`. It checks the pinned OpenAPI and SDK delivery bytes locally. The rehearsal is not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND`. Command bodies reject unknown fields. `operationId` must equal `operation_id`. `actor` is not authentication. If the gate applies a command and drops the response, the client reports `UNKNOWN`, does not POST again, and a later GET of that receipt returns the original receipt. The gate also accepts armed fault hooks `drop-before`, `drop-after`, `timeout`, `error-5xx`, and `malformed-json`, and answers `409 IDEMPOTENCY_CONFLICT` when a replayed `operationId` carries a different action or body (the first receipt is never replaced). The facade maps a lost or dropped command response to an `UNKNOWN` outcome with `retry_authorized` false and never resends; a gate 5xx becomes a `502 GATE_FAILED` and an unparseable gate body `502 INVALID_JSON`, neither a business rejection. `tests/vectors/gate_faults.json` (format `KIX_CAPITAL_GATE_FAULTS_V1`) pins accept, 5xx, malformed JSON, dropped-connection, delayed-then-lost, and conflicting same-`operationId` replay cases; `python3 scripts/gate_faults.py --check` replays the corpus on `127.0.0.1` through the real facade and exits nonzero on drift. It rewrites nothing and is not SEMANTIC_CONFORMANCE.
 
-`make_preflighted_fake_producer` in `capital/gate_producer.py` rehearses the exact producer-tuple check before constructing that same fake. The offline stdlib checker `capital/compat_preflight.py` validates a synthetic `kix-compat-manifest/1` bundle (`tests/vectors/compat/bundle/`, `READ_ONLY_FIXTURE`) against a caller-pinned expected tuple (`tests/vectors/compat/expected.json`, format `capital-compat-expected/1`): producer identity, profile kind/revision/digest, both contract files (path, Git blob, sha256), generator and `node-24` toolchain metadata, SDK output, ordered vector hashes, and the manifest sidecar digest. Duplicate JSON keys, forbidden self-digest/finality fields, missing files, and paths escaping the fixture root are rejected. A `MISMATCH` raises `PreflightRejected` before any gate starts, so no command POST is ever attempted; a bundle whose bytes declare `SEMANTIC_CONFORMANCE` cannot open the rehearsal (`BOOTSTRAP_REHEARSAL_ONLY`) — the factory accepts `BOOTSTRAP` only. `python3 scripts/compat_preflight.py --check` verifies the pinned corpus and exits nonzero on drift. Even a `MATCHED` report keeps `semantic_consumption` `HOLD`, `semantic_conformance` `false`, and `adoption` `NOT_BOUND`: byte agreement is not semantic qualification, and CAP-16 stays `NOT_BOUND`. The manifest shape and its `kix-canonical-json/1` encoding cite the Protocol contract `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md` at research commit `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915` (read-only; the executable vendor pin stays `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`); `docs/COMPAT_PREFLIGHT.md` has the fixture contract.
+`make_preflighted_fake_producer` in `capital/gate_producer.py` rehearses the exact producer-tuple check before constructing that same fake. The offline stdlib checker `capital/compat_preflight.py` validates a synthetic `kix-compat-manifest/1` bundle (`tests/vectors/compat/bundle/`, `READ_ONLY_FIXTURE`) against a caller-pinned expected tuple (`tests/vectors/compat/expected.json`, format `capital-compat-expected/1`): producer identity, profile kind/revision/digest, both contract files (path, Git blob, sha256), generator and `node-24` toolchain metadata, SDK output, ordered vector hashes, and the manifest sidecar digest. Duplicate JSON keys, forbidden self-digest/finality fields, missing files, and paths escaping the fixture root are rejected. A `MISMATCH` raises `PreflightRejected` before any gate starts, so no command POST is ever attempted; a bundle whose bytes declare `SEMANTIC_CONFORMANCE` cannot open the rehearsal (`BOOTSTRAP_REHEARSAL_ONLY`) — the factory accepts `BOOTSTRAP` only. `python3 scripts/compat_preflight.py --check` verifies the pinned corpus and exits nonzero on drift. Even a `MATCHED` report keeps `semantic_consumption` `HOLD`, `semantic_conformance` `false`, and `adoption` `NOT_BOUND`: byte agreement is not semantic qualification, and CAP-16 stays `NOT_BOUND`. The manifest shape and its `kix-canonical-json/1` encoding cite the Protocol contract `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md` at research commit `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915` (read-only; the executable vendor pin stays `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`); `docs/COMPAT_PREFLIGHT.md` has the fixture contract.
 
 ## Upstream adapter replacement prerequisites (NOT_BOUND)
 
@@ -589,6 +589,34 @@ This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOU
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+### slice-registry-desk
+
+The read-only panel at `/#desk` consumes the existing listing/optional quote
+contract; it adds no route, permission, persistence, calculation or command.
+`projection:read` permits organizer/auditor inspection; denied roles make no
+registry requests. Selection reads the returned row, since there is no per-slice
+detail endpoint. Exact case `claim_id`/`settlement_id` equality supplies evidence
+links only, never authenticated ownership.
+
+For quote inspection send `quote_claim_id`, `quote_payee_label`, `expected_days`
+together, with an explicitly entered non-negative integer day assumption.
+`URLSearchParams` encodes them. This endpoint rejects `instance_id`; the normal
+local session token header is used. Render ordered `registry_check.codes`,
+`free_face_krw`, `admissible_face_max_krw` and `capacity` exactly as returned.
+The panel exposes missing-input/NOT_BOUND/inconsistent responses, false execution
+flags and `SIMULATION_ONLY_NOT_OFFERED_V1`; it does not compute a financial total.
+
+The listing does not contain an instance ID or aggregate digest. The panel
+brackets it with `/api/overlay` GETs, requiring the captured session's instance
+and F04 digest, equal overlay digests and logical days, and a matching listing
+day when BOUND. Superseded requests are discarded. This can detect observed local
+changes, but it is not an atomic cross-endpoint snapshot; changes after the last
+read remain possible. Input edits, refresh start (before state GET), role changes
+and desk exit invalidate quotes synchronously. Errors never restore prior
+results as current. A stale session requires an explicit page reload (the panel exposes a reload
+button) and reinspection; the existing refresh retains its token and can still
+be rejected after a restart;
+no panel command, silent role downgrade or command retry is performed.
 ### risk-scenario-desk · SIMULATED_WHATIF
 
 The read-only `#risk-comparison` UI lists the four existing named risk scenarios and
@@ -896,7 +924,7 @@ authenticated by this checker.
 | Movement | Required artifact closure |
 |---|---|
 | Either | Each policy-bound table with embedded check vectors (including CE1 input/expected), its implementation/checker and focused tests; all existing manifest/pack vectors and goldens; receipt/export/pack producers; README, handbook, integration, validation, requirements, seams/releases, decision bindings and docs-surface registry |
-| Vendor | All four vendor-bound tables, manifest and five vendor files, original source copies, finance vectors |
+| Vendor | All four vendor-bound tables, manifest and 69 vendor files, original source copies, finance vectors |
 | Citation | Agent table/implementation/test vectors, agent-bearing demo/journey goldens, receipt/export/pack evidence |
 
 The conservative shared golden set covers all existing goldens. Minimum
@@ -1084,3 +1112,40 @@ Exit codes remain 0 for all checks matched, 1 for audit/reconciliation failure,
 check and memo carry SIMULATED, SYNTHETIC_UNADOPTED, policy_adopted=false and
 NOT_IN_EXPORT_V1. No tax, operational accounting, upstream adoption or real
 money action is implied.
+
+## Protocol delivery 8ba7f6c
+
+The vendor manifest, copies in `docs/contracts/openapi`, BOOTSTRAP catalogue inputs, and
+`sdk/compat/delivery.json` bind delivery `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`.
+The SDK's `bootstrap-2` manifest keeps its older catalogue-input commit as provenance.
+The fake gate requires the delivery tuple from `GET /v1/delivery` before each local POST
+and checks the `X-Kix-Protocol-Commit` request header. Byte agreement grants BOOTSTRAP
+catalogue binding. CAP-16, upstream query and source-map adoption stay `NOT_BOUND`.
+
+| Seam | SIMULATED binding | Contract at `8ba7f6c` |
+| --- | --- | --- |
+| ProducerPort | `PinnedFsmProducer` passes the raw inner settlement claim to `offer`. The first accepted draw note freezes the entire face. Open face is the sum of obligation `outstanding`. Cash and recovery are companion fields. A later valid changed face fails at note creation with `FACE_SNAPSHOT_FROZEN`. A bound draw requires a matching mock `COMMITTED` view with false execution flags. | `CREDIT_ADVANCE_F04.md` §§2–3, 7.2, 7.5 |
+| SettlementPolicyPort | The pinned settlement FSM binds refund obligations and keeps payee faces and prior distributions intact for partial refunds (`REQUESTER`). Distribution can continue in the frozen caller order. Mock cancel acceptance reduces refund outstanding and increases the open PG adjustment. A first one-shot gross refund uses `FIXTURE_FULL_GROSS_RECLASS`. Partial refunds summing to gross stay `REQUESTER`. F04 rejects an offer with positive non-reclassified refund face as `REFUND_OBLIGATION_OPEN`. Capital's provisional reason-class split is `SHADOW_NOT_APPLIED`. | `SETTLEMENT_DISTRIBUTION_F01_F03.md` §§3–5, 7.6, 9.2 and `CREDIT_ADVANCE_F04.md` §§2–3, 5 |
+| Settlement variance | `observe_settlement_variance` subtracts frozen credit open face from the settlement obligations' outstanding total for the same KRW claim and trade. The absolute variance is compared with the caller's tolerance. | `CREDIT_ADVANCE_F04.md` §7.11 |
+| Shared exposure | `observe_shared_exposure` reads frozen KRW views in `DRAWN`, `CLOSED` or `DEFAULTED`. It counts exposure once per advance and capacity once per claim in the caller's group. The group's outstanding exposure is compared with the caller's limit. | `CREDIT_ADVANCE_F04.md` §7.12 |
+
+The observer thresholds are required nonnegative integers, including zero, with
+no defaults. Both observers return `fail_closed: true`, `authorizes_exposure: false`
+and `mutates_state: false`. Refund attribution and disposition remain `NOT_BOUND`
+with `repair: NONE`. The observers supply no admission or shared-cap policy inputs.
+[Open contract shapes](KIX_CHANGE_REQUESTS.md)
+
+The provisional settlement policy note describes the B0 settlement behavior at
+its original `7481b0e` pin. The B5 behavior in the table applies to the current
+delivery. [Settlement policy note](decisions/CAPITAL_SETTLEMENT_POLICY.md)
+
+`tests/test_protocol_delivery.py` compares the producer's refund and frozen-face
+flows with the vendored settlement-credit boundary vectors and exercises every
+vendored variance and shared-exposure case. The staged Protocol suite also runs
+the economics-credit vectors and database-free Stage-5 checks. Stage-5 runtime
+adoption is `NOT_BOUND` and `runtime_enabled` is false. Commerce inputs come
+through Protocol.
+
+**POINT_F4 pool simulator — NOT an accounting ledger**. The upstream workbench
+sits outside settlement and credit calculations. This seam has no ledger
+aggregation or accounting export.

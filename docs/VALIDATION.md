@@ -5204,6 +5204,233 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## slice-registry-desk builder verification
+
+2026-10-30, branch `agent/capital-slice-registry-desk`. Added a read-only
+`/#desk` registry panel, exact server field/guard rendering, explicit quote
+assumptions, evidence associations, immediate quote invalidation and bracketed
+GET consistency checks. No backend route, permission, arithmetic, persistence or
+financial/legal term changed. Every fixture/result here is SIMULATED; this is
+not authenticated ownership, actual service/collection, or production acceptance.
+
+The browser launcher uses the existing server factory, `ScenarioReplaySource`
+and seeding helpers. Its disposable memory book contains all five lifecycle
+states, partial holder service, recourse quotes and a recourse-resolved row.
+Fault-injected responses are explicitly marked synthetic in tests; missing-note
+and restart cases also exercise real service envelopes. Tests stop their servers.
+
+Plan deviations: the repository browser ports 8765/8766 were already occupied by
+unrelated processes, so temporary configs outside the repository are used. The
+narrow config imports the tracked configuration and runs only this spec, whose
+server has its own lifecycle. The full config imports every tracked project and
+assertion and remaps only default loopback ports 8765–8768 to 8965–8968 (with
+absolute testDir/cwd for the config's `/tmp` location). No CI/config/test removal
+or reuse of the unrelated servers is involved. Session recovery uses an explicit
+page reload button: the existing refresh intentionally retains its token and
+still rejects it after a restart. No session semantics or authentication changed.
+
+Early failures and corrections (retained as evidence, not reported as passes):
+
+- Fixture smoke initially rejected an advance without its required `sim-`
+  prefix (`SYNTHETIC_ID_REQUIRED`); corrected that identifier. A subsequent seed
+  exceeded the existing `OVERLAY_ENTRY_MAX_BYTES` bound; resolving the recourse
+  journey before adding the other states kept witnesses bounded. Limits and
+  financial policy were not changed. The final seed reports all five states,
+  partial service 10000000 and recourse receipt 10000000 in synthetic KRW units.
+- `python3 -m unittest discover -s tests -p test_operator_desk.py -v` initially
+  had 1 failure: the existing no-arithmetic source guard also disallows a spaced
+  slash in display text. Replaced that separator; all 6 checks then passed.
+- `npm run test:browser -- --project workspace tests/browser/slice-registry-desk.spec.cjs`
+  exited 1 because Playwright parsed the positional spec as a second project.
+  The `--project=workspace` form got past argument parsing but exited 1 on the
+  occupied default server port. Plain `npm run test:browser` likewise exited 1
+  at server startup (`Errno 98`); no tests ran in those port-conflicted attempts.
+- First isolated browser run: 21 passed / 1 failed. The test init script reset
+  the role on reload; changed it to preserve the selected sessionStorage role.
+  Expanded run: 24 passed / 2 failed, revealing startup readiness timing and
+  the real old-token refresh rejection. Wait for completed initial refresh,
+  retain the stale-session assertion and test explicit page reload recovery.
+  The next run passed all 26 tests in 46.4s.
+- Review then identified that a genuine `SHADOW_NOT_BOUND` quote may omit input
+  metadata. Stopped the initial full browser run with SIGINT (exit 130; 67 passed,
+  1 interrupted, 34 not run), corrected the validator to retain missing fields
+  as unavailable, and added a genuine missing-note-envelope test and a test for
+  all exact claim/settlement matches without beneficiary inference. This is a
+  response-shape adapter, not a backend contract change.
+
+| Command actually run | Result |
+| --- | --- |
+| `npm ci` | Exit 0; 3 packages installed, audit 0 vulnerabilities |
+| `python3 -m unittest discover -s tests -p test_claim_slices.py -v` | Exit 0; 26 passed |
+| `python3 -m unittest discover -s tests -p test_operator_desk.py -v` | Final exit 0; 6 passed, including CSP, no unsafe sinks and no client money arithmetic |
+| `python3 -m unittest discover -s tests -p test_handbook.py -v` | Exit 0; 12 passed; nested synthetic acceptance-plan outputs are unit-test fixtures, not real ladder execution |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references only |
+| `python3 -m unittest discover -s tests -p test_coverage.py -v` | Exit 0; 7 passed after the CAP-03 wording correction |
+| `python3 -m unittest discover -s tests -p test_decisions_surface.py -v` | Exit 0; 19 passed |
+| `python3 -m unittest discover -s tests -p test_fold_fuzz.py -v` | Exit 0; 13 passed in 61.034s with files frozen |
+| `python3 -m unittest discover -s tests -v` | Final exit 0; 1,302 passed in 357.998s with files frozen |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `node --check tests/browser/slice-registry-desk.spec.cjs` | Exit 0 |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/seed_overlay_slices.py` | Exit 0; golden unchanged, SIMULATED entries=6 |
+| `npm run test:browser -- --config /tmp/slice-registry-narrow-playwright.config.cjs` | Exit 0; 28 passed in 48.6s (final expanded narrow run) |
+| `npm run test:browser -- --config /tmp/slice-registry-full-playwright.config.cjs --project=workspace tests/browser/case-dossier.spec.cjs` | Exit 0; all 7 unchanged dossier tests passed in 12.2s |
+| `npm run test:browser -- --config /tmp/slice-registry-full-playwright.config.cjs` | Final exit 0; all 104 Chromium tests passed in 3.3m (all tracked projects, including 28 slice cases) |
+| `python3 scripts/build_release.py --out build/slice-registry-dist` and `python3 scripts/build_release.py --out build/slice-registry-dist2` | Exit 0 each; deterministic SHA256 a605f00d300eefec7689e31e6a14692b8f516463d2ca732c81983e6572e0e798 |
+| `cmp build/slice-registry-dist/capital-0.2.0.pyz build/slice-registry-dist2/capital-0.2.0.pyz` | Exit 0; byte-identical |
+| `python3 scripts/smoke_release.py build/slice-registry-dist/capital-0.2.0.pyz` | Exit 0; all 11 package checks passed |
+| Python SHA256/HEAD byte comparison of all five vendor references, manifest and `capital/export.py`; `.aiops/` diff check | Exit 0; five SHA256 pins match, protected files byte-identical to HEAD, `.aiops/` unchanged |
+| `git diff --check` | Exit 0 |
+
+The first complete Python run exited 1: 1,302 tests in 369.182s, with three
+failures. Two were the coverage guard rejecting the Korean completion token
+`완료` even inside a negative sentence in CAP-03; changed that sentence to say
+operational adoption is NOT_BOUND. The third was the fold-fuzz immutability test
+observing this builder's edits to app.js/spec/helper while the suite ran. That
+assertion remains unchanged; final verification runs after edits are frozen.
+The next complete browser run exited 1: 103 passed, one existing auditor dossier
+download timed out before any dossier GET appeared in the trace. No assertion or
+timeout in that existing test was changed; isolated and complete reruns follow.
+
+Additional acceptance-ladder component commands were actually executed:
+
+| Command | Result |
+| --- | --- |
+| `python3 scripts/upstream_claims_check.py --execute` | Exit 0; CLAIM_CONFORMANCE 87/87 |
+| `python3 scripts/agent_claims_check.py --execute` | Exit 0; CLAIM_CONFORMANCE 94/94 |
+| `python3 scripts/read_model_claims_check.py --execute` | Exit 0; CLAIM_CONFORMANCE 39/39 |
+| `python3 scripts/ce1_claims_check.py --execute` | Exit 0; CLAIM_CONFORMANCE 49/49 |
+| `python3 scripts/adapter_identity_claims_check.py --execute` | Exit 0; CLAIM_CONFORMANCE 30/30 |
+| `python3 scripts/lifecycle_claims_check.py --execute` | Exit 0; 12/12 SIMULATED results; absent upstream checkout citation reports SKIPPED, not conformance success |
+| `python3 scripts/readiness_claims_check.py --execute` | Exit 0; 11/13 passed, two existing DOCUMENTED_DIVERGENCE rows (failed-save lookup and torn tail); absent upstream citation SKIPPED |
+| `python3 scripts/seed_demo.py` | Exit 0; SIMULATED golden matches, debit=credit=385000 |
+| `python3 scripts/sim_journeys.py --check` | Exit 0; all six local synthetic journeys match; integrated=false |
+
+These component results are not a claim that the `scripts/acceptance.py` wrapper
+ran or that absent upstream citations were verified. No git commit, push, PR,
+issue, comment, deployment or financial provider call was
+made. No new vectors, upstream edits, product decisions or decision-required
+file were needed. Browser screenshots and traces are local ignored artifacts
+under `test-results/`; Python/browser logs and the temporary configs are local
+verification artifacts, not committed evidence or credentials.
+
+### slice-registry-desk re-verification (same day, files frozen)
+
+A second builder pass re-ran the required checks against the unchanged working
+tree. Two transient browser flakes were observed and isolated, not fixed by
+edits: one `page.goto` load-event timeout in the first narrow run (the same
+test then passed in isolation and in both subsequent full runs) and one
+`#risk-label` population timeout in the unrelated `portfolio-risk.spec.cjs`
+during the first full run (that spec passed 3/3 in isolation and the test
+passed in the second full run). No test, timeout or assertion was weakened.
+
+| Command actually run | Result |
+| --- | --- |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` and `node --check tests/browser/slice-registry-desk.spec.cjs` | Exit 0 each |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 scripts/seed_overlay_slices.py` | Exit 0; SIMULATED entries=6 |
+| `python3 tests/browser/helpers/slice_registry_server.py --port 8951` smoke + `GET /api/overlay/slices` | BOUND with all five statuses (PROPOSED, OPEN, IMPAIRED, RESOLVED, VOID); server stopped |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,302 passed in 405.428s |
+| `npm run test:browser -- --config /tmp/slice-registry-narrow-playwright.config.cjs` | First run exit 1 (27/28; goto flake); rerun exit 0, 28/28 in 58.2s |
+| `npm run test:browser -- --config /tmp/slice-registry-full-playwright.config.cjs` | First run exit 1 (103/104; unrelated portfolio-risk flake); rerun exit 0, 104/104 in 4.2m |
+| SHA256 check of the five vendored files against `capital/vendor/manifest.json`; `git status` on `capital/vendor`, `capital/export.py`, `.aiops` | All five pins match; no diffs |
+| `git diff --check` | Exit 0 |
+
+Default `npm run test:browser` still cannot bind 8765/8766 (unrelated local
+processes hold them), so the documented temporary configs were used; committed
+CI config is unchanged.
+
+
+### slice-registry-desk PR fix round 1 (2026-11-06)
+
+Reviewed merged HEAD `616584569b62a2e55d5a76385b1b212e5190c70c`
+against the reported `test_acceptance_stage_runs_the_ce1_checker_fourth`
+failure. The reported nonzero acceptance result was not reproduced: the
+isolated test passed, the full 1,328-test suite passed including that test,
+and 20 consecutive runs of the unchanged seven-command upstream-claims
+stage each returned exit 0 with 322 passes, two documented divergences and
+zero failures across 324 evaluated rows. This evidence rebuts a reproducible
+merge regression at this HEAD; it does not establish the cause of the earlier
+failure or claim that an intermittent failure cannot recur.
+
+The only test change adds the captured stage records to the existing exit-code
+assertion's failure message. Those records include child command arguments,
+exit codes, counts and output tails, so a recurrence remains diagnosable after
+the temporary evidence directory is deleted. All assertions, commands,
+timeouts and acceptance criteria remain enforced. No product behavior was
+changed. The complete CE1 module passed all 14 tests after this diagnostic
+change.
+
+Local evidence is under ignored `build/slice-registry-review-round1/`.
+`upstream-claims.json` records a further real execution of the selected
+acceptance stage: all seven commands exit 0, 322 passes plus two documented
+divergences, zero failures. This is selected-stage CLAIM_CONFORMANCE evidence,
+not a full acceptance-ladder or production result. The product results are
+SIMULATED; drift verification of an external Protocol checkout was not run.
+
+Default `npm run test:browser` could not start because unrelated processes
+occupied the default loopback ports (8765, 8766 and 8767). The temporary config
+`/tmp/slice-registry-review-playwright.config.cjs` imports the unchanged tracked
+config and keeps all projects and assertions, while remapping configured
+ports 8765–8768 to 18965–18968. It uses this checkout as the server cwd and
+absolute artifact paths. No existing listener was stopped or reused.
+The first remapped full browser run overlapped the unit suite: 102 passed,
+two failed (30-second page-fixture setup timeout in operator-desk; initial
+loading notice still present at the five-second expectation in portfolio).
+All 28 slice-registry cases passed. The full browser suite was then rerun
+after the unit suite completed, with the same config and assertions.
+
+The second full browser run passed both earlier timeout cases, with 103/104
+passing overall. The association case failed during its beforeEach server
+startup poll (ECONNREFUSED on 127.0.0.1:8951); no association assertion ran.
+Its trace is retained under `browser-second-failure/`. The same case then
+passed unchanged in isolation (1/1 in 3.0s). A third complete run used the
+same unmodified config and assertions. These failed runs remain recorded;
+no inference about the earlier unit-test failure's cause follows from them.
+
+The third full browser run passed all 28 slice-registry cases and 103/104
+overall. Its lifecycle case timed out waiting for the journal-replay notice;
+the trace and log are retained under `browser-third-failure/` and
+`browser-third.log`. A fourth complete run retained the same assertions,
+projects and timeouts. No browser test or product change was made in response
+to these changing timeout failures.
+
+
+| Verification | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,328 tests passed in 460.910s; includes the reported CE1 acceptance test. |
+| `python3 -m unittest discover -s tests -p test_ce1_claims.py -v` | Exit 0; 14 tests passed after the diagnostic-only assertion change. |
+| Twenty consecutive selected upstream-claims executions | Every run exit 0; 322 passes plus two documented divergences / 324 evaluated rows; zero failures. |
+| Further selected acceptance stage with saved evidence | Exit 0; `upstream-claims.json` has `ok=true`, all seven child commands exit 0 and vendor hashes verified. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0. |
+| Vendor verification against manifest and origin/main | All five pinned SHA256 values match; all five reference files and manifest are byte-identical to origin/main. |
+| `git diff --check` | Exit 0. |
+
+Only `tests/test_ce1_claims.py` and this validation record changed during the
+fix round. No vendor, export, `.aiops/`, Protocol/Commerce, decision-document,
+CI, application, financial policy or test expectation changes were made.
+No commit, push, external post, credentials, provider call, funds movement
+or deployment occurred.
+
+Final browser result: `npm run test:browser --
+--config=/tmp/slice-registry-review-playwright.config.cjs` exited 0 with
+104/104 passing in 2.7m, including all 28 slice-registry cases (desktop,
+keyboard, 375px, five statuses, exact quote/guard fields, stale responses,
+role restrictions and zero panel command POSTs). All previously timed-out
+cases passed unchanged in that full run. The final log is
+`build/slice-registry-review-round1/browser-final.log`; the default-port
+failure and all three unsuccessful remapped runs remain recorded separately.
+The temporary config is copied into the evidence directory for inspection.
+These are local SIMULATED browser checks, not production or external-service
+acceptance. Final documentation and diff checks also exit 0.
 
 ## risk-scenario-desk builder verification — 2026-11-02
 
@@ -6180,6 +6407,70 @@ processes were stopped and a subsequent process check found none. No long job
 is left running. The failed ladder evidence remains at
 `build/loss-allowance-acceptance-isolated.json` (ignored generated output).
 
+## slice-registry-desk — PR fix round 3 (2026-11-13)
+
+The reported timeout is valid. On merged HEAD
+`2705c177036f39221a6820161b145e0d02c47038`, unchanged discovery passed all
+1,554 tests in 2,014.246 seconds. That exceeds the unattended local runner's
+1,800-second command deadline; an assertion failure is not needed to produce
+the reported exit 124. This baseline log is retained as
+`build/slice-registry-round3/unit-before.log`.
+
+Profiling identified repeated decision-binding AST traversal during binding
+and upstream re-pin checks. The checker now gathers literal references in one
+traversal and keeps a bounded cache of immutable syntax facts keyed by the
+exact freshly read source text. Every inventory still enumerates and reads
+the files, parses fresh caller-visible ASTs, and evaluates current note
+statuses, bindings and routes. It never caches file metadata, findings, adoption
+status or caller-owned ASTs. No command, timeout, assertion, required stage,
+financial policy or product behavior was relaxed.
+
+Two added regression cases cover caller-mutated ASTs, changing adoption
+status, same-size/same-timestamp source edits, removed files and malformed
+source. The final focused decision-binding module passed all 28 tests in
+61.821 seconds. Five complete checks on the same checkout took 14.632 seconds
+with the main baseline checker and 7.987 seconds with the optimized checker;
+all ten returned identical empty findings. Timings are local diagnostics,
+not production performance evidence.
+
+All evidence in this round is local and SIMULATED. Chromium uses the existing
+105 cases, projects, assertions and timeouts through the ignored
+`build/slice-registry-round3/playwright.config.cjs`. Only configured ports
+8765–8768 are remapped to 18765–18768, with this checkout as server cwd and
+isolated report/output directories; unrelated worktree listeners are not
+stopped or reused. The first launch required correcting the temporary first
+server command to include its remapped port. No browser tests ran in that
+failed launch.
+
+The first full browser run overlapped discovery: 104 passed and the existing
+complete-lifecycle case exhausted its 30-second test budget at the final
+journal-replay click. All 28 slice cases passed. Its log, trace and report
+remain under `browser-first.log`, `results-first-failure/` and `report-first/`
+in the same evidence directory. A complete rerun retains the same assertions
+and timeouts; the lifecycle case passed in 8.2 seconds in that rerun.
+
+Final verification results on the merged checkout with the optimized checker:
+
+- `python3 -m unittest discover -s tests -v`: 1,556 tests ran in 1,410.523
+  seconds and all passed on the final tree (`unit-round3-rerun.log`); an
+  earlier pass took 1,666.199 seconds while sharing the machine with a
+  leftover discovery (`unit-round3-timed.log`). Both are inside the
+  1,800-second deadline. The same command passed unmodified on the
+  2,014-second baseline; only its duration changed, not its coverage.
+- `python3 -m unittest discover -s capital/vendor/credit_advance_f04
+  -p test_mock_credit.py -v`: 7 tests passed.
+- `python3 -m compileall -q capital`: clean.
+- `node --check capital/static/app.js`: clean.
+- `python3 scripts/decision_bindings.py --check`: empty findings
+  (`checker-benchmark.log`).
+- Browser: all 105 cases passed in 11.2 minutes under the remapped config
+  (`browser-final.log`), including the 28 slice-registry-desk cases and the
+  complete-lifecycle replay.
+
+No vendored kix-protocol file, `.aiops/`, decision doc, financial term,
+test assertion or CI timeout was changed. The only behavioral delta is
+checker wall-clock time; every finding path, route check, binding shape
+rule and inventory enumeration is unchanged.
 ### shared-cap-utilization — merge conflict fix round 3 (2026-11-15 KST)
 
 Resolved all twelve conflicts from the supervisor's merge of main. The service
@@ -6260,3 +6551,116 @@ this round started and remains uncommitted as requested. No CI definition,
 existing assertion or timeout was weakened. All facts inputs/results remain
 SIMULATED and authentication/source authority NOT_BOUND. No real funds,
 credentials, provider, deployment, commit, push or external post was involved.
+## KIX Protocol delivery 8ba7f6c
+
+The November 13 KIX pin announcement superseded the preliminary `19cdc1c`
+target. Capital uses kix-protocol
+`8ba7f6c36373ac0ec49246f51f7471c164ac3a28`, tree
+`d3f5412ef84f64fe83c5d3a3d3ada173921bfbf9`. The bundle covers both complete
+reference directories, both OpenAPI files, the FSM command contract and
+the BOOTSTRAP SDK inputs. The 69 vendor entries are bound by manifest
+SHA256 `62056902f9344c4f092d1652baeac607b31ea0ecf4672b86638ac9a740a72d36`.
+The SDK manifest SHA256 is
+`eec1750532d319ea06d8ae61bafa77316067088a84a9b70d20a1f6966dfba1e0`.
+Its `bootstrap-2` catalogue-input SHA remains upstream provenance.
+`build/kix-vendor-bump-pr-body.md` lists all vendor SHA256 digests for
+the supervisor's PR. The upstream checkout was read through Git blobs.
+
+### Compatibility changes
+
+- Protocol #442 changes partial refunds from B0 to B5 `REQUESTER`.
+  Settlement distribution follows available simulated cash and the frozen
+  order. Payee faces are preserved. The one-shot full-gross reclassification
+  and F04 `REFUND_OBLIGATION_OPEN` refusal still apply. Capital's reason-class
+  refund split stays `SHADOW_NOT_APPLIED`.
+- The margin and recovery rehearsals observe the pre-distribution refund cut.
+  T05 and N1 exercise the B5 distribution on a second disposable book.
+  The historical T05 replay uses the original prefix and an explicit
+  test projection back to the frozen settlement fields and legacy F04 digest.
+- F04 adds `open_terms` to advance and claim views. The facade requires the
+  five closed unfilled terms and preserves the raw bodies. The read-query draft
+  lists 25/51/24 keys in settlement, advance and claim order. The raw responses
+  contain 25/52/25. Citation drift verified all 113 rows. The execution run
+  counted 111 passes and two documented divergences.
+- The added field changes F04 state and covering digests. Workspace restore and
+  the offline auditor verify the replay against the current digest or the exact
+  pre-`open_terms` case shape. The envelope checksum, journal replay and link
+  checks still apply. The workspace remains byte-identical on a read-only reopen.
+  Golden changes are fenced by specific old and new leaves.
+- Protocol #440 and #441 provide read-only variance and exposure observations
+  through `capital.protocol`. Callers supply tolerance and limit, including zero.
+  Both calculations observe frozen KRW views and return fail-closed diagnostics.
+  Stage-5 evidence is database-free. The economics-credit tests exercise actual
+  false execution flags. Capital simulation remains loopback-only, with
+  `POINT_F4` limited to a labelled simulator outside settlement and credit.
+  Upstream query, source-map, Stage-5 runtime and CAP-16 adoption stay `NOT_BOUND`.
+
+### Local verification
+
+| Command | Result |
+| --- | --- |
+| `git rev-list --left-right --count HEAD...origin/main` | `0 0` at baseline `d6ccd93`. |
+| `python3 scripts/protocol_bundle.py --write --protocol-dir /workspace/capital-run/kixproto-ro`, then `--check` | 69 byte-identical vendor files and exact SDK/OpenAPI copies verified against Git blobs. |
+| `python3 scripts/protocol_bundle.py --test-vendor --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0. F04 236 tests, F01–F03 224 tests, database-free Stage-5 30 tests. Economics-credit consumer vectors ran inside F04. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0. 8 tests. |
+| Focused `python3 -m unittest discover -s tests -p PATTERN -v` runs | Passed delivery and observer, gate, facade, historical replay, workspace audit, margin, finance, COA, read model, policy, recovery, claim slices, provider-capture, crash replay and repin checks. |
+| `python3 scripts/compat_preflight.py --bundle . --manifest sdk/compat/manifests/manifest.bootstrap-2.json --expected sdk/compat/delivery.expected.json` and `python3 scripts/compat_preflight.py --check` | Both matched in BOOTSTRAP, HOLD and NOT_BOUND. The synthetic negative corpus remains separate from delivery evidence. |
+| `python3 scripts/gate_faults.py --check` | Exit 0. All 7 loopback fault cases matched. |
+| Claim checkers with `--protocol-dir /workspace/capital-run/kixproto-ro` | Citation checks verified upstream 87, FSM 35, CE1 49, readiness 13, read model 113, invariants 6, AI 94, lifecycle 12 and adapter identity 30. The read-model and AI draft citations also matched their separately pinned Git blobs. |
+| `python3 scripts/upstream_repin_check.py --check --root .`, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check` | Exit 0. Repin report HOLD with zero findings, decision bindings matched, docs cover 38 routes, 276 artifacts and 9 stages. |
+| `npm ci --offline`, `npx playwright install chromium`, `npm run test:browser` | Exit 0. Used locked dependencies and cached Chromium. All 85 browser tests passed. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/build_release.py --out dist`, `python3 scripts/build_release.py --out dist2`, `cmp dist/capital-*.pyz dist2/capital-*.pyz`, `python3 scripts/smoke_release.py dist/capital-*.pyz` | Exit 0. Byte-identical zipapps, all 11 packaged smoke checks passed. |
+| `git diff --exit-code HEAD -- .aiops capital/export.py capital/projection.py docs/decisions/CAPITAL_UPSTREAM_BINDING.md tests/historical DECISION_REQUIRED.md .github` | Exit 0. |
+| `git diff --check -- . ':!tests/vectors/facts/corrupt/whitespace/page-0000.json'` | Exit 0. The excluded negative fixture retains its generator-produced trailing space. |
+
+The first bundle attempt used pretty JSON for the SDK expectation input.
+Canonical encoding fixed preflight. The staged vendor suites then exposed
+missing imports for economics and the database-free durable checks. The
+staging tree now supplies those pinned dependencies. The first acceptance
+attempt found stale crash, fold, overlay and claim evidence. The standalone
+unit run identified the affected assertions and their narrow reruns passed.
+
+The generators rewrote the demo, overlay and journey goldens with
+`seed_demo.py --update-golden`, `seed_overlay_recovery.py --update-golden`,
+`seed_overlay_observations.py --write`, `seed_overlay_slices.py --write` and
+`sim_journeys.py --update-golden`. The seeded overlay-demo comparison uses
+the existing test's deterministic scenario builder. The demo generator
+refreshes the two cross-references in the empty-overlay golden.
+The manifest, workspace, facts, pack, dossier, event-stress, finance,
+forecast, risk-scenario, crash-matrix and fold-fuzz generators also ran
+with `--write`. The final per-generator verification commands and results
+are in `build/kix-vendor-generator-checks.log`.
+
+The successful disposable closeout bootstrap used the exact `origin/main`
+closeout, embedded finance copy, demo and vendor manifest for the committed
+closeout assertions. Other assertions used candidate data. All nine
+acceptance stages passed with 1,579 unit tests and 85 browser tests.
+`python3 scripts/closeout_digest.py --write --evidence build/kix-vendor-bootstrap-evidence.json`
+then generated the current digest. `python3 scripts/finance_vectors.py --write`
+embedded it. Both `--check` and the bootstrap `--check-evidence` passed.
+
+| Final command | Result |
+| --- | --- |
+| `python3 scripts/acceptance.py` | Exit 0. Nine of nine stages passed. The embedded `python3 -m unittest discover -s tests -v` ran 1,579 tests, storage conformance ran 19, the browser ran 85, packaged smoke ran 11 and all six synthetic journeys passed. The default claim stage passed 283 of 285 rows with two documented readiness divergences. The explicit read-model run separately verified all 113 citations and counted 111 passes with two documented divergences. |
+| `python3 scripts/closeout_digest.py --check`, `python3 scripts/closeout_digest.py --check-evidence` and `python3 scripts/finance_vectors.py --check` | Exit 0. The 8,035-byte digest matches the final evidence and its exact copy in the 106,620-byte finance pack. |
+| `cmp dist/capital-0.2.0.pyz build/acceptance-dist/capital-0.2.0.pyz` | Exit 0. Final acceptance produced the same package SHA256 `affb50c3bd46ce0a89bad1af37d689ee5b1673bbe725beb308f1bfcdc23b59ed`. Every packaged vendor file matched the manifest. |
+| `python3.12 -m unittest discover -s tests -p test_protocol_delivery.py -v` and `python3.12 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0. 5 delivery and observer tests and 8 vendor mock tests on Python 3.12.15. |
+
+The browser output directories were isolated from the worktree's existing
+symlinks for the local runs. The original symlinks were restored after
+verification. Process inspection found zero builder servers or acceptance
+processes in the worktree or disposable rehearsal trees.
+
+### PR fix round 1
+
+The `browser` and `acceptance` jobs failed during Chromium setup when
+`ubuntu-latest` selected Ubuntu 26.04. Playwright 1.58.2 supports Ubuntu 24.04,
+so both jobs now select that standard runner. Both jobs still install Chromium
+with system dependencies. The acceptance job requires the JSON evidence artifact.
+
+Local acceptance on Python 3.12.15 and Node 24 with cached Chromium passed all
+nine stages, including 1,579 unit tests and 85 browser tests. The run produced
+`build/acceptance-evidence.json` with `ok: true`, and the closeout digest matched
+the fresh evidence. The Ubuntu 24.04 Chromium install plan was checked with
+Playwright's dry run on the Debian host. Hosted CI verification is pending.
