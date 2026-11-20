@@ -4,7 +4,7 @@
   "semantic_conformance": false,
   "cap16_exact_tuple": "NOT_BOUND",
   "label": "SIMULATED",
-  "description": "Local Capital facade schema. Not the promoted KIX Protocol catalogue (domain kix:fixture:lifecycle:0.3, 40 commands). Not a generated SDK. Not SEMANTIC_CONFORMANCE. CAP-16 exact producer/SDK tuple stays NOT_BOUND. ProducerPort vectors in tests/test_producer_port.py are a local gateway check only.",
+  "description": "Local Capital facade schema. Not the promoted KIX Protocol catalogue (domain kix:fixture:lifecycle:0.3, 84 commands). Not a generated SDK. Not SEMANTIC_CONFORMANCE. CAP-16 exact producer/SDK tuple stays NOT_BOUND. ProducerPort vectors in tests/test_producer_port.py are a local gateway check only.",
   "errorGroups": {
     "boundary": [
       "INVALID_TARGET",
@@ -4881,7 +4881,8 @@
         "external_pledge_complete",
         "durable",
         "repayment_observed",
-        "interest_defined"
+        "interest_defined",
+        "open_terms"
       ],
       "properties": {
         "provenance": {
@@ -4955,6 +4956,9 @@
         },
         "interest_defined": {
           "const": false
+        },
+        "open_terms": {
+          "$ref": "#/definitions/credit_open_terms"
         }
       }
     },
@@ -5293,7 +5297,8 @@
         "external_pledge_complete",
         "durable",
         "repayment_observed",
-        "interest_defined"
+        "interest_defined",
+        "open_terms"
       ],
       "properties": {
         "provenance": {
@@ -5472,6 +5477,9 @@
         },
         "interest_defined": {
           "type": "boolean"
+        },
+        "open_terms": {
+          "$ref": "#/definitions/credit_open_terms"
         }
       }
     },
@@ -20427,6 +20435,180 @@
           "$ref": "#/definitions/allowance_recon_detail"
         }
       }
+    },
+    "credit_open_terms": {
+      "additionalProperties": false,
+      "properties": {
+        "adopted_option": {
+          "const": "A"
+        },
+        "adoption_date": {
+          "const": "2026-10-09"
+        },
+        "adoption_decider": {
+          "const": "JunTae"
+        },
+        "contract_version": {
+          "const": "0.2"
+        },
+        "decided_value": {
+          "const": null
+        },
+        "mock_boundary": {
+          "const": "UNFILLED"
+        },
+        "policy_number_status": {
+          "const": "UNDETERMINED"
+        },
+        "revision": {
+          "const": "F04-MOCK-TERMS-DRAFT-0.2"
+        },
+        "terms": {
+          "additionalProperties": false,
+          "properties": {
+            "interest-apr-schedule": {
+              "additionalProperties": false,
+              "properties": {
+                "adopted_option": {
+                  "const": "A"
+                },
+                "decided_value": {
+                  "const": null
+                },
+                "mock_effect": {
+                  "const": "INTEREST_UNDEFINED"
+                },
+                "policy_number_status": {
+                  "const": "UNDETERMINED"
+                }
+              },
+              "required": [
+                "adopted_option",
+                "decided_value",
+                "mock_effect",
+                "policy_number_status"
+              ],
+              "type": "object"
+            },
+            "legal-parties": {
+              "additionalProperties": false,
+              "properties": {
+                "adopted_option": {
+                  "const": "A"
+                },
+                "decided_value": {
+                  "const": null
+                },
+                "mock_effect": {
+                  "const": "ROLE_LABEL_ONLY"
+                },
+                "policy_number_status": {
+                  "const": "UNDETERMINED"
+                }
+              },
+              "required": [
+                "adopted_option",
+                "decided_value",
+                "mock_effect",
+                "policy_number_status"
+              ],
+              "type": "object"
+            },
+            "limit-recalculation": {
+              "additionalProperties": false,
+              "properties": {
+                "adopted_option": {
+                  "const": "A"
+                },
+                "decided_value": {
+                  "const": null
+                },
+                "mock_effect": {
+                  "const": "SNAPSHOT_FROZEN"
+                },
+                "policy_number_status": {
+                  "const": "UNDETERMINED"
+                }
+              },
+              "required": [
+                "adopted_option",
+                "decided_value",
+                "mock_effect",
+                "policy_number_status"
+              ],
+              "type": "object"
+            },
+            "perfection": {
+              "additionalProperties": false,
+              "properties": {
+                "adopted_option": {
+                  "const": "A"
+                },
+                "decided_value": {
+                  "const": null
+                },
+                "mock_effect": {
+                  "const": "NOT_PERFECTED"
+                },
+                "policy_number_status": {
+                  "const": "UNDETERMINED"
+                }
+              },
+              "required": [
+                "adopted_option",
+                "decided_value",
+                "mock_effect",
+                "policy_number_status"
+              ],
+              "type": "object"
+            },
+            "seniority": {
+              "additionalProperties": false,
+              "properties": {
+                "adopted_option": {
+                  "const": "A"
+                },
+                "decided_value": {
+                  "const": null
+                },
+                "mock_effect": {
+                  "const": "UNORDERED_RESERVATION"
+                },
+                "policy_number_status": {
+                  "const": "UNDETERMINED"
+                }
+              },
+              "required": [
+                "adopted_option",
+                "decided_value",
+                "mock_effect",
+                "policy_number_status"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "interest-apr-schedule",
+            "legal-parties",
+            "limit-recalculation",
+            "perfection",
+            "seniority"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "adopted_option",
+        "adoption_date",
+        "adoption_decider",
+        "contract_version",
+        "decided_value",
+        "mock_boundary",
+        "policy_number_status",
+        "revision",
+        "terms"
+      ],
+      "type": "object"
     }
   }
 }

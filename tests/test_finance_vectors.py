@@ -84,7 +84,6 @@ FRESH = ((0, 0, 0, 95000), (0, 0, 0, 5000))
 PLATFORM_FIRST = ((92000, 0, 0, 3000), (5000, 0, 0, 0))
 CANCELLED_AFTER_PAY = ((92000, 3000, 92000, 0), (5000, 0, 5000, 0))
 FROZEN = 'DISTRIBUTION_ORDER_FROZEN'
-BLOCKED = 'DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED'
 SCENARIO_STEPS = {
     'shortfall-platform': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
@@ -99,13 +98,13 @@ SCENARIO_STEPS = {
     'partial-before': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
         (REFUND, 'ACCEPTED', None, False, *FRESH, 97000, 40000, 0),
-        (DISTRIBUTE, 'REJECTED', BLOCKED, False, *FRESH, 97000, 40000, 0),
+        (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 40000, 0),
     ],
     'partial-after': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
         (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 0, 0),
         (REFUND, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 40000, 0),
-        (DISTRIBUTE, 'REJECTED', BLOCKED, False, *PLATFORM_FIRST, 0, 40000, 0),
+        (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 40000, 0),
     ],
     'full-after': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
@@ -120,7 +119,7 @@ SCENARIO_STEPS = {
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
         (REFUND, 'ACCEPTED', None, False, *FRESH, 97000, 40000, 0),
         (REFUND, 'ACCEPTED', None, False, *FRESH, 97000, 100000, 0),
-        (DISTRIBUTE, 'REJECTED', BLOCKED, False, *FRESH, 97000, 100000, 0),
+        (DISTRIBUTE, 'ACCEPTED', None, False, *PLATFORM_FIRST, 0, 100000, 0),
     ],
     'duplicate-statement': [
         (STATEMENT, 'ACCEPTED', None, False, *FRESH, 97000, 0, 0),
@@ -257,7 +256,7 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertEqual(a['vector_role'], 'INPUT_VECTOR_CANDIDATE')
         self.assertIs(a['semantic_conformance'], False)
         self.assertEqual(a['upstream_nodes_completed'], [])
-        self.assertEqual(a['source_commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(a['source_commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertIn('not SEMANTIC_CONFORMANCE', a['note'])
         self.assertIn('completes no upstream node', a['note'])
 
@@ -396,7 +395,7 @@ class ScenarioVectorTests(unittest.TestCase):
                     duplicates += 1
                     self.assertEqual(step['view_digest'], previous, (scenario['id'], step['ordinal']))
                 previous = step['view_digest']
-        self.assertEqual((rejected, duplicates), (7, 2))
+        self.assertEqual((rejected, duplicates), (4, 2))
 
     def test_view_digests_match_the_live_service_scenarios(self):
         service = CapitalService()
@@ -796,7 +795,7 @@ class FacadeReadModelVectorTests(unittest.TestCase):
         self.assertEqual(self.by_path['/api/statement']['closure'], [
             'approved_row', 'exposure_row', 'gap', 'refund_row', 'reserved_row', 'scope', 'settlement_row', 'statement'])
         self.assertEqual(self.by_path['/api/operations/{operation_id}']['closure'], [
-            'accepted_receipt', 'command_result', 'credit_view', 'recovery_approvals',
+            'accepted_receipt', 'command_result', 'credit_open_terms', 'credit_view', 'recovery_approvals',
             'rejected_receipt', 'repayment', 'unknown_operation'])
         self.assertIn('statement', self.by_path['/api/export/manifest']['closure'])
         self.assertGreater(len(self.by_path['/api/export/manifest']['closure']), 40)
