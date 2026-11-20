@@ -149,9 +149,23 @@ test('auditor gets the same permitted diagnostics; observer gets health only wit
     await expect(page.locator('#desk-diag-capacity-rows')).toContainText('DEMO_BOUND_NOT_FINANCIAL_LIMIT_NOT_STAGE5_CAPACITY');
     await expect(page.locator('#desk-diag-command-rows tr').first()).toBeVisible();
     await expect(page.locator('#desk-diag-eventlog')).toContainText('event_log.written');
+    let finishBind;
+    const bindPending = new Promise(resolve => { finishBind = resolve; });
+    await page.route('**/api/session', async route => {
+      await bindPending;
+      await route.continue();
+    });
+    await expect(page.locator('#role')).toBeEnabled();
     const mark = seen.gets.length;
     const observerSwitch = page.waitForResponse(response => response.url().endsWith('/api/session') && response.request().method() === 'POST');
-    await page.locator('#role').selectOption('observer');
+    try {
+      await page.locator('#role').selectOption('observer');
+      await expect(page.locator('#desk-diag-capacity-rows')).toContainText('unavailable');
+      await expect(page.locator('#desk-diag-command-rows')).toContainText('unavailable');
+      await expect(page.locator('#desk-diag-eventlog')).toContainText('unavailable');
+    } finally {
+      finishBind();
+    }
     expect((await observerSwitch).ok()).toBeTruthy();
     await expect(page.locator('#role-status')).toContainText('observer');
     const health = (await getJson(8962, '/api/health')).body;
@@ -164,6 +178,7 @@ test('auditor gets the same permitted diagnostics; observer gets health only wit
     expect(observerGets).toContain('/api/health');
     expect(observerGets).not.toContain('/api/metrics');
     expect(observerGets).not.toContain('/api/overlay');
+    expect(observerGets).not.toContain('/api/overlay/slices');
     expect(commandPosts(seen)).toEqual([]);
     expect(seen.errors).toEqual([]);
   });

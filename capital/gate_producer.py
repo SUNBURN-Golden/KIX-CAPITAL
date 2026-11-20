@@ -20,14 +20,24 @@ import urllib.error
 import urllib.request
 from http.client import HTTPException
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from capital.ports import ProducerPort
 from capital.producer import CreditError, FixtureViews
 from capital.resources import ROOT
 from capital.compat_preflight import check_bundle
+from capital.protocol_delivery import COMMIT, PIN_HEADER, read_delivery
 
 LABEL = 'LOCAL_FAKE_GATE'
 _FAKE_GATE_MODULE = 'kix_capital_fake_gate'
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
 
 
 class GateUnavailable(Exception):
@@ -181,16 +191,28 @@ class GateHttpProducer:
         self._owned = False
         self._closed = False
         self._preflight_inputs = None
+        if gate is None and base_url is None:
+            module = load_fake_gate()
+        try:
+            self.delivery = read_delivery(Path(str(ROOT)).parent)
+        except (OSError, ValueError) as exc:
+            raise GateUnavailable('PROTOCOL_DELIVERY_MISMATCH') from exc
         if gate is not None:
             self.gate = gate
             self.base_url = gate.url
         elif base_url is None:
-            module = load_fake_gate()
             self.gate = module.start()
             self.base_url = self.gate.url
             self._owned = True
         else:
-            if not (base_url.startswith('http://127.0.0.1:') or base_url.startswith('http://[::1]:')):
+            try:
+                parts = urlsplit(base_url)
+                valid = (parts.scheme == 'http' and parts.hostname in ('127.0.0.1', '::1')
+                         and parts.port and parts.username is None and not parts.path
+                         and not parts.query and not parts.fragment)
+            except ValueError:
+                valid = False
+            if not valid:
                 raise GateProtocolError('NON_LOOPBACK')
             self.gate = None
             self.base_url = base_url
@@ -227,9 +249,8 @@ class GateHttpProducer:
             status, payload = self._request('POST', '/v1/commands', envelope, operation_id)
         except TransportLost as exc:
             raise ProducerUnknown(operation_id) from exc
-        if status == 409:
-            raise GateConflict(
-                payload.get('error') if type(payload) is dict else 'IDEMPOTENCY_CONFLICT')
+        if status == 409 and type(payload) is dict and payload.get('error') == 'IDEMPOTENCY_CONFLICT':
+            raise GateConflict('IDEMPOTENCY_CONFLICT')
         if status != 200:
             raise GateProtocolError(
                 payload.get('error') if type(payload) is dict else 'GATE_FAILED', status)
@@ -346,14 +367,22 @@ class GateHttpProducer:
         _honest(payload)
 
     def _request(self, method, path, payload=None, operation_id=None):
+        if method == 'POST':
+            try:
+                status, pin = self._request('GET', '/v1/delivery')
+            except TransportLost as exc:
+                raise GateProtocolError('PROTOCOL_DELIVERY_UNAVAILABLE') from exc
+            if status != 200 or _honest(pin).get('delivery') != self.delivery:
+                raise GateProtocolError('PROTOCOL_DELIVERY_MISMATCH')
         data = None
         headers = {'Accept': 'application/json', 'Host': self._host_header()}
         if payload is not None:
             data = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(',', ':')).encode('ascii')
             headers['Content-Type'] = 'application/json'
+            headers[PIN_HEADER] = COMMIT
         request = urllib.request.Request(self.base_url + path, data=data, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with _OPENER.open(request, timeout=self.timeout) as response:
                 raw = response.read()
                 status = response.status
         except urllib.error.HTTPError as exc:

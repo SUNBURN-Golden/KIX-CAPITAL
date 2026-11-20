@@ -1,7 +1,7 @@
 """Executable CLAIM_CONFORMANCE checks binding the loopback facade and the
 opt-in LOCAL_FILE_WORKSPACE file workspace to the pinned
 docs/contracts/READINESS_RUNTIME.md boundary prose (kix-protocol
-7481b0e16ce9b903abbffa62249bb91cd9e63cfe, the vendor pin — same SHA, a new
+8ba7f6c36373ac0ec49246f51f7471c164ac3a28, the vendor pin — same SHA, a separate
 consumption scope named here per the repin policy's §3.1 consumer rule).
 
 Each row in tests/readiness_claims.json cites a pinned section and needle,

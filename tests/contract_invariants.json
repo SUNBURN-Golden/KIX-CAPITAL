@@ -6,7 +6,7 @@
       "expected": true,
       "id": "inv.1",
       "needle": "A seat has no two active owners; reservation conserves inventory",
-      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
       "section": "## 3. Five predicates and their observation boundary",
       "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
     },
@@ -16,7 +16,7 @@
       "expected": true,
       "id": "inv.2",
       "needle": "Observation budget includes stored events + conflicts + reserved slots and stays bounded",
-      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
       "section": "## 3. Five predicates and their observation boundary",
       "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
     },
@@ -26,7 +26,7 @@
       "expected": true,
       "id": "inv.3",
       "needle": "A completed command's first result cannot change",
-      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
       "section": "## 3. Five predicates and their observation boundary",
       "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
     },
@@ -36,7 +36,7 @@
       "expected": true,
       "id": "inv.4",
       "needle": "One full provider/account/operation has only one economic capture effect",
-      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
       "section": "## 3. Five predicates and their observation boundary",
       "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
     },
@@ -46,7 +46,7 @@
       "expected": true,
       "id": "inv.5",
       "needle": "An already retained capture cannot vanish or change through any tested transition",
-      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
       "section": "## 3. Five predicates and their observation boundary",
       "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
     },
@@ -58,7 +58,7 @@
       "expected": true,
       "id": "inv.3.overlay_projection",
       "needle": "A completed command's first result cannot change",
-      "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+      "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
       "section": "## 3. Five predicates and their observation boundary",
       "source_doc": "docs/contracts/CONTRACT_INVARIANTS.md"
     }
@@ -72,7 +72,7 @@
     ],
     "consumption_scope": "\u00a73 INV-1..INV-5 prose needles only; no vendor bytes, no kernel execution",
     "follow_up": "upstream-repin-inventory-contract-invariants",
-    "full_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+    "full_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
     "note_registration": "PENDING_NOTE_REGISTRATION",
     "pin_class": "EXECUTABLE_CITATION",
     "repository": "SUNBURN-Golden/kix-protocol",
@@ -111,7 +111,7 @@
       74810511
     ]
   },
-  "pinned_sha": "7481b0e16ce9b903abbffa62249bb91cd9e63cfe",
+  "pinned_sha": "8ba7f6c36373ac0ec49246f51f7471c164ac3a28",
   "semantic_conformance": false,
   "simulation": "SIMULATED",
   "upstream_kernel_executed": false,
