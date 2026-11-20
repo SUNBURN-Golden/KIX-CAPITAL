@@ -261,13 +261,27 @@ def compare(expected, actual, context):
         require(expected == actual, f'{context}: drift')
 
 
+def temporary_workspaces():
+    """Prefer memory-backed scratch files; this checker makes no durability claim.
+
+    Each replay still uses FileWorkspace, including locks, atomic writes, fsyncs
+    and reopen. Avoid thousands of physical-disk syncs competing with CI jobs
+    when Linux shared-memory scratch space is available. Other environments use
+    the normal tempfile location, with identical verification and cleanup.
+    """
+    try:
+        return tempfile.TemporaryDirectory(prefix='capital-fold-fuzz-', dir='/dev/shm')
+    except OSError:
+        return tempfile.TemporaryDirectory(prefix='capital-fold-fuzz-')
+
+
 def build_corpus(expected=None):
     result = {'format': FORMAT, 'label': 'SIMULATED', 'generator': copy.deepcopy(GENERATOR), 'cases': []}
     if expected is not None:
         compare({k: v for k, v in expected.items() if k != 'cases'},
                 {k: v for k, v in result.items() if k != 'cases'}, 'corpus')
         require(type(expected.get('cases')) is list and len(expected['cases']) == len(SEEDS), 'cases drift')
-    with tempfile.TemporaryDirectory(prefix='capital-fold-fuzz-') as tmp:
+    with temporary_workspaces() as tmp:
         for index, seed in enumerate(SEEDS):
             commands = generate_commands(seed)
             case = {'seed': seed, 'commands': commands}
