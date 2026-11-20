@@ -163,13 +163,13 @@ and the exit code is 1. `commitments` echoes the shared `state_digest`,
 is generated, so identical inputs emit identical stdout bytes. Exit codes:
 0 all matched, 1 any failed input or cross mismatch, 2 argument misuse.
 
-The comparisons bind journal content and overlay presence, not only digests:
-`journal_content` requires the workspace payload journal, the manifest journal
-section entries and the facts JOURNAL rows to be canonically identical;
+The workspace payload journal, the manifest journal section entries and the
+facts JOURNAL rows must be canonically identical for `journal_content`.
 `f04_commitment` replays the manifest journal into a scratch `CreditMachine`
-over `FixtureViews` and requires the replayed `state_digest` to equal the
-workspace payload and facts cut digests with matching `journal_length`;
-`overlay_presence` compares the three emptiness signals (a v2 workspace's
+over `FixtureViews`. The facts cut must contain the current replayed
+`state_digest` and matching `journal_length`. The workspace payload digest
+must match the same replay under the workspace auditor's current or legacy
+digest rule. `overlay_presence` compares the three presence indicators (a v2 workspace's
 non-empty overlay journal, a V3 manifest `overlay` section, a facts cut's
 `overlay_state_digest`), so overlay-only cuts fail before content is read;
 `overlay_content` and `overlay_commitment` compare the overlay journals and the

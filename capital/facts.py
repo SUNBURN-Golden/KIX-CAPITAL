@@ -243,19 +243,19 @@ def _report(reason=None, pages=0, rows=0):
 def verify_raw_pages(raw_pages):
     """Verify already-captured page bytes; replay locally, never read the directory.
 
-    `raw_pages` is an iterable of ``(name, raw_bytes)`` pairs. A caller that
+    `raw_pages` is an iterable of ``(name, raw_bytes)`` pairs. Use ``None``
+    for the bytes if a named page could not be read. A caller that
     captures each page file once therefore verifies exactly the bytes it
     compares. `verify_dir` reads the directory and delegates here.
     """
     pages, rows = [], []
-    raw_pages = list(raw_pages)
 
     def report(reason=None):
         return _report(reason, len(pages), len(rows))
 
-    if not raw_pages:
-        return report('NO_PAGES')
     for name, raw in raw_pages:
+        if raw is None:
+            return report('UNREADABLE:' + name)
         try:
             page = loads(raw)
         except (ValueError, UnicodeError, RecursionError):
@@ -266,6 +266,8 @@ def verify_raw_pages(raw_pages):
         except (ValueError, RecursionError):
             return report('NONCANONICAL_ENCODING:' + name)
         pages.append(page)
+    if not pages:
+        return report('NO_PAGES')
     for page in pages:
         if type(page) is not dict or set(page) != PAGE_KEYS or page['format'] != PAGE_FORMAT:
             return report('PAGE_SHAPE')
@@ -376,12 +378,11 @@ def verify_dir(directory):
         paths = sorted(Path(directory).glob('page-*.json'))
     except OSError:
         return _report('NO_PAGES')
-    if not paths:
-        return _report('NO_PAGES')
     raw_pages = []
     for path in paths:
         try:
             raw_pages.append((path.name, path.read_bytes()))
         except OSError:
-            return _report('UNREADABLE:' + path.name)
+            raw_pages.append((path.name, None))
+            break
     return verify_raw_pages(raw_pages)

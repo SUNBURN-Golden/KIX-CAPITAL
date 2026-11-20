@@ -17,8 +17,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from capital import evidence_crosscut as crosscut, facts
+from capital import evidence_crosscut as crosscut, facts, overlay
 from capital.export import content_digest, sha256_hex
+from capital.producer import FixtureViews
+from capital.protocol import CreditMachine
 from capital.service import CapitalService, digest
 from capital.store import FILE_NAME, FileWorkspace, canonical_bytes
 from scripts.seed_demo import apply_steps
@@ -228,6 +230,27 @@ class CrosscutCliTests(unittest.TestCase):
                          len(self.data_b['entries']))
         self.assertEqual(report['commitments']['state_digest'], self.data_a['state_digest'])
 
+    def test_legacy_workspace_state_digest_matches_current_exports(self):
+        document = json.loads(self.ws_a.read_bytes())
+        payload = document['payload']
+        machine = CreditMachine.restore(payload['journal'], FixtureViews())
+        state = json.loads(machine.canonical_state())
+        for case in state['cases']:
+            del case['open_terms']
+        raw = json.dumps(state, sort_keys=True, separators=(',', ':'),
+                         ensure_ascii=False, allow_nan=False).encode('utf-8')
+        payload['state_digest'] = hashlib.sha256(raw).hexdigest()
+        self.assertNotEqual(payload['state_digest'], machine.state_digest())
+        document['payload_sha256'] = digest(payload)
+        self.ws_a.write_bytes(canonical_bytes(document))
+
+        proc = self.run_cli(*self.args())
+        self.assertEqual((proc.returncode, proc.stderr), (0, b''), proc.stdout)
+        report = json.loads(proc.stdout)
+        self.assertEqual(report['inputs']['workspace']['report']['state_digest'],
+                         payload['state_digest'])
+        self.assertEqual(report['commitments']['state_digest'], machine.state_digest())
+
     def test_independently_valid_books_fail_with_named_reasons(self):
         ws_o, manifest_o, facts_o = build_other_book(self.root)
         before = tree(self.root)
@@ -285,21 +308,48 @@ class CrosscutCliTests(unittest.TestCase):
         self.assertEqual(statuses(report)['fixtures_commitment'], 'MATCHED')
         self.assertEqual(data_c['entries'][:len(self.data_b['entries'])], self.data_b['entries'])
 
-    def test_resealed_manifest_fixtures_mismatch_passes_own_verifier(self):
-        tampered = reseal(self.data_a['manifest'], lambda s: s['fixtures']['body'].update(
-            fixtures_digest='0' * 64))
-        path = self.root / 'tampered-fixtures.json'
-        path.write_bytes(canonical_bytes(tampered))
+    def test_hash_valid_empty_v3_overlay_is_present(self):
         from capital.verify import verify_manifest
-        self.assertIs(verify_manifest(json.loads(path.read_bytes()))['ok'], True)
-        proc = self.run_cli('--workspace', self.ws_a, '--manifest', path, '--facts', self.facts_a)
-        self.assertEqual(proc.returncode, 1)
+
+        state = overlay.fold([], len(self.data_b['journal']))
+        manifest = reseal(self.data_b['manifest'], lambda sections: sections['overlay']['body'].update(
+            journal=[], state=state, overlay_state_digest=overlay.state_digest(state)))
+        self.assertTrue(verify_manifest(manifest)['ok'])
+        self.manifest_b.write_bytes(canonical_bytes(manifest))
+
+        proc = self.run_cli(*self.args(manifest=self.manifest_b))
+        self.assertEqual((proc.returncode, proc.stderr), (1, b''))
         report = json.loads(proc.stdout)
         self.assertEqual(statuses(report)['manifest_verify'], 'MATCHED')
-        self.assertEqual(statuses(report)['journal_content'], 'MATCHED')
-        self.assertEqual(reasons(report)['fixtures_commitment'], 'CROSS_FIXTURES_MISMATCH')
-        self.assertEqual(report['reason'], 'CROSS_FIXTURES_MISMATCH')
-        self.assertIsNone(report['commitments']['fixtures_digest'])
+        self.assertEqual(report['reason'], 'CROSS_OVERLAY_PRESENCE_MISMATCH')
+
+    def test_resealed_manifest_fixtures_mismatch_passes_own_verifier(self):
+        from capital.verify import verify_manifest
+
+        def change_fixture_rows(sections):
+            body = sections['fixtures']['body']
+            body['rows'].pop(next(iter(body['rows'])))
+            body['fixtures_digest'] = sha256_hex(body['rows'])
+
+        mutations = {
+            'claimed-digest': lambda s: s['fixtures']['body'].update(fixtures_digest='0' * 64),
+            'self-consistent-fixture-rows': change_fixture_rows,
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                tampered = reseal(self.data_a['manifest'], mutate)
+                self.assertTrue(verify_manifest(tampered)['ok'])
+                path = self.root / f'{name}.json'
+                path.write_bytes(canonical_bytes(tampered))
+
+                proc = self.run_cli(*self.args(manifest=path))
+                self.assertEqual((proc.returncode, proc.stderr), (1, b''))
+                report = json.loads(proc.stdout)
+                self.assertEqual(statuses(report)['manifest_verify'], 'MATCHED')
+                self.assertEqual(statuses(report)['journal_content'], 'MATCHED')
+                self.assertEqual(reasons(report)['fixtures_commitment'], 'CROSS_FIXTURES_MISMATCH')
+                self.assertEqual(report['reason'], 'CROSS_FIXTURES_MISMATCH')
+                self.assertIsNone(report['commitments']['fixtures_digest'])
 
     def test_resealed_manifest_non_dict_body_fails_closed(self):
         # `verify_manifest` accepts a resealed V2 envelope whose section body is
@@ -335,6 +385,18 @@ class CrosscutCliTests(unittest.TestCase):
         paths[0].write_bytes(b'{}')
         self.assertTrue(facts.verify_raw_pages(raws)['ok'])
         self.assertIs(facts.verify_dir(self.facts_a)['ok'], False)
+
+    def test_unreadable_facts_page_after_valid_prefix(self):
+        broken = self.facts_a / 'page-9999.json'
+        broken.symlink_to(self.root / 'missing.json')
+
+        proc = self.run_cli(*self.args())
+        self.assertEqual((proc.returncode, proc.stderr), (1, b''))
+        report = json.loads(proc.stdout)
+        self.assertEqual(report['reason'], 'UNREADABLE:' + broken.name)
+        self.assertEqual(report['inputs']['facts']['report'], facts.verify_dir(self.facts_a))
+        for name in crosscut.CROSS_CHECKS:
+            self.assertEqual(statuses(report)[name], 'NOT_CHECKED')
 
     def test_resealed_manifest_journal_replay_fails(self):
         def mutate(sections):

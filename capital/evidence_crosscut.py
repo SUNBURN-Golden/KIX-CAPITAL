@@ -20,6 +20,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -31,7 +32,7 @@ from capital.export import (
 )
 from capital.keyset import load_dev_keyset
 from capital.producer import FixtureViews
-from capital.protocol import CreditMachine
+from capital.protocol import CreditMachine, matches_workspace_state_digest
 from capital.store import canonical_bytes, overlay_section
 from capital.strict_json import loads
 
@@ -169,36 +170,26 @@ def _facts_input(directory, checks):
         paths = sorted(Path(directory).glob('page-*.json'))
     except (OSError, TypeError, ValueError):
         paths = []
-    raw_pages, pages, captured = [], [], bytearray()
-    capture_ok = True
-    for path in paths:
-        raw = _capture_file(path)
-        if raw is None:
-            capture_ok = False
-            break
-        raw_pages.append((path.name, raw))
-        page = _parse(raw)
-        if page is None:
-            capture_ok = False
-            break
-        pages.append(page)
-        captured += path.name.encode() + b'\x00' + raw
+    raw_pages = [(path.name, _capture_file(path)) for path in paths]
     report = facts_module.verify_raw_pages(raw_pages)
-    pages_sha = _sha(bytes(captured)) if capture_ok and captured else None
+    pages_sha = None
+    if raw_pages and all(raw is not None for _, raw in raw_pages):
+        digest = hashlib.sha256()
+        for name, raw in raw_pages:
+            digest.update(os.fsencode(name) + b'\x00')
+            digest.update(raw)
+        pages_sha = digest.hexdigest()
     info = {'path': str(directory), 'ok': report['ok'], 'reason': report['reason'],
             'report': report, 'sha256': pages_sha}
     extracted = None
-    if report['ok'] and capture_ok and pages:
+    if report['ok']:
+        pages = [loads(raw) for _, raw in raw_pages]
         journal = [row['entry'] for page in pages for row in page['rows']
                    if row['source'] == 'JOURNAL']
         overlay_journal = [row['entry'] for page in pages for row in page['rows']
                            if row['source'] == 'OVERLAY']
         extracted = {'journal': journal, 'overlay_journal': overlay_journal,
-                     'cut': copy.deepcopy(pages[0]['cut'])}
-    if report['ok'] and extracted is None:
-        # Verification passed but the captured pages could not be replayed for
-        # extraction (for example the files changed between the two reads).
-        info['ok'], info['reason'] = False, 'FACTS_PAGES_UNREADABLE'
+                     'cut': pages[0]['cut']}
     _check(checks, 'facts_verify', info['ok'], info['reason'])
     return info, extracted
 
@@ -215,14 +206,15 @@ def _cross_checks(workspace, manifest, facts, checks):
            {'workspace': sha256_hex(ws_journal), 'manifest': sha256_hex(m_journal),
             'facts': sha256_hex(f_journal)})
     try:
-        replayed = CreditMachine.restore(
-            copy.deepcopy(m_journal), FixtureViews()).state_digest()
+        machine = CreditMachine.restore(copy.deepcopy(m_journal), FixtureViews())
+        replayed = machine.state_digest()
     except Exception:
         _check(checks, 'f04_commitment', False, 'CROSS_JOURNAL_REPLAY_FAILED')
         f04_matched = False
     else:
         f04_matched = True
-        if not (workspace['state_digest'] == replayed == cut['state_digest']):
+        if (replayed != cut['state_digest']
+                or not matches_workspace_state_digest(machine, workspace['state_digest'])):
             _check(checks, 'f04_commitment', False, 'CROSS_STATE_DIGEST_MISMATCH',
                    {'workspace': workspace['state_digest'], 'manifest_replay': replayed,
                     'facts': cut['state_digest']})
@@ -238,7 +230,7 @@ def _cross_checks(workspace, manifest, facts, checks):
                {'state_digest': cut['state_digest'],
                 'journal_length': cut['journal_length']})
     presence = (bool(workspace['overlay_journal']),
-                bool(manifest['overlay_journal']),
+                manifest['overlay_digest'] is not None,
                 'overlay_state_digest' in cut)
     _check(checks, 'overlay_presence',
            presence[0] == presence[1] == presence[2],
