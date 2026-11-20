@@ -76,6 +76,21 @@ async function main(){
     let accepted=false;try{accepted=vm.runInContext('snapshotOk(body,next)&&snapshotComponentsOk(body)',scope);}catch{}
     assert.equal(accepted,false);
   }
+  const markerSnapshot=structuredClone(input.snapshot);
+  const markerRows=markerSnapshot.forecast.advances;
+  const markerIndex=markerRows.findIndex(row=>row.status==='BOUND');
+  const {advance_id,phase,legs}=markerRows[markerIndex];
+  const scheduled=legs.find(leg=>leg.bucket!==null);
+  markerRows[markerIndex]={advance_id,phase,status:'NOT_APPLICABLE',reason:'SIMULATED regression marker'};
+  scope.body=markerSnapshot;
+  assert.equal(vm.runInContext('snapshotComponentsOk(body)',scope),true);
+  for(const unexpected of [[scheduled],scheduled]){
+    markerRows[markerIndex].legs=unexpected;
+    assert.equal(vm.runInContext('snapshotComponentsOk(body)',scope),false);
+    scope.deskData={snapshot:markerSnapshot,cashflow:markerSnapshot};
+    vm.runInContext('paintCashflow()',scope);
+    assert.equal($('desk-cash-buckets').all().some(node=>node.dataset.advance===advance_id),false);
+  }
   // Actual refresh orchestration, with controlled async boundaries and no sockets.
   const posted=[];let role='organizer',open=true;let waiting=[];
   Object.assign(scope,{
@@ -85,6 +100,7 @@ async function main(){
     loadProjection:async()=>({}),loadDiagnostics:async()=>({}),loadTerms:async()=>({}),
     loadPolicy:async()=>({}),loadPortfolio:async()=>({}),loadRisk:async()=>({}),
     loadDesk:async()=>({cashflow:input.snapshot}),
+    invalidateSlices:()=>{},sliceReadError:error=>error.message,sliceChoices:()=>{},loadSlices:async()=>{},
     paintEvidence:()=>{},renderProjection:()=>{},renderReconciliation:()=>{},renderStatement:()=>{},renderTerms:()=>{},
     renderPortfolio:()=>{},renderRisk:()=>{},renderPolicy:()=>{},resolveSelection:()=>{},render:()=>posted.push(scope.state.instance_id),
     loadCaseTerms:()=>{},loadCaseSetoff:()=>{},loadCaseUnderwrite:()=>{},loadCandidateUnderwrite:()=>{},

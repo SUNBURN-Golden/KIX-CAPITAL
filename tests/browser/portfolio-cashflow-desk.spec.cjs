@@ -3,25 +3,60 @@ const {spawn, spawnSync} = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const {createInterface} = require('node:readline');
+
+async function deskAddress(child, stopped, request, workspace) {
+  const lines = createInterface({input:child.stdout});
+  let timer;
+  const address = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(Error('SIMULATED cashflow fixture did not report a loopback port')), 8000);
+    lines.on('line', line => {
+      const match = /^KIX Capital simulation: (http:\/\/127\.0\.0\.1:[1-9]\d*)$/.exec(line);
+      if (match) resolve(match[1]);
+    });
+  });
+  const ready = async () => {
+    const base = await address;
+    const response = await request.get(base+'/api/state', {timeout:8000});
+    expect(response.ok()).toBeTruthy();
+    expect((await response.json()).workspace).toEqual({
+      kind:'LOCAL_FILE_WORKSPACE',status:'ACTIVE',path:path.join(fs.realpathSync(workspace),'workspace.json'),
+    });
+    expect(child.exitCode).toBeNull();
+    expect(child.signalCode).toBeNull();
+    return base;
+  };
+  try {
+    return await Promise.race([ready(), stopped.then(error => {throw error;})]);
+  } finally {
+    clearTimeout(timer);
+    lines.close();
+  }
+}
 
 // Local SIMULATED fixture server, always stopped, never a provider connection.
 async function withDesk(page, run) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'capital-cashflow-'));
   const workspace = path.join(directory, 'workspace');
-  const seed = spawnSync('python3', ['scripts/seed_demo.py', '--workspace', workspace], {encoding:'utf8'});
-  expect(seed.status, seed.stderr).toBe(0);
-  const child = spawn('python3', ['-m', 'capital.server', '--port', '8955', '--workspace', workspace], {stdio:'ignore'});
-  const base = 'http://127.0.0.1:8955';
-  const errors = [];
-  page.on('pageerror', error => errors.push(String(error)));
+  let child, stopped;
   try {
-    await expect(async () => expect((await page.request.get(base+'/api/state')).ok()).toBeTruthy()).toPass({timeout:8000});
+    const seed = spawnSync('python3', ['scripts/seed_demo.py', '--workspace', workspace], {encoding:'utf8'});
+    expect(seed.status, seed.stderr).toBe(0);
+    child = spawn('python3', ['-m', 'capital.server', '--port', '0', '--workspace', workspace], {stdio:['ignore','pipe','pipe']});
+    let stderr = '', spawnError;
+    child.stderr.setEncoding('utf8').on('data', data => {stderr += data;});
+    child.once('error', error => {spawnError = error;});
+    stopped = new Promise(resolve => child.once('close', (code, signal) => {
+      resolve(spawnError || Error(`SIMULATED cashflow fixture exited (${signal || code})\n${stderr}`));
+    }));
+    const base = await deskAddress(child, stopped, page.request, workspace);
+    const errors = [];
+    page.on('pageerror', error => errors.push(String(error)));
     await run(base);
     expect(errors).toEqual([]);
   } finally {
-    if (child.exitCode === null && child.signalCode === null) {
-      const stopped = new Promise(resolve => child.once('exit', resolve));
-      child.kill('SIGTERM');
+    if (child) {
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
       await stopped;
     }
     fs.rmSync(directory, {recursive:true, force:true});
@@ -112,10 +147,17 @@ test('incomplete, unbound, malformed and mismatched cuts clear all old forecast 
     await page.goto(base+'/#desk');
     await expect(page.locator('#desk-cash-buckets tr[data-advance]').first()).toBeVisible();
     const valid = await snapshot(page,base);
+    const inapplicableId = valid.forecast.advances.find(row=>row.status==='NOT_APPLICABLE').advance_id;
+    const scheduledLeg = valid.forecast.advances.find(row=>row.status==='BOUND').legs.find(leg=>leg.bucket!==null);
+    const addInapplicableLegs = legs => body => {
+      body.forecast.advances.find(row=>row.advance_id===inapplicableId).legs=legs;
+    };
     const variants = [
       body=>{body.complete=false;body.status='INCOMPLETE';body.forecast=null;body.completeness.reasons=['TERMS_NOT_BOUND'];body.completeness.sections.forecast='UNAVAILABLE';},
       body=>{body.forecast={status:'NOT_BOUND',reason:'TERMS_NOT_BOUND'};},
       body=>{body.forecast.advances.find(row=>row.status==='BOUND').legs[0].exact='invalid';},
+      addInapplicableLegs([scheduledLeg]),
+      addInapplicableLegs(scheduledLeg),
       body=>{body.cut.state_digest='0'.repeat(64);},
       body=>{body.covenants.sim_day+=1;},
       body=>{body.instance_id='obsolete-instance';},
@@ -125,7 +167,7 @@ test('incomplete, unbound, malformed and mismatched cuts clear all old forecast 
       const body=JSON.parse(JSON.stringify(valid));mutate(body);
       await page.route('**/api/portfolio/snapshot?**', route=>route.fulfill({json:body}));
       await page.locator('#desk-refresh').click();
-      await expect(page.locator('#desk-cash-status')).toContainText('INCOMPLETE');
+      await expect(page.locator('#desk-cash-status')).toHaveText(/^INCOMPLETE ·/);
       await expect(page.locator('#desk-cash-buckets tr[data-advance]')).toHaveCount(0);
       await expect(page.locator('#desk-cash-unscheduled tr')).toHaveCount(0);
       await expect(page.locator('#desk-cash-detail-body')).toBeEmpty();
@@ -151,6 +193,50 @@ test('incomplete, unbound, malformed and mismatched cuts clear all old forecast 
     await expect(page.locator('#desk-clock')).toContainText('overlay cut does not match');
     await expect(page.locator('#desk-overlay-rows')).toBeEmpty();
     await expect(page.locator('#desk-cash-cut')).toContainText(valid.snapshot_digest);
+  });
+});
+
+for (const fail of [false,true]) test(`observer re-entry hides organizer data during ${fail?'failed':'delayed'} state refresh`, async ({page}) => {
+  await withDesk(page, async base => {
+    const snapshotRequests = [];
+    page.on('request', request => {
+      if (new URL(request.url()).pathname==='/api/portfolio/snapshot') snapshotRequests.push(request);
+    });
+    await page.goto(base+'/#desk');
+    await expect(page.locator('#desk-cash-buckets tr[data-advance]').first()).toBeVisible();
+    await expect(page.locator('#desk-cash-detail-body')).toBeVisible();
+    await expect(page.locator('#desk-refresh')).toBeEnabled();
+    const organizerRequests = snapshotRequests.length;
+
+    await page.locator('nav a[href="#overview"]').click();
+    await expect(page.locator('#desk')).toBeHidden();
+    await expect(page.locator('#refresh')).toBeEnabled();
+    await page.locator('#role').selectOption('observer');
+    await expect(page.locator('#role-status')).toContainText('observer');
+    await expect(page.locator('#refresh')).toBeEnabled();
+
+    const arrived = gate(), hold = gate();
+    await page.route(base+'/api/state', async route => {
+      arrived.release();
+      await hold.waiting;
+      if (fail) await route.fulfill({status:503,json:{error:'STATE_UNAVAILABLE'}});
+      else await route.continue();
+    });
+    await page.locator('nav a[href="#desk"]').click();
+    await arrived.waiting;
+    try {
+      await expect(page.locator('#desk')).toBeVisible();
+      await expect(page.locator('#desk-error')).toHaveText('운영 데스크를 불러오는 중입니다.');
+      await expect(page.locator('#desk-body')).toBeHidden();
+      await expect(page.locator('#desk-cashflow')).toBeHidden();
+    } finally {
+      hold.release();
+    }
+    if (fail) await expect(page.locator('#desk-error')).toHaveText('운영 데스크를 조회하지 못했습니다.');
+    else await expect(page.locator('#desk-forbidden')).toBeVisible();
+    await expect(page.locator('#desk-body')).toBeHidden();
+    await expect(page.locator('#desk-cashflow')).toBeHidden();
+    expect(snapshotRequests).toHaveLength(organizerRequests);
   });
 });
 

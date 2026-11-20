@@ -782,7 +782,7 @@ The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Foll
 
 `#desk`의 포트폴리오 현금 사다리는 `GET /api/portfolio/snapshot?instance_id=…` 한 응답으로 버킷, 미정 일정, 코버넌트 watch-list, 위험 타일, 연결된 advance 상세를 표시한다. 모든 데이터는 SIMULATED이며 `authenticated_source_cut=NOT_BOUND`다. 기존 `데스크 새로고침`과 `sim_day 진행`을 사용한다. 시계 진행은 기존 `POST /api/overlay/commands`의 `advance_day`뿐이다. 이 화면은 상환을 게시하지 않는다.
 
-버킷 `0-7`, `8-30`, `31-60`, `61-90`, `91+` 안에서 `SETTLEMENT_CASH_IN` (정산 현금), `PRINCIPAL` (원금 상환), `CONTRACT_INTEREST` (계약 이자)를 별도로 읽는다. 서버의 `exact` KRW 분수를 그대로 표시하며 브라우저가 합계·나눗셈·반올림·버킷 재배정을 하지 않는다. 가용 현금 잔액을 만들지 않는다. 예측 계약 이자는 원장에 기장된 미지급 `interest_due_krw`와 다르다. 정산일이 없으면 `EXPECTED_DAY_NOT_PROVIDED`로 미정 일정에 표시하며 날짜를 추정하지 않는다. `NOT_APPLICABLE` 사례와 서버 사유도 유지한다.
+버킷 `0-7`, `8-30`, `31-60`, `61-90`, `91+` 안에서 `SETTLEMENT_CASH_IN` (정산 현금), `PRINCIPAL` (원금 상환), `CONTRACT_INTEREST` (계약 이자)를 별도로 읽는다. 서버의 `exact` KRW 분수를 그대로 표시하며 브라우저가 합계·나눗셈·반올림·버킷 재배정을 하지 않는다. 가용 현금 잔액을 만들지 않는다. 예측 계약 이자는 원장에 기장된 미지급 `interest_due_krw`와 다르다. 정산일이 없으면 `EXPECTED_DAY_NOT_PROVIDED`로 미정 일정에 표시하며 날짜를 추정하지 않는다. `NOT_APPLICABLE` 사례는 별도 목록에 서버 사유를 표시한다. 이 사례에 `legs`가 포함된 응답은 `INCOMPLETE`로 처리한다.
 
 버킷 또는 watch-list의 사례 링크를 누르면 기존 `?case=…#desk` 주소와 사례 선택이 바뀌고, 같은 snapshot에서 나온 상세 영역으로 초점이 이동한다. 상세에는 단계, 등급, 기록된 `draw_day`, `maturity_day`, 원금, 흐름, 코버넌트의 `code`, `severity`, `detail`, facts가 나온다. 조건 롤업의 기본 draw_day를 기록일로 바꾸어 쓰지 않는다. `MATURITY_WINDOW`는 만기 후 `PAST_MATURITY`로 바뀌며 지난 일정은 `0-7` 버킷에 남는다. 만기 통과 자체로 상환을 실행하지 않는다.
 
@@ -790,7 +790,7 @@ The pin consumer is declared but unregistered: `PENDING_NOTE_REGISTRATION`. Foll
 
 snapshot 조회 자체가 실패하면 `INCOMPLETE · portfolio snapshot unavailable`로 표시하고 이전 digest와 가정도 지운다. 서버가 다른 instance_id를 돌려주거나 절단면이 없을 때도 이전 숫자를 재사용하지 않는다. 시계 진행만으로 F04 state_digest가 유지되더라도 상세 사전점검은 snapshot 식별자로 이전 응답을 구분하며, 이전 역할 세션의 지연 응답이 현재 토큰을 바꾸지 않는다.
 
-organizer와 auditor는 `projection:read`로 읽는다. auditor의 명령 조작은 숨겨지고 observer는 금지 안내만 보며 snapshot 요청을 보내지 않는다. 새 접근 가능 영역과 링크는 기존 타임라인 뒤에 있어 기존 키보드 순서를 유지한다. 표는 375px에서 영역 안으로 스크롤된다. 접근성·CSP·서버 금액 소유권은 `tests/test_portfolio_cashflow_desk.py`, 실제 브라우저 동작과 지연 응답은 `tests/browser/portfolio-cashflow-desk.spec.cjs`로 검사한다. stdlib 루프백 여정은 HTTP offer/approve/bind/draw 뒤 시계 명령과 읽기만으로 만기 창·만기·만기 다음 날을 확인하고 F04 저널·영수증·노출·operation_count·state_digest 불변을 확인한다.
+organizer와 auditor는 `projection:read`로 읽는다. auditor의 명령 조작은 숨겨지고 observer는 금지 안내만 보며 snapshot 요청을 보내지 않는다. 데스크를 다시 열거나 역할을 전환하면 새 조회가 끝날 때까지 본문을 숨긴다. 상태 조회가 실패하면 오류 안내를 표시하고 본문은 숨긴 상태로 둔다. 새 접근 가능 영역과 링크는 기존 타임라인 뒤에 있어 기존 키보드 순서를 유지한다. 표는 375px에서 영역 안으로 스크롤된다. 접근성·CSP·서버 금액 소유권은 `tests/test_portfolio_cashflow_desk.py`, 실제 브라우저 동작과 지연 응답은 `tests/browser/portfolio-cashflow-desk.spec.cjs`로 검사한다. stdlib 루프백 여정은 HTTP offer/approve/bind/draw 뒤 시계 명령과 읽기만으로 만기 창·만기·만기 다음 날을 확인하고 F04 저널·영수증·노출·operation_count·state_digest 불변을 확인한다.
 <!-- /handbook-section -->
 
 <!-- handbook-section:coa-payment-writeoff-postings -->
@@ -840,6 +840,57 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 `tests/vectors/http/`는 loopback 서버에 보내는 비정상 원시 요청 76건을 바이트로 고정한 코퍼스다. 각 파일은 요청 바이트(`request_b64`, 자리표시자 `__PORT__`·`__TOKEN__`만 치환)와 고정된 결과(`expect.status`, `expect.code`, 응답 접두·표지)를 담고, `tests/test_http_hostile.py`가 in-process `make_server(0)`에 replay한다. 매건 뒤에 `state_digest`·`operation_count` 불변과 `GET /api/health` 200을 다시 확인하고, 어느 응답에도 traceback·토큰·저장소 경로가 없어야 한다. `python3 scripts/http_hostile.py --write`가 같은 바이트로 다시 쓰고 `--check`가 어긋남·누락·예상 밖 파일에 1로 끝난다.
 
 코퍼스는 Host(`127.0.0.1.evil`, 뒤점, IPv6, 중복·빈 값)·Origin(`null`, 외부, 뒤 슬래시)·`Sec-Fetch-Site` 위장, 경로 순회·인코딩 점·백슬래시·NUL·비UTF-8·absolute-form, 본문 초과(8192 초과 선언)·Content-Length 어긋남·중복·비숫자·청크 전송, 비UTF-8·BOM·NUL·중복 키·NaN·깊은 중첩 본문, 잘못된 Content-Type, 헤더 CRLF·폴딩·폭주·초장 줄, TRACE/OPTIONS/HEAD/CONNECT·소문자 메서드, 요청행 초과·잘못된 버전·HTTP/0.9 형태·빈 줄·파이프라인을 고정한다. 일부 결과는 의도된 stdlib 동작을 그대로 고정한다(501은 비JSON, `//`는 `/`로 정규화, HTTP/0.9 스타일은 상태 줄 없는 body-only 응답). 이 코퍼스가 서버 결함 하나를 잡았다: 잘못된 IPv6 authority가 든 target이 `urlsplit`의 `ValueError`를 던져 연결이 응답 없이 끊겼고, 이제 `400 INVALID_TARGET`으로 거절된다(`target-invalid-ipv6`, `target-unclosed-ipv6`가 그 두 벡터다). 새 라우트·TLS·공개 endpoint·인증 모델 변경·속도 제한은 범위 밖이다. 라벨은 `SIMULATED`다. 병합은 JunTae가 한다.
+
+<!-- /handbook-section -->
+
+<!-- handbook-section:slice-registry-desk -->
+
+### slice-registry-desk
+
+`/#desk`의 **Claim-slice registry · 읽기 전용 검사**는 organizer와 auditor의
+`projection:read` 조회 화면이다. observer 또는 권한 거절 세션은 등록부 GET을
+보내지 않는다. 이 패널에는 명령 폼이 없고 command POST를 보내지 않는다.
+`GET /api/overlay/slices`의 PROPOSED, OPEN, IMPAIRED, RESOLVED, VOID 행에서
+검사 버튼을 누르면 서버의 `outstanding_krw`, `encumbered_face_krw`,
+`served_krw`, `eligible_line_krw`, `exposure_krw`, `shortfall_krw`,
+`recourse_received_krw`, `shadow_discount`, `shadow_price`, holder-first 및
+lifecycle 플래그를 읽는다. recourse quotes 원본에는 `source_ref`,
+`available_krw`, `amount_krw`, `waterfall_step`, `quote_ref`와 provenance가 있다.
+은행 회수 실적·채권 소유권·실명 인증으로 해석하지 않는다.
+
+청구 링크는 기존 정산 근거 행에 키보드 초점을 옮긴다. advance 연결은
+현재 서버 사례의 claim_id 또는 settlement_id가 정확히 같은 경우에만
+`?case=…#desk`의 타임라인·dossier로 이동한다. 일치 사례가 없으면
+`no linked advance`다. beneficiary나 holder_role만으로 연결하지 않는다.
+좁은 화면에서는 등록부 영역에 Tab으로 초점을 두고 가로 스크롤할 수 있으며,
+검사 버튼은 Enter로 열고 상세 제목으로 초점을 옮긴다.
+
+견적은 fixture의 청구·수취인을 선택하고 `expected_days`에 0 이상 정수 가정을
+직접 입력한 다음 **견적 검사 (GET)**를 누른다. 자동 채택되는 금융 조건은 없다.
+`quote_claim_id`, `quote_payee_label`, `expected_days`를 함께 보내며
+`instance_id`를 이 경로에 추가하지 않는다. 서버 `quote.status`, `detail`,
+`missing_inputs`, 크기·가격, `input_source`, `result_digest` 및
+`registry_check`의 상태·순서 있는 codes·가용액·capacity를 그대로 표시한다.
+SHADOW_NOT_BOUND, SHADOW_INPUT_UNKNOWN, SHADOW_INCONSISTENT는 사용할 수
+없는 근거를 설명하며 없는 금액을 0으로 바꾸지 않는다. 액면·매입가·advance
+노출을 브라우저에서 합산하지 않는다. capacity counts/bounds도 서버 보고값이다.
+
+빈 등록부는 EMPTY, 정책 미연결은 NOT_BOUND, 용량 거절은 CAPACITY,
+세션/역할/서버 인스턴스 오류는 STALE_SESSION이다. 입력 변경, 새로고침 시작,
+역할 변경, 데스크 이탈은 기존 견적을 즉시 지운다. 상태 GET 실패·잘못된 JSON·
+응답 shape 불일치·겹친 늦은 응답도 이전 견적을 현재값으로 복구하지 않는다.
+일반 조회 실패는 데스크 새로고침 뒤 가정을 다시 검사한다. STALE_SESSION은
+역할을 확인하고 **세션 다시 조회 · 페이지 다시 열기**로 명시적으로 페이지를
+다시 열어 새 로컬 세션을 조회한다. 기존 세션 토큰을 조용히 재발급하지 않는다.
+등록부 전후 overlay GET에서 instance·F04 digest·overlay digest·sim_day를
+검사하지만 atomic snapshot이나 계속 유효한 견적을 보장하지 않는다.
+
+모든 예시는 SIMULATED / SHADOW_NOT_APPLIED /
+SIMULATION_ONLY_NOT_OFFERED_V1이다. 실제 집행·명의 이전·multi-payee 배분·새
+금융 합계는 없다. 기존 parked shadow-policy workbench는 바뀌지 않는다.
+테스트 `tests/browser/slice-registry-desk.spec.cjs`는 disposable memory registry와
+명시적으로 표시한 합성 오류 응답으로 검증한다. 실제 PG·은행·KYC·제공자를
+호출하지 않는다.
 
 <!-- /handbook-section -->
 
