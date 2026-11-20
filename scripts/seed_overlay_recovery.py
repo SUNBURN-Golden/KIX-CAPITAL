@@ -55,7 +55,7 @@ def build():
     service = CapitalService(producer=PinnedFsmProducer(fixtures=source))
     for op, args in [('offer', {'fixture_id': 'sim-committed', 'amount': 48000}), ('approve', {}), ('bind_settlement', {}), ('draw', {})]:
         assert command(service, op, 'recovery-' + op.replace('_', '-'), **args)['outcome'] == 'ACCEPTED'
-    assert all(x['matched'] for x in source.replay('sim-committed', 'partial-before'))
+    assert all(x['matched'] for x in source.replay_refund_before_distribution('sim-committed'))
     tick(service, 'call', 0, 3)
     deadline = service.overlay_state()['advances'][0]['margin']['cure_deadline']
     tick(service, 'accelerate', 3, deadline + 1)

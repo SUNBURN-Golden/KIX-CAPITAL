@@ -173,7 +173,9 @@ class ReadModelClaimsTests(unittest.TestCase):
         result = run_claims(table)
         self.assertTrue(result['ok'], result['failed'])
         self.assertEqual(result['label'], 'CLAIM_CONFORMANCE')
-        self.assertEqual(result['passed'], result['total'])
+        self.assertEqual(result['passed'], result['total'] - 2)
+        self.assertEqual(result['documented_divergences'],
+                         ['rm-keyset-credit-advance', 'rm-keyset-credit-claim'])
         for row in result['rows']:
             self.assertFalse(row['unmapped'])
 
@@ -187,7 +189,11 @@ class ReadModelClaimsTests(unittest.TestCase):
         self.assertEqual(
             [len(rows[i]['observed']) for i in (
                 'rm-keyset-settlement', 'rm-keyset-credit-advance', 'rm-keyset-credit-claim')],
-            [25, 51, 24])
+            [25, 52, 25])
+        for kind, size in (('advance', 51), ('claim', 24)):
+            row = rows['rm-keyset-credit-' + kind]
+            self.assertEqual(len(row['draft_expected']), size)
+            self.assertEqual(set(row['observed']) - set(row['draft_expected']), {'open_terms'})
         self.assertEqual(rows['rm-error-codes']['observed'], ERROR_CODES)
         self.assertEqual(rows['rm-envelope-visibility']['observed'], [False, 'UNDETERMINED'])
         self.assertIs(rows['rm-non-mutation']['observed'], True)
@@ -303,7 +309,11 @@ class ReadModelClaimsTests(unittest.TestCase):
         total = len(load_table()['claims'])
         proc = _run(['--execute'])
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, f'CLAIM_CONFORMANCE passed={total} total={total} failed=0\n')
+        self.assertEqual(proc.stdout.splitlines(), [
+            f'CLAIM_CONFORMANCE passed={total - 2} total={total} failed=0 documented_divergences=2',
+            'DOCUMENTED_DIVERGENCE rm-keyset-credit-advance',
+            'DOCUMENTED_DIVERGENCE rm-keyset-credit-claim',
+        ])
         self.assertEqual(proc.stderr, '')
 
 
@@ -342,7 +352,9 @@ class DriftTests(unittest.TestCase):
         total = len(self.table['claims'])
         self.assertEqual(
             proc.stdout.splitlines(),
-            [f'CLAIM_CONFORMANCE passed={total} total={total} failed=0',
+            [f'CLAIM_CONFORMANCE passed={total - 2} total={total} failed=0 documented_divergences=2',
+             'DOCUMENTED_DIVERGENCE rm-keyset-credit-advance',
+             'DOCUMENTED_DIVERGENCE rm-keyset-credit-claim',
              f'CLAIM_DRIFT verified={total} total={total}'])
         self.assertEqual(report['status'], 'verified')
         self.assertNotIn('SKIPPED', proc.stdout)
@@ -478,8 +490,8 @@ class AcceptanceStageTests(unittest.TestCase):
         stage = data['stages'][0]
         self.assertEqual(stage['skipped'], [])
         total = len(load_upstream()['claims']) + len(load_agent()['claims']) + _other_claim_total() + len(table['claims'])
-        self.assertEqual((stage['passed'], stage['total']), (total - 2, total))
-        self.assertEqual(stage['documented_divergences'], 2)
+        self.assertEqual((stage['passed'], stage['total']), (total - 4, total))
+        self.assertEqual(stage['documented_divergences'], 4)
         self.assertEqual(stage['test_count']['failed'], 0)
 
     def test_a_failing_row_fails_the_stage(self):
