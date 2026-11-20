@@ -50,6 +50,11 @@ KEYSET_SECTIONS = {
     'credit_advance': '### 2.12 `get_credit_advance`',
     'credit_claim': '### 2.13 `get_credit_claim`',
 }
+DIVERGENCE = 'DOCUMENTED_DIVERGENCE'
+DIVERGENT_KEYSETS = {
+    'rm-keyset-credit-advance': 'keyset.credit_advance',
+    'rm-keyset-credit-claim': 'keyset.credit_claim',
+}
 ENVELOPE_SECTION = '## 3. 공통 봉투 (제안)'
 RESERVED = (
     'source_cut', 'projection_watermark', 'snapshot_digest', 'observed_receipt_refs',
@@ -85,14 +90,38 @@ def validate_table(data):
     for claim in data['claims']:
         if type(claim.get('route')) is not str or claim['route'] not in ROUTES:
             raise ClaimTableError(f'claim {claim["id"]} route is not a mapped read route')
+        documented = DIVERGENT_KEYSETS.get(claim['id'])
+        if documented is not None:
+            if (claim['check_id'] != documented or claim.get('disposition') != DIVERGENCE
+                    or type(claim.get('rationale')) is not str or not claim['rationale'].strip()
+                    or type(claim['expected']) is not list
+                    or 'open_terms' in claim['expected']):
+                raise ClaimTableError(f'claim {claim["id"]} must record the open_terms divergence')
+        elif 'disposition' in claim:
+            raise ClaimTableError(f'claim {claim["id"]} has an unsupported disposition')
     return data
 
 
 def run_claims(table):
     """Run every check. An unmapped check fails that claim and no other."""
     validate_table(table)
-    return upstream_claims.run_claims(
-        table, checks=CHECKS, format=FORMAT, label=LABEL, pinned_sha=PINNED_SHA)
+    checks = [
+        dict(row, expected=sorted([*row['expected'], 'open_terms']))
+        if row.get('disposition') == DIVERGENCE else row
+        for row in table['claims']
+    ]
+    result = upstream_claims.run_claims(
+        dict(table, claims=checks), checks=CHECKS, format=FORMAT, label=LABEL, pinned_sha=PINNED_SHA)
+    divergences = []
+    for claim, row in zip(table['claims'], result['rows'], strict=True):
+        if claim.get('disposition') == DIVERGENCE:
+            row['disposition'] = DIVERGENCE
+            row['draft_expected'] = claim['expected']
+            if row['ok']:
+                divergences.append(row['id'])
+    result['passed'] -= len(divergences)
+    result['documented_divergences'] = divergences
+    return result
 
 
 # --- drift -----------------------------------------------------------------
