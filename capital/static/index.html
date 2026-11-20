@@ -27,6 +27,22 @@
 <div class="table-wrap" id="desk-overlay-region" role="region" aria-label="오버레이 원장" tabindex="0"><table><caption class="sr-only">제안별 이자 원장과 종결 가능 여부</caption><thead><tr><th scope="col">제안</th><th scope="col">단계</th><th scope="col">남은 원금</th><th scope="col">interest_due_krw</th><th scope="col">default_interest_due_krw</th><th scope="col">발생 기준일</th><th scope="col">close_ready</th><th scope="col">마진</th></tr></thead><tbody id="desk-overlay-rows"></tbody></table></div>
 <h3>사례 타임라인 (F04 저널 + 오버레이)</h3><p id="desk-timeline-note" class="muted"></p>
 <div class="table-wrap" id="desk-timeline-region" role="region" aria-label="사례 타임라인" tabindex="0"><table><caption class="sr-only">F04 저널과 오버레이 이벤트를 합친 타임라인</caption><thead><tr><th scope="col">순서</th><th scope="col">출처</th><th scope="col">sim_day</th><th scope="col">이벤트</th><th scope="col">상세</th></tr></thead><tbody id="desk-timeline-rows"></tbody></table></div>
+<section id="desk-repayment" aria-labelledby="desk-repayment-title">
+<h3 id="desk-repayment-title">상환 데스크 · SIMULATED</h3>
+<p class="muted" id="desk-payment-help">UNVERIFIED_ASSERTED 금액 · 입금 검증 아님. 미리보기는 현재 원금과 기록된 인출일·sim_day를 쓰는 가정 계산이며 실제 기록 배정을 보장하지 않습니다. 실제 기록은 누적 이자·이전 상환·보유 현금을 사용합니다. close_gate는 자문이며 자동 종결하지 않습니다.</p>
+<p id="desk-payment-dues" class="field-help"></p>
+<div id="desk-payment-controls" hidden>
+<label for="desk-payment-amount">모의 상환 주장 금액 (KRW)</label><input id="desk-payment-amount" type="text" inputmode="numeric" autocomplete="off" aria-describedby="desk-payment-help desk-payment-status">
+<label for="desk-payment-evidence">합성 근거 참조 (선택)</label><input id="desk-payment-evidence" type="text" maxlength="64" autocomplete="off" aria-describedby="desk-evidence-help"><p id="desk-evidence-help" class="field-help">synthetic evidence_ref · A–Z, a–z, 0–9, . _ : - 만 사용 · 계좌·개인정보 입력 금지</p>
+<div class="actions"><button id="desk-payment-preview" type="button">서버 배정 미리보기</button><button id="desk-payment-post" type="button" disabled>모의 상환 명시적 기록</button></div>
+</div>
+<p id="desk-payment-status" role="status" aria-live="polite"></p>
+<div id="desk-payment-quote" hidden><div class="table-wrap" role="region" aria-label="가정 상환 배정" tabindex="0"><table><caption>가정 배정 · 서버 계산 · 실제 기록 보장 아님</caption><thead><tr><th scope="col">연체이자</th><th scope="col">이자</th><th scope="col">원금</th><th scope="col">미배정</th></tr></thead><tbody id="desk-payment-quote-rows"></tbody></table></div><p id="desk-payment-proposals" class="field-help"></p><pre id="desk-payment-remaining"></pre></div>
+<h4>기록된 상환 · UNVERIFIED_ASSERTED</h4>
+<p id="desk-payment-gate" class="field-help"></p>
+<div class="table-wrap" role="region" aria-label="기록된 상환 배정" tabindex="0"><table><caption>SIM_REPAY_MEMO · SIM_UNAPPLIED_MEMO는 보유 메모 · 반환·해제 없음</caption><thead><tr><th scope="col">operation_id · sim_day</th><th scope="col">주장 금액</th><th scope="col">연체이자</th><th scope="col">이자</th><th scope="col">원금</th><th scope="col">보유 전 → 후</th><th scope="col">합성 근거 · F04</th></tr></thead><tbody id="desk-payment-records"></tbody></table></div>
+<p id="desk-payment-receipt-note" role="status"></p><pre id="desk-payment-receipt" hidden></pre>
+</section>
 <h3>사례 문서 (dossier) · SIMULATED · read-only</h3>
 <button id="desk-dossier" type="button" class="quiet" disabled>dossier 다운로드</button>
 <p id="desk-dossier-note" role="status"></p><pre id="desk-dossier-result" hidden></pre>
