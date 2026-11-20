@@ -591,6 +591,34 @@ automatic close. Auditors see read-only server records; observers receive no
 repayment reads or controls, and agent tokens cannot submit payments. No new
 endpoints, money movement, payment verification or financial formulas are added.
 
+### slice-registry-desk
+
+The read-only panel at `/#desk` consumes the existing listing/optional quote
+contract; it adds no route, permission, persistence, calculation or command.
+`projection:read` permits organizer/auditor inspection; denied roles make no
+registry requests. Selection reads the returned row, since there is no per-slice
+detail endpoint. Exact case `claim_id`/`settlement_id` equality supplies evidence
+links only, never authenticated ownership.
+
+For quote inspection send `quote_claim_id`, `quote_payee_label`, `expected_days`
+together, with an explicitly entered non-negative integer day assumption.
+`URLSearchParams` encodes them. This endpoint rejects `instance_id`; the normal
+local session token header is used. Render ordered `registry_check.codes`,
+`free_face_krw`, `admissible_face_max_krw` and `capacity` exactly as returned.
+The panel exposes missing-input/NOT_BOUND/inconsistent responses, false execution
+flags and `SIMULATION_ONLY_NOT_OFFERED_V1`; it does not compute a financial total.
+
+The listing does not contain an instance ID or aggregate digest. The panel
+brackets it with `/api/overlay` GETs, requiring the captured session's instance
+and F04 digest, equal overlay digests and logical days, and a matching listing
+day when BOUND. Superseded requests are discarded. This can detect observed local
+changes, but it is not an atomic cross-endpoint snapshot; changes after the last
+read remain possible. Input edits, refresh start (before state GET), role changes
+and desk exit invalidate quotes synchronously. Errors never restore prior
+results as current. A stale session requires an explicit page reload (the panel exposes a reload
+button) and reinspection; the existing refresh retains its token and can still
+be rejected after a restart;
+no panel command, silent role downgrade or command retry is performed.
 ### risk-scenario-desk · SIMULATED_WHATIF
 
 The read-only `#risk-comparison` UI lists the four existing named risk scenarios and

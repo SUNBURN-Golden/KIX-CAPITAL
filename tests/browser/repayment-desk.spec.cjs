@@ -343,6 +343,36 @@ test('stale rejection with failed refresh stays blocked until successful refresh
   });
 });
 
+test('a claim-slice refresh failure after a stale clock rejection keeps repayment fenced', async ({page}) => {
+  await withServer(8963, async base => {
+    const seen = watch(page);
+    await open(page, base);
+    await preview(page, 5000);
+    const claim = await page.locator('#slices-claim').inputValue();
+    await page.route('**/api/overlay/commands', route => route.fulfill({status: 409, json: {error: 'SIM_CLOCK_STALE'}}));
+    await page.route('**/api/evidence', async route => {
+      const response = await route.fetch();
+      const body = await response.json();
+      // SIMULATED response fault in the claim-slice payee choices.
+      body.rows.find(row => row.claim_id === claim).obligations = {};
+      await route.fulfill({response, json: body});
+    });
+    await page.locator('#desk-payment-post').click();
+    await expect(page.locator('#notice')).toContainText('현재 상태를 조회하지');
+    await expect(page.locator('#desk-refresh')).toBeEnabled();
+    await expect(page.locator('#desk-payment-preview')).toBeDisabled();
+    await expect(page.locator('#desk-payment-post')).toBeDisabled();
+
+    await page.unroute('**/api/evidence');
+    await page.locator('#desk-refresh').click();
+    await expect(page.locator('#desk-payment-preview')).toBeEnabled();
+    await expect(page.locator('#desk-payment-post')).toBeDisabled();
+    await page.locator('#desk-payment-preview').click();
+    await expect(page.locator('#desk-payment-post')).toBeEnabled();
+    expect(seen.posts).toHaveLength(1);
+  });
+});
+
 test('a delayed preview cannot cross cases or role changes', async ({page}) => {
   await withServer(8964,async base=>{
     await open(page,base);let release;const gate=new Promise(resolve=>{release=resolve;});
