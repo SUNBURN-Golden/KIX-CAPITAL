@@ -1,4 +1,4 @@
-"""Named SIMULATED journeys T03-sim through T06-sim and N1-sim through N4-sim: steps, pinned goldens, and the acceptance stage.
+"""Steps, pins and acceptance evidence for T03-sim through T06-sim and N1-sim through N5-sim.
 
 The journeys run a real loopback server (T04-sim and T06-sim on --workspace subprocesses,
 T06-sim killed with SIGKILL). Nothing here claims T01-T06 qualification, integration, or
@@ -66,7 +66,8 @@ class JourneyBase(unittest.TestCase):
         cls.n2 = _result('N2-sim')
         cls.n3 = _result('N3-sim')
         cls.n4 = _result('N4-sim')
-        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06, cls.n1, cls.n2, cls.n3, cls.n4)
+        cls.n5 = _result('N5-sim')
+        cls.all = (cls.t03, cls.t04, cls.t05, cls.t06, cls.n1, cls.n2, cls.n3, cls.n4, cls.n5)
 
 
 class CommonTests(JourneyBase):
@@ -373,7 +374,7 @@ class NamedJourneyTests(JourneyBase):
         self.assertEqual(_step(self.n2, 'tampered citation')['status'], [True, False])
 
     def test_new_pins_missing_and_tampered_fail_without_writing(self):
-        for result in (self.n1, self.n2, self.n3, self.n4):
+        for result in (self.n1, self.n2, self.n3, self.n4, self.n5):
             with tempfile.TemporaryDirectory() as tmp:
                 path = journeys.golden_path(tmp, result['journey'])
                 with self.assertRaises(journeys.JourneyError):
@@ -499,6 +500,109 @@ class ServicingJourneyTests(JourneyBase):
                 journeys.run_n3()
 
 
+class SharedSourceJourneyTests(JourneyBase):
+    def test_both_isolated_orders_conserve_cash_with_retained_holder_service(self):
+        for first in ('recourse', 'recovery'):
+            prefix = 'n5-' + first + '-first'
+            initial = _step(self.n5, prefix + ' isolated empty book')
+            self.assertEqual(initial['status'], [[], [], {}, {}, 'MEMORY'])
+            cash = initial['facts']['threshold_krw'] // 5
+            holder = cash // 4
+            checks = [s for s in self.n5['steps'] if s['name'].startswith(prefix + ' conservation ')]
+            self.assertEqual(len(checks), 4)
+            for index, step in enumerate(checks):
+                facts = step['facts']
+                self.assertEqual(facts['cash_krw'], cash)
+                self.assertEqual(facts['holder_service_krw'], holder)
+                self.assertEqual(facts['cash_krw'], max(0, facts['distributed_krw'] - facts['recovery_due_krw']))
+                used = facts['holder_service_krw'] + facts['accepted_recourse_krw'] + facts['accepted_recovery_krw']
+                self.assertLessEqual(used, cash)
+                self.assertEqual(facts['available_krw'], cash - used)
+                self.assertEqual(facts['available_krw'], (cash-holder, cash-2*holder, cash-3*holder, 0)[index])
+            final = checks[-1]['facts']
+            self.assertEqual(final['accepted_' + first + '_krw'], cash - 2*holder)
+            other = 'recovery' if first == 'recourse' else 'recourse'
+            self.assertEqual(final['accepted_' + other + '_krw'], holder)
+            self.assertEqual(_step(self.n5, prefix + ' holder served first')['status'], [holder, True])
+            self.assertEqual(_step(self.n5, prefix + ' refund impairment eligibility')['status'], [True, cash])
+            self.assertEqual(_step(self.n5, prefix + ' final evidence')['status'], ['RESOLVED', holder, False])
+            first_post = _step(self.n5, prefix + '-first applied')
+            second_post = _step(self.n5, prefix + '-second applied')
+            self.assertEqual(first_post['facts']['op'], 'post_slice_recourse' if first == 'recourse' else 'post_recovery')
+            self.assertLess(_step(self.n5, prefix + '-holder-resolve applied')['n'], first_post['n'])
+            self.assertLess(first_post['n'], _step(self.n5, prefix + '-stale refused')['n'])
+            self.assertLess(_step(self.n5, prefix + '-stale refused')['n'], second_post['n'])
+
+    def test_refusals_preserve_journals_receipts_reservations_fixtures_and_digests(self):
+        refused = [s for s in self.n5['steps'] if s['name'].endswith('refused without mutation')]
+        self.assertEqual(len(refused), 24)
+        for step in refused:
+            code = step['status'][1]
+            self.assertEqual(step['status'], [403 if 'AGENT_FORBIDDEN' in code else 409,
+                                             code, True, 'UNKNOWN', 200, 'UNKNOWN', False])
+            self.assertEqual(set(step['facts']['checked']), {'journal', 'receipts', 'overlay', 'reservations',
+                             'fixtures_digest', 'state_digest', 'operation_count', 'overlay_state_digest'})
+            self.assertEqual(len(step['facts']['unchanged_digest']), 64)
+        for first in ('recourse', 'recovery'):
+            prefix = 'n5-' + first + '-first'
+            self.assertEqual(_step(self.n5, prefix + '-stale refused')['status'][1], 'RECOVERY_QUOTE_STALE')
+            self.assertEqual(_step(self.n5, prefix + '-double-use refused')['status'][1], 'SLICE_OPEN_EXISTS')
+            for suffix in ('overrun-recourse', 'overrun-recovery', 'exhausted'):
+                self.assertEqual(_step(self.n5, prefix + '-' + suffix + ' refused')['status'][1],
+                                 'RECOVERY_SOURCE_EXCEEDED')
+            agents = [s for s in refused if s['name'].startswith(prefix + '-agent-')]
+            self.assertEqual({s['facts']['op'] for s in agents}, {'register_slice', 'open_slice',
+                             'impair_slice', 'post_slice_recourse', 'resolve_slice', 'void_slice', 'post_recovery'})
+
+    def test_original_receipts_entries_and_nonexecution_labels(self):
+        correlations = [s for s in self.n5['steps'] if s['name'].endswith('original receipt and entry correlate')]
+        self.assertEqual(len(correlations), 18)
+        for step in correlations:
+            self.assertEqual(step['status'][:4], [True] * 4)
+            self.assertIs(step['status'][-1], False)  # never repost to obtain a receipt
+            self.assertTrue(all(value is False for value in step['facts']['false_flags'].values()))
+            self.assertIs(step['facts']['funds_executed'], False)
+        for step in self.n5['steps']:
+            if step['kind'] == 'SETTLEMENT_EVENT':
+                self.assertEqual(step['facts'], {'label': journeys.OUT_OF_BAND, 'scope': 'DISPOSABLE_BOOK_ONLY'})
+        self.assertEqual(sum(s['kind'] == 'SETTLEMENT_EVENT' for s in self.n5['steps']), 6)
+        for first in ('recourse', 'recovery'):
+            final = _step(self.n5, 'n5-' + first + '-first final evidence')['facts']
+            self.assertEqual(final['application'], 'SHADOW_NOT_APPLIED')
+            self.assertEqual(final['source'], 'DISPOSABLE_CHANGING_SCENARIO')
+            self.assertEqual(final['reserve_binding'], 'NOT_BOUND')
+            self.assertIs(final['persistence_claimed'], False)
+            self.assertEqual(_step(self.n5, 'n5-' + first + '-first F04 default receipt')['status'][:2], [200, True])
+
+    def test_independent_conservation_rejects_an_inflated_quote(self):
+        # Hand-calculated observation and journal, independent of production folds.
+        manifest = {'fixtures': {'rows': {'demo-delta-mid': {'claim': {'obligations': [
+            {'payee': 'organizer', 'distributed': 100, 'recovery_due': 10}]}}}},
+            'overlay': {'journal': [
+                {'overlay_id': 'holder', 'kind': 'SLICE_PROPOSE', 'payload': {'slice_face_krw': 20}},
+                {'overlay_id': 'holder-open', 'kind': 'SLICE_OPEN', 'payload': {'baseline_distributed_krw': 5}},
+                {'overlay_id': 'recourse', 'kind': 'SLICE_RECOURSE', 'payload': {'amount_krw': 30,
+                    'source_ref': {'claim_id': 'demo-delta-mid', 'payee_label': 'organizer'}}},
+                {'overlay_id': 'recovery', 'kind': 'RECOVERY', 'payload': {'amount_krw': 10,
+                    'source_ref': {'claim_id': 'demo-delta-mid', 'payee_label': 'organizer'}}}]}}
+        quotes = {'recourse': {'available_krw': 30, 'observed_eligible_krw': 90},
+                  'recovery': {'available_krw': 30, 'slice_held_krw': 20}}
+        with patch.object(journeys, '_n5_manifest', return_value=manifest), \
+                patch.object(journeys, '_n5_quotes', return_value=quotes):
+            self.assertEqual(journeys._n5_conservation(journeys.Journey('N5-sim'), None,
+                                                     'test', 'target', 'holder', 'advance', 'test'), 30)
+            for lane in quotes:
+                quotes[lane]['available_krw'] += 1
+                with self.assertRaises(journeys.JourneyError):
+                    journeys._n5_conservation(journeys.Journey('N5-sim'), None,
+                                              'test', 'target', 'holder', 'advance', 'bad')
+                quotes[lane]['available_krw'] -= 1
+            manifest['overlay']['journal'][-1]['payload']['amount_krw'] = 51
+            with self.assertRaises(journeys.JourneyError):
+                journeys._n5_conservation(journeys.Journey('N5-sim'), None,
+                                          'test', 'target', 'holder', 'advance', 'overconsumed')
+
+
 class GoldenTests(JourneyBase):
     def test_check_update_and_tamper_cycle(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -552,6 +656,12 @@ def _stage(script, kind='integrated-journeys'):
     return {'id': 'integrated-journeys', 'kind': kind, 'timeout': 30, 'commands': [[sys.executable, '-c', script]]}
 
 
+_STUB_JOURNEY_LINE = (
+    'sim journeys ok SIMULATED T03-sim steps=3 T04-sim steps=3 T05-sim steps=3 T06-sim steps=4 '
+    'N1-sim steps=16 N2-sim steps=16 N3-sim steps=34 N4-sim steps=43 N5-sim steps=105'
+)
+
+
 def _summary_script(mutate=None, exit_code=0):
     summary = {
         'label': 'SIMULATED', 'seed': 'x', 'funds_executed': False, 'integrated': False,
@@ -567,13 +677,13 @@ def _summary_script(mutate=None, exit_code=0):
         ],
     }
     summary['journeys'].extend(
-        {'id': name, 'label': 'SIMULATED', 'steps': 16, 'digest': 'e' * 64,
-         'funds_executed': False, 'integrated': False} for name in ('N1-sim', 'N2-sim', 'N3-sim', 'N4-sim'))
+        {'id': name, 'label': 'SIMULATED', 'steps': steps, 'digest': 'e' * 64,
+         'funds_executed': False, 'integrated': False}
+        for name, steps in (('N1-sim', 16), ('N2-sim', 16), ('N3-sim', 34), ('N4-sim', 43), ('N5-sim', 105)))
     if mutate:
         mutate(summary)
     return ('import sys\nprint("SIM_JOURNEYS " + ' + repr(json.dumps(summary)) + ')\n'
-            'print("sim journeys ok SIMULATED T03-sim steps=3 T04-sim steps=3 '
-            'T05-sim steps=3 T06-sim steps=4")\n'
+            f'print({_STUB_JOURNEY_LINE!r})\n'
             f'sys.exit({exit_code})')
 
 
@@ -597,7 +707,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(code, 0, evidence['stages'][-1])
         body = next(item for item in evidence['stages'] if item['id'] == 'integrated-journeys')
         self.assertEqual(body['status'], 'passed')
-        self.assertEqual(body['test_count'], {'ran': 8, 'passed': 8, 'failed': 0})
+        self.assertEqual(body['test_count'], {'ran': 9, 'passed': 9, 'failed': 0})
         items = {item['id']: item for item in body['journeys']['items']}
         self.assertEqual(sorted(items), sorted(journeys.JOURNEY_IDS))
         for journey_id, item in items.items():
@@ -653,9 +763,7 @@ class EvidenceTests(unittest.TestCase):
     def test_nonzero_exit_or_no_summary_fails_the_stage(self):
         code, evidence = self.evidence_for(_stage(_summary_script(exit_code=1)))
         self.assertEqual((code, evidence['stages'][-1]['status']), (1, 'failed'))
-        code, evidence = self.evidence_for(_stage(
-            'print("sim journeys ok SIMULATED T03-sim steps=3 T04-sim steps=3 '
-            'T05-sim steps=3 T06-sim steps=4")'))
+        code, evidence = self.evidence_for(_stage(f'print({_STUB_JOURNEY_LINE!r})'))
         self.assertEqual((code, evidence['stages'][-1]['status']), (1, 'failed'))
         self.assertEqual(evidence['stages'][-1]['journeys']['items'], [])
 

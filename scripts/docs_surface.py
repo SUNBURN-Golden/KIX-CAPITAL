@@ -157,6 +157,7 @@ JOURNEY_NEEDLES = {
     'journey_n2_sim.json': ('N2-sim', 'tests/golden/journey_n2_sim.json'),
     'journey_n3_sim.json': ('N3-sim', 'tests/golden/journey_n3_sim.json'),
     'journey_n4_sim.json': ('N4-sim', 'tests/golden/journey_n4_sim.json'),
+    'journey_n5_sim.json': ('N5-sim', 'tests/golden/journey_n5_sim.json'),
 }
 JOURNEY_COMMAND = 'python3 scripts/sim_journeys.py --check'
 
