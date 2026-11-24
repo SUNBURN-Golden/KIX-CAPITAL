@@ -137,9 +137,9 @@ detects individually valid artifacts that were captured from different cuts of a
 workspace. Each explicit input is read once — no lock, no write, no repair — and
 verified with the existing offline verifiers: `audit.audit_workspace_bytes` over
 the captured workspace bytes, `verify.verify_manifest` over the strict-parsed
-manifest, and `facts.verify_raw_pages` over the captured page files (the same
-replay code `facts.verify_dir` delegates to), so the bytes verified are exactly
-the bytes compared. Optional mutually
+manifest, and `facts.verify_raw_pages` over the page bytes captured with the
+same bounded reader as `facts.verify_dir`. Verification and comparison use
+the same capture. Optional mutually
 exclusive `--key-file`/`--keyset-file` arguments feed the manifest signature only,
 through the same DEV_ONLY loaders as `capital.verify`; they are integrity
 material, never credentials, and are never printed. Python callers can use
@@ -149,8 +149,9 @@ for the same report dict.
 The canonical sorted-key JSON format is `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1`,
 `mode` `EVIDENCE_CROSSCUT_CHECK`, labeled `SIMULATED`/`LOCAL_ONLY`.
 `inputs.{workspace,manifest,facts}` each carry `path`, `ok`, `reason`, the full
-inner verifier `report`, and `sha256` of the captured bytes (a composite over
-the ordered page files for facts). `checks` is an ordered list of
+inner verifier `report`, and `sha256` of the captured bytes. For facts,
+`sha256` is a composite over the ordered page files and is null when the
+directory capture is empty or incomplete. `checks` is an ordered list of
 `{id, status, reason, detail}` where status is `MATCHED`, `MISMATCH` or
 `NOT_CHECKED`: `workspace_audit`, `manifest_verify`, `facts_verify`, then the
 cross-artifact checks `journal_content`, `f04_commitment`, `overlay_presence`,
@@ -620,11 +621,111 @@ section journal. The legacy export has no overlay field and is unchanged.
 Empty overlays omit both overlay cut keys under the adopted
 [overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
 
+The offline verifier (`python3 -m capital.verify --facts DIR`,
+`capital.facts.verify_dir`) and the cross-cut check's facts input use the same
+local demo input budgets from `capital.facts.INPUT_LIMITS`.
+
+| Bound | Default | Refusal |
+|---|---|---|
+| Directory entries (matched or not) | 4096 | `INPUT_DIR_ENTRIES` |
+| Matched `page-*.json` files | 2500 | `INPUT_PAGES` |
+| Bytes per page file (via lstat, before open) | 8 MiB | `INPUT_PAGE_TOO_LARGE:<file>` |
+| Aggregate page bytes | 64 MiB | `INPUT_TOTAL_TOO_LARGE:<file>` |
+| JSON nesting depth (before decoding) | 32 | `INPUT_JSON_DEPTH:<file>` |
+
+The verifier refuses symlinks, FIFOs and directories with `INPUT_NOT_REGULAR:<file>`
+at `lstat`. It requires no-follow and nonblocking open flags to guard against
+substitutions between `lstat` and `open`. The descriptor must match the pre-open
+`lstat` and the post-read pathname in device, inode, size, mtime and ctime.
+Observed changes return `INPUT_CHANGED:<file>`. Detection of in-place changes
+depends on filesystem timestamp resolution. The depth scan counts JSON arrays
+and objects before decoding and ignores delimiters inside quoted strings.
+`INPUT_*` reasons identify input refusals, distinct from semantic
+mismatches (`PAGE_SHAPE`, `*_MISMATCH`, `UNREADABLE`, `NONCANONICAL_ENCODING`);
+the CLI still exits 0 on success, 1 on any refusal and 2 on misuse, prints only
+file names and reason codes — never page contents — and writes nothing. The
+bounds sit above the adopted producer caps (`MAX_OPERATIONS=500`,
+`OVERLAY_MAX_ENTRIES=2000`, `OVERLAY_ENTRY_MAX_BYTES=4096`,
+`ENVELOPE_MAX_BYTES=4MiB`, facts page limit 1..500), so a maximum-generated
+export fits the defaults with headroom at every supported pagination: five
+pages (~12 MiB) at limit=500, and 2500 pages (~21 MiB) at limit=1.
+
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
 
+### Bounded facts collector CLI
+
+`scripts/collect_facts.py` is a Python-stdlib GET client for an already-running
+loopback server. Example (the parent `/tmp` already exists):
+
+```sh
+python3 scripts/collect_facts.py --endpoint http://127.0.0.1:8765 \
+  --out /tmp/capital-facts-run-001 --limit 100 --max-pages 1000 \
+  --max-response-bytes 4194304 --max-total-bytes 67108864 --timeout 10
+python3 -m capital.verify --facts /tmp/capital-facts-run-001
+```
+
+| Argument | Requirement / default |
+|---|---|
+| `--endpoint` | Required exact `http://127.0.0.1:PORT`, port 1..65535, optional trailing `/`; no credentials, query, fragment, alternate address spelling or path. |
+| `--out` | Required new artifact directory, existing parent, outside the checkout and detectable workspace ancestry (`workspace.json` / `workspace.json.lock`). Existing files, directories and symlinks are refused. |
+| `--limit` | Page rows, integer 1..500; default 100. Fixed for the entire collection. |
+| `--max-pages` | Positive page count bound; default 1000. Checked before another facts request. |
+| `--max-response-bytes` | Positive response body byte bound; default 4194304, including bootstrap/error bodies. |
+| `--max-total-bytes` | Positive aggregate response body byte bound; default 67108864, including bootstrap/error bodies. |
+| `--timeout` | Finite positive seconds per request; default 10. Monotonic deadline covers connecting, headers and body, including slow delivery. |
+
+These are technical resource controls. Direct `http.client` connections ignore
+proxy environment variables. The client sends the exact loopback Host and
+`Connection: close`; every redirect is refused, including same-origin redirects.
+Responses require one unsigned Content-Length, no Transfer-Encoding or
+Content-Encoding, and a closed connection after exactly the declared bytes.
+Only HTTP 200 with JSON content type is accepted. Header parsing also retains
+stdlib line/count bounds. Non-200 diagnostics expose only the status (for example
+`HTTP_409` or `HTTP_503`), never the bootstrap or server error body.
+
+One `GET /api/state` supplies a fixed instance and synthetic token held in memory;
+subsequent `GET /api/export/facts` requests carry that session, limit and exactly
+the preceding `next_cursor` as `after`. The client checks strict JSON, canonical
+bytes, labels, schema, cut identity, hashes, chaining and contiguous progress
+before saving each page or following a cursor. Token-bearing pages are refused.
+`next_cursor: null` ends fetching; `capital.facts.verify_dir(out)` then gates
+completion, including replay/link checks and built-in-only fixture validation
+(`FIXTURES_MISMATCH` remains a refusal).
+
+Artifacts use a private directory (0700) and exclusive private files (0600):
+
+```text
+capital-facts-run-001/
+  page-00000000.json    # exact response bytes, no added newline
+  page-00000001.json
+  COMPLETE.json        # only after offline verification succeeds
+```
+
+`COMPLETE.json` has format `KIX_CAPITAL_FACTS_COLLECTION_V1`, status
+`VERIFIED_COMPLETE`, ordered `pages: [{name, bytes, sha256}]`, `page_bytes_total`,
+and the existing `verification` report. It also carries `label: SIMULATED`,
+`source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, and `funds_executed: false`.
+A flushed/fsynced `.COMPLETE.tmp` is atomically linked to the completion name
+without replacement. Successful publication is the commit point; a cleanup
+failure may leave the temporary link. This is local bookkeeping, without a
+stage-5 crash durability guarantee. Later use requires offline re-verification;
+the marker alone cannot detect subsequent corruption or consistent replacement.
+
+Exit codes: **0** verified completion published; **1** collection, transport,
+storage or verification failure; **2** invalid arguments. A failure before
+publication leaves no completion marker, though accepted or partially written
+pages and a temporary marker may remain. Never interpret that directory as a
+completed collector export, even if its pages happen to pass a separate verifier.
+There is no resume, retry, session refresh, cursor reset, background polling,
+command submission, snapshot retention, signing change or authentication claim.
+On `CUT_MOVED`, `SESSION_CHANGED`, storage-health refusal, timeout, malformed
+response or any other failure, investigate and explicitly invoke collection with
+a different new directory. The source service, journals and workspace files are
+read-only inputs. No workspace import is provided.
 ## N5-sim disposable shared-source journey
 
 `python3 scripts/sim_journeys.py --journey N5-sim --check` checks the deterministic
