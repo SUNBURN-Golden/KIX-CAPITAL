@@ -1,0 +1,14 @@
+{
+  "sui": {
+    "release": "mainnet-v1.79.1",
+    "version": "1.79.1",
+    "platform": "ubuntu-x86_64",
+    "url": "https://github.com/MystenLabs/sui/releases/download/mainnet-v1.79.1/sui-mainnet-v1.79.1-ubuntu-x86_64.tgz",
+    "sha256": "547b3091e975b8a6b4078473a3868d86e985156b6715a8c4afb7fd7313a36abf",
+    "source": "https://api.github.com/repos/MystenLabs/sui/releases/tags/mainnet-v1.79.1"
+  },
+  "nodeMajor": 24,
+  "pythonMinor": "3.12",
+  "protocolPath": "reference/v0.3-rc1",
+  "network": "localnet-only"
+}

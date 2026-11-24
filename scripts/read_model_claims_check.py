@@ -52,8 +52,11 @@ def main(argv=None) -> int:
     result = run_claims(table)
     print(
         f"CLAIM_CONFORMANCE passed={result['passed']} total={result['total']} "
-        f"failed={len(result['failed'])}"
+        f"failed={len(result['failed'])} "
+        f"documented_divergences={len(result['documented_divergences'])}"
     )
+    for claim in result['documented_divergences']:
+        print(f'DOCUMENTED_DIVERGENCE {claim}')
     for row in result['failed']:
         print(
             f"FAIL {row['id']} observed={row['observed']!r} expected={row['expected']!r}",
