@@ -64,12 +64,12 @@ python3 -m capital.evidence_crosscut --workspace WS.json --manifest MANIFEST.jso
 ```
 
 The stdlib CLI reads each explicit input once — no lock, no write, no repair —
-and verifies it with the existing offline verifiers (`audit_workspace_bytes`,
-`verify_manifest`, and the `facts.verify_dir` replay core over the captured
-page bytes). It then compares the commitments shared
-by all three artifacts: the F04 journal content, the replayed `state_digest` and
-`journal_length`, overlay presence/content/`overlay_state_digest`, and the
-fixture digest. Deterministic `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1` JSON reports one
+and verifies it with `audit_workspace_bytes`, `verify_manifest`, and the
+`facts.verify_raw_pages` replay core over the captured page bytes. The cross-cut
+check shares its bounded page reader with `capital.verify --facts`. It compares
+the F04 journal content, replayed `state_digest` and `journal_length`, overlay
+presence, content and digest, and the fixture digest across all three artifacts.
+Deterministic `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1` JSON reports one
 `MATCHED`/`MISMATCH`/`NOT_CHECKED` status per check. Exit codes: 0 matched,
 1 any failed input or cross mismatch, 2 argument misuse.
 
@@ -400,10 +400,26 @@ Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage returns 503,
 including for continuing cursors; no empty substitute book is exported.
 
 `python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
-cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
-It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
-`tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
-bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+cut counts, built-in fixtures, F04 replay, overlay fold and overlay links.
+It exits 1 on an input refusal or corruption. The pinned schema and tamper
+corpus are in `tests/vectors/facts/`. Run `python3 scripts/facts_vectors.py --check`
+to check their bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+
+The read phase limits a directory to 4096 entries and 2500 matched `page-*.json`
+files before opening any page. It checks the 8 MiB per-page and 64 MiB aggregate
+budgets before each open and checks the 32-level JSON nesting budget before
+decoding (`capital.facts.INPUT_LIMITS`). The same bounds apply to the facts
+directory in `capital.evidence_crosscut`. The verifier refuses symlinks and other
+non-regular pages and uses no-follow, nonblocking opens to guard against races.
+It compares the pathname and descriptor before and after reading to detect
+page replacement and changes in file metadata. Input refusals report `INPUT_DIR_ENTRIES`,
+`INPUT_PAGES`, `INPUT_PAGE_TOO_LARGE:<file>`, `INPUT_TOTAL_TOO_LARGE:<file>`,
+`INPUT_NOT_REGULAR:<file>`, `INPUT_CHANGED:<file>` and `INPUT_JSON_DEPTH:<file>`,
+kept distinct from the semantic mismatch reasons. They are demo technical bounds
+sized above the adopted producer caps (500 operations, 2000 overlay entries,
+4 KiB entries, 4 MiB envelopes, page limit 1..500), not financial limits; every
+export this demo can produce fits them, including the worst pagination of the
+maximum book (2500 rows sealed at limit=1: 2500 pages, ~21 MiB).
 
 Labels remain `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 with `stage7_authenticated_export: false` and a non-claim of

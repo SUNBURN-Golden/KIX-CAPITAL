@@ -137,9 +137,9 @@ detects individually valid artifacts that were captured from different cuts of a
 workspace. Each explicit input is read once — no lock, no write, no repair — and
 verified with the existing offline verifiers: `audit.audit_workspace_bytes` over
 the captured workspace bytes, `verify.verify_manifest` over the strict-parsed
-manifest, and `facts.verify_raw_pages` over the captured page files (the same
-replay code `facts.verify_dir` delegates to), so the bytes verified are exactly
-the bytes compared. Optional mutually
+manifest, and `facts.verify_raw_pages` over the page bytes captured with the
+same bounded reader as `facts.verify_dir`. Verification and comparison use
+the same capture. Optional mutually
 exclusive `--key-file`/`--keyset-file` arguments feed the manifest signature only,
 through the same DEV_ONLY loaders as `capital.verify`; they are integrity
 material, never credentials, and are never printed. Python callers can use
@@ -149,8 +149,9 @@ for the same report dict.
 The canonical sorted-key JSON format is `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1`,
 `mode` `EVIDENCE_CROSSCUT_CHECK`, labeled `SIMULATED`/`LOCAL_ONLY`.
 `inputs.{workspace,manifest,facts}` each carry `path`, `ok`, `reason`, the full
-inner verifier `report`, and `sha256` of the captured bytes (a composite over
-the ordered page files for facts). `checks` is an ordered list of
+inner verifier `report`, and `sha256` of the captured bytes. For facts,
+`sha256` is a composite over the ordered page files and is null when the
+directory capture is empty or incomplete. `checks` is an ordered list of
 `{id, status, reason, detail}` where status is `MATCHED`, `MISMATCH` or
 `NOT_CHECKED`: `workspace_audit`, `manifest_verify`, `facts_verify`, then the
 cross-artifact checks `journal_content`, `f04_commitment`, `overlay_presence`,
@@ -619,6 +620,35 @@ matches `/api/export` canonical journal bytes; overlay rows match the V3 manifes
 section journal. The legacy export has no overlay field and is unchanged.
 Empty overlays omit both overlay cut keys under the adopted
 [overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
+
+The offline verifier (`python3 -m capital.verify --facts DIR`,
+`capital.facts.verify_dir`) and the cross-cut check's facts input use the same
+local demo input budgets from `capital.facts.INPUT_LIMITS`.
+
+| Bound | Default | Refusal |
+|---|---|---|
+| Directory entries (matched or not) | 4096 | `INPUT_DIR_ENTRIES` |
+| Matched `page-*.json` files | 2500 | `INPUT_PAGES` |
+| Bytes per page file (via lstat, before open) | 8 MiB | `INPUT_PAGE_TOO_LARGE:<file>` |
+| Aggregate page bytes | 64 MiB | `INPUT_TOTAL_TOO_LARGE:<file>` |
+| JSON nesting depth (before decoding) | 32 | `INPUT_JSON_DEPTH:<file>` |
+
+The verifier refuses symlinks, FIFOs and directories with `INPUT_NOT_REGULAR:<file>`
+at `lstat`. It requires no-follow and nonblocking open flags to guard against
+substitutions between `lstat` and `open`. The descriptor must match the pre-open
+`lstat` and the post-read pathname in device, inode, size, mtime and ctime.
+Observed changes return `INPUT_CHANGED:<file>`. Detection of in-place changes
+depends on filesystem timestamp resolution. The depth scan counts JSON arrays
+and objects before decoding and ignores delimiters inside quoted strings.
+`INPUT_*` reasons identify input refusals, distinct from semantic
+mismatches (`PAGE_SHAPE`, `*_MISMATCH`, `UNREADABLE`, `NONCANONICAL_ENCODING`);
+the CLI still exits 0 on success, 1 on any refusal and 2 on misuse, prints only
+file names and reason codes — never page contents — and writes nothing. The
+bounds sit above the adopted producer caps (`MAX_OPERATIONS=500`,
+`OVERLAY_MAX_ENTRIES=2000`, `OVERLAY_ENTRY_MAX_BYTES=4096`,
+`ENVELOPE_MAX_BYTES=4MiB`, facts page limit 1..500), so a maximum-generated
+export fits the defaults with headroom at every supported pagination: five
+pages (~12 MiB) at limit=500, and 2500 pages (~21 MiB) at limit=1.
 
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
