@@ -34,11 +34,11 @@
 
 형식은 `KIX_CAPITAL_POLICY_CAPSULE_V1`, `capsule_version`은 `V1`이다. UTF-8 JSON 한 문서이며 필수 구성은 다음과 같다.
 
-- `subject`: `workspace_id`, `manifest_format`, `manifest_sha256`, `export_digests[]`. 지원 manifest 태그는 `KIX_CAPITAL_EXPORT_MANIFEST_V2`, `KIX_CAPITAL_EXPORT_MANIFEST_V3`다. 각 export 참조는 `{path, sha256}`이며 기존 파일 바이트의 해시다. 원본 envelope나 manifest를 재직렬화하지 않는다.
+- `subject`: `workspace_sha256`, `workspace_id`, `manifest_format`, `manifest_sha256`, `export_digests[]`. `workspace_sha256`은 포착한 기존 `workspace.json` 전체 바이트의 해시다. `workspace_id`는 이미 기록된 식별자가 있을 때만 채운다. 지원 manifest 태그는 `KIX_CAPITAL_EXPORT_MANIFEST_V2`, `KIX_CAPITAL_EXPORT_MANIFEST_V3`다. 각 export 참조는 `{path, sha256}`이며 증거 디렉터리 기준 상대경로와 기존 파일 바이트의 해시다. 원본 envelope나 manifest를 재직렬화하지 않는다.
 - `policy_inputs.notes[]`: `{path, note_sha256, bytes_len, encoding, bytes_b64, binding_role}`. `encoding`은 `utf-8`; base64는 정확한 원문 바이트를 보존한다. 줄바꿈·공백·BOM을 정규화하지 않는다. SHA256은 디코딩한 원문에 적용한다. 부재 항목은 별도 `missing_notes[]`에 path/expected_sha256/reason으로 남긴다.
 - 대상은 포착 표면이 사용하는 **명시적 노트 목록**과 참조된 `docs/CAP_COVERAGE.md`로 닫는다. 링크를 재귀 탐색하지 않는다. 노트 경로는 repo-relative POSIX이며 중복·절대경로·상위경로 탈출을 거부한다. 포함된 텍스트나 base64는 실행하지 않는다.
 - V1 한도는 노트 128개, 노트당 1 MiB, 디코딩된 원문 합계 8 MiB, 완성 JSON 16 MiB다. 한도 초과는 `CAPSULE_LIMIT_EXCEEDED`로 거부하며 자르거나 조용히 생략하지 않는다. 코드·fixture·vendor·evaluator 실행 바이트는 포함하지 않는다.
-- `policy_inputs.terms_bindings[]`에는 workspace가 **이미 기록한** 바인딩과 그 위치 참조만 보존한다. 정책 한도·비율을 독립 상수로 복사하지 않는다. 기록이 없으면 `null`과 이유를 남긴다. 노트 원문 속 숫자의 원형 보존은 새 정책 값의 채택이 아니다.
+- `policy_inputs.terms_bindings[]`에는 workspace가 **이미 기록한** 바인딩과 그 위치 참조를 보존한다. 정책 한도·비율을 독립 상수로 복사하지 않는다. 기록이 없으면 `null`과 이유를 남긴다. 노트 원문 속 숫자의 원형 보존은 새 정책 값의 채택이 아니다.
 - `evaluator`, `capture{tool,tool_version,volatile}`, `evidence_grade`, `explicit_non_claims`, `status`, `diagnostics`를 둔다. 시각·호스트·로컬 절대경로는 필요한 경우에만 `capture.volatile`에 둔다.
 
 `capsule_digest`는 자기 자신과 `capture.volatile`만 제외한 전체 문서의 SHA256이다. canonical 직렬화는 UTF-8, 객체 키 정렬, 공백 없는 구분자, `ensure_ascii=true`; float·중복 키를 거부한다. notes/missing_notes/export_digests는 path 순서, terms_bindings/diagnostics는 각 항목의 canonical JSON 바이트 순서로 정렬한다. 해시는 소문자 64자리 hex다. verifier는 원문 길이·base64·각 해시와 최종 digest를 각각 확인한다.
@@ -47,11 +47,11 @@
 
 ### 3.2 workspace_and_policy_binding
 
-workspace 결합은 `workspace_id + manifest_format + manifest_sha256`다. 마지막 값은 **기존 export manifest 파일의 정확한 바이트**를 해시한 캡슐 필드이며 기존 스키마에 같은 필드가 있다고 가정하지 않는다. 기록된 workspace 식별자를 확보할 수 없으면 새 식별자를 역사적 값으로 꾸미지 않는다.
+workspace 결합은 `workspace_sha256 + manifest_format + manifest_sha256`다. verifier는 전달받은 동일 envelope와 **기존 export manifest의 정확한 파일 바이트**에서 두 해시를 다시 계산한다. `workspace_sha256`은 포트폴리오 비교와 같은 원문 해시 방식의 캡슐 필드다. 기존 `payload_sha256`·manifest `content_digest`는 각자의 검증 범위를 유지한다. workspace ID가 기록되지 않은 경우 `workspace_id: null`과 이유를 남기고 workspace 원문 해시를 결합에 사용한다.
 
 workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류·출력은 그대로 둔다. 캡슐은 비교 입력의 필수 요소도, 기존 동등성 판정의 추가 조건도 아니다. 캡슐 검증 결과는 별도 결과다. 역사 workspace나 기존 비교·manifest golden을 새 정책에 맞춰 재생성하지 않는다. `tests/vectors/pack/`은 현재 결정 노트의 실제 SHA256을 포함하는 SIMULATED 검증 자료이므로, 노트 변경 후 기존 `python3 scripts/pack_vectors.py --write`로 갱신한다. 이는 결정 섹션과 그 종속 해시·잘림 벡터를 동기화하는 작업이며 내장 export manifest·workspace audit·reconciliation·auth matrix의 본문은 보존한다. 변조 벡터의 한 바이트 변경과 기존 거부 판정도 유지한다.
 
-구 workspace에 manifest가 없으면 digest를 `null`로 남기고 `binding_note`에 이유를 적는다. 진단용 포착은 가능하지만 상태는 `INCOMPLETE`, workspace 검증은 `WORKSPACE_UNBOUND`다. 기록된 terms 바인딩의 부재도 명시한다. 현재 노트를 붙였다는 이유로 당시 바인딩이 생기지 않는다. 기존 기록은 변조하지 않으며, 그 기록이 실제로 참이었다는 인증도 부여하지 않는다.
+구 workspace에 manifest가 없으면 형식과 digest를 `null`로 남기고 `binding_note`에 이유를 적는다. 진단용 포착은 가능하지만 상태는 `INCOMPLETE`, workspace 검증은 `WORKSPACE_UNBOUND`다. 기존 overlay의 `terms_binding`은 버전과 상태를 기록하며 노트 해시를 제공하지 않는다. 버전과 사용 가능 상태는 기존 비교의 바인딩 호환 규칙으로 대조한다. 기록된 해시가 실제로 제공된 경우 그 해시도 대조한다. 기록된 해시가 없으면 바이트 수준의 바인딩은 `NOT_BOUND`로 보고한다. 빈 overlay나 바인딩 부재도 명시한다. 모든 경우 캡슐에 붙인 현재 노트의 해시는 포착 시점 관찰로만 남는다.
 
 ### 3.3 capture_time_evidence_grade
 
@@ -69,16 +69,16 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
 
 ### 3.5 compatibility_and_refusal_rules
 
-포착은 입력 목록을 먼저 고정하고 그 목록의 바이트를 읽는다. 그 바이트에서 해시와 식별 정보를 만들고, 종료 전에 목록·노트·workspace commitment를 다시 확인한다. 가능한 입력은 하나의 불변 스냅샷을 사용한다. 재읽기만 가능한 경우 순간 변경 후 복귀까지 탐지했다고 주장하지 않는다.
+포착은 입력 목록을 먼저 고정하고 그 목록의 바이트를 읽는다. 포착 표면엔 같은 노트 바이트를 공급하고, 그 바이트에서 캡슐의 해시를 만든다. 종료 전에 목록·노트·workspace와 export commitment를 다시 확인한다. 가능한 입력은 하나의 불변 스냅샷을 사용한다. 재읽기만 가능한 경우 관찰된 바이트 일치까지만 보고한다.
 
 | 조건 | 기록과 판정 |
 |---|---|
-| 포착 도중 목록·노트 바이트 변경 | `CAPTURE_INCONSISTENT`, 차이를 diagnostics에 남김, `REFUSE_VERIFIED`; 조용한 재시도나 한쪽 선택 금지 |
+| 포착 도중 목록·노트·workspace 또는 export 바이트 변경 | `CAPTURE_INCONSISTENT`, 차이를 diagnostics에 남김, `REFUSE_VERIFIED`; 조용한 재시도나 한쪽 선택 금지 |
 | 필수 노트 부재 | `MISSING_NOTE`, expected_sha256 또는 null, `INCOMPLETE`; 빈 바이트를 정상 노트로 저장하지 않음 |
 | evaluator 튜플 불일치 | `EVALUATOR_MISMATCH`, `NOT_EVALUATED`; 기존 코드 실행·다운로드 없음 |
-| 포착 노트 해시와 기록된 terms 바인딩 불일치 | `BINDING_DISAGREEMENT`, `REFUSE`; 기록된 바인딩 유지, 현재 노트로 덮어쓰지 않음 |
+| 포착 terms와 기록된 바인딩의 버전·상태가 호환되지 않거나 기록된 노트 해시가 불일치 | `BINDING_DISAGREEMENT`, `REFUSE`; 기록된 바인딩과 관찰된 노트를 각자의 출처와 함께 보존 |
 | 알 수 없는 capsule/manifest 형식 | `UNSUPPORTED_CAPSULE_VERSION`, `REFUSE`; `OTHER`를 지원 형식으로 수용하지 않음 |
-| workspace 식별자·manifest 해시 불일치 또는 결합 자료 부재 | `WORKSPACE_UNBOUND`, `REFUSE`; 부재 포착 상태는 `INCOMPLETE` |
+| workspace·manifest 해시나 기록된 식별자 불일치 또는 필수 결합 자료 부재 | `WORKSPACE_UNBOUND`, `REFUSE`; 부재 포착 상태는 `INCOMPLETE` |
 | 원문 길이·해시·capsule digest 불일치 또는 형식 한도 위반 | 무결성 진단과 `REFUSE` |
 
 현재 노트가 과거 기록과 다른 것과 **포착 도중 변경된 것**은 별개다. 전자는 `BINDING_DISAGREEMENT`, 후자는 `CAPTURE_INCONSISTENT`이며 둘 다 있으면 모두 기록한다. 우선순위는 `REFUSE > REFUSE_VERIFIED > INCOMPLETE > NOT_EVALUATED > VERIFIED_CAPTURE_ONLY`다. 마지막 판정은 완전한 입력·결합·식별·무결성 검사를 통과한 포착에만 사용하며 역사 인증이나 재생 승인이 아니다.
@@ -153,8 +153,8 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
     "workspace_and_policy_binding": {
       "status": "ADOPTED",
       "value": {
-        "workspace_link": "workspace_id + manifest_format + SHA256 of exact existing export-manifest bytes; no workspace, V2/V3 manifest or comparison changes",
-        "policy_link": "Preserve existing terms bindings as recorded; compare referenced note digests without substituting current policy",
+        "workspace_link": "SHA256 of exact workspace.json bytes + manifest_format + SHA256 of exact existing export-manifest bytes; use workspace_id only if recorded; preserve existing envelopes, V2/V3 manifests and comparison semantics",
+        "policy_link": "Preserve recorded terms bindings; compare version and usable status using existing compatibility rules and compare note digests where recorded; byte-level terms binding is NOT_BOUND without a recorded digest",
         "missing_manifest": "null digest with reason; capture INCOMPLETE, workspace verification WORKSPACE_UNBOUND",
         "missing_terms_binding": "null with reason; no inferred or retroactive provenance"
       },
@@ -223,6 +223,7 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
       "status": "ADOPTED",
       "value": {
         "changed_notes_during_capture": {
+          "applies_to": "Input inventory, note bytes, workspace commitment and export commitments",
           "status": "CAPTURE_INCONSISTENT",
           "verdict": "REFUSE_VERIFIED"
         },
@@ -238,7 +239,8 @@ workspace envelope, V2/V3 manifest, 기존 digest 범위, 비교 산술·분류�
         "binding_disagreement": {
           "marker": "BINDING_DISAGREEMENT",
           "verdict": "REFUSE",
-          "winner": "Recorded workspace binding remains unchanged, without authentication claim"
+          "condition": "Incompatible terms version or status, or a mismatched recorded note digest",
+          "winner": "Preserve the recorded workspace binding and the capture-time observation with their respective sources"
         },
         "unknown_format": {
           "marker": "UNSUPPORTED_CAPSULE_VERSION",
