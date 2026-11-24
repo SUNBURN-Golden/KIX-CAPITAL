@@ -1,0 +1,1413 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KIX integration-gate local-call transport",
+    "version": "0.3-rc1-integration-gate+sha256:ed827de1a8bfe7c48612473965793dcaab65137e575f862761fd160f77ae4c1e",
+    "summary": "Non-production loopback integration gate. No production endpoint. No public host.",
+    "description": "Non-production loopback integration gate for the published KIX v0.3-rc1 local call. There is no production endpoint and no public host. Successful local HTTP tests are not production approval.\n\nThe only protocol path is POST /x-kix-contract-only/local-call. The JSON body is the published local-call envelope: operationId, actor, action, and body. action is one of the published command keys. body is validated against that command JSON Schema. A core action is passed to Core.execute(operationId, actor, action, body). An FSM action, named machine_op, is passed to the in-process machine on the same worker. The catalogue does not define a command outside the pinned core set and the pinned FSM REPLAYABLE sets. No REST resource tree is defined for events, tickets, payments, venues, or marketplaces.\n\nDefault state is the in-memory reference model. It is not durable across process restart. An optional process-local file journal can replay committed local-call receipts after a restart of this loopback process. That journal is a readiness runtime. It is not protocol truth and it is not a production conformance claim. Inside one process, and after a recovered journal, the same operationId with the same actor, action, and body replays the stored receipt. A different fingerprint for that operationId is OPERATION_ID_CONFLICT. That rule is the core-command rule. An FSM body idempotency_key is not rewritten from the envelope operationId. An HTTP Idempotency-Key header is not consulted. When a readiness directory is set, FSM actions are refused with READINESS_FSM_REFUSED before any journal append. The spelling of that refusal is the loopback label for the approved fail-closed behavior.\n\nExternal payment, KYC, venue, and bank adapters are not attached. Fixture reject codes from the reference model stay reject codes. GET /health and GET /ready are process probes, not protocol commands. Readiness is not production readiness.\n\nThe contract-only catalogue remains a pin that does not declare a live server. This document only describes the local integration-gate transport."
+  },
+  "x-kix-contract-status": "integration-gate",
+  "x-kix-live-http-server": {
+    "mode": "non-production-local-integration",
+    "production": false,
+    "publicHost": false,
+    "loopbackOnly": true,
+    "defaultBindHost": "127.0.0.1"
+  },
+  "x-kix-production-endpoint": false,
+  "x-kix-protocol-truth": false,
+  "x-kix-production-conformance": false,
+  "x-kix-public-host": false,
+  "x-kix-readiness-runtime": {
+    "role": "optional-local-file-journal",
+    "protocolTruth": false,
+    "productionConformance": false,
+    "productionEndpoint": false,
+    "defaultEnabled": false,
+    "defaultBindHost": "127.0.0.1",
+    "whenEnabled": "Replays committed local-call receipts from a process-local file after a loopback restart. Not protocol truth. Not a production conformance claim. Not a public endpoint."
+  },
+  "x-kix-omitted-commands": [],
+  "x-kix-source": {
+    "protocolContract": "reference/v0.3-rc1/protocol_contract.json",
+    "gitBlob": "619ae21c82ca3df5661bd3831613f15fa65225ff",
+    "sha256": "ed827de1a8bfe7c48612473965793dcaab65137e575f862761fd160f77ae4c1e",
+    "domain": "kix:fixture:lifecycle:0.3",
+    "commandCount": 84,
+    "coreCommandCount": 40,
+    "fsmCommandCount": 44,
+    "fsmSource": {
+      "path": "docs/contracts/openapi/fsm-command-contract.json",
+      "gitBlob": "3771a8739b906a478b54c597df37e27d1afc5f21",
+      "sha256": "342e97cb37b199622d7bb436ca9164690d969b797058aaa539ff417cab01411c",
+      "domain": "kix:fixture:fsm-catalogue:0.3",
+      "commandCount": 44
+    },
+    "contractCatalogue": "docs/contracts/openapi/kix-protocol.contract-only.openapi.json",
+    "localCall": "reference/v0.3-rc1/core.py Core.execute",
+    "unknownFields": "REJECT",
+    "sourceAuthentication": "FIXTURE_ONLY"
+  },
+  "x-kix-limits": {
+    "maxBodyBytes": 65536,
+    "requestTimeoutSeconds": 5.0,
+    "headerLimitBytes": 8192,
+    "bindHost": "127.0.0.1",
+    "maxInFlight": 8,
+    "maxJournalRecords": 4096,
+    "maxJournalBytes": 8388608,
+    "durableAcrossRestart": false,
+    "localReadinessJournal": {
+      "defaultEnabled": false,
+      "protocolTruth": false,
+      "productionConformance": false,
+      "restartReplay": "optional-process-local-file"
+    }
+  },
+  "x-kix-idempotency": {
+    "identity": "envelope.operationId",
+    "sameFingerprint": "Inside one process, Core.execute returns the stored receipt. With the optional local journal, a later loopback process recovers that receipt from the file and does not apply the effect again. This is not a production conformance claim.",
+    "conflict": "OPERATION_ID_CONFLICT",
+    "durableAcrossRestart": false,
+    "httpIdempotencyKeyHeader": false,
+    "fsmIdempotencyKey": "body.idempotency_key",
+    "fsmOperationIdRemap": false
+  },
+  "x-kix-external-adapters": {
+    "pg": "forbidden",
+    "kyc": "forbidden",
+    "venue": "forbidden",
+    "bank": "forbidden",
+    "note": "The gate calls the in-memory reference Core only. It adds no live adapter."
+  },
+  "x-kix-transport-probes": {
+    "note": "Process probes. Not protocol commands and not OpenAPI path items. Not a REST resource tree.",
+    "health": {
+      "method": "GET",
+      "path": "/health",
+      "meaning": "Process liveness only. Does not check the reference core."
+    },
+    "ready": {
+      "method": "GET",
+      "path": "/ready",
+      "meaning": "In-memory reference core and the published command catalogue are loaded. If a local readiness journal is enabled, it has been recovered or the process is fail-closed. Not production readiness."
+    }
+  },
+  "x-kix-local-call-operations": [
+    {
+      "operationId": "abort_effect",
+      "action": "abort_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/abort_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "abort_trade",
+      "action": "abort_trade",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/abort_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "accept_gift",
+      "action": "accept_gift",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/accept_gift",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "accept_trade",
+      "action": "accept_trade",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/accept_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "adjust_pg_cancel",
+      "action": "adjust_pg_cancel",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/adjust_pg_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "admit",
+      "action": "admit",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/admit",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "advance_clock",
+      "action": "advance_clock",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/advance_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "authorize_marketing",
+      "action": "authorize_marketing",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/authorize_marketing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "cancel_event",
+      "action": "cancel_event",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/cancel_event",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "cancel_gift",
+      "action": "cancel_gift",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/cancel_gift",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "cancel_listing",
+      "action": "cancel_listing",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/cancel_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "capture",
+      "action": "capture",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/capture",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "claim_effect",
+      "action": "claim_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/claim_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "close_delegation",
+      "action": "close_delegation",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/close_delegation",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "close_sales",
+      "action": "close_sales",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/close_sales",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "commit_trade",
+      "action": "commit_trade",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/commit_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "complete_event",
+      "action": "complete_event",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/complete_event",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "create_event",
+      "action": "create_event",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/create_event",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "create_listing",
+      "action": "create_listing",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/create_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "delegate",
+      "action": "delegate",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/delegate",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "dispatch_effect",
+      "action": "dispatch_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/dispatch_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "expire_trade",
+      "action": "expire_trade",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/expire_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "finalize_effect",
+      "action": "finalize_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/finalize_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "issue_invitation",
+      "action": "issue_invitation",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/issue_invitation",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "observe_dispatch_lookup",
+      "action": "observe_dispatch_lookup",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/observe_dispatch_lookup",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "observe_effect",
+      "action": "observe_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/observe_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "observe_funding",
+      "action": "observe_funding",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/observe_funding",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "observe_recovery",
+      "action": "observe_recovery",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/observe_recovery",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "observe_return",
+      "action": "observe_return",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/observe_return",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "offer_gift",
+      "action": "offer_gift",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/offer_gift",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "open_admission",
+      "action": "open_admission",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/open_admission",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "prepare_effect",
+      "action": "prepare_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/prepare_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "prepare_trade",
+      "action": "prepare_trade",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/prepare_trade",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "refund_ticket",
+      "action": "refund_ticket",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/refund_ticket",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "release_inventory",
+      "action": "release_inventory",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/release_inventory",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "reserve_listing",
+      "action": "reserve_listing",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reserve_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "send_effect",
+      "action": "send_effect",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/send_effect",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "set_consent",
+      "action": "set_consent",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/set_consent",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "settle_capture",
+      "action": "settle_capture",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settle_capture",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "void_unissued",
+      "action": "void_unissued",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/void_unissued",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published command, dispatched by the loopback gate through Core.execute. operationId here is the command name (Python action), not the per-invocation operationId argument. Not a production operation."
+    },
+    {
+      "operationId": "settlement_initiate",
+      "action": "settlement_initiate",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_initiate",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_authorize",
+      "action": "settlement_authorize",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_authorize",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_capture",
+      "action": "settlement_capture",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_capture",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_commit",
+      "action": "settlement_commit",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_commit",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_fail",
+      "action": "settlement_fail",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_fail",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_cancel",
+      "action": "settlement_cancel",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_observe_statement",
+      "action": "settlement_observe_statement",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_observe_statement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_distribute",
+      "action": "settlement_distribute",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_distribute",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_bind_refund",
+      "action": "settlement_bind_refund",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_bind_refund",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "settlement_observe_mock_cancel_acceptance",
+      "action": "settlement_observe_mock_cancel_acceptance",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/settlement_observe_mock_cancel_acceptance",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_set_clock",
+      "action": "reservation_set_clock",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_set_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_register_show",
+      "action": "reservation_register_show",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_register_show",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_hold",
+      "action": "reservation_hold",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_hold",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_release",
+      "action": "reservation_release",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_release",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_confirm",
+      "action": "reservation_confirm",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_confirm",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_cancel",
+      "action": "reservation_cancel",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_observe_payment",
+      "action": "reservation_observe_payment",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_observe_payment",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_bind_settlement",
+      "action": "reservation_bind_settlement",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_bind_settlement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_issue",
+      "action": "reservation_issue",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_issue",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_authorize_admission",
+      "action": "reservation_authorize_admission",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_authorize_admission",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "reservation_consume",
+      "action": "reservation_consume",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/reservation_consume",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_set_clock",
+      "action": "resale_set_clock",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_set_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_adopt_issued",
+      "action": "resale_adopt_issued",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_adopt_issued",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_list_resale",
+      "action": "resale_list_resale",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_list_resale",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_hold_buy",
+      "action": "resale_hold_buy",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_hold_buy",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_release_hold",
+      "action": "resale_release_hold",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_release_hold",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_cancel_listing",
+      "action": "resale_cancel_listing",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_cancel_listing",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_observe_resale_payment",
+      "action": "resale_observe_resale_payment",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_observe_resale_payment",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_bind_settlement",
+      "action": "resale_bind_settlement",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_bind_settlement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_accept_resale",
+      "action": "resale_accept_resale",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_accept_resale",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "resale_close",
+      "action": "resale_close",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/resale_close",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "admission_set_clock",
+      "action": "admission_set_clock",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/admission_set_clock",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "admission_adopt_issued",
+      "action": "admission_adopt_issued",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/admission_adopt_issued",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "admission_authorize_admission",
+      "action": "admission_authorize_admission",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/admission_authorize_admission",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "admission_consume",
+      "action": "admission_consume",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/admission_consume",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_offer",
+      "action": "credit_offer",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_offer",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_approve",
+      "action": "credit_approve",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_approve",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_reject",
+      "action": "credit_reject",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_reject",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_cancel",
+      "action": "credit_cancel",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_cancel",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_bind_settlement",
+      "action": "credit_bind_settlement",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_bind_settlement",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_draw",
+      "action": "credit_draw",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_draw",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_repay",
+      "action": "credit_repay",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_repay",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_close",
+      "action": "credit_close",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_close",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    },
+    {
+      "operationId": "credit_default",
+      "action": "credit_default",
+      "x-kix-transport": "integration-gate",
+      "x-kix-production-endpoint": false,
+      "x-kix-not-a-public-service": true,
+      "requestBodySchema": "kix-protocol.contract-only.openapi.json#/components/schemas/credit_default",
+      "localCallParameters": [
+        "operationId",
+        "actor",
+        "action",
+        "body"
+      ],
+      "description": "Published FSM command, dispatched by the loopback gate to the in-process machine. operationId here is the command name (Python action), not the per-invocation operationId argument and not the body idempotency_key. Not a production operation. Refused when a readiness directory is set."
+    }
+  ],
+  "paths": {
+    "/x-kix-contract-only/local-call": {
+      "post": {
+        "operationId": "invokeLocalCall",
+        "x-kix-transport": "integration-gate",
+        "x-kix-production-endpoint": false,
+        "x-kix-not-a-public-service": true,
+        "summary": "Loopback local-call envelope. Not a production endpoint.",
+        "description": "POST the published envelope to the in-memory reference Core.execute. Command identities are x-kix-local-call-operations. This path is the published local-call envelope, not a new resource tree. Bind is IPv4 loopback only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "kix-protocol.contract-only.openapi.json#/components/schemas/LocalCallEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "In-process receipt from Core.execute, including a replay of the same operationId fingerprint. Not evidence of live money movement.",
+            "x-kix-production-endpoint": false
+          },
+          "400": {
+            "description": "Malformed envelope, unknown action, or published schema rejection. rejected is true. Not HTTP 200."
+          },
+          "404": {
+            "description": "Unsupported path. Fail closed."
+          },
+          "405": {
+            "description": "Unsupported method. Fail closed."
+          },
+          "408": {
+            "description": "Request timed out before a Core result."
+          },
+          "411": {
+            "description": "POST requires a single Content-Length."
+          },
+          "413": {
+            "description": "Body larger than the gate limit."
+          },
+          "415": {
+            "description": "Media type is not application/json."
+          },
+          "422": {
+            "description": "Core.execute raised Rejected, or an FSM handler raised its error code, or a readiness directory refused an FSM action. error is that reject code. Not HTTP 200."
+          },
+          "503": {
+            "description": "Process is up but the in-memory core is not accepting calls. Not production readiness."
+          }
+        }
+      }
+    }
+  }
+}

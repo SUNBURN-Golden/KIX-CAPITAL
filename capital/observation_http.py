@@ -20,29 +20,38 @@ import http.client
 import importlib.util
 import ipaddress
 import json
+import socket
 import sys
+import time
+from contextlib import suppress
 from http.client import HTTPException
 from pathlib import Path
+from threading import Timer
 from urllib.parse import urlsplit
 
 from capital import observation
-from capital.ports import ObservationPort
 from capital.resources import ROOT
 from capital.strict_json import loads as strict_loads
 
 LABEL = 'LOCAL_FAKE_OBSERVATION'
-MAX_REPLY_BYTES = 1_048_576  # local read cap, not a financial limit
+# Transport limits for synthetic fixture data.
+MAX_REQUEST_BYTES = MAX_REPLY_BYTES = 1_048_576
+MAX_TIMEOUT_SECONDS = 30
 _FAKE_MODULE = 'kix_capital_fake_observation'
-ENVELOPE_KEYS = frozenset({
-    'label', 'mode', 'binding', 'semantic_conformance', 'funds_executed', 'result'})
-ERROR_KEYS = frozenset({
-    'label', 'mode', 'binding', 'semantic_conformance', 'funds_executed', 'error'})
+STAMP_KEYS = frozenset({'label', 'mode', 'binding', 'semantic_conformance', 'funds_executed'})
+ROW_STAMPS = frozenset({'label', 'applied', 'funds_executed'})
 RESULT_KEYS = frozenset({
     'label', 'applied', 'funds_executed', 'identity_profile', 'binding_status',
     'semantic_conformance', 'event_items', 'deliveries', 'duplicates',
     'conflicts', 'applied_effects'})
-RESULT_LISTS = ('event_items', 'deliveries', 'duplicates', 'conflicts')
-REDIRECTS = frozenset({301, 302, 303, 307, 308})
+ROW_FIELDS = {
+    'event_items': {'event_item_id': str, 'scoped_key': dict, 'normalized_fact': dict,
+                    'evidence_digest': str, 'status': str, 'binding_status': str},
+    'deliveries': {'event_item_id': str, 'transmission': dict},
+    'duplicates': {'event_item_id': str, 'delivery_index': int},
+    'conflicts': {'event_item_id': str, 'original': dict, 'incoming': dict,
+                  'evidence_digest': str, 'delivery_index': int},
+}
 
 
 class ObservationUnavailable(Exception):
@@ -114,7 +123,7 @@ def _check_safe(entry):
 
 def _validated_result(payload):
     """The reply's ``result`` must be the honest detached fold contract."""
-    if set(payload) != ENVELOPE_KEYS:
+    if payload.keys() != STAMP_KEYS | {'result'}:
         raise ObservationProtocolError('ENVELOPE_INVALID')
     result = payload['result']
     if type(result) is not dict or set(result) != RESULT_KEYS:
@@ -128,16 +137,19 @@ def _validated_result(payload):
         raise ObservationProtocolError('IDENTITY_MISMATCH')
     if result['applied_effects'] != []:
         raise ObservationProtocolError('EFFECTS_CLAIMED')
-    for name in RESULT_LISTS:
+    for name, fields in ROW_FIELDS.items():
         entries = result[name]
         if type(entries) is not list:
             raise ObservationProtocolError('ENVELOPE_INVALID')
         for entry in entries:
             _check_safe(entry)
+            if entry.keys() != ROW_STAMPS | fields.keys() or any(
+                    type(entry[field]) is not kind for field, kind in fields.items()):
+                raise ObservationProtocolError('ENVELOPE_INVALID')
     return result
 
 
-def _loopback_base_url(base_url):
+def _loopback_endpoint(base_url):
     """Refuse anything but a literal loopback IP URL. No DNS lookup."""
     if type(base_url) is not str:
         raise ObservationProtocolError('NON_LOOPBACK')
@@ -146,7 +158,7 @@ def _loopback_base_url(base_url):
         port = parts.port
     except ValueError as exc:
         raise ObservationProtocolError('NON_LOOPBACK') from exc
-    if parts.scheme != 'http' or port is None \
+    if parts.scheme != 'http' or not port \
             or parts.path not in ('', '/') or parts.query or parts.fragment \
             or parts.username is not None or parts.password is not None:
         raise ObservationProtocolError('NON_LOOPBACK')
@@ -154,9 +166,15 @@ def _loopback_base_url(base_url):
         address = ipaddress.ip_address(parts.hostname or '')
     except ValueError as exc:
         raise ObservationProtocolError('NON_LOOPBACK') from exc
-    if not address.is_loopback:
+    if not address.is_loopback or '%' in str(address):
         raise ObservationProtocolError('NON_LOOPBACK')
-    return base_url.rstrip('/')
+    return str(address), port
+
+
+def _interrupt(connection_socket):
+    # Interrupt a buffered header or body read when the whole attempt expires.
+    with suppress(OSError):
+        connection_socket.shutdown(socket.SHUT_RDWR)
 
 
 class ObservationHttpAdapter:
@@ -166,25 +184,29 @@ class ObservationHttpAdapter:
     semantic_conformance = False
 
     def __init__(self, base_url=None, timeout=5.0, fake=None):
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not timeout > 0:
+        if type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS:
             raise ObservationProtocolError('ENVELOPE_INVALID')
         self.timeout = timeout
         self._owned = False
         self._closed = False
         if fake is not None:
             self.fake = fake
-            self.base_url = fake.url
+            base_url = fake.url
         elif base_url is None:
             module = load_fake_observation()
             self.fake = module.start()
-            self.base_url = self.fake.url
+            base_url = self.fake.url
             self._owned = True
         else:
             self.fake = None
-            self.base_url = _loopback_base_url(base_url)
-        if not isinstance(self, ObservationPort):
+        try:
+            self._host, self._port = _loopback_endpoint(base_url)
+        except ObservationProtocolError:
             self.close()
-            raise ObservationProtocolError('NOT_AN_OBSERVATION')
+            raise
+        self.base_url = base_url.rstrip('/')
+        host = f'[{self._host}]' if ':' in self._host else self._host
+        self._authority = f'{host}:{self._port}'
 
     def close(self):
         if self._closed:
@@ -193,7 +215,7 @@ class ObservationHttpAdapter:
         if self._owned and self.fake is not None:
             self.fake.close()
 
-    def fold(self, facts, *, bindings):
+    def fold(self, facts, *, bindings) -> dict:
         """POST once. A lost or dishonest response raises; nothing is retried."""
         if not isinstance(facts, list):
             raise ValueError('facts must be a list')
@@ -201,72 +223,88 @@ class ObservationHttpAdapter:
             raise ValueError('bindings must be a synthetic list')
         status, payload = self._request(
             'POST', '/v1/fold', {'facts': facts, 'bindings': bindings})
-        if status == 400:
-            _honest(payload)
-            code = payload.get('error')
-            if set(payload) != ERROR_KEYS or type(code) is not str:
-                raise ObservationProtocolError('ENVELOPE_INVALID', status)
-            raise ValueError(code)
-        if status != 200:
-            raise ObservationProtocolError(
-                payload.get('error') if type(payload) is dict else 'OBSERVATION_FAILED',
-                status)
         _honest(payload)
-        return _validated_result(payload)
+        if status != 200:
+            code = self._error_code(payload, status)
+            if status == 400:
+                raise ValueError(code)
+            raise ObservationProtocolError(code, status)
+        result = _validated_result(payload)
+        if len(result['deliveries']) != len(facts):
+            raise ObservationProtocolError('ENVELOPE_INVALID', status)
+        return result
 
     def post_count(self):
         """POST counter observed over HTTP. This client does not add a retry."""
         status, payload = self._request('GET', '/v1/counters')
-        if status != 200:
-            raise ObservationProtocolError(
-                payload.get('error') if type(payload) is dict else 'LOOKUP_FAILED')
         _honest(payload)
+        if status != 200:
+            raise ObservationProtocolError(self._error_code(payload, status), status)
         posts = payload.get('posts')
-        if type(posts) is not int:
+        if payload.keys() != STAMP_KEYS | {'posts'} or type(posts) is not int or posts < 0:
             raise ObservationProtocolError('ENVELOPE_INVALID')
         return posts
 
+    @staticmethod
+    def _error_code(payload, status):
+        if payload.keys() != STAMP_KEYS | {'error'} or type(payload['error']) is not str:
+            raise ObservationProtocolError('ENVELOPE_INVALID', status)
+        return payload['error']
+
     def _request(self, method, path, payload=None):
         """One attempt, explicit bounds; transport loss is ``ObservationUnavailable``."""
+        if self._closed:
+            raise ObservationUnavailable()
         data = None
-        headers = {'Accept': 'application/json', 'Host': self._host_header()}
+        headers = {'Accept': 'application/json', 'Connection': 'close',
+                   'Host': self._authority}
         if payload is not None:
-            data = json.dumps(
-                payload, ensure_ascii=True, sort_keys=True,
-                separators=(',', ':')).encode('utf-8')
+            try:
+                data = json.dumps(payload, ensure_ascii=True, allow_nan=False,
+                                  separators=(',', ':')).encode('ascii')
+            except (TypeError, ValueError, RecursionError) as exc:
+                raise ValueError('INVALID_JSON') from exc
+            if len(data) > MAX_REQUEST_BYTES:
+                raise ValueError('BODY_TOO_LARGE')
             headers['Content-Type'] = 'application/json'
-        connection = http.client.HTTPConnection(
-            self._host(), self._port(), timeout=self.timeout)
+        connection = http.client.HTTPConnection(self._host, self._port, timeout=self.timeout)
+        deadline = time.monotonic() + self.timeout
+        timer = None
         try:
+            connection.connect()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ObservationUnavailable()
+            timer = Timer(remaining, _interrupt, args=(connection.sock,))
+            timer.daemon = True
+            timer.start()
             connection.request(method, path, body=data, headers=headers)
-            response = connection.getresponse()
-            status = response.status
-            raw = response.read(MAX_REPLY_BYTES + 1)
+            with connection.getresponse() as response:
+                status = response.status
+                if 300 <= status < 400:
+                    raise ObservationProtocolError('REDIRECT_REFUSED', status)
+                length = response.length
+                lengths = response.headers.get_all('Content-Length', [])
+                if lengths and (len(lengths) != 1 or not lengths[0].isascii()
+                                or not lengths[0].isdigit() or length is None):
+                    raise ObservationProtocolError('ENVELOPE_INVALID', status)
+                if length is not None and length > MAX_REPLY_BYTES:
+                    raise ObservationProtocolError('REPLY_TOO_LARGE', status)
+                raw = response.read(MAX_REPLY_BYTES + 1)
+                if length is not None and len(raw) < length:
+                    raise ObservationUnavailable()
         except (OSError, HTTPException) as exc:
-            raise ObservationUnavailable('OBSERVATION_UNAVAILABLE') from exc
+            raise ObservationUnavailable() from exc
         finally:
+            if timer is not None:
+                timer.cancel()
             connection.close()
-        if status in REDIRECTS:
-            raise ObservationProtocolError('REDIRECT_REFUSED', status)
+        if not raw or time.monotonic() >= deadline:
+            raise ObservationUnavailable()
         if len(raw) > MAX_REPLY_BYTES:
             raise ObservationProtocolError('REPLY_TOO_LARGE', status)
-        if not raw:
-            raise ObservationUnavailable('OBSERVATION_UNAVAILABLE')
         try:
             parsed = strict_loads(raw)
         except (ValueError, RecursionError) as exc:
             raise ObservationProtocolError('INVALID_JSON', status) from exc
         return status, parsed
-
-    def _host(self):
-        return urlsplit(self.base_url).hostname
-
-    def _port(self):
-        return urlsplit(self.base_url).port
-
-    def _host_header(self):
-        return self.base_url.split('://', 1)[1]
-
-
-# Structural check at import. A missing method fails here, not at a call site.
-_ = ObservationPort

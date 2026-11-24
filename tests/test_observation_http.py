@@ -1,20 +1,25 @@
 """LOCAL_FAKE_OBSERVATION adapter. Not SEMANTIC_CONFORMANCE. CAP-14 stays NOT_BOUND."""
 import copy
 import json
+import tempfile
 import time
 import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import capital.observation_http as observation_http
 from capital.observation import LocalFakeObservation
 from capital.observation_http import (
-    LABEL, ObservationHttpAdapter, ObservationProtocolError, ObservationUnavailable,
+    LABEL, MAX_REQUEST_BYTES, MAX_TIMEOUT_SECONDS, ObservationHttpAdapter,
+    ObservationProtocolError, ObservationUnavailable,
     load_fake_observation,
 )
 from capital.ports import ObservationPort
 from capital.service import CapitalService
+from capital.store import FILE_NAME, FileWorkspace
 from test_observation_port import CORPUS, run_observation_vectors
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,15 +30,18 @@ BASE_FACT = _TABLE['base_fact']
 BASE_BINDINGS = _TABLE['bindings']
 
 
-def _raw(method, url, payload=None, timeout=2):
+def _raw(method, url, payload=None, timeout=2, content_length=None):
     data = None
     headers = {'Accept': 'application/json'}
     if payload is not None:
-        data = json.dumps(payload).encode()
+        data = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
         headers['Content-Type'] = 'application/json'
+    if content_length is not None:
+        headers['Content-Length'] = str(content_length)
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with opener.open(request, timeout=timeout) as response:
             raw = response.read()
             status = response.status
     except urllib.error.HTTPError as exc:
@@ -76,14 +84,18 @@ class ObservationHttpTests(unittest.TestCase):
 
     def test_populated_state_unchanged_for_every_case(self):
         from test_overlay import draw_book, tick
-        service = CapitalService()
+        directory = self.enterContext(tempfile.TemporaryDirectory())
+        storage = FileWorkspace.open(directory)
+        self.addCleanup(storage.close)
+        service = CapitalService(storage)
         draw_book(service)
         tick(service, 'sim-observation-http-tick', 0, 1)
+        document = Path(directory) / FILE_NAME
 
         def snapshot():
             return copy.deepcopy((service.machine.state_digest(), service.machine.canonical_state(),
                                   service.machine.export_journal(), service.receipts,
-                                  service.overlay_state(), service.overlay_entries, len(service.receipts)))
+                                  service.overlay_state(), service.overlay_entries, document.read_bytes()))
 
         before = snapshot()
         self.assertTrue(service.machine.export_journal())
@@ -104,7 +116,7 @@ class ObservationHttpTests(unittest.TestCase):
         self.assertEqual(snapshot(), before)
 
     def test_non_loopback_bind_is_refused(self):
-        for host in ('0.0.0.0', 'localhost', '8.8.8.8', ''):
+        for host in ('0.0.0.0', 'localhost', '8.8.8.8', '127.0.0.2', '::1', ''):
             with self.assertRaises(fake_observation.FakeObservationError) as caught:
                 fake_observation.start(host, 0)
             self.assertEqual(caught.exception.code, 'NON_LOOPBACK_BIND', host)
@@ -121,10 +133,19 @@ class ObservationHttpTests(unittest.TestCase):
     def test_client_refuses_a_non_loopback_base_url(self):
         for url in ('http://8.8.8.8:9', 'http://localhost:9', 'https://127.0.0.1:9',
                     'ftp://127.0.0.1:9', 'http://127.0.0.1:9/path', 'http://127.0.0.1:9/?q=1',
-                    'http://user@127.0.0.1:9', 'http://127.0.0.1', 'not-a-url', 7):
+                    'http://user@127.0.0.1:9', 'http://127.0.0.1', 'http://127.0.0.1:0',
+                    'not-a-url', 7):
             with self.subTest(url=url), self.assertRaises(ObservationProtocolError) as caught:
                 ObservationHttpAdapter(base_url=url)
             self.assertEqual(caught.exception.code, 'NON_LOOPBACK', url)
+        with self.assertRaises(ObservationProtocolError) as caught:
+            ObservationHttpAdapter(fake=SimpleNamespace(url='http://8.8.8.8:9'))
+        self.assertEqual(caught.exception.code, 'NON_LOOPBACK')
+
+    def test_invalid_timeouts_are_refused_before_transport(self):
+        for timeout in (True, 0, -1, float('nan'), float('inf'), MAX_TIMEOUT_SECONDS + 1):
+            with self.subTest(timeout=timeout), self.assertRaises(ObservationProtocolError):
+                ObservationHttpAdapter(base_url='http://127.0.0.1:9', timeout=timeout)
 
     def _fault_fold(self, fault, timeout=5.0, fault_delay=1.0):
         fake = fake_observation.start(fault_delay=fault_delay)
@@ -190,6 +211,46 @@ class ObservationHttpTests(unittest.TestCase):
         finally:
             fake.close()
 
+    def test_partial_reply_is_unavailable_even_with_complete_json(self):
+        def short_reply(handler):
+            handler.rfile.read(int(handler.headers['Content-Length']))
+            handler.server.fake.note_post()
+            body = json.dumps(fake_observation._stamp(
+                result=LocalFakeObservation().fold([], bindings=[]))).encode()
+            handler.send_response(200)
+            handler.send_header('Content-Length', str(len(body) + 1))
+            handler.end_headers()
+            handler.wfile.write(body)
+
+        fake = fake_observation.start()
+        self.addCleanup(fake.close)
+        adapter = ObservationHttpAdapter(base_url=fake.url)
+        with patch.object(fake_observation.Handler, '_fold', short_reply):
+            with self.assertRaises(ObservationUnavailable):
+                adapter.fold([], bindings=[])
+        self.assertEqual(adapter.post_count(), 1)
+
+    def test_slow_reply_hits_total_deadline(self):
+        def slow_reply(handler):
+            handler.rfile.read(int(handler.headers['Content-Length']))
+            handler.server.fake.note_post()
+            handler.send_response(200)
+            handler.send_header('Content-Length', '50')
+            handler.end_headers()
+            for _ in range(50):
+                handler.wfile.write(b' ')
+                time.sleep(0.05)
+
+        fake = fake_observation.start()
+        self.addCleanup(fake.close)
+        adapter = ObservationHttpAdapter(base_url=fake.url, timeout=0.5)
+        started = time.monotonic()
+        with patch.object(fake_observation.Handler, '_fold', slow_reply):
+            with self.assertRaises(ObservationUnavailable):
+                adapter.fold([], bindings=[])
+        self.assertLess(time.monotonic() - started, 2)
+        self.assertEqual(adapter.post_count(), 1)
+
     def test_redirect_is_refused_not_followed(self):
         fake, adapter = self._fault_fold('redirect')
         try:
@@ -247,6 +308,14 @@ class ObservationHttpTests(unittest.TestCase):
         finally:
             fake.close()
 
+    def test_oversized_request_fails_before_connecting(self):
+        adapter = ObservationHttpAdapter(base_url='http://127.0.0.1:9')
+        with patch.object(observation_http.http.client, 'HTTPConnection') as connection:
+            with self.assertRaisesRegex(ValueError, '^BODY_TOO_LARGE$'):
+                adapter.fold([dict(BASE_FACT, order_id='x' * MAX_REQUEST_BYTES)],
+                             bindings=BASE_BINDINGS)
+            connection.assert_not_called()
+
     def test_reply_validation_refuses_dishonest_stamps(self):
         result = LocalFakeObservation().fold(
             [copy.deepcopy(BASE_FACT)], bindings=copy.deepcopy(BASE_BINDINGS))
@@ -277,7 +346,9 @@ class ObservationHttpTests(unittest.TestCase):
                 (lambda r: r.update(applied_effects=[{'label': 'SIMULATED', 'applied': False,
                                                     'funds_executed': False}]), 'EFFECTS_CLAIMED'),
                 (lambda r: r['event_items'][0].update(label='REAL'), 'LABEL_MISMATCH'),
+                (lambda r: r['event_items'][0].pop('scoped_key'), 'ENVELOPE_INVALID'),
                 (lambda r: r['deliveries'][0].update(applied=True), 'EFFECTS_CLAIMED'),
+                (lambda r: r['deliveries'][0].update(transmission=[]), 'ENVELOPE_INVALID'),
                 (lambda r: r.update(event_items={}), 'ENVELOPE_INVALID')):
             payload = copy.deepcopy(envelope)
             mutate(payload['result'])
@@ -299,6 +370,10 @@ class ObservationHttpTests(unittest.TestCase):
             status, body = _raw('POST', fake.url + '/v1/fold', missing)
             self.assertEqual(status, 400)
             self.assertEqual(body['error'], 'ENVELOPE_INVALID')
+            status, body = _raw('POST', fake.url + '/v1/fold', b'{"facts":[],"bindings":[],"facts":[]}')
+            self.assertEqual((status, body['error']), (400, 'INVALID_JSON'))
+            status, body = _raw('POST', fake.url + '/v1/fold', b'', content_length=MAX_REQUEST_BYTES + 1)
+            self.assertEqual((status, body['error']), (400, 'BODY_TOO_LARGE'))
             self.assertEqual(fake.posts, 0)
             status, body = _raw('GET', fake.url + '/v1/counters')
             self.assertEqual(status, 200)
