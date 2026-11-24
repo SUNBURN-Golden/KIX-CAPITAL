@@ -26,13 +26,14 @@
 
 ## 2. KIX 비전 연결
 
-- kix-protocol `CREDIT_ADVANCE_F04` §5는 이자·수수료·APR·기간·상환 일정·연체·손실 귀속·상각을 open items로 둔다. 이 결정은 그중 만기 연장을 Capital 오버레이에서 처리한다. §5와 재핀 정책 `CAPITAL_UPSTREAM_REPINS` §§3.3–3.4는 제공된 전판의 인용을 따른다. 전판의 `3c2cfaf`·`5efab69`와 이번 판의 `b24f175`·`8341dd7`은 각각의 검토 출처다. FSM 전달 핀 `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`과 별도 계약 인용 핀의 적용 범위는 요구사항이 정한다. [Capital 요구사항](../CAPITAL_REQUIREMENTS_KO.md)
+- kix-protocol `CREDIT_ADVANCE_F04` §5와 §5.1 `interest-apr-schedule`은 이자·수수료·APR·기간·상환 일정·연체·손실 귀속·상각을 open items로 둔다. 이 결정은 그중 만기 연장을 Capital 오버레이에서 처리한다. [F04 §5 (`8341dd7`)](https://github.com/SUNBURN-Golden/kix-protocol/blob/8341dd74002a056aa104d4acb2f54e4d9cffd954/docs/contracts/CREDIT_ADVANCE_F04.md#5-의도적으로-비운-항목)
+- 재핀 정책 `CAPITAL_UPSTREAM_REPINS` §§3.3–3.4에 따라 전판의 `3c2cfaf`·`5efab69`와 이 결정의 `b24f175`·`8341dd7`은 각각의 역사적 검토 기준으로 보존한다. 위 F04 인용은 `8341dd7`의 읽기 전용 참조에서 확인했다. 실행 핀 이동은 승인 근거와 원자적 갱신을 요구한다. FSM 전달 핀 `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`과 별도 계약 인용 핀의 적용 범위는 Capital 요구사항을 따른다. [재핀 정책](CAPITAL_UPSTREAM_REPINS.md) · [Capital 요구사항](../CAPITAL_REQUIREMENTS_KO.md)
 - 권위 모델 A-4에 따라 재생은 당시 명령과 최초 결과를 복원한다. 새 연장은 현재 권한으로 승인해야 한다. 가속·부도 적격일은 기존 회수 결정의 시계를 따르고, 로컬 승인 라벨의 효력은 시뮬레이션에 한정한다. [권위 모델 A-4](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md) · [기본 회수 결정 §4.1](CAPITAL_DEFAULT_RECOVERY.md) · [로컬 포트 범위](../SEAMS.md)
 - `ADOPTED`는 Capital의 잠정 제품 선택이다. 운영 계약 채택과 실제 대출 제안은 범위 밖이다. 법률·세무·회계 판단의 근거 상태는 `WORKING_ASSUMPTION_PENDING_PROFESSIONAL_REVIEW`다. [회계·세무·법무 결정](CAPITAL_ACCOUNTS_TAX_LEGAL.md)
 
 ## 3. 항목별 결정
 
-`d0`는 인출일, `M`은 연장 직전 예정 만기, `E`는 명령일, `k`는 요청 연장일, `M' = M + k`는 새 만기, `G`는 약관상 유예일이다. 모두 정수 논리 일이다. 아래의 **선지급당 1회, 최대 30일, 총기간 180일, 사람 승인, 연장 수수료 0, 유예 10일**은 `CAPITAL-TERMS-V1`의 채택값이다. 소비자는 §4의 `clause_paths`가 가리키는 약관에서 값을 읽는다.
+`d0`는 인출일, `M`은 연장 직전 예정 만기, `E`는 명령일, `k`는 요청 연장일, `M' = M + k`는 새 만기, `G`는 약관상 유예일이다. 모두 정수 논리 일이다. 아래의 **선지급당 1회, 최대 30일, 총기간 180일, 사람 승인, 연장 수수료 0, 유예 10일**은 `CAPITAL-TERMS-V1`의 채택값이다. 소비자는 §4의 `clause_paths`가 가리키는 약관에서 값을 읽는다. [채택 금융 조건](CAPITAL_FINANCIAL_TERMS.md)
 
 ### 3.1 `extension_eligibility_window` — ADOPTED
 
@@ -308,7 +309,7 @@
 | 단일 결정 블록과 소비자 | 제출 JSON을 파싱해 일곱 항목의 `ADOPTED`, 귀속, 날짜, CAP 행, 근거, 잠정 표시, 소비 노드를 확인했다. |
 | Pending 앵커 | 일곱 항목명이 `tests/decision_bindings.json`의 `PENDING_CONSUMER` 등록과 일치하며 모두 `maturity-extension-command`를 가리킨다. |
 | 조건과 증거 | §3.1–3.5가 TERMS 한도와 거절 순서를 정한다. §3.6은 충당금 환입 예를, §3.7과 §4는 승인 증거의 필드·타입·배열 순서를 고정한다. |
-| 저장 후 통합 확인 | 감독자가 `docs/decisions/CAPITAL_MATURITY_EXTENSION.md`를 저장한 뒤 `scripts/decision_ledger.py` 파싱, `GET /api/decisions`의 일곱 항목 노출, `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check`를 확인한다. 이번 제출의 검증 범위는 저장 전 JSON과 기존 바인딩 대조까지다. |
+| 통합 확인 | `python3 scripts/decision_ledger.py`와 `GET /api/decisions`에서 일곱 항목을 대조한다. `python3 scripts/decision_bindings.py --check`, `python3 scripts/docs_surface.py --check`, `python3 scripts/pack_vectors.py --check`로 등록 및 증거 팩을 확인한다. |
 
 ## 6. Open risks
 
