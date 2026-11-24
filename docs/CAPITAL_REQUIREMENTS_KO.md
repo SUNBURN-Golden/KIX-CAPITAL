@@ -69,6 +69,22 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 자동 수집·import·예측·what-if·영속 이력 DB·새 회계정책은 범위 밖이다.
 계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
 
+## evidence-crosscut-check
+
+`capital/evidence_crosscut.py` / `tests/test_evidence_crosscut.py`:
+`python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`은
+명시한 워크스페이스 파일, export manifest, facts 디렉터리를 각각 한 번 캡처해
+기존 오프라인 검증기(`audit_workspace_bytes`, `verify_manifest`, 캡처한 페이지
+바이트에 대한 `facts.verify_dir` 재생 코어)로 검증한 뒤 셋이 공유하는 F04 저널
+내용, 재생 `state_digest`·`journal_length`, 오버레이 존재·내용·digest, fixture
+digest를 비교한다. 서로 다른 컷에서 온 개별적으로 유효한 아티팩트는 각자의 내부
+해시가 맞아도 `CROSS_*` 이름의 사유로 실패한다. 빈 오버레이 V2 조합과 비어 있지
+않은 V3 조합은 통과하며, 누락·검증 실패 입력은 의존 검사를 `NOT_CHECKED`로 두고
+exit 1이다. 서명은 선택적 DEV_ONLY 키/키셋으로 manifest 무결성만 검사한다.
+페이지 수집·SQL 투영·새 manifest 형식·서명·출처 인증·완전히 일관된 대체 장부로의
+통째 교체 탐지는 범위 밖이고 `wholesale_replacement`는 `NOT_DETECTABLE`이다.
+계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
+
 ## 권위와 전체 범위
 
 사용자의 2026-10-07 지시는 Capital을 `SUNBURN-Golden/KIX-CAPITAL`에 구현하며 KIX Protocol의 큰 청사진을 따르라는 것이다. 따라서 과거 Finance 후보의 “새 저장소 없음/화면은 Commerce” 토폴로지는 이번 **Capital 로컬 개발 위치**에 적용하지 않는다. 그것이 후보 금융 정책 채택·AIOPS 신규 프로그램 생성·upstream 노드 완료·운영 권한 확대를 뜻하지는 않는다. Protocol·Commerce는 수정하지 않는다.
@@ -134,6 +150,26 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 `sql-projection-crosscheck`의 추가 로컬 증적: `python3 -m capital.sql_audit FILE`은 먼저 evidence pack 해시를 검증한 다음 stdlib SQLite `:memory:`에서 별도로 표현한 SQL로 원금·청구 액면·수취인 액면·환불 보존과 V1 차변/대변을 비교한다. CAP-12는 KRW의 정확한 정수·10^12 개별 금액 한도와 signed-int64 사전 예산 검증, CAP-13은 `SIMULATION_FIXED_V1`의 거래 헤더(빈 거래 포함)·기장·계정 합계 비교, CAP-14는 해시를 다시 맞춘 산술 오류·중복 source event를 구분하는 테스트, CAP-15는 입력/pack/manifest/section digest와 검사별 결과를 추가한다. V2/V3를 지원하되 V3 오버레이는 해시만 확인하고 회계 검사는 `NOT_CHECKED`다. 결과는 `SIMULATED / LOCAL_ONLY / SYNTHETIC_UNADOPTED`, `funds_executed:false`이며 기존 upstream·stage5/6/7 차단점은 그대로다. 원관측 인증·독립 외부 보증·제공자 인증 완전성·운영 회계 채택을 주장하지 않는다. 영속 DB·COA 지급/상각·세무 처리·실제 자금 실행은 범위 밖이다.
 
+
+## N5-sim shared-source 로컬 증거
+
+`scripts/sim_journeys.py::run_n5`, `tests/test_sim_journeys.py::SharedSourceJourneyTests`,
+`tests/golden/journey_n5_sim.json`은 다음 행의 좁은 합성 증거를 추가한다.
+
+전체 행 완료·준비도 승격 없이 다음 증거만 추가된다.
+
+- `CAP-03`: 기존 HTTP offer/approve/bind/draw/default와 overlay 원 receipt 연결.
+- `CAP-04`: 환불 impairment, holder 우선 서비스·해소 후 공제 유지, recourse/recovery 양 순서 공유 source 보존.
+- `CAP-08`: 활성 slice 이중 등록과 두 lane source 초과 거절; 독립 관측 산술로 현금 초과 사용 없음.
+- `CAP-10`: GET 원 receipt와 entry 대조; 거절 ID는 UNKNOWN, 재게시 없음; 저널·receipt·예약·digest 불변.
+- `CAP-19`: agent의 여섯 slice 명령 및 post_recovery는 403, 상태 변화 없음.
+- `CAP-20`: 기존 integrated-journeys 단계에 결정론적 N5 pin 추가, Capital-local 일곱 여정.
+
+변경 가능한 ScenarioReplaySource는 disposable 장부 전용이며 워크스페이스
+READ_ONLY_FIXTURE는 불변이다. SIMULATED / SHADOW_NOT_APPLIED,
+funds_executed false, integrated false, qualification_claimed false를 유지한다.
+준비금 NOT_BOUND, 변경 소스 영속성·인증된 두 번째 승인·다중 수취인·실제 실행·upstream
+적합성·사람 수용은 주장하지 않는다.
 ### risk-scenario-desk · SIMULATED_WHATIF
 
 The read-only `#risk-comparison` UI lists the four existing named risk scenarios and
