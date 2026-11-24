@@ -64,12 +64,12 @@ python3 -m capital.evidence_crosscut --workspace WS.json --manifest MANIFEST.jso
 ```
 
 The stdlib CLI reads each explicit input once — no lock, no write, no repair —
-and verifies it with the existing offline verifiers (`audit_workspace_bytes`,
-`verify_manifest`, and the `facts.verify_dir` replay core over the captured
-page bytes). It then compares the commitments shared
-by all three artifacts: the F04 journal content, the replayed `state_digest` and
-`journal_length`, overlay presence/content/`overlay_state_digest`, and the
-fixture digest. Deterministic `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1` JSON reports one
+and verifies it with `audit_workspace_bytes`, `verify_manifest`, and the
+`facts.verify_raw_pages` replay core over the captured page bytes. The cross-cut
+check shares its bounded page reader with `capital.verify --facts`. It compares
+the F04 journal content, replayed `state_digest` and `journal_length`, overlay
+presence, content and digest, and the fixture digest across all three artifacts.
+Deterministic `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1` JSON reports one
 `MATCHED`/`MISMATCH`/`NOT_CHECKED` status per check. Exit codes: 0 matched,
 1 any failed input or cross mismatch, 2 argument misuse.
 
@@ -395,15 +395,32 @@ otherwise empty directory; pass its `next_cursor` as `after` until it is null.
 `GET /api/export/facts/schema` serves `KIX_CAPITAL_FACTS_SCHEMA_V1`. Rows contain
 accepted F04 journal entries and the overlay journal in commit order, with KRW
 integer atoms, declared widths and a duplicate marker. The technical limit is
-1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; restart from
-the first page. Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage
-returns 503, including for continuing cursors; no empty substitute book is exported.
+1..500. A changed journal or overlay cut returns `409 CUT_MOVED`; collection
+stops. A new collection requires an explicit invocation with a new directory.
+Invalid cursors return `400 INVALID_CURSOR`. Unhealthy storage returns 503,
+including for continuing cursors; no empty substitute book is exported.
 
 `python3 -m capital.verify --facts DIR` checks canonical bytes, hashes, chaining,
-cut counts, built-in fixtures, F04 replay, overlay fold and both link validators.
-It exits 1 on corruption. The pinned schema and two-tier tamper corpus are in
-`tests/vectors/facts/`; `python3 scripts/facts_vectors.py --check` checks their
-bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+cut counts, built-in fixtures, F04 replay, overlay fold and overlay links.
+It exits 1 on an input refusal or corruption. The pinned schema and tamper
+corpus are in `tests/vectors/facts/`. Run `python3 scripts/facts_vectors.py --check`
+to check their bytes. Explicit regeneration uses `python3 scripts/facts_vectors.py --write`.
+
+The read phase limits a directory to 4096 entries and 2500 matched `page-*.json`
+files before opening any page. It checks the 8 MiB per-page and 64 MiB aggregate
+budgets before each open and checks the 32-level JSON nesting budget before
+decoding (`capital.facts.INPUT_LIMITS`). The same bounds apply to the facts
+directory in `capital.evidence_crosscut`. The verifier refuses symlinks and other
+non-regular pages and uses no-follow, nonblocking opens to guard against races.
+It compares the pathname and descriptor before and after reading to detect
+page replacement and changes in file metadata. Input refusals report `INPUT_DIR_ENTRIES`,
+`INPUT_PAGES`, `INPUT_PAGE_TOO_LARGE:<file>`, `INPUT_TOTAL_TOO_LARGE:<file>`,
+`INPUT_NOT_REGULAR:<file>`, `INPUT_CHANGED:<file>` and `INPUT_JSON_DEPTH:<file>`,
+kept distinct from the semantic mismatch reasons. They are demo technical bounds
+sized above the adopted producer caps (500 operations, 2000 overlay entries,
+4 KiB entries, 4 MiB envelopes, page limit 1..500), not financial limits; every
+export this demo can produce fits them, including the worst pagination of the
+maximum book (2500 rows sealed at limit=1: 2500 pages, ~21 MiB).
 
 Labels remain `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 with `stage7_authenticated_export: false` and a non-claim of
@@ -411,6 +428,49 @@ with `stage7_authenticated_export: false` and a non-claim of
 with all hashes rebuilt cannot be detected. No source authority, signing, import,
 resume, Arrow/Parquet, SQL or multi-asset support is provided. The offline facts
 verifier supports built-in fixtures only; custom fixtures fail `FIXTURES_MISMATCH`.
+
+### Bounded loopback facts collection
+
+With a local Capital server already running, select a **new** artifact directory
+outside the checkout and every source workspace; its parent must exist:
+
+```sh
+python3 scripts/collect_facts.py \
+  --endpoint http://127.0.0.1:8765 \
+  --out /tmp/capital-facts-run-001 \
+  --limit 100 --max-pages 1000 \
+  --max-response-bytes 4194304 --max-total-bytes 67108864 --timeout 10
+python3 -m capital.verify --facts /tmp/capital-facts-run-001
+```
+
+The stdlib collector uses GET only, bootstraps one session, and saves exact
+canonical response bytes as `page-00000000.json`, `page-00000001.json`, … .
+`next_cursor: null` ends fetching; successful offline verification establishes
+completion. Exit 0 means `COMPLETE.json` was atomically published with status
+`VERIFIED_COMPLETE`, ordered filenames, byte counts, SHA256 hashes and the
+existing verifier report. Re-verify the pages before later use: a marker records
+collection success and cannot protect files from later edits.
+
+Existing outputs (including empty directories and symlinks) are refused. The
+collector creates no parent directories and leaves source workspaces untouched.
+Page count, per-response body bytes, aggregate body bytes (including bootstrap
+and error responses), and a finite deadline per request bound collection. The
+endpoint must be exactly `http://127.0.0.1:PORT` (optional final `/`). Proxy
+environment variables are ignored; redirects, compression and chunked/ambiguous
+framing are refused. Responses must close after their declared body.
+The synthetic bootstrap token stays in memory and never enters artifacts or
+collector diagnostics; token-bearing pages are refused before writing.
+
+`CUT_MOVED`, `SESSION_CHANGED`, storage-health refusal, timeout, malformed data,
+failed replay or failed file publication terminates with exit 1 and no completion
+marker. Invalid CLI arguments exit 2. Partial directories are inspectable but
+incomplete and cannot be resumed. Investigate the failure, then explicitly choose
+a different new directory for another invocation. No automatic restart, cursor
+reset, command submission, polling, server snapshot retention or workspace import
+is provided. All output remains `SIMULATED`, source authority and authentication
+`NOT_BOUND`, and `stage7_authenticated_export: false`. No new signing or stage-5
+durability claim is made. See [integration details](docs/INTEGRATION.md) and the
+[operator handbook](docs/OPERATOR_HANDBOOK_KO.md).
 
 ### Read-only claim-slice desk · SIMULATED
 

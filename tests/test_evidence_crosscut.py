@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from capital import evidence_crosscut as crosscut, facts, overlay
 from capital.export import content_digest, sha256_hex
@@ -382,21 +383,59 @@ class CrosscutCliTests(unittest.TestCase):
         # captured bytes is unaffected while a fresh directory read fails.
         paths = sorted(self.facts_a.glob('page-*.json'))
         raws = [(path.name, path.read_bytes()) for path in paths]
-        paths[0].write_bytes(b'{}')
+        read_page_files = facts.read_page_files
+
+        def capture_then_corrupt(directory):
+            yield from read_page_files(directory)
+            paths[0].write_bytes(b'{}')
+
+        with patch('capital.facts.read_page_files', capture_then_corrupt):
+            report = crosscut.crosscut(self.ws_a, self.manifest_a, self.facts_a)
+        self.assertTrue(report['ok'], report['reason'])
+        digest = hashlib.sha256()
+        for name, raw in raws:
+            digest.update(os.fsencode(name) + b'\x00')
+            digest.update(raw)
+        self.assertEqual(report['inputs']['facts']['sha256'], digest.hexdigest())
         self.assertTrue(facts.verify_raw_pages(raws)['ok'])
         self.assertIs(facts.verify_dir(self.facts_a)['ok'], False)
 
-    def test_unreadable_facts_page_after_valid_prefix(self):
-        broken = self.facts_a / 'page-9999.json'
-        broken.symlink_to(self.root / 'missing.json')
+    def test_facts_input_refusal_after_valid_prefix(self):
+        rejected = self.facts_a / 'page-9999.json'
+        expected_pages = len(list(self.facts_a.glob('page-*.json')))
+        for reason in ('INPUT_NOT_REGULAR', 'INPUT_PAGE_TOO_LARGE'):
+            with self.subTest(reason=reason):
+                if reason == 'INPUT_NOT_REGULAR':
+                    rejected.symlink_to(self.root / 'missing.json')
+                else:
+                    with rejected.open('wb') as page:
+                        page.truncate(facts.INPUT_LIMITS['max_page_bytes'] + 1)
+
+                proc = self.run_cli(*self.args())
+                self.assertEqual((proc.returncode, proc.stderr), (1, b''))
+                report = json.loads(proc.stdout)
+                self.assertEqual(report['reason'], reason + ':' + rejected.name)
+                facts_input = report['inputs']['facts']
+                self.assertEqual(facts_input['report'], facts.verify_dir(self.facts_a))
+                self.assertEqual(facts_input['report']['pages'], expected_pages)
+                self.assertIsNone(facts_input['sha256'])
+                for name in crosscut.CROSS_CHECKS:
+                    self.assertEqual(statuses(report)[name], 'NOT_CHECKED')
+                rejected.unlink()
+
+    def test_malformed_facts_keeps_digest_of_complete_capture(self):
+        invalid = self.facts_a / 'page-!.json'
+        invalid.write_bytes(b'{')
+        expected = hashlib.sha256()
+        for page in sorted(self.facts_a.glob('page-*.json')):
+            expected.update(os.fsencode(page.name) + b'\x00')
+            expected.update(page.read_bytes())
 
         proc = self.run_cli(*self.args())
         self.assertEqual((proc.returncode, proc.stderr), (1, b''))
         report = json.loads(proc.stdout)
-        self.assertEqual(report['reason'], 'UNREADABLE:' + broken.name)
-        self.assertEqual(report['inputs']['facts']['report'], facts.verify_dir(self.facts_a))
-        for name in crosscut.CROSS_CHECKS:
-            self.assertEqual(statuses(report)[name], 'NOT_CHECKED')
+        self.assertEqual(report['reason'], 'UNREADABLE:' + invalid.name)
+        self.assertEqual(report['inputs']['facts']['sha256'], expected.hexdigest())
 
     def test_resealed_manifest_journal_replay_fails(self):
         def mutate(sections):
