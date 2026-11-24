@@ -118,9 +118,9 @@ this is not authenticated provider evidence or SEMANTIC_CONFORMANCE.
 
 ## Capital-local named journeys (SIMULATED)
 
-`python3 scripts/sim_journeys.py --check` runs all seven named synthetic journeys in
-acceptance's `integrated-journeys` stage. N1-sim, N2-sim and N5-sim are Capital-local names,
-not upstream T-rung semantics or qualification. All retain `funds_executed: false`,
+`python3 scripts/sim_journeys.py --check` runs nine named synthetic journeys in
+the `integrated-journeys` acceptance stage, covering T03-sim through T06-sim
+and N1-sim through N5-sim. The N identifiers are Capital-local. All retain `funds_executed: false`,
 `integrated: false`, and `qualification_claimed: false`.
 
 - N1-sim: disposable ScenarioReplaySource margin call, inclusive uncured deadline,
@@ -130,12 +130,29 @@ not upstream T-rung semantics or qualification. All retain `funds_executed: fals
   citation-bearing receipt (`effects_executed: false` for the agent), and auditor
   receipt/journal correlation plus offline manifest/workspace verification and tamper refusal.
   Pin: `tests/golden/journey_n2_sim.json`.
+- N3-sim: interest-only payment on day 15, final principal-bearing payment on day 30,
+  advisory CLEAR, then explicit close. Expected allocations and fractional carry are
+  calculated independently from adopted terms. Pin: `tests/golden/journey_n3_sim.json`.
+- N4-sim: human default on the adopted eligibility day, bounded recovery, refusal one
+  day before write-off eligibility, explicit write-off at the boundary, then late
+  recovery. No F04 revival or interest beyond the stop day; loss-reserve absorption
+  is zero and `NOT_BOUND`. Pin: `tests/golden/journey_n4_sim.json`.
 - N5-sim: holder-first shared-source conservation with slice recourse before advance
   recovery and the reverse, each on its own disposable loopback book. Synthetic
   refund impairment, stale quotes, duplicate slice admission, source overruns and
   all seven agent write refusals are checked against HTTP receipts and journals.
   Pin: `tests/golden/journey_n5_sim.json`. Run only this journey with
   `python3 scripts/sim_journeys.py --journey N5-sim --check`.
+
+N3-sim and N4-sim restart file workspaces, preserve original posting receipt cores
+and both digests, and probe duplicates/conflicting identities without a second economic
+effect. Each verifies a V3 manifest, read-only workspace audit and every facts page
+(limit 3, through the terminal cursor), including truncated/tampered evidence refusal.
+N4 uses a `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` on a disposable settlement book.
+After closing it, the ordinary workspace server reopens immutable `READ_ONLY_FIXTURE`
+inputs; the exported cut describes that reopened context, not a persisted settlement
+book. Existing principal-only journeys and their six goldens remain unchanged.
+No COA payment postings, allowance mechanics or upstream qualification are added.
 
 N5's changing `ScenarioReplaySource` exists only for the disposable in-process
 journey. Settlement events are `SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` /

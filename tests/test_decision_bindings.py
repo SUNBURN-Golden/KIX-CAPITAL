@@ -61,6 +61,23 @@ class BindingTests(unittest.TestCase):
         identities = [(row['decision_id'], row['entry']) for row in self.data['entries']]
         self.assertEqual(identities, sorted(set(identities)))
 
+    def test_warm_scan_observes_same_size_edits_deletion_and_invalid_source(self):
+        root = self.fixture()
+        path = root / 'capital/cache_probe.py'
+        source = "NOTE='CAPITAL_FINANCIAL_TERMS.md'\ndef consume(self):\n return self._value('fees')\n"
+        path.write_text(source)
+        original = path.stat()
+        self.assertDrift('financial-terms-decision/fees: unlisted', root)
+        path.write_text(source.replace("'fees'", "'term'"))
+        os.utime(path, ns=(original.st_atime_ns, original.st_mtime_ns))
+        found = self.findings(root)
+        self.assertTrue(any('financial-terms-decision/term: unlisted' in row for row in found))
+        self.assertFalse(any('financial-terms-decision/fees: unlisted' in row for row in found))
+        path.unlink()
+        self.assertEqual(self.findings(root), [])
+        path.write_text('def invalid(')
+        self.assertDrift('cache_probe.py: cannot inspect', root)
+
     def test_each_parked_entry_is_pending_with_node_and_anchor(self):
         nodes = {'claim-slice-registry-decision': 'claim-slice-registry'}
         for row in self.data['entries']:
@@ -78,6 +95,14 @@ class BindingTests(unittest.TestCase):
             self.assertEqual(row['bindings'], [
                 {'kind': 'module', 'path': 'capital/recovery.py', 'status': 'CONSUMED'},
                 {'kind': 'test_module', 'path': 'tests/test_recovery.py', 'status': 'CONSUMED'}])
+
+    def test_servicing_journeys_declare_their_independent_terms_oracle(self):
+        for entry in ('interest_rate', 'term', 'default_loss_treatment'):
+            row = next(row for row in self.data['entries']
+                       if row['decision_id'] == 'financial-terms-decision' and row['entry'] == entry)
+            for kind, path in (('module', 'scripts/sim_journeys.py'),
+                               ('test_module', 'tests/test_sim_journeys.py')):
+                self.assertIn({'kind': kind, 'path': path, 'status': 'CONSUMED'}, row['bindings'])
 
     def test_closeout_policy_has_built_consumers(self):
         expected = {

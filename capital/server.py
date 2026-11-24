@@ -198,7 +198,12 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             pass  # no payloads, financial labels or tokens logged
 
         def reply(self, status, value, content_type='application/json; charset=utf-8'):
+            # Build metrics snapshots before counting this request, then publish
+            # the response only after its counter has been recorded.
             data = value if isinstance(value, bytes) else json.dumps(value, ensure_ascii=False).encode()
+            self._pending_reply = (status, data, content_type)
+
+        def _send_reply(self, status, data, content_type):
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(data)))
@@ -472,13 +477,18 @@ def make_server(port=8765, authorizer=None, workspace=None, signer=None, terms=N
             })
 
         def _observe(self, started, path, status, code, operation_id):
-            # After the reply, so a metrics read does not count itself.
+            # A metrics payload was already captured by dispatch. Record before
+            # sending headers so the next request observes this completed one.
             elapsed_ms = (time.perf_counter() - started) * 1000.0
             try:
                 service.observability.record_http(
                     route_label(path), status, code, operation_id, elapsed_ms)
             except Exception:
-                return
+                pass
+            pending = getattr(self, '_pending_reply', None)
+            if pending is not None:
+                self._pending_reply = None
+                self._send_reply(*pending)
 
         def request_route(self):
             try:

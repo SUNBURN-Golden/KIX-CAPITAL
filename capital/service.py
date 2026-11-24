@@ -169,8 +169,16 @@ class CapitalService:
         self.slice_policy = slices.load_policy(self.terms)
         self.repayment_bounds = repayment_bounds if repayment_bounds is not None else overlay.load_repayment_bounds(note_path(overlay.REPAYMENT_NOTE))
         self.source = vendor_manifest()
-        self.scenario_results = replay_scenarios()
+        self._scenario_results = None
         self._load_workspace()
+
+    @property
+    def scenario_results(self):
+        """Replay disposable scenarios only when read, once per service instance."""
+        with self.lock:
+            if self._scenario_results is None:
+                self._scenario_results = replay_scenarios()
+            return self._scenario_results
 
     @property
     def machine(self):
