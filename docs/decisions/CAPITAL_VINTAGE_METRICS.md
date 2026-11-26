@@ -30,11 +30,11 @@ These roles belong to the designated future `vintage-metrics-report` consumer. C
 
 ## 2. KIX 비전 연결
 
-The supplied excerpts of [CAPITAL_REQUIREMENTS_KO.md](../CAPITAL_REQUIREMENTS_KO.md), [SEAMS.md](../SEAMS.md), [VALIDATION.md](../VALIDATION.md) and [CAPITAL_ACCOUNTS_TAX_LEGAL.md](CAPITAL_ACCOUNTS_TAX_LEGAL.md) establish simulation, evidence and binding limits. Their truncated remainders were not opened.
+The report preserves the repository's simulation, evidence and binding limits: recorded servicing is not authenticated cash, and a decision registration does not establish an implemented consumer.
 
-The supervisor’s review confirms that [CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md), §§4.3–4.6, controls recovery allocation: pre-write-off recovery preserves its components; post-write-off recovery remains unallocated and does not revive the case. This revision relies on that supplied review, without reopening the underlying implementation.
+Read [CAPITAL_DEFAULT_RECOVERY.md](CAPITAL_DEFAULT_RECOVERY.md), §§4.3–4.6, and the existing `capital/residuals.py` evidence reader for this revision. The adopted recovery policy controls allocation: pre-write-off recovery preserves its components; post-write-off recovery remains unallocated and does not revive the case. The residual reader separately preserves pre-write-off principal/interest components and post-write-off residual claims. These are integration anchors, not an implemented vintage report.
 
-The financial-terms note lies outside the explicit read allowlist. Its contents and implementation mappings remain **UNDETERMINED**, `value: null`, within this review’s evidence. Its adopted policy is not reopened. Consumers must load applicable adopted terms through the established mechanism; this report copies no rates, grace periods, write-off delays or reserve percentages.
+Read [CAPITAL_FINANCIAL_TERMS.md](CAPITAL_FINANCIAL_TERMS.md), including its `capital-decision-v1` block, before this revision. Its ADOPTED entries are the provisional product-policy basis. The future consumer must load applicable terms through `capital.terms.DecisionNoteTermsPolicy` and retain the existing note binding; missing or invalid bindings follow `NOT_BOUND`, never invented defaults. Recorded maturity, principal-only F04 repayment and separate overlay interest/recovery evidence supply the report inputs. This report copies no rates, grace periods, write-off delays or reserve percentages and changes no adopted financial, accounting, allowance or release decision.
 
 The objective is reproducible descriptive servicing evidence that explains every inclusion, exclusion and subtotal without claiming financial execution or accounting recognition.
 
@@ -134,7 +134,7 @@ Hand-calculated examples use synthetic KRW and `C.sim_day = 180`. Maturity and w
 | B | 10 | 200 | 20 | `(5,5,40)` | 140 | 25 | Defaulted, written off |
 | C | 29 | 100 | 20 | `(0,0,0)` | 0 | 0 | Maturity day 150 |
 
-Complete evidence gives `N=3`, `P=400`, `F=140`, `R_p=40`, `W=140`, `B=80`. Recovery gross is `5+5+40=50`; unallocated late recovery is 25. Separately linked asserted payments of 150 remain separate, not additional principal servicing.
+Complete evidence gives `N=3`, `P=400`, `F=140`, `R_p=40`, `W=140`, `B=80`. Recovery gross is `5+5+40=50`; unallocated late recovery is 25. Separately linked asserted payments of 150 comprise principal 140, contractual interest 10, default interest 0 and unapplied amount 0. Their principal 140 mirrors `F=140`; it is not additional principal servicing. These are hand-calculated SIMULATED inputs, not observed runtime results.
 
 The eight ratios are respectively `35%`, `10%`, `45%`, `35%`, `20%`, `20%`, `20%` and `1/3 = 33.33%`. C has 30 DPD. Closed A and defaulted B remain in every originating denominator. Adding late recovery would incorrectly produce `(140+40+25)/400=205/400`; this is forbidden.
 
@@ -318,7 +318,7 @@ Local validation **passed**: valid JSON, seven unique registrations, no duplicat
 
 ## 6. Open risks
 
-Implementation mappings, source completeness and F04/overlay linkage remain unverified. Unsupported mappings invalidate dependent metrics. Legacy timing limits dated coverage; cohort ages and selective simulation scenarios prevent statistical or underwriting interpretation. Full integration-check results remain outstanding.
+The vintage consumer remains pending: its source completeness and F04/overlay linkage must be verified when implemented. Unsupported mappings invalidate dependent metrics. Legacy timing limits dated coverage; cohort ages and selective simulation scenarios prevent statistical or underwriting interpretation. Repository checks validate the decision and its registrations, not a functioning vintage report.
 
 ## 7. 후속 작업
 
