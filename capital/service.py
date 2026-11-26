@@ -24,7 +24,7 @@ from capital.export import VOLATILE_KEYS, UnsignedSigner, build_manifest, manife
 from capital.gate_producer import GateProtocolError, TransportLost
 from capital.producer import CreditError, PinnedFsmProducer
 from capital.projection import ProjectionError, SimulationProjection
-from capital.protocol import VENDOR, MockSettlement, SettlementMachine
+from capital.protocol import VENDOR, MockSettlement, SettlementMachine, matches_workspace_state_digest
 from capital.recon import build_reconciliation
 from capital.policy import (
     POLICY_LABEL, POLICY_NOT_BOUND, SCENARIO_ID, DecisionNoteSettlementPolicy,
@@ -227,7 +227,7 @@ class CapitalService:
                 restored = self.producer.restored(copy.deepcopy(journal))
             except CreditError as exc:
                 raise WorkspaceError('WORKSPACE_UNREADABLE') from exc
-            if restored.state_digest() != state_digest:
+            if not matches_workspace_state_digest(restored, state_digest):
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
             expected = {}
             seen = []

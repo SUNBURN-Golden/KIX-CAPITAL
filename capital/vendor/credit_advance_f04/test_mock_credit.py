@@ -4,7 +4,7 @@ import importlib.util
 import unittest
 from pathlib import Path
 
-from mock_credit import PROVENANCE, CreditMockError, MockCredit
+from mock_credit import PROVENANCE, CreditMockError, MockCredit, open_terms
 
 _SETTLEMENT_PATH = Path(__file__).resolve().parents[1] / "settlement_f01_f03" / "mock_settlement.py"
 _SPEC = importlib.util.spec_from_file_location("wave3_mock_settlement", _SETTLEMENT_PATH)
@@ -278,7 +278,7 @@ class CreditAdvanceMockTests(unittest.TestCase):
             reason="fixture",
         )
         open_refund = book.view("claim-1")
-        self.assertEqual(open_refund["refund_bearer_policy"], "UNDEFINED")
+        self.assertEqual(open_refund["refund_bearer_policy"], "REQUESTER")
         self.assertEqual(
             codes(lambda: self.credit.note_advance(
                 "adv-1",
@@ -442,3 +442,121 @@ class CreditAdvanceMockTests(unittest.TestCase):
             "INVALID_ID",
         )
         self.assertEqual(codes(lambda: self.credit.view_claim("claim-1")), "UNKNOWN_CLAIM")
+
+    def test_adopted_boundary_stays_unfilled_on_the_mock(self):
+        face = settlement().view("claim-1")
+        schedule = {"apr_bps": 1200, "tenor_days": 30, "schedule": [{"day": 30, "amount": 1}]}
+        self.assertEqual(
+            codes(lambda: self.credit.note_advance(
+                "priced",
+                face=face,
+                amount=1,
+                beneficiary_role="fixture-label",
+                product=schedule,
+            )),
+            "CREDIT_PRODUCT_UNDEFINED",
+        )
+        self.assertEqual(
+            codes(lambda: self.credit.note_advance(
+                "fee",
+                face=face,
+                amount=1,
+                beneficiary_role="fixture-label",
+                product={"fee": 1},
+            )),
+            "CREDIT_PRODUCT_UNDEFINED",
+        )
+        self.assertEqual(codes(lambda: self.credit.view_claim("claim-1")), "UNKNOWN_CLAIM")
+
+        roles = ("lender", "borrower", "secured-party", "refund-debtor")
+        amounts = (10_000, 20_000, 30_000, 40_000)
+        for index, (role, amount) in enumerate(zip(roles, amounts), start=1):
+            noted = self.credit.note_advance(
+                f"party-{index}",
+                face=face,
+                amount=amount,
+                beneficiary_role=role,
+            )["advance"]
+            self.assertEqual(noted["beneficiary_role"], role)
+            self.assertEqual(noted["open_terms"], open_terms())
+            self.assertIs(noted["legal_debtor_bound"], False)
+            self.assertIs(noted["interest_defined"], False)
+            self.assertIs(noted["priority_bound"], False)
+            self.assertIs(noted["collateral_perfected"], False)
+            self.assertIs(noted["external_pledge_complete"], False)
+            self.assertTrue(noted["snapshot_frozen"])
+            self.assertNotIn("apr_bps", noted)
+            self.assertNotIn("schedule", noted)
+            self.assertNotIn("seniority_rank", noted)
+            self.assertNotIn("legal_party", noted)
+        claim = self.credit.view_claim("claim-1")
+        self.assertEqual(claim["open_terms"], open_terms())
+        self.assertEqual(claim["reserved_open"], 100_000)
+        self.assertEqual(claim["residual_unreserved"], 0)
+        self.assertEqual(claim["open_face"], 100_000)
+
+        before = self.credit.view("party-1")
+        self.assertEqual(
+            codes(lambda: self.credit.attempt_execution("party-1", kind="PERFECT")),
+            "CREDIT_PRODUCT_UNDEFINED",
+        )
+        self.assertEqual(
+            codes(lambda: self.credit.attempt_execution("party-1", kind="PRIORITY")),
+            "CREDIT_PRODUCT_UNDEFINED",
+        )
+        self.assertEqual(
+            codes(lambda: self.credit.attempt_execution("party-1", kind="ACCRUE")),
+            "CREDIT_PRODUCT_UNDEFINED",
+        )
+        self.assertEqual(self.credit.view("party-1"), before)
+
+        book = settlement()
+        later_credit = MockCredit()
+        original = book.view("claim-1")
+        later_credit.note_advance(
+            "frozen",
+            face=original,
+            amount=100_000,
+            beneficiary_role="fixture-label",
+        )
+        book.observe_settlement_statement(
+            "claim-1",
+            movement_id="move-1",
+            gross=100_000,
+            amount=97_000,
+            fee=3_000,
+            tax=0,
+            held=0,
+            adjustment=0,
+        )
+        distributed = book.apply_distribution("claim-1", order=["organizer", "platform"])["claim"]
+        self.assertEqual(distributed["confirmed_cash"], 97_000)
+        self.assertLess(sum(line["outstanding"] for line in distributed["obligations"]), 100_000)
+        self.assertEqual(
+            codes(lambda: later_credit.note_advance(
+                "revalued",
+                face=distributed,
+                amount=1,
+                beneficiary_role="fixture-label",
+            )),
+            "FACE_SNAPSHOT_FROZEN",
+        )
+        frozen = later_credit.view("frozen")
+        self.assertEqual(frozen["open_face"], 100_000)
+        self.assertEqual(frozen["confirmed_cash_on_face"], 0)
+        record = frozen["open_terms"]
+        self.assertIsNone(record["decided_value"])
+        self.assertEqual(record["adopted_option"], "A")
+        self.assertEqual(record["policy_number_status"], "UNDETERMINED")
+        self.assertEqual(record["adoption_decider"], "JunTae")
+        self.assertEqual(record["adoption_date"], "2026-10-09")
+        terms = record["terms"]
+        self.assertEqual(terms["limit-recalculation"]["mock_effect"], "SNAPSHOT_FROZEN")
+        self.assertEqual(terms["legal-parties"]["mock_effect"], "ROLE_LABEL_ONLY")
+        self.assertEqual(terms["perfection"]["mock_effect"], "NOT_PERFECTED")
+        self.assertEqual(terms["interest-apr-schedule"]["mock_effect"], "INTEREST_UNDEFINED")
+        self.assertEqual(terms["seniority"]["mock_effect"], "UNORDERED_RESERVATION")
+        for row in terms.values():
+            self.assertIsNone(row["decided_value"])
+            self.assertEqual(row["policy_number_status"], "UNDETERMINED")
+            self.assertEqual(row["adopted_option"], "A")

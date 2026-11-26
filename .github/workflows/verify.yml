@@ -19,6 +19,7 @@ jobs:
       - run: python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v
       - run: python3 -m compileall -q capital
   browser:
+    # Playwright 1.58.2 has Chromium system dependencies for Ubuntu 24.04.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +40,7 @@ jobs:
           name: browser-evidence
           path: test-results/
   acceptance:
+    # Use the same supported Playwright runner as the browser job.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

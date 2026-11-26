@@ -6,7 +6,11 @@ integrity checks, not authentication. There is no import or resume operation.
 from __future__ import annotations
 
 import copy
+import errno
+import fnmatch
+import os
 import re
+import stat
 from pathlib import Path
 
 from capital import overlay, recovery, slices
@@ -24,6 +28,25 @@ CHAIN = 'KIX_CAPITAL_FACTS_CHAIN_V1'
 PAGE = 'KIX_CAPITAL_FACTS_PAGE_V1'
 CUT = 'KIX_CAPITAL_FACTS_CUT_V1'
 LIMIT_DEFAULT, LIMIT_MAX = 100, 500
+# Read-phase input budget of verify_dir: a demo bound, not a financial limit.
+# Sized above the adopted producer bounds (MAX_OPERATIONS=500,
+# OVERLAY_MAX_ENTRIES=2000, OVERLAY_ENTRY_MAX_BYTES=4096, request bodies
+# <=8192 bytes, ENVELOPE_MAX_BYTES=4MiB, page limit 1..500) so every export the
+# producer can emit fits, including the worst pagination: 500+2000=2500 rows
+# sealed at limit=1 need 2500 pages, and 4096 directory entries leave headroom
+# for non-page files beside them. Those 2500 worst-case pages measure ~21MiB
+# (~12KiB each), under 8MiB per page and 64MiB in aggregate; real pages nest
+# about six levels.
+INPUT_LIMITS = {
+    'max_dir_entries': 4096,
+    'max_pages': 2500,
+    'max_page_bytes': 8 * 1024 * 1024,
+    'max_total_bytes': 64 * 1024 * 1024,
+    'max_json_depth': 32,
+}
+PAGE_GLOB = 'page-*.json'
+_CHANGED_ERRNOS = {errno.ENOENT, errno.ENOTDIR, getattr(errno, 'ELOOP', errno.ENOENT)}
+_JSON_STRUCTURE = re.compile(rb'["\\{}\[\]]')
 UINT_MAX = 99_999_999
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 CURSOR = re.compile(r'kfc1\.([0-9]{8})\.([0-9a-f]{64})\Z')
@@ -235,32 +258,205 @@ def paginate(journal, entries, state_digest, fixtures_digest, after=None, limit=
     return seal(rows, cut, after, start, limit, len(rows))
 
 
-def verify_dir(directory):
-    """Read canonical page files only; replay locally, never write or restore a service."""
+class _ChangedError(OSError):
+    """The named page vanished, moved or changed while it was being read."""
+
+
+def _page_names(directory, bounds):
+    """(reason, names): the sorted page-*.json names, budget-checked while scanning.
+
+    The scan never holds more than the matched names plus counters; both the
+    directory-entry count and the matched-page count refuse before unbounded
+    accumulation. Selection and ordering match sorted glob(PAGE_GLOB).
+    """
+    names, count = [], 0
+    try:
+        with os.scandir(directory) as it:
+            for entry in it:
+                count += 1
+                if count > bounds['max_dir_entries']:
+                    return 'INPUT_DIR_ENTRIES', None
+                if fnmatch.fnmatchcase(entry.name, PAGE_GLOB):
+                    names.append(entry.name)
+                    if len(names) > bounds['max_pages']:
+                        return 'INPUT_PAGES', None
+    except OSError:
+        return 'NO_PAGES', None
+    return None, sorted(names)
+
+
+def _page_identity(info):
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+
+def _read_regular(path, before):
+    """Read exactly `before.st_size` bytes from a regular file; refuse any observed change.
+
+    The descriptor is opened without following a final symlink and compared to
+    the pre-open lstat before and after the bounded read. Replacement, truncation,
+    growth and in-place changes observed through file metadata all fail identically.
+    A non-regular fd is never read, so a substituted fifo cannot block the read.
+    Because an open descriptor keeps the original inode even when the pathname
+    is renamed away or atomically replaced mid-read, the pathname is checked
+    again with lstat after the read and must still name the same regular file.
+    """
+    nofollow, nonblock = getattr(os, 'O_NOFOLLOW', 0), getattr(os, 'O_NONBLOCK', 0)
+    if not nofollow or not nonblock:
+        raise OSError(errno.ENOTSUP, 'safe page open unavailable')
+    flags = os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | nofollow | nonblock
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        if exc.errno in _CHANGED_ERRNOS:
+            raise _ChangedError() from exc
+        raise
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode) or _page_identity(opened) != _page_identity(before):
+            raise _ChangedError()
+        chunks, remaining = [], before.st_size
+        while remaining:
+            chunk = os.read(fd, remaining)
+            if not chunk:
+                raise _ChangedError()
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        if os.read(fd, 1):
+            raise _ChangedError()
+        if _page_identity(os.fstat(fd)) != _page_identity(opened):
+            raise _ChangedError()
+        try:
+            named = os.lstat(path)
+        except OSError as exc:
+            if exc.errno in _CHANGED_ERRNOS:
+                raise _ChangedError() from exc
+            raise
+        if not stat.S_ISREG(named.st_mode) or _page_identity(named) != _page_identity(opened):
+            raise _ChangedError()
+        return b''.join(chunks)
+    finally:
+        os.close(fd)
+
+
+def _exceeds_json_depth(raw, limit):
+    """Count containers before decoding, ignoring brackets inside JSON strings."""
+    depth, escaped_at = 0, -1
+    in_string = False
+    for match in _JSON_STRUCTURE.finditer(raw):
+        token = match[0]
+        if in_string:
+            if match.start() == escaped_at:
+                continue
+            if token == b'\\':
+                escaped_at = match.end()
+            elif token == b'"':
+                in_string = False
+        elif token == b'"':
+            in_string = True
+        elif token in (b'{', b'['):
+            depth += 1
+            if depth > limit:
+                return True
+        elif token in (b'}', b']'):
+            if depth == 0:
+                return False  # Let the strict decoder reject the unmatched closer.
+            depth -= 1
+    return False
+
+
+def _input_bounds(limits):
+    bounds = dict(INPUT_LIMITS)
+    if limits is not None:
+        bounds.update(limits)
+    return bounds
+
+
+def _check_page_size(name, size, total, bounds):
+    if size > bounds['max_page_bytes']:
+        raise FactsError('INPUT_PAGE_TOO_LARGE:' + name)
+    if total + size > bounds['max_total_bytes']:
+        raise FactsError('INPUT_TOTAL_TOO_LARGE:' + name)
+
+
+def read_page_files(directory, *, limits=None):
+    """Yield sorted (name, bytes) pairs under the filesystem budgets.
+
+    Raise FactsError with the report reason when a page cannot be captured.
+    """
+    bounds = _input_bounds(limits)
+    try:
+        directory = Path(directory)
+        reason, names = _page_names(directory, bounds)
+    except (TypeError, ValueError):
+        raise FactsError('NO_PAGES') from None
+    if reason is not None:
+        raise FactsError(reason)
+    total = 0
+    for name in names:
+        path = directory / name
+        try:
+            before = path.lstat()
+        except (FileNotFoundError, NotADirectoryError) as exc:
+            raise FactsError('INPUT_CHANGED:' + name) from exc
+        except OSError as exc:
+            raise FactsError('UNREADABLE:' + name) from exc
+        if not stat.S_ISREG(before.st_mode):
+            raise FactsError('INPUT_NOT_REGULAR:' + name)
+        _check_page_size(name, before.st_size, total, bounds)
+        try:
+            raw = _read_regular(path, before)
+        except _ChangedError as exc:
+            raise FactsError('INPUT_CHANGED:' + name) from exc
+        except OSError as exc:
+            raise FactsError('UNREADABLE:' + name) from exc
+        total += len(raw)
+        yield name, raw
+
+
+def _report(reason=None, pages=0, rows=0):
+    return {'ok': reason is None, 'reason': reason, 'pages': pages, 'rows': rows,
+            'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
+
+
+def verify_raw_pages(raw_pages, *, limits=None):
+    """Verify already-captured page bytes; replay locally, never read the directory.
+
+    `raw_pages` yields ``(name, raw_bytes)`` pairs in verification order.
+    Use ``None`` for unreadable bytes or raise FactsError with a capture
+    failure reason. Check page count, byte budgets and JSON depth before
+    decoding. `verify_dir` feeds the bounded directory reader into this core.
+    """
+    bounds = _input_bounds(limits)
     pages, rows = [], []
 
     def report(reason=None):
-        return {'ok': reason is None, 'reason': reason, 'pages': len(pages), 'rows': len(rows),
-                'authentication': 'NOT_BOUND', 'stage7_authenticated_export': False}
+        return _report(reason, len(pages), len(rows))
 
+    total = 0
     try:
-        paths = sorted(Path(directory).glob('page-*.json'))
-    except OSError:
+        for name, raw in raw_pages:
+            if len(pages) >= bounds['max_pages']:
+                return report('INPUT_PAGES')
+            if raw is None:
+                return report('UNREADABLE:' + name)
+            _check_page_size(name, len(raw), total, bounds)
+            if _exceeds_json_depth(raw, bounds['max_json_depth']):
+                return report('INPUT_JSON_DEPTH:' + name)
+            try:
+                page = loads(raw)
+            except (ValueError, RecursionError):
+                return report('UNREADABLE:' + name)
+            try:
+                if raw != canonical_bytes(page):
+                    return report('NONCANONICAL_ENCODING:' + name)
+            except (ValueError, RecursionError):
+                return report('NONCANONICAL_ENCODING:' + name)
+            total += len(raw)
+            pages.append(page)
+    except FactsError as exc:
+        return report(exc.code)
+    if not pages:
         return report('NO_PAGES')
-    if not paths:
-        return report('NO_PAGES')
-    for path in paths:
-        try:
-            raw = path.read_bytes()
-            page = loads(raw)
-        except (OSError, ValueError, UnicodeError, RecursionError):
-            return report('UNREADABLE:' + path.name)
-        try:
-            if raw != canonical_bytes(page):
-                return report('NONCANONICAL_ENCODING:' + path.name)
-        except (ValueError, RecursionError):
-            return report('NONCANONICAL_ENCODING:' + path.name)
-        pages.append(page)
     for page in pages:
         if type(page) is not dict or set(page) != PAGE_KEYS or page['format'] != PAGE_FORMAT:
             return report('PAGE_SHAPE')
@@ -363,3 +559,8 @@ def verify_dir(directory):
         if canonical_bytes(actual) != canonical_bytes({**rebuilt, 'row_sha256': row_digest(rebuilt)}):
             return report(f'ROW_MISMATCH:{index}')
     return report()
+
+
+def verify_dir(directory, *, limits=None):
+    """Replay a directory under INPUT_LIMITS with optional Python overrides."""
+    return verify_raw_pages(read_page_files(directory, limits=limits), limits=limits)

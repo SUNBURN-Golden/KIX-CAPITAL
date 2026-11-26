@@ -21,21 +21,9 @@ validate = _facade_schema.validate
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Promoted catalogue at kix-protocol 7481b0e16ce9b903abbffa62249bb91cd9e63cfe
-# reference/v0.3-rc1/protocol_contract.json domain kix:fixture:lifecycle:0.3.
-# Snapshot only. This test does not bind that contract. CAP-16 exact tuple stays NOT_BOUND.
-PROMOTED_CATALOGUE = (
-    'abort_effect', 'abort_trade', 'accept_gift', 'accept_trade', 'adjust_pg_cancel', 'admit',
-    'advance_clock', 'authorize_marketing', 'cancel_event', 'cancel_gift', 'cancel_listing',
-    'capture', 'claim_effect', 'close_delegation', 'close_sales', 'commit_trade', 'complete_event',
-    'create_event', 'create_listing', 'delegate', 'dispatch_effect', 'expire_trade',
-    'finalize_effect', 'issue_invitation', 'observe_dispatch_lookup', 'observe_effect',
-    'observe_funding', 'observe_recovery', 'observe_return', 'offer_gift', 'open_admission',
-    'prepare_effect', 'prepare_trade', 'refund_ticket', 'release_inventory', 'reserve_listing',
-    'send_effect', 'set_consent', 'settle_capture', 'void_unissued',
-)
-# sha256 of the catalogue names joined by newlines. Changing a name must update this digest.
-PROMOTED_DIGEST = '18183027d422a9c55366862d1015985ee747f259440888185f8931f072bd782c'
+# Bootstrap-2 catalogue at the pinned Protocol delivery.
+PROMOTED_OPENAPI = ROOT / 'docs/contracts/openapi/kix-protocol.contract-only.openapi.json'
+PROMOTED_DIGEST = '86d33d0bd438afdb0cfdfae43a942443cbee85317c31c19bdc2e8da1d9eb022b'
 
 
 def _property_names(node, found):
@@ -155,10 +143,11 @@ class FacadeContractTests(unittest.TestCase):
         self.assertIn('WORKSPACE_UNREADABLE', codes)
 
     def test_names_do_not_collide_with_the_promoted_catalogue(self):
-        self.assertEqual(len(PROMOTED_CATALOGUE), 40)
-        self.assertEqual(len(set(PROMOTED_CATALOGUE)), 40)
+        schemas = json.loads(PROMOTED_OPENAPI.read_bytes())['components']['schemas']
+        promoted_catalogue = sorted(set(schemas) - {'LocalCallEnvelope'})
+        self.assertEqual(len(promoted_catalogue), 84)
         self.assertEqual(
-            hashlib.sha256('\n'.join(PROMOTED_CATALOGUE).encode()).hexdigest(),
+            hashlib.sha256('\n'.join(promoted_catalogue).encode()).hexdigest(),
             PROMOTED_DIGEST,
         )
         names = set(self.doc['commands'])
@@ -168,9 +157,9 @@ class FacadeContractTests(unittest.TestCase):
         properties = set()
         _property_names(self.doc, properties)
         names.update(properties)
-        collision = names & set(PROMOTED_CATALOGUE)
+        collision = names & set(promoted_catalogue)
         self.assertFalse(collision, sorted(collision))
-        self.assertNotIn(self.doc['namespace'], PROMOTED_CATALOGUE)
+        self.assertNotIn(self.doc['namespace'], promoted_catalogue)
 
     def test_scripted_journey_matches_and_an_unknown_field_is_rejected(self):
         status, state = self.request('GET', '/api/state')
@@ -201,6 +190,26 @@ class FacadeContractTests(unittest.TestCase):
         command('repay', 'sim-journey', {'amount': 60000, 'sequence': 1}, 'j-repay')
         closed = command('close', 'sim-journey', {}, 'j-close-2')
         self.assertEqual(closed['result']['credit']['phase'], 'CLOSED')
+        for kind, ident in (('credit_advance', 'sim-journey'), ('credit_claim', 'sim-committed')):
+            code, envelope = self.request('GET', f'/api/read/{kind}/{ident}', token=token)
+            self.assertEqual(code, 200)
+            schema = self.route('GET', f'/api/read/{kind}/{{id}}')['response']
+            self.check(envelope, schema)
+            terms = envelope['body']['open_terms']
+            self.assertEqual(terms['mock_boundary'], 'UNFILLED')
+            self.assertEqual(len(terms['terms']), 5)
+            for row in terms['terms'].values():
+                self.assertIsNone(row['decided_value'])
+            for change in ('missing', 'extra', 'filled'):
+                bad = json.loads(json.dumps(envelope))
+                if change == 'missing':
+                    del bad['body']['open_terms']
+                elif change == 'extra':
+                    bad['body']['open_terms']['terms']['seniority']['extra'] = False
+                else:
+                    bad['body']['open_terms']['terms']['seniority']['decided_value'] = 1
+                with self.subTest(kind=kind, change=change), self.assertRaises(SchemaError):
+                    self.check(bad, schema)
         reads = [
             ('GET', f'/api/cases/sim-journey/dossier?instance_id={instance}', '/api/cases/{advance_id}/dossier', None),
             ('GET', '/api/evidence', '/api/evidence', None),
