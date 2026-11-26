@@ -31,16 +31,9 @@ CAP references describe intended coverage, not completed capabilities.
 
 The ambition is reproducible evidence about competition for finite distributions: show exactly whose simulated recovery changes when processing order changes, without creating collection authority.
 
-Sources used are limited to the supplied pack:
+The existing recovery decision governs observed beneficiary distributions, allocation, residual claims and human approvals. [CAPITAL_DEFAULT_RECOVERY.md §§4.3–4.8](CAPITAL_DEFAULT_RECOVERY.md)
 
-- [`CAPITAL_DEFAULT_RECOVERY.md`](CAPITAL_DEFAULT_RECOVERY.md), especially §§4.3–4.8: observed beneficiary distributions, shared consumption limits, recovery allocation, residual claims and human approval requirements.
-- [`CAPITAL_CLAIM_SLICE_REGISTRY.md`](CAPITAL_CLAIM_SLICE_REGISTRY.md), supplied excerpt only: slice uniqueness, shared limits, holder priority and the precedence of existing decisions.
-- [`CAPITAL_ACCOUNTS_TAX_LEGAL.md`](CAPITAL_ACCOUNTS_TAX_LEGAL.md), supplied excerpt only: accounting and legal positions remain provisional working assumptions.
-- [`CAPITAL_REQUIREMENTS_KO.md`](../CAPITAL_REQUIREMENTS_KO.md) and [`SEAMS.md`](../SEAMS.md), supplied excerpts only: fixture observations and local gates do not establish production bindings or semantic conformance.
-- [`kix-protocol README`](/workspace/capital-run/kixproto-ro/README.md): mock and local development do not open real funds, providers or production.
-- [`AUTHORITY_MODEL_1.md`](/workspace/capital-run/kixproto-ro/docs/decisions/AUTHORITY_MODEL_1.md), A-4: historical replay does not authorize a new external execution.
-
-No truncated file remainder or linked document outside the allowed pack was consulted. In particular, the slice excerpt does not expose its complete calculation rules. This contract requires the consumer to preserve those rules through existing validation; it does not reconstruct them.
+The slice registry decision governs holder priority and shared source deductions across recoveries and slice recourse. [CAPITAL_CLAIM_SLICE_REGISTRY.md §§3.4–3.6](CAPITAL_CLAIM_SLICE_REGISTRY.md)
 
 ## 3. 항목별 결정
 
@@ -57,7 +50,7 @@ Both `POST_DEFAULT` and `POST_WRITEOFF` advances are eligible when their existin
 
 Sources are observed local fixture distributions, not caller-created liquidity. Inputs select existing source references; they cannot override observed amounts, beneficiaries, holder entitlements or historical deductions. A hypothetical change to a source balance requires a separate fixture and comparison.
 
-A valid population contains 2–4 advances and 1–8 sources, with at least one source eligible, apart from exhaustion, for at least two selected advances. This establishes actual competition potential. Other-beneficiary sources may be selected to exercise refusals.
+A valid population contains 2–4 distinct advances and 1–8 distinct sources. At least two selected advances must list the same source and satisfy its beneficiary and source classification rules. Availability, primary precedence and approvals are evaluated per attempt. Other-beneficiary sources may be selected to exercise refusals.
 
 A missing beneficiary mapping, incomplete consumption history, unavailable holder calculation or unresolved source identity makes the comparison `UNSUPPORTED`. Missing data never means zero.
 
@@ -67,20 +60,18 @@ The request supplies:
 
 - A frozen snapshot reference and `sim_day`.
 - Selected advances and source references.
-- One fixed ordered source list and positive integer `requested_ceiling_krw` per advance/source pair.
+- For each advance, a fixed, nonempty ordered list drawn from the selected sources, with a positive integer `requested_ceiling_krw` on each listed pair.
 - 2–4 scenarios, each with a unique `scenario_id` and an `advance_order` containing every selected advance exactly once.
 
 All scenarios share the same sources, ceilings, policy basis and approval context. Only advance order varies. Duplicate permutations, omitted advances, repeated sources within an advance, unknown references and scenario-specific financial overrides are refused.
 
-For each advance, all selected bound-claim sources form the primary phase. Other-claim sources form the secondary phase and retain their supplied relative order. A secondary source cannot be used while an eligible primary balance remains available to that advance. An omitted primary source with available funds therefore blocks secondary recovery.
+Within each scenario, finish one advance’s attempts before starting the next. Attempt listed bound-claim sources first, followed by listed sources from other claims, keeping the supplied order within each phase. Secondary eligibility uses all eligible bound-claim sources in the frozen snapshot and their current disposable balances, including sources omitted from the request. If any has funds left, including after a capped or refused primary attempt, return `REFUSED / RECOVERY_WATERFALL_ORDER`. If the primary balance or eligibility cannot be established, the comparison is `UNSUPPORTED`.
 
-A caller ceiling is an experimental request limit, not permission to bypass primary recovery. If it leaves usable primary funds, secondary attempts return `PRIMARY_REMAINS_AVAILABLE`. A failed or indeterminate primary eligibility check also blocks that advance’s secondary phase.
-
-Each scenario starts from a fresh copy of the same snapshot. Its result never initializes another scenario. Scenario order represents processing order only: it establishes no contractual creditor seniority, lien, pari passu rule or insolvency priority.
+Each scenario starts from a fresh copy of the same snapshot. Its result never initializes another scenario. Scenario order represents processing order only. Contractual creditor seniority, liens, pari passu rules and insolvency priority are outside the comparison.
 
 ### 3.3 `per_step_amount_rule` — ADOPTED
 
-For each scheduled advance/source pair, the consumer records an attempt after checking phase, beneficiary, holder and primary-order eligibility.
+For each scheduled advance/source pair, the consumer checks phase, the same-beneficiary mapping, source classification, holder priority and primary precedence. For a supported pair, a known prohibition takes precedence over a zero balance. For example, another beneficiary’s source is refused even when exhausted.
 
 For a supported, eligible pair:
 
@@ -90,11 +81,11 @@ All amounts are integer KRW. `quote_limit_krw` comes from the existing recovery 
 
 The existing approval gate checks the candidate amount and cumulative same-day recovery. If that gate refuses, the entire step consumes zero. The consumer must not reduce the candidate merely to fit an approval threshold.
 
-A successful `POST_DEFAULT` step allocates recovery to default interest, contractual interest and principal in the existing order. A `POST_WRITEOFF` step reduces the existing residual claim, without new interest or reopening the case. These are ephemeral calculations, never accounting postings.
+A successful `POST_DEFAULT` step allocates recovery to default interest, contractual interest and principal in the existing order. A `POST_WRITEOFF` step reduces the existing residual claim, with allocation set to null. Both calculations use the frozen interest amounts in disposable state.
 
-Every trace row contains scenario, ordinal, advance, source, phase, requested ceiling, pre-step claim, quote limit, available source, candidate, simulated recovery, allocation, post-step balances and status/reasons.
+Every trace row contains scenario, ordinal, advance, canonical source and observation cut, recovery phase, waterfall step, requested ceiling, pre-step claim, quote limit, available source, candidate, simulated recovery, allocation, post-step balances, and status and reasons. Fields that cannot be evaluated are null.
 
-Zero claim or zero available source is an explicit `NO_EFFECT` result, respectively `CLAIM_SATISFIED` or `SOURCE_EXHAUSTED`. Zero is never represented as a successful `RECOVERY` entry.
+For an eligible pair, zero claim or zero available source is `NO_EFFECT`, with `CLAIM_SATISFIED` taking precedence over `SOURCE_EXHAUSTED` if both are zero. A known zero quote with positive claim and source balance is `NO_EFFECT / ZERO_QUOTE_LIMIT`. If the quote required for a positive attempt cannot be established, the comparison is `UNSUPPORTED`.
 
 ### 3.4 `shared_source_accounting` — ADOPTED
 
@@ -102,16 +93,12 @@ A source uses the existing canonical claim/payee-line identity. An observation c
 
 For a supported source, let:
 
-- `O` = observed distribution.
-- `C` = total historical consumption.
-- `H` = still-unconsumed entitlement withheld for holders under the existing slice rules.
+- `O` = eligible observed distribution from the existing set-off calculation, after the line’s existing recovery-due deduction.
+- `C` = total historical consumption by advance recoveries and slice recourse on this source, including consumers outside the comparison.
+- `H` = holder-served amount protected on the line by the existing slice accounting, including any retained served amount on a resolved slice. The holder calculation uses the raw observed distribution and the existing slice baseline.
 - `R` = successful rehearsal consumption within this scenario.
 
-Then `available = O − C − H − R`.
-
-`C` and `H` must be disjoint and established by the existing source/slice accounting. If they cannot be separated, or the result is negative, the consumer stops with an explicit error; it does not clamp the balance or invent holder allocations. Holders are not competing recovery advances, and their entitlements cannot be consumed by changing scenario order.
-
-This expression is a reconciliation invariant, not a replacement for slice-specific eligibility limits. Existing validated quotes and holder rules can impose stricter limits.
+Reconcile to the existing source-availability calculation, `available = max(0, O − C − H − R)`. Apply each deduction once. If source identity or a deduction cannot be established from the existing accounting, return `UNSUPPORTED`. The validated quote and existing eligibility checks also constrain each step.
 
 A successful step atomically reduces both its advance’s claim and the one shared source balance. Refusals change neither. For each scenario:
 
@@ -119,7 +106,7 @@ A successful step atomically reduces both its advance’s claim and the one shar
 - Advance recovery never exceeds its recoverable claim.
 - Total advance recovery equals total rehearsal source consumption.
 
-**Worked reversal example.** Amounts below are KRW. A and B belong to beneficiary P, are `DEFAULTED`, and each has an 80,000 principal-only recoverable claim. Their distinct bound claims have observed primary availability of zero. Shared secondary source S belongs to P: `O=150,000`, `C=30,000`, `H=20,000`, hence available 100,000. Existing quotes and approvals permit the amounts; both ceilings are 80,000.
+**SIMULATED reversal example.** A and B belong to beneficiary P and are `DEFAULTED`. Each has a principal-only recoverable claim of 80,000 KRW, and each distinct bound claim has observed primary availability of zero. Both list the shared secondary source S with a ceiling of 80,000 KRW. S belongs to P. With `O=150,000`, `C=30,000` and `H=20,000`, S has 100,000 KRW available. Existing quotes and approvals permit each recorded recovery.
 
 | Scenario | Step | Recovery | S remaining | Advance claim remaining |
 |---|---|---:|---:|---:|
@@ -128,9 +115,9 @@ A successful step atomically reduces both its advance’s claim and the one shar
 | B then A | B → S | 80,000 | 20,000 | B: 0 |
 | B then A | A → S | 20,000 | 0 | A: 60,000 |
 
-Total recovery is 100,000 in both scenarios. Reversal changes each advance’s recovery by 60,000; the contract expresses no preference.
+Total recovery is 100,000 KRW in both scenarios. The A-then-B scenario minus the B-then-A scenario gives +60,000 KRW for A, −60,000 KRW for B and 0 KRW in total.
 
-**Exhaustion and beneficiary refusal example.** In a separate fixture, S has `O=130,000`, with unchanged `C=30,000` and `H=20,000`, leaving 80,000. A consumes 80,000 first. B’s S attempt returns `NO_EFFECT / SOURCE_EXHAUSTED`, recovery zero.
+**SIMULATED exhaustion and beneficiary refusal example.** In a separate fixture, S has `O=130,000`, `C=30,000` and `H=20,000`, leaving 80,000 KRW. B lists S followed by T, each with a ceiling of 80,000 KRW. In the A-then-B scenario, A consumes 80,000 KRW first. B’s S attempt returns `NO_EFFECT / SOURCE_EXHAUSTED` and consumes zero.
 
 B next attempts T, whose 40,000 distribution belongs to beneficiary Q. It returns `REFUSED / BENEFICIARY_MISMATCH`, recovery zero; T remains 40,000 and B remains owed 80,000. Neither common platform ownership nor insufficient P funds authorizes using Q’s distribution.
 
@@ -151,7 +138,7 @@ Results distinguish:
 | `REFUSED` | Known rule prohibits the attempt; zero consumption |
 | `UNSUPPORTED` | Required evidence or semantics cannot be evaluated; no successful comparison |
 
-Known refusals include beneficiary mismatch, unavailable primary precedence, invalid state and insufficient existing approvals. The trace retains existing refusal codes where available. Later independent attempts may continue after a known refusal, but primary failures block that advance’s secondary phase.
+Known refusals include beneficiary mismatch, primary balance remaining, invalid state and insufficient existing approvals. The trace retains existing refusal codes where available. Later attempts continue after a known refusal and still undergo all checks, including primary precedence.
 
 If missing semantics could affect balances or eligibility, the **whole comparison** is unsupported. Diagnostic traces may remain, but completed totals and comparative deltas are null; partial results cannot masquerade as complete scenarios.
 
@@ -168,7 +155,7 @@ V1 bounds are fixed:
 
 Exceeding a bound returns `REFUSED / BOUNDS_EXCEEDED` before simulation. No input is truncated. Amounts use exact integer arithmetic; overflow or unsupported numeric representation is rejected.
 
-Reports preserve caller scenario order and show per-advance recovery, allocation and residual claim; per-source consumption and remainder; total recovery; exhausted sources; refusal counts; and directional pairwise KRW differences. Differences are emitted only for complete comparisons. A pairwise difference is explicitly “scenario X minus scenario Y,” not a score.
+Reports preserve caller scenario order. For each scenario, report each advance’s recovery, allocation and residual claim, each source’s consumption and remainder, total recovery, exhausted sources and refusal counts by reason. For complete comparisons, report each pair once in caller order. Label the direction as the earlier supplied scenario minus the later one and show the KRW differences in recovery and residual claim per advance, consumption and remainder per source, and total recovery.
 
 There is no winner, fairness score, preferred-order recommendation, profitability objective or automatic operating-policy update. Rates, reserves, writeoff timing, holder rights and human gates remain unchanged.
 
@@ -181,6 +168,7 @@ There is no winner, fairness score, preferred-order recommendation, profitabilit
   "decided_by": "Sonnet 5.5 xhigh (Fable 5.1 after 3 failed attempts), delegated by JunTae 2026-10-08 (lanes 10-16 09:07)",
   "date": "2026-11-05",
   "provisional": true,
+  "status": "PROVISIONAL_PRODUCT_DECISION",
   "entries": {
     "comparison_population": {
       "status": "ADOPTED",
@@ -207,6 +195,7 @@ There is no winner, fairness score, preferred-order recommendation, profitabilit
         "variable": "ADVANCE_ORDER_ONLY",
         "source_lists_and_ceilings": "FIXED_ACROSS_SCENARIOS",
         "primary_before_secondary": true,
+        "primary_check_scope": "ALL_BOUND_CLAIM_SOURCES_IN_SNAPSHOT",
         "contractual_seniority": false,
         "consumer": "recovery-order-rehearsal",
         "consumer_status": "PENDING"
@@ -240,7 +229,7 @@ There is no winner, fairness score, preferred-order recommendation, profitabilit
       "status": "ADOPTED",
       "value": {
         "identity": "EXISTING_CANONICAL_CLAIM_PAYEE_LINE",
-        "available": "OBSERVED_MINUS_HISTORICAL_CONSUMPTION_MINUS_UNCONSUMED_HOLDER_ENTITLEMENT_MINUS_SCENARIO_CONSUMPTION",
+        "available": "MAX_ZERO_ELIGIBLE_OBSERVED_MINUS_HISTORICAL_CONSUMPTION_MINUS_PROTECTED_HOLDER_AMOUNT_MINUS_SCENARIO_CONSUMPTION",
         "holder_rule": "EXISTING_SLICE_RULES_AUTHORITATIVE",
         "scenario_reset": "FRESH_SNAPSHOT_COPY",
         "consumer": "recovery-order-rehearsal",
@@ -262,6 +251,7 @@ There is no winner, fairness score, preferred-order recommendation, profitabilit
         "executionAuthorized": false,
         "persisted": false,
         "missing_semantics": "UNSUPPORTED_COMPARISON_WITH_NULL_TOTALS",
+        "result_label": "SIMULATED_DISPOSABLE_COMPARISON",
         "refusal_consumption_krw": 0,
         "consumer": "recovery-order-rehearsal",
         "consumer_status": "PENDING"
@@ -279,10 +269,11 @@ There is no winner, fairness score, preferred-order recommendation, profitabilit
         "advances": {"min": 2, "max": 4},
         "sources": {"min": 1, "max": 8},
         "scenarios": {"min": 2, "max": 4},
+        "max_attempts_per_advance_source_pair": 1,
         "max_attempts_per_scenario": 32,
         "max_attempts_total": 128,
         "logical_days": 1,
-        "measures": ["RECOVERY", "RESIDUAL_CLAIM", "SOURCE_REMAINDER", "REFUSALS", "PAIRWISE_KRW_DIFFERENCES"],
+        "measures": ["RECOVERY", "ALLOCATION", "RESIDUAL_CLAIM", "SOURCE_CONSUMPTION", "SOURCE_REMAINDER", "EXHAUSTED_SOURCES", "TOTAL_RECOVERY", "REFUSALS", "PAIRWISE_KRW_DIFFERENCES"],
         "recommendation": "NONE",
         "optimization": false,
         "consumer": "recovery-order-rehearsal",
@@ -311,10 +302,8 @@ There is no winner, fairness score, preferred-order recommendation, profitabilit
 
 ## 6. Open risks
 
-The pack does not establish current implementation APIs or complete slice formulas. Their binding remains unverified; the pending consumer must return unsupported wherever existing semantics cannot be preserved. Local approval labels are not authentication. Legal enforceability and creditor priority remain outside this comparison.
+The pending consumer must establish that the frozen snapshot can support the existing quote, slice and approval checks in disposable state. When that evidence is missing, the comparison returns `UNSUPPORTED`.
 
 ## 7. 후속 작업
 
 `recovery-order-rehearsal` implements this contract and verifies reversal, exhaustion, beneficiary refusal, holder protection, historical deductions, cumulative approvals, primary bypass refusal, unsupported semantics and scenario isolation. Verification must also demonstrate unchanged input state and absence of durable writes or external calls.
-
-Future vector files require the repository’s documentation-surface entries, matching README needles and `python3 scripts/docs_surface.py --check`. This decision delivers no implementation, test execution, upstream receipt or production authorization.
