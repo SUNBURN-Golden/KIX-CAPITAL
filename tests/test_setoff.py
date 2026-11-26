@@ -77,13 +77,13 @@ HALF_DISTRIBUTED = (43000, 0, 43000, 43000, 'ALLOCATED_CASH', 'ALLOCATION_OBSERV
 PINNED_STEPS = {
     'shortfall-platform': {1: ZERO, 2: CAPPED, 3: CAPPED, 4: CAPPED},
     'shortfall-organizer': {1: ZERO, 2: ORGANIZER_FIRST},
-    'partial-before': {1: ZERO, 2: ZERO, 3: ZERO},
+    'partial-before': {1: ZERO, 2: ZERO, 3: CAPPED},
     'partial-after': {1: ZERO, 2: CAPPED, 3: CAPPED, 4: CAPPED},
     'full-after': {
         1: ZERO, 2: CAPPED, 3: UNDER_RECOVERY, 4: UNDER_RECOVERY,
         5: UNDER_RECOVERY, 6: UNDER_RECOVERY, 7: UNDER_RECOVERY,
     },
-    'split-refund': {1: ZERO, 2: ZERO, 3: ZERO, 4: ZERO},
+    'split-refund': {1: ZERO, 2: ZERO, 3: ZERO, 4: CAPPED},
     'duplicate-statement': {1: ZERO, 2: ZERO, 3: ZERO, 4: ZERO},
     'late-cash': {1: ZERO, 2: ZERO, 3: ZERO},
     'split-statement': {1: ZERO, 2: HALF_DISTRIBUTED, 3: HALF_DISTRIBUTED, 4: CAPPED},
