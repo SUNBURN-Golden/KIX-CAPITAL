@@ -130,6 +130,73 @@ The report describes observed differences only. `historical_policy_provenance`,
 `funds_executed` and `workspace_mutated` are false. No payment, causal explanation,
 authenticated ownership, reserve booking or new accounting policy is inferred.
 
+## Offline evidence cross-cut contract
+
+`python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`
+detects individually valid artifacts that were captured from different cuts of a
+workspace. Each explicit input is read once — no lock, no write, no repair — and
+verified with the existing offline verifiers: `audit.audit_workspace_bytes` over
+the captured workspace bytes, `verify.verify_manifest` over the strict-parsed
+manifest, and `facts.verify_raw_pages` over the page bytes captured with the
+same bounded reader as `facts.verify_dir`. Verification and comparison use
+the same capture. Optional mutually
+exclusive `--key-file`/`--keyset-file` arguments feed the manifest signature only,
+through the same DEV_ONLY loaders as `capital.verify`; they are integrity
+material, never credentials, and are never printed. Python callers can use
+`capital.evidence_crosscut.crosscut(workspace_file, manifest_file, facts_dir)`
+for the same report dict.
+
+The canonical sorted-key JSON format is `KIX_CAPITAL_EVIDENCE_CROSSCUT_V1`,
+`mode` `EVIDENCE_CROSSCUT_CHECK`, labeled `SIMULATED`/`LOCAL_ONLY`.
+`inputs.{workspace,manifest,facts}` each carry `path`, `ok`, `reason`, the full
+inner verifier `report`, and `sha256` of the captured bytes. For facts,
+`sha256` is a composite over the ordered page files and is null when the
+directory capture is empty or incomplete. `checks` is an ordered list of
+`{id, status, reason, detail}` where status is `MATCHED`, `MISMATCH` or
+`NOT_CHECKED`: `workspace_audit`, `manifest_verify`, `facts_verify`, then the
+cross-artifact checks `journal_content`, `f04_commitment`, `overlay_presence`,
+`overlay_content`, `overlay_commitment` and `fixtures_commitment`. A missing,
+unreadable or failing input leaves every dependent cross check `NOT_CHECKED`
+and the exit code is 1. `commitments` echoes the shared `state_digest`,
+`journal_length`, `overlay_present`, `overlay_state_digest`,
+`overlay_entry_count` and `fixtures_digest` only where the matching check
+`MATCHED`; unmatched fields are null. No timestamp, instance id or random value
+is generated, so identical inputs emit identical stdout bytes. Exit codes:
+0 all matched, 1 any failed input or cross mismatch, 2 argument misuse.
+
+The workspace payload journal, the manifest journal section entries and the
+facts JOURNAL rows must be canonically identical for `journal_content`.
+`f04_commitment` replays the manifest journal into a scratch `CreditMachine`
+over `FixtureViews`. The facts cut must contain the current replayed
+`state_digest` and matching `journal_length`. The workspace payload digest
+must match the same replay under the workspace auditor's current or legacy
+digest rule. `overlay_presence` compares the three presence indicators (a v2 workspace's
+non-empty overlay journal, a V3 manifest `overlay` section, a facts cut's
+`overlay_state_digest`), so overlay-only cuts fail before content is read;
+`overlay_content` and `overlay_commitment` compare the overlay journals and the
+`overlay_state_digest` values and are `MATCHED` vacuously on an all-empty set;
+`fixtures_commitment` compares the manifest `fixtures_digest`, the recomputed
+fixture-row hash and the facts cut digest. A named `CROSS_*` reason —
+`CROSS_JOURNAL_CONTENT_MISMATCH`, `CROSS_STATE_DIGEST_MISMATCH`,
+`CROSS_JOURNAL_LENGTH_MISMATCH`, `CROSS_JOURNAL_REPLAY_FAILED`,
+`CROSS_OVERLAY_PRESENCE_MISMATCH`, `CROSS_OVERLAY_CONTENT_MISMATCH`,
+`CROSS_OVERLAY_COUNT_MISMATCH`, `CROSS_OVERLAY_DIGEST_MISMATCH` or
+`CROSS_FIXTURES_MISMATCH` — marks the first failing check, including when each
+artifact's own section hashes, content digest and page chain are internally
+valid. Matched empty-overlay V2 sets and matched non-empty-overlay V3 sets
+both pass.
+
+Only commitments represented by all relevant inputs are compared; manifest-only
+sections (receipts, projection, reconciliation, statement, source_pin) and the
+workspace's fixture mapping are out of scope by construction. Page collection,
+SQL projection checks, new manifest formats, signing, source authentication and
+detecting wholesale replacement by a fully consistent alternative book are out
+of scope: `authentication`, `source_cut` and `common_ownership` stay
+`NOT_BOUND`, `wholesale_replacement` is `NOT_DETECTABLE`, `lock_taken`,
+`writes`, `workspace_mutated`, `funds_executed` and
+`stage7_authenticated_export` are false, and `repair` is `NOT_IMPLEMENTED`.
+Executed-command evidence is in `docs/VALIDATION.md`.
+
 ## Observation fixture seam
 
 `ObservationPort` exposes `fold(facts, *, bindings) -> dict`; `LocalFakeObservation`
@@ -248,7 +315,7 @@ before verification. Never use fixture keys outside tests.
 | approve / reject / cancel / bind_settlement / draw / close / default / reconcile | empty object |
 | repay | amount, sequence (next positive integer) |
 
-API wraps the pinned FSM without inventing financial terms. `reject`, `cancel`, `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map: `fixture-organizer` for fixture-v1, the `demo-org-*` synthetic role for each demo-book claim. No caller-supplied settlement body, product terms, identities, credentials, filenames or URLs. The refund fixture is explicitly adverse: 10000 synthetic refund face with burden UNDEFINED; it is not a new executed refund policy. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` only (T1 COMMITTED, T2 CAPTURED, `demo-epsilon-refund` with a 60,000,000 open refund face) so U4 single/beneficiary/portfolio caps bind on real `DECLINE` proposals; cap values stay cited from the terms note, never restated.
+The API delegates to the pinned FSM. `reject`, `cancel` and `default` use fixed synthetic reason labels. Offer beneficiary role comes from the fixture map (`fixture-organizer` for fixture-v1 and the `demo-org-*` synthetic role for each demo-book claim). The API takes a fixture ID and amount for an offer. `sim-refund` has a 10,000 KRW synthetic refund face with bearer `REQUESTER` and is declined with `REFUND_OBLIGATION_OPEN`. The ten demo claims are `SYNTHETIC_FIXTURE_PROFILE` views replayed through the pinned `SettlementMachine` (T1 `COMMITTED`, T2 `CAPTURED`, and `demo-epsilon-refund` with a 60,000,000 KRW open refund face). The underwriting desk evaluates U4 single, beneficiary and portfolio caps on those simulated proposals using the terms note.
 
 Every bound draw reads the immutable settlement view and does not call settlement mutations. F04 also explicitly permits an unbound draw; it reports UNBOUND and does not claim a COMMITTED observation. UI's guided flow binds first. A process-wide lock serializes commands, snapshot and export in this single-process demo. First transport receipt is returned after later transitions too; GET state is current. Domain errors are stored as REJECTED. Schema/boundary errors reject before applying. Reconcile is read/replay and does not clear UNKNOWN.
 
@@ -304,9 +371,9 @@ Envelope v2 (overlay): every save writes `envelope_version: 2` (`format` stays t
 
 `tests/test_producer_port.py` exports `run_producer_vectors(factory)`. The factory returns a fresh `ProducerPort`. Positive and negative command vectors run through it, so a later adapter must pass the same function. That pass is not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND` for the exact Protocol/Commerce producer, SDK, and profile tuple. The local schema does not replace that tuple.
 
-`python3 scripts/seed_demo.py --producer gate-fake` and `python3 -m capital.server --producer gate-fake` opt in to `GateHttpProducer`. The default remains `PinnedFsmProducer`. The fake gate is `scripts/fake_gate.py`, a stdlib server that binds a loopback address only and wraps the same pinned FSM. Its label is `LOCAL_FAKE_GATE`. It is not a promoted catalogue, not an OpenAPI pin, and not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND`. Command bodies reject unknown fields. `operationId` must equal `operation_id`. `actor` is not authentication. If the gate applies a command and drops the response, the client reports `UNKNOWN`, does not POST again, and a later GET of that receipt returns the original receipt. The gate also accepts armed fault hooks `drop-before`, `drop-after`, `timeout`, `error-5xx`, and `malformed-json`, and answers `409 IDEMPOTENCY_CONFLICT` when a replayed `operationId` carries a different action or body (the first receipt is never replaced). The facade maps a lost or dropped command response to an `UNKNOWN` outcome with `retry_authorized` false and never resends; a gate 5xx becomes a `502 GATE_FAILED` and an unparseable gate body `502 INVALID_JSON`, neither a business rejection. `tests/vectors/gate_faults.json` (format `KIX_CAPITAL_GATE_FAULTS_V1`) pins accept, 5xx, malformed JSON, dropped-connection, delayed-then-lost, and conflicting same-`operationId` replay cases; `python3 scripts/gate_faults.py --check` replays the corpus on `127.0.0.1` through the real facade and exits nonzero on drift. It rewrites nothing and is not SEMANTIC_CONFORMANCE.
+`python3 scripts/seed_demo.py --producer gate-fake` and `python3 -m capital.server --producer gate-fake` opt in to `GateHttpProducer`. The default remains `PinnedFsmProducer`. The fake gate is `scripts/fake_gate.py`, a stdlib server that binds a loopback address only and wraps the same pinned FSM. Its label is `LOCAL_FAKE_GATE`. It checks the pinned OpenAPI and SDK delivery bytes locally. The rehearsal is not SEMANTIC_CONFORMANCE. CAP-16 stays `NOT_BOUND`. Command bodies reject unknown fields. `operationId` must equal `operation_id`. `actor` is not authentication. If the gate applies a command and drops the response, the client reports `UNKNOWN`, does not POST again, and a later GET of that receipt returns the original receipt. The gate also accepts armed fault hooks `drop-before`, `drop-after`, `timeout`, `error-5xx`, and `malformed-json`, and answers `409 IDEMPOTENCY_CONFLICT` when a replayed `operationId` carries a different action or body (the first receipt is never replaced). The facade maps a lost or dropped command response to an `UNKNOWN` outcome with `retry_authorized` false and never resends; a gate 5xx becomes a `502 GATE_FAILED` and an unparseable gate body `502 INVALID_JSON`, neither a business rejection. `tests/vectors/gate_faults.json` (format `KIX_CAPITAL_GATE_FAULTS_V1`) pins accept, 5xx, malformed JSON, dropped-connection, delayed-then-lost, and conflicting same-`operationId` replay cases; `python3 scripts/gate_faults.py --check` replays the corpus on `127.0.0.1` through the real facade and exits nonzero on drift. It rewrites nothing and is not SEMANTIC_CONFORMANCE.
 
-`make_preflighted_fake_producer` in `capital/gate_producer.py` rehearses the exact producer-tuple check before constructing that same fake. The offline stdlib checker `capital/compat_preflight.py` validates a synthetic `kix-compat-manifest/1` bundle (`tests/vectors/compat/bundle/`, `READ_ONLY_FIXTURE`) against a caller-pinned expected tuple (`tests/vectors/compat/expected.json`, format `capital-compat-expected/1`): producer identity, profile kind/revision/digest, both contract files (path, Git blob, sha256), generator and `node-24` toolchain metadata, SDK output, ordered vector hashes, and the manifest sidecar digest. Duplicate JSON keys, forbidden self-digest/finality fields, missing files, and paths escaping the fixture root are rejected. A `MISMATCH` raises `PreflightRejected` before any gate starts, so no command POST is ever attempted; a bundle whose bytes declare `SEMANTIC_CONFORMANCE` cannot open the rehearsal (`BOOTSTRAP_REHEARSAL_ONLY`) — the factory accepts `BOOTSTRAP` only. `python3 scripts/compat_preflight.py --check` verifies the pinned corpus and exits nonzero on drift. Even a `MATCHED` report keeps `semantic_consumption` `HOLD`, `semantic_conformance` `false`, and `adoption` `NOT_BOUND`: byte agreement is not semantic qualification, and CAP-16 stays `NOT_BOUND`. The manifest shape and its `kix-canonical-json/1` encoding cite the Protocol contract `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md` at research commit `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915` (read-only; the executable vendor pin stays `7481b0e16ce9b903abbffa62249bb91cd9e63cfe`); `docs/COMPAT_PREFLIGHT.md` has the fixture contract.
+`make_preflighted_fake_producer` in `capital/gate_producer.py` rehearses the exact producer-tuple check before constructing that same fake. The offline stdlib checker `capital/compat_preflight.py` validates a synthetic `kix-compat-manifest/1` bundle (`tests/vectors/compat/bundle/`, `READ_ONLY_FIXTURE`) against a caller-pinned expected tuple (`tests/vectors/compat/expected.json`, format `capital-compat-expected/1`): producer identity, profile kind/revision/digest, both contract files (path, Git blob, sha256), generator and `node-24` toolchain metadata, SDK output, ordered vector hashes, and the manifest sidecar digest. Duplicate JSON keys, forbidden self-digest/finality fields, missing files, and paths escaping the fixture root are rejected. A `MISMATCH` raises `PreflightRejected` before any gate starts, so no command POST is ever attempted; a bundle whose bytes declare `SEMANTIC_CONFORMANCE` cannot open the rehearsal (`BOOTSTRAP_REHEARSAL_ONLY`) — the factory accepts `BOOTSTRAP` only. `python3 scripts/compat_preflight.py --check` verifies the pinned corpus and exits nonzero on drift. Even a `MATCHED` report keeps `semantic_consumption` `HOLD`, `semantic_conformance` `false`, and `adoption` `NOT_BOUND`: byte agreement is not semantic qualification, and CAP-16 stays `NOT_BOUND`. The manifest shape and its `kix-canonical-json/1` encoding cite the Protocol contract `docs/contracts/sdk/COMPATIBILITY_MANIFEST_V1.md` at research commit `9b462fd2cd6890cd0d8fbc2930f2cc54255e2915` (read-only; the executable vendor pin stays `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`); `docs/COMPAT_PREFLIGHT.md` has the fixture contract.
 
 ## Upstream adapter replacement prerequisites (NOT_BOUND)
 
@@ -554,10 +621,165 @@ section journal. The legacy export has no overlay field and is unchanged.
 Empty overlays omit both overlay cut keys under the adopted
 [overlay decision](decisions/CAPITAL_OVERLAY_DIGEST_EXPORT.md) §3.1/§3.4.
 
+The offline verifier (`python3 -m capital.verify --facts DIR`,
+`capital.facts.verify_dir`) and the cross-cut check's facts input use the same
+local demo input budgets from `capital.facts.INPUT_LIMITS`.
+
+| Bound | Default | Refusal |
+|---|---|---|
+| Directory entries (matched or not) | 4096 | `INPUT_DIR_ENTRIES` |
+| Matched `page-*.json` files | 2500 | `INPUT_PAGES` |
+| Bytes per page file (via lstat, before open) | 8 MiB | `INPUT_PAGE_TOO_LARGE:<file>` |
+| Aggregate page bytes | 64 MiB | `INPUT_TOTAL_TOO_LARGE:<file>` |
+| JSON nesting depth (before decoding) | 32 | `INPUT_JSON_DEPTH:<file>` |
+
+The verifier refuses symlinks, FIFOs and directories with `INPUT_NOT_REGULAR:<file>`
+at `lstat`. It requires no-follow and nonblocking open flags to guard against
+substitutions between `lstat` and `open`. The descriptor must match the pre-open
+`lstat` and the post-read pathname in device, inode, size, mtime and ctime.
+Observed changes return `INPUT_CHANGED:<file>`. Detection of in-place changes
+depends on filesystem timestamp resolution. The depth scan counts JSON arrays
+and objects before decoding and ignores delimiters inside quoted strings.
+`INPUT_*` reasons identify input refusals, distinct from semantic
+mismatches (`PAGE_SHAPE`, `*_MISMATCH`, `UNREADABLE`, `NONCANONICAL_ENCODING`);
+the CLI still exits 0 on success, 1 on any refusal and 2 on misuse, prints only
+file names and reason codes — never page contents — and writes nothing. The
+bounds sit above the adopted producer caps (`MAX_OPERATIONS=500`,
+`OVERLAY_MAX_ENTRIES=2000`, `OVERLAY_ENTRY_MAX_BYTES=4096`,
+`ENVELOPE_MAX_BYTES=4MiB`, facts page limit 1..500), so a maximum-generated
+export fits the defaults with headroom at every supported pagination: five
+pages (~12 MiB) at limit=500, and 2500 pages (~21 MiB) at limit=1.
+
 This candidate is `SIMULATED`, `source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
 and not `k-stage7-authenticated-export`. Hashes do not authenticate a source or
 prevent replacement of a whole consistent book. No import or resume path exists.
 
+
+### Bounded facts collector CLI
+
+`scripts/collect_facts.py` is a Python-stdlib GET client for an already-running
+loopback server. Example (the parent `/tmp` already exists):
+
+```sh
+python3 scripts/collect_facts.py --endpoint http://127.0.0.1:8765 \
+  --out /tmp/capital-facts-run-001 --limit 100 --max-pages 1000 \
+  --max-response-bytes 4194304 --max-total-bytes 67108864 --timeout 10
+python3 -m capital.verify --facts /tmp/capital-facts-run-001
+```
+
+| Argument | Requirement / default |
+|---|---|
+| `--endpoint` | Required exact `http://127.0.0.1:PORT`, port 1..65535, optional trailing `/`; no credentials, query, fragment, alternate address spelling or path. |
+| `--out` | Required new artifact directory, existing parent, outside the checkout and detectable workspace ancestry (`workspace.json` / `workspace.json.lock`). Existing files, directories and symlinks are refused. |
+| `--limit` | Page rows, integer 1..500; default 100. Fixed for the entire collection. |
+| `--max-pages` | Positive page count bound; default 1000. Checked before another facts request. |
+| `--max-response-bytes` | Positive response body byte bound; default 4194304, including bootstrap/error bodies. |
+| `--max-total-bytes` | Positive aggregate response body byte bound; default 67108864, including bootstrap/error bodies. |
+| `--timeout` | Finite positive seconds per request; default 10. Monotonic deadline covers connecting, headers and body, including slow delivery. |
+
+These are technical resource controls. Direct `http.client` connections ignore
+proxy environment variables. The client sends the exact loopback Host and
+`Connection: close`; every redirect is refused, including same-origin redirects.
+Responses require one unsigned Content-Length, no Transfer-Encoding or
+Content-Encoding, and a closed connection after exactly the declared bytes.
+Only HTTP 200 with JSON content type is accepted. Header parsing also retains
+stdlib line/count bounds. Non-200 diagnostics expose only the status (for example
+`HTTP_409` or `HTTP_503`), never the bootstrap or server error body.
+
+One `GET /api/state` supplies a fixed instance and synthetic token held in memory;
+subsequent `GET /api/export/facts` requests carry that session, limit and exactly
+the preceding `next_cursor` as `after`. The client checks strict JSON, canonical
+bytes, labels, schema, cut identity, hashes, chaining and contiguous progress
+before saving each page or following a cursor. Token-bearing pages are refused.
+`next_cursor: null` ends fetching; `capital.facts.verify_dir(out)` then gates
+completion, including replay/link checks and built-in-only fixture validation
+(`FIXTURES_MISMATCH` remains a refusal).
+
+Artifacts use a private directory (0700) and exclusive private files (0600):
+
+```text
+capital-facts-run-001/
+  page-00000000.json    # exact response bytes, no added newline
+  page-00000001.json
+  COMPLETE.json        # only after offline verification succeeds
+```
+
+`COMPLETE.json` has format `KIX_CAPITAL_FACTS_COLLECTION_V1`, status
+`VERIFIED_COMPLETE`, ordered `pages: [{name, bytes, sha256}]`, `page_bytes_total`,
+and the existing `verification` report. It also carries `label: SIMULATED`,
+`source_cut: NOT_BOUND`, `authentication: NOT_BOUND`,
+`stage7_authenticated_export: false`, and `funds_executed: false`.
+A flushed/fsynced `.COMPLETE.tmp` is atomically linked to the completion name
+without replacement. Successful publication is the commit point; a cleanup
+failure may leave the temporary link. This is local bookkeeping, without a
+stage-5 crash durability guarantee. Later use requires offline re-verification;
+the marker alone cannot detect subsequent corruption or consistent replacement.
+
+Exit codes: **0** verified completion published; **1** collection, transport,
+storage or verification failure; **2** invalid arguments. A failure before
+publication leaves no completion marker, though accepted or partially written
+pages and a temporary marker may remain. Never interpret that directory as a
+completed collector export, even if its pages happen to pass a separate verifier.
+There is no resume, retry, session refresh, cursor reset, background polling,
+command submission, snapshot retention, signing change or authentication claim.
+On `CUT_MOVED`, `SESSION_CHANGED`, storage-health refusal, timeout, malformed
+response or any other failure, investigate and explicitly invoke collection with
+a different new directory. The source service, journals and workspace files are
+read-only inputs. No workspace import is provided.
+## N5-sim disposable shared-source journey
+
+`python3 scripts/sim_journeys.py --journey N5-sim --check` checks the deterministic
+`tests/golden/journey_n5_sim.json` pin; the full `--check` includes it in the existing
+nine-stage ladder's `integrated-journeys` stage (seven Capital-local journeys).
+Two separate `ScenarioReplaySource` / `PinnedFsmProducer` / loopback server books
+exercise slice recourse before advance recovery and the reverse. Existing HTTP
+commands open slices, record refund-driven impairment, default the synthetic
+advance and post against same-beneficiary settlement cash. A holder is served and
+resolved first; its deduction remains in both lanes. Conservation is calculated
+from settlement observations, opening baselines and accepted journal entries,
+independently of production availability helpers. GET original receipts and
+manifest overlay entries correlate every accepted command. Stale quotes, active
+slice reuse, source overruns and seven agent command refusals preserve both
+journals, receipt collections, reservations, fixture digest and state digests.
+
+Only settlement events run out of band, explicitly labelled
+`SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT` / `DISPOSABLE_BOOK_ONLY`. This changing
+source is discarded after each ordering; workspace fixtures remain immutable
+`READ_ONLY_FIXTURE`. There is no persistence claim for changing sources. Slice
+entries are `SIMULATED` / `SHADOW_NOT_APPLIED`; recovery entries are simulated
+recorded postings with `funds_executed: false`. Synthetic approver labels provide
+no authentication. `integrated: false`, `qualification_claimed: false`, reserve
+`NOT_BOUND`, and all applicable false execution flags remain in the evidence.
+No provider, new allocation policy, multi-payee model or upstream change is added.
+
+### slice-registry-desk
+
+The read-only panel at `/#desk` consumes the existing listing/optional quote
+contract; it adds no route, permission, persistence, calculation or command.
+`projection:read` permits organizer/auditor inspection; denied roles make no
+registry requests. Selection reads the returned row, since there is no per-slice
+detail endpoint. Exact case `claim_id`/`settlement_id` equality supplies evidence
+links only, never authenticated ownership.
+
+For quote inspection send `quote_claim_id`, `quote_payee_label`, `expected_days`
+together, with an explicitly entered non-negative integer day assumption.
+`URLSearchParams` encodes them. This endpoint rejects `instance_id`; the normal
+local session token header is used. Render ordered `registry_check.codes`,
+`free_face_krw`, `admissible_face_max_krw` and `capacity` exactly as returned.
+The panel exposes missing-input/NOT_BOUND/inconsistent responses, false execution
+flags and `SIMULATION_ONLY_NOT_OFFERED_V1`; it does not compute a financial total.
+
+The listing does not contain an instance ID or aggregate digest. The panel
+brackets it with `/api/overlay` GETs, requiring the captured session's instance
+and F04 digest, equal overlay digests and logical days, and a matching listing
+day when BOUND. Superseded requests are discarded. This can detect observed local
+changes, but it is not an atomic cross-endpoint snapshot; changes after the last
+read remain possible. Input edits, refresh start (before state GET), role changes
+and desk exit invalidate quotes synchronously. Errors never restore prior
+results as current. A stale session requires an explicit page reload (the panel exposes a reload
+button) and reinspection; the existing refresh retains its token and can still
+be rejected after a restart;
+no panel command, silent role downgrade or command retry is performed.
 ### risk-scenario-desk · SIMULATED_WHATIF
 
 The read-only `#risk-comparison` UI lists the four existing named risk scenarios and
@@ -865,7 +1087,7 @@ authenticated by this checker.
 | Movement | Required artifact closure |
 |---|---|
 | Either | Each policy-bound table with embedded check vectors (including CE1 input/expected), its implementation/checker and focused tests; all existing manifest/pack vectors and goldens; receipt/export/pack producers; README, handbook, integration, validation, requirements, seams/releases, decision bindings and docs-surface registry |
-| Vendor | All four vendor-bound tables, manifest and five vendor files, original source copies, finance vectors |
+| Vendor | All four vendor-bound tables, manifest and 69 vendor files, original source copies, finance vectors |
 | Citation | Agent table/implementation/test vectors, agent-bearing demo/journey goldens, receipt/export/pack evidence |
 
 The conservative shared golden set covers all existing goldens. Minimum
@@ -1158,3 +1380,40 @@ Exit codes remain 0 for all checks matched, 1 for audit/reconciliation failure,
 check and memo carry SIMULATED, SYNTHETIC_UNADOPTED, policy_adopted=false and
 NOT_IN_EXPORT_V1. No tax, operational accounting, upstream adoption or real
 money action is implied.
+
+## Protocol delivery 8ba7f6c
+
+The vendor manifest, copies in `docs/contracts/openapi`, BOOTSTRAP catalogue inputs, and
+`sdk/compat/delivery.json` bind delivery `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`.
+The SDK's `bootstrap-2` manifest keeps its older catalogue-input commit as provenance.
+The fake gate requires the delivery tuple from `GET /v1/delivery` before each local POST
+and checks the `X-Kix-Protocol-Commit` request header. Byte agreement grants BOOTSTRAP
+catalogue binding. CAP-16, upstream query and source-map adoption stay `NOT_BOUND`.
+
+| Seam | SIMULATED binding | Contract at `8ba7f6c` |
+| --- | --- | --- |
+| ProducerPort | `PinnedFsmProducer` passes the raw inner settlement claim to `offer`. The first accepted draw note freezes the entire face. Open face is the sum of obligation `outstanding`. Cash and recovery are companion fields. A later valid changed face fails at note creation with `FACE_SNAPSHOT_FROZEN`. A bound draw requires a matching mock `COMMITTED` view with false execution flags. | `CREDIT_ADVANCE_F04.md` §§2–3, 7.2, 7.5 |
+| SettlementPolicyPort | The pinned settlement FSM binds refund obligations and keeps payee faces and prior distributions intact for partial refunds (`REQUESTER`). Distribution can continue in the frozen caller order. Mock cancel acceptance reduces refund outstanding and increases the open PG adjustment. A first one-shot gross refund uses `FIXTURE_FULL_GROSS_RECLASS`. Partial refunds summing to gross stay `REQUESTER`. F04 rejects an offer with positive non-reclassified refund face as `REFUND_OBLIGATION_OPEN`. Capital's provisional reason-class split is `SHADOW_NOT_APPLIED`. | `SETTLEMENT_DISTRIBUTION_F01_F03.md` §§3–5, 7.6, 9.2 and `CREDIT_ADVANCE_F04.md` §§2–3, 5 |
+| Settlement variance | `observe_settlement_variance` subtracts frozen credit open face from the settlement obligations' outstanding total for the same KRW claim and trade. The absolute variance is compared with the caller's tolerance. | `CREDIT_ADVANCE_F04.md` §7.11 |
+| Shared exposure | `observe_shared_exposure` reads frozen KRW views in `DRAWN`, `CLOSED` or `DEFAULTED`. It counts exposure once per advance and capacity once per claim in the caller's group. The group's outstanding exposure is compared with the caller's limit. | `CREDIT_ADVANCE_F04.md` §7.12 |
+
+The observer thresholds are required nonnegative integers, including zero, with
+no defaults. Both observers return `fail_closed: true`, `authorizes_exposure: false`
+and `mutates_state: false`. Refund attribution and disposition remain `NOT_BOUND`
+with `repair: NONE`. The observers supply no admission or shared-cap policy inputs.
+[Open contract shapes](KIX_CHANGE_REQUESTS.md)
+
+The provisional settlement policy note describes the B0 settlement behavior at
+its original `7481b0e` pin. The B5 behavior in the table applies to the current
+delivery. [Settlement policy note](decisions/CAPITAL_SETTLEMENT_POLICY.md)
+
+`tests/test_protocol_delivery.py` compares the producer's refund and frozen-face
+flows with the vendored settlement-credit boundary vectors and exercises every
+vendored variance and shared-exposure case. The staged Protocol suite also runs
+the economics-credit vectors and database-free Stage-5 checks. Stage-5 runtime
+adoption is `NOT_BOUND` and `runtime_enabled` is false. Commerce inputs come
+through Protocol.
+
+**POINT_F4 pool simulator — NOT an accounting ledger**. The upstream workbench
+sits outside settlement and credit calculations. This seam has no ledger
+aggregation or accounting export.

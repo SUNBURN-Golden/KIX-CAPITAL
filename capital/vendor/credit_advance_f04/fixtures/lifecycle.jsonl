@@ -1,0 +1,15 @@
+{"arguments":{"advance_id":"adv-1","amount":80000,"beneficiary_role":"fixture-label","face":{"admission_granted":false,"bank_debit_observed":false,"claim_id":"claim-1","confirmed_cash":97000,"currency":"KRW","debtor_role":"fixture-merchant","distributed_cash":0,"distribution_blocked":false,"distribution_order":null,"external_return_closed":false,"fixture_reclassified":false,"funds_executed":false,"gross":100000,"legal_debtor_bound":false,"non_cash_accounted":3000,"obligations":[{"cancelled_unpaid":0,"distributed":0,"face":95000,"outstanding":95000,"payee":"organizer","recovery_due":0},{"cancelled_unpaid":0,"distributed":0,"face":5000,"outstanding":5000,"payee":"platform","recovery_due":0}],"pg_adjustment_outstanding":0,"policy":{"fee_bps":500,"fee_payee":"platform","kind":"PRIMARY_FEE_BPS","residual_payee":"organizer"},"provenance":"MOCK_SETTLEMENT_ONLY","receivable_open":0,"recovery_due":0,"refund_accepted":0,"refund_bearer_policy":"NONE","refund_beneficiary":null,"refund_face":0,"refund_outstanding":0,"right_cancelled":false,"trade_id":"trade-claim-1","undistributed_cash":97000},"idempotency_key":"life-offer-adv-1"},"operation":"offer"}
+{"arguments":{"advance_id":"adv-1","idempotency_key":"life-approve-adv-1"},"operation":"approve"}
+{"arguments":{"advance_id":"adv-1","idempotency_key":"life-bind-adv-1","settlement_id":"claim-1"},"operation":"bind_settlement"}
+{"arguments":{"advance_id":"adv-1"},"operation":"view"}
+{"arguments":{"advance_id":"adv-1","draw_id":"draw-1","idempotency_key":"life-draw-adv-1"},"operation":"draw"}
+{"arguments":{"advance_id":"adv-1"},"operation":"view"}
+{"arguments":{"advance_id":"adv-1","amount":30000,"idempotency_key":"life-repay-1","repay_id":"repay-1","sequence":1},"operation":"repay"}
+{"arguments":{"advance_id":"adv-1","amount":30000,"idempotency_key":"life-repay-1","repay_id":"repay-1","sequence":1},"operation":"repay"}
+{"arguments":{"advance_id":"adv-1","amount":50000,"idempotency_key":"life-repay-2","repay_id":"repay-2","sequence":2},"operation":"repay"}
+{"arguments":{"advance_id":"adv-1","idempotency_key":"life-close-adv-1"},"operation":"close"}
+{"arguments":{"advance_id":"adv-1","draw_id":"draw-1","idempotency_key":"life-draw-adv-1"},"operation":"draw"}
+{"arguments":{"advance_id":"adv-1"},"operation":"view"}
+{"arguments":{"claim_id":"claim-1"},"operation":"view_claim"}
+{"arguments":{"advance_id":"adv-1","idempotency_key":"life-reconcile-adv-1"},"operation":"reconcile"}
+{"arguments":{"advance_id":"adv-1","idempotency_key":"life-reconcile-adv-1"},"operation":"reconcile"}
