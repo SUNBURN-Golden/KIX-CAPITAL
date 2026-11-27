@@ -1,5 +1,213 @@
 # Validation scope
 
+## UC3 hold-clock replay — conflict-fix round 1
+
+2026-11-09, node `uc3-hold-clock-replay`, branch
+`agent/capital-uc3-hold-clock-replay`. Resolved the supervisor's in-progress
+merge of `origin/main` without committing it. All verification is local and
+SIMULATED/provisional; no real funds or external authority is claimed.
+
+Both parent versions of each conflicted file are retained in order:
+`docs/VALIDATION.md` preserves the complete UC3 and main validation histories;
+`scripts/docs_surface.py` registers UC3 replay, observation triage and event
+stress vectors together. The merged README retains their check commands.
+No additional runtime or test changes were needed, and no tests or CI checks
+were weakened.
+
+| Verification | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,434 tests passed in 453.939s; log `/tmp/uc3-merge-unittest.log`. |
+| `python3 -m unittest discover -s tests -p test_uc3_replay.py -v` | Exit 0; 18 tests passed; log `/tmp/uc3-merge-focused.log`. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/uc3_replay.py --check` | Exit 0; 19 pinned cases match; `SHADOW_NOT_APPLIED`, `funds_executed=false`. |
+| `python3 scripts/event_stress_vectors.py --check` | Exit 0; 3 synthetic cases match. |
+| `python3 scripts/observation_triage_vectors.py --check` | Exit 0; SIMULATED, NOT_BOUND, applied=false, funds_executed=false. |
+| `python3 scripts/pack_vectors.py --check` | Exit 0; 9 files match. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references valid. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 277 artifacts, 9 stages. |
+| `npm run test:browser -- --config="$(cat /tmp/uc3-merge-browser-path)"` | Exit 0; all 76 Chromium tests passed in 2.0m; log `/tmp/uc3-merge-browser.log`. |
+| Python SHA256 and parent-byte comparison | All five vendored reference hashes match the `7481b0e` manifest. Manifest, legacy export, shadow arithmetic and historical root `DECISION_REQUIRED.md` match both parents and `origin/main`; `.aiops/` has no diff. |
+| Parent-content comparison | Every original line of both conflicted files remains in order from both parents. |
+
+Default browser ports 8765–8767 were occupied by existing listeners. The
+untracked temporary config at
+`/tmp/uc3-merge-browser-4w6oxc_s/playwright.config.cjs` loads the unchanged
+repository config and changes only test/output paths, server working directories,
+the disposable demo workspace and four loopback ports (37731, 37017, 41935,
+54377). Tests, assertions, one-worker scheduling and server lifecycle are
+unchanged. Installed Chromium headless shell launched successfully; no package
+installation was needed. Existing services were left untouched.
+
+## UC3 hold-clock replay — builder verification
+
+2026-11-05, node `uc3-hold-clock-replay`, branch
+`agent/capital-uc3-hold-clock-replay`, baseline HEAD
+`343f4255acf5fc612eb1de9649d334fe2e930910`.
+All evidence is local SIMULATED/provisional evaluation; no real payment,
+provider, identity, upstream adoption or production authority is claimed.
+
+Implemented a complete disposable evaluator and CLI, 18 focused tests and a
+19-case pinned replay vector. The adopted policy is loaded through the existing
+note loader with raw/canonical provenance; no numeric hold-duration fallback
+exists. Every accepted projection reconciles unique arrivals to held UC3 cash,
+keeps execution at zero, and treats proposals as independent alternatives.
+The unchanged partition still refuses monetary inputs above 10^12, even though
+the replay representation limit is larger. Positive PG adjustments and
+overpayment remain outside the admitted UC3-only scope.
+
+Builder-executed verification commands and results (redirection retained where
+used; logs are disposable files under `/tmp`):
+
+| Command | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_uc3_replay.py' -v` | Exit 0; 18 tests passed on final focused run |
+| `python3 -m unittest discover -s tests -p 'test_shadow*.py' -v` | Exit 0; 57 tests passed |
+| `python3 scripts/uc3_replay.py --check` | Exit 0; all 19 pinned cases match; SHADOW_COMPUTED, SHADOW_NOT_APPLIED, funds_executed false |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared references valid; all twelve dependencies registered for module and focused test; predecessor consumers retained |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 274 artifacts, 9 stages |
+| `python3 -m unittest discover -s tests -p 'test_coverage.py' -v` | Exit 0; 7 tests passed; CAP-04/11/20 first status tokens preserved |
+| `python3 -m unittest discover -s tests -p 'test_release.py' -v > /tmp/uc3-release.log 2>&1` | Exit 0; 14 tests passed, including reproducible builds, packaged resource checks and stopped-server smoke journey |
+| `python3 -m unittest discover -s tests -v > /tmp/uc3-unittest-final.log 2>&1` | Exit 0; 1,346 tests passed in 365.360 seconds |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 tests passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `npm ci` | Exit 0; 3 locked dev packages installed; audit reported 0 vulnerabilities |
+| `npm run test:browser -- --config=/tmp/uc3-playwright.config.cjs > /tmp/uc3-browser-isolated.log 2>&1` | Exit 0; all 76 tests passed in 2.0 minutes, after the unittest job finished |
+| `git diff --exit-code HEAD -- capital/vendor/ capital/shadow.py capital/export.py docs/CAP_COVERAGE.md docs/decisions/ .aiops/` | Exit 0; protected tracked files unchanged |
+| `python3` SHA256/manifest verification heredoc | Exit 0; all five manifest hashes matched file bytes; manifest bytes matched `git show HEAD:capital/vendor/manifest.json` |
+| `python3` binding/vector inventory heredoc | Exit 0; 133 binding rows sorted uniquely by decision/entry; enumerated all 19 vector cases |
+| `git diff --check` | Exit 0 |
+
+Failures observed and resolved, with the commands actually run:
+
+- First `python3 -m unittest discover -s tests -p 'test_uc3_replay.py' -v`:
+  exit 1, 18 tests with 30 failed assertions. Twenty-eight assertions selected
+  the final provenance reference instead of the overridden note; one identifier
+  fixture accidentally exceeded the source-fact limit while testing a valid
+  64-byte tranche ID. Those fixtures/assertions were corrected. The remaining
+  failure caught a real implementation bug: retained facts were copied after
+  generator yield, allowing caller mutation while suspended. Copying before
+  yield fixes it, with the regression assertion retained. Repeated focused
+  runs passed all 18 tests.
+- `python3 -m unittest discover -s tests -v > /tmp/uc3-unittest.log 2>&1`:
+  exit 1, 1,346 tests, two failures. The package resource fence disallows
+  `Path(__file__)` inside Capital modules; the vector path now uses the existing
+  `ARCHIVE_ROOT` resource locator. The coverage mutation test requires an absent
+  CAP-20 status token to stay detectable; the new capability prose was moved to
+  the capability column, preserving the original status cells. Both focused
+  suites and the full 1,346-test rerun passed without weakening either fence.
+- `npm run test:browser > /tmp/uc3-browser.log 2>&1`: exit 1 before tests,
+  because unrelated pre-existing services owned ports 8765 and 8766. They were
+  left untouched. A temporary config requires the unchanged repository config,
+  remaps only its four loopback ports/URLs to 18765–18768, and sets absolute
+  test/output/server-working directories for execution from `/tmp`.
+- `npm run test:browser -- --config /tmp/uc3-playwright.config.cjs > /tmp/uc3-browser-retry.log 2>&1`:
+  exit 1, 75 passed and one local-server startup timeout in the existing
+  auditor-evidence V3 test.
+- `npm run test:browser -- --config /tmp/uc3-playwright.config.cjs --project workspace tests/browser/auditor-evidence-desk.spec.cjs --grep 'V3 overlay'`:
+  exit 1 from argument parsing; Playwright's variadic `--project` also consumed
+  the test path. The corrected invocation was
+  `npm run test:browser -- --config=/tmp/uc3-playwright.config.cjs --project=workspace --grep='V3 overlay' tests/browser/auditor-evidence-desk.spec.cjs > /tmp/uc3-browser-focused.log 2>&1`:
+  exit 0, one test passed.
+- `npm run test:browser -- --config=/tmp/uc3-playwright.config.cjs > /tmp/uc3-browser-final.log 2>&1`:
+  exit 1, 75 passed and a different server-readiness failure in the existing
+  unbound terms-overlay test. The complete suite was rerun after the unittest
+  job finished, without changing assertions, timeouts or retry policy; all
+  76 tests passed as recorded above.
+
+The temporary browser adaptation is the only verification deviation. It keeps
+all tests, projects, assertions, one-worker scheduling, server lifecycle and
+loopback restriction. The repository browser config and CI are unchanged.
+No implementation scope or policy deviation was needed. No persistent UC3
+command, ingestion, D+1 batching, provider return, participation accounting,
+actual cash release, wall-clock timer, HTTP route or UI was added. CAP coverage
+statuses were not promoted. No commit, push, PR, issue or external comment was
+made. Final process inspection confirmed no Capital server started by these
+checks remained running; unrelated listeners were left intact.
+
+## Facts verifier input bounds — supervisor conflict-fix round 1
+
+2026-11-08. Resolved the supervisor-started merge of incoming main
+`15c2900a2ba9f468e131304e5d3ece199279fe20` into feature parent
+`e25085c430709f33f51198b033d8f85d9390c215`.
+All checks use local SIMULATED fixtures; no real payments, credentials,
+external provider calls or deployment were involved.
+
+The sole conflict was `docs/VALIDATION.md`. Combined the facts verifier input
+bounds record with main's residual obligations records, retaining the complete
+validation text of both parents in order. The feature reader, CLI, boundary
+tests and evidence remain byte-identical to the feature parent. Main's
+portfolio migrations, residual obligations and upstream-repin modules and tests
+remain byte-identical to the incoming parent. No code, test or CI repair was
+needed, and no corpus regeneration was required.
+
+| Command or check | Measured local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,383 passed in 457.789s, including facts boundaries/corpora, incoming main tests and legacy baseline byte guards. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; all 133 canonical/intentional-tamper files match. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/decision_bindings.py --check` | Exit 0 each; all nine pack files match and declared decision references pass. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund` and local Chromium launch probe | Exit 0 each; three packages installed from local cache, Chromium launches. |
+| `npm run test:browser` | Exit 1 before tests; the default loopback port is occupied (`Errno 98`). Existing listener left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; all 76 Chromium tests passed in 1.9m with unchanged tests and configuration in isolated loopback networking. |
+| Vendor and protected-path preservation | All five manifest SHA256 pins match; vendor files, manifest, legacy export, historical root decision file and `.aiops/` unchanged against both merge parents. |
+| Merge hygiene | No unmerged entries or tracked conflict markers; whitespace checks pass. |
+
+Logs: `/tmp/facts-bounds-merge-unit.log`,
+`/tmp/facts-bounds-merge-browser-default.log` and
+`/tmp/facts-bounds-merge-browser-isolated.log`. The failed default-port browser
+attempt is distinct from the successful isolated run. The merge remains
+uncommitted for the supervisor. No merge abort, commit, push, rebase, reset,
+external post or Protocol/Commerce edit was performed.
+
+## Facts verifier input bounds
+
+2026-11-02, baseline HEAD `c4114c751ea149865493bd3c734bc5d3c423ae2e` on branch
+`agent/capital-facts-verifier-input-bounds`, with the implementation uncommitted.
+All verification below uses local SIMULATED fixtures; no real payments,
+credentials or external services were touched.
+
+`capital/facts.py` `verify_dir` now reads through a bounded, refusal-first read
+phase (`INPUT_LIMITS`: 4096 directory entries, 64 matched `page-*.json` files,
+8 MiB per page, 64 MiB aggregate, 32 JSON levels). Symlinks and other
+non-regular pages are refused on `lstat` without being followed or opened;
+replacement, truncation, growth or a modify-in-place observed through inode,
+size or mtime between `lstat` and the post-read `fstat` fails with
+`INPUT_CHANGED:<file>`. The five `INPUT_*` budget reasons and `INPUT_CHANGED` /
+`INPUT_NOT_REGULAR` are distinguished from semantic mismatches; page ordering,
+canonical bytes, all existing reason strings and the pinned corpus are
+unchanged. The same-size in-place rewrite inside the filesystem timestamp
+granularity is documented as the undetectable case.
+
+| Check | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_facts_bounds.py -v` | Exit 0; 9 passed after two fix rounds (invalid rewrite bytes, timestamp granularity) |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | Exit 0; 23 passed |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,311 passed in 305.422s |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; 7 passed |
+| `python3 -m compileall -q capital` | Exit 0 |
+| `node --check capital/static/app.js` | Exit 0 |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 canonical/intentional-tamper files match |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; 7 pages, 27 rows |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, 9 stages |
+| `python3 -m unittest tests.test_handbook tests.test_docs_surface -v` | Exit 0; 26 passed |
+| `npm ci` | Exit 0; 3 lockfile packages, 0 vulnerabilities |
+| `npm run test:browser` | Exit 1 at startup; default loopback port 8765 occupied by an unrelated service |
+| `npm run test:browser -- --config playwright.local.config.cjs` | Exit 0; 76 Chromium tests passed in 1.9m on temporary ports 28765–28768 |
+| `git diff --exit-code capital/export.py capital/vendor tests/golden docs/decisions` | Exit 0; guarded paths byte-identical |
+
+The temporary browser config required the tracked `playwright.config.cjs` and
+preserved every test, project, timeout and `reuseExistingServer:false`; it
+remapped only the four loopback ports/base URLs to 28765–28768 and pointed the
+seeded-demo workspace at `/tmp`. No unrelated service was stopped and no
+committed CI configuration was changed; `ss -ltn` confirmed all four temporary
+ports were released afterward. `node_modules/`, test output and the temporary
+config were removed after the run.
 ## Offline evidence cross-cut check — PR fix round 1
 
 2026-11-08, node `evidence-crosscut-check`, reviewed head `71dceae` (branch
@@ -5349,6 +5557,70 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## facts-export-collector builder verification — 2026-11-01
+
+Implemented `scripts/collect_facts.py` and 19 stdlib HTTP/filesystem/CLI tests in
+`tests/test_collect_facts.py`. Real loopback tests compare exact response bytes,
+reconstruct F04 and overlay journals against source exports, and preserve source
+workspace bytes and receipts. Hostile peers cover redirects, framing, byte/page
+bounds, slow headers/body deadlines, malformed and resealed pages, fixed-session
+failures, token echoes and failed writes/verifier/marker publication. Existing
+facts tamper vectors are reused without regeneration or new committed fixtures.
+The collector writes only a newly selected artifact directory; a final null
+cursor ends fetching, and existing offline replay gates `COMPLETE.json`.
+All observations are local **SIMULATED**; source authority and authentication
+remain **NOT_BOUND**, with `stage7_authenticated_export: false` and no funds
+execution or stage-5 durability claim.
+
+Commands actually run and observed results:
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -p 'test_collect_facts.py' -v` — initial invocation | Exit 1; 19 tests ran, with three subtest errors in the empty/F04/overlay comparison. The new test incorrectly tried to JSON-encode the already-byte-valued `_frozen()` snapshot. Corrected it to compare the bytes directly; no production code or existing test was weakened. |
+| Same narrow command — first rerun | Exit 0; 19 passed in 4.571 s. |
+| Same narrow command — after strengthening canonical source-export comparisons | Exit 0; 19 passed in 3.768 s. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; 133 canonical/intentional-tamper files match. |
+| `python3 scripts/http_hostile.py --check` | Exit 0; 76 files match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes / 273 artifacts / nine stages. Re-run after the final validation entry also passed. |
+| `npm ci` | Exit 0; three packages installed, four audited, zero vulnerabilities reported. No lockfile change. |
+| `python3 -m unittest discover -s tests -v > /tmp/capital-facts-collector-unittest.log 2>&1` | Exit 0; **1,321 passed** in 390.547 s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed in 0.001 s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm run test:browser > /tmp/capital-facts-collector-browser.log 2>&1` | Exit 1 at web-server startup: shared port 8765 was occupied by an unrelated crawler from another workspace. No browser assertions ran. The listener was left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser' > /tmp/capital-facts-collector-browser-isolated.log 2>&1` | Exit 0; **76 passed** in 2.3 min with installed Playwright 1.58.2 / Chromium headless shell 1208. Configuration and assertions were unchanged. No browser skip. |
+| Vendor/protected-path assertion block below | Exit 0; all five manifest SHA256 locks match, all five vendor files plus manifest and legacy export are byte-identical to HEAD, no protected-path diff. Re-run after final documentation edits also passed. |
+| `git diff --check` | Exit 0, including after final documentation edits. |
+| Process inspection after browser completion | No remaining Capital server or Playwright test process from this run. All test servers were closed; the unrelated crawler was not changed. |
+
+The vendor/protected-path command used was:
+
+```sh
+python3 - <<'PY'
+import hashlib, json, subprocess
+from pathlib import Path
+root=Path.cwd()
+manifest=json.loads((root/'capital/vendor/manifest.json').read_bytes())
+for name, expected in manifest['files'].items():
+    raw=(root/'capital/vendor'/name).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == expected, name
+    assert raw == subprocess.check_output(['git','show','HEAD:capital/vendor/'+name]), name
+    print('SHA256_LOCK_MATCH',name)
+for name in ('capital/vendor/manifest.json','capital/export.py'):
+    assert (root/name).read_bytes() == subprocess.check_output(['git','show','HEAD:'+name]), name
+    print('HEAD_BYTE_IDENTICAL',name)
+assert not subprocess.check_output(['git','diff','HEAD','--','.aiops/','.github/','capital/vendor/','capital/export.py'])
+print('PROTECTED_PATHS_UNCHANGED')
+PY
+```
+
+Plan adjustments: the client additionally probes for EOF after Content-Length
+to refuse undeclared trailing bytes; this matches the existing server's closing
+responses and is documented as supported framing. Browser verification used an
+isolated loopback namespace because of the unrelated occupied port. No product
+decision was needed. No production facts/verifier/server/auth/export module,
+vendored reference, manifest, `.aiops/`, CI or Protocol/Commerce checkout was
+changed. No commit, push, PR, issue, external comment or other post was made.
 ## slice-shared-source-journey — N5-sim (2026-10-31)
 
 Implemented on `agent/capital-slice-shared-source-journey`, starting at
@@ -6080,6 +6352,37 @@ inspection found no `python3 -m capital.server` or `playwright test` process;
 the test-managed servers exited. Only the six planned source/test/documentation
 files are changed; no work is staged or committed.
 
+## facts-export-collector — conflict-fix round 1 (2026-11-06)
+
+Resolved the incoming-main merge in `README.md`, `docs/INTEGRATION.md`,
+`docs/OPERATOR_HANDBOOK_KO.md` and this file by retaining both parents' additive
+sections. Collector workflow and verification history coexist with main's
+residual-obligations documentation and portfolio-migrations verification history.
+Every inserted/replacement text block from both parents, compared with their
+merge base, survives verbatim. The collector, facts/verifier implementation and
+collector tests retain node-parent bytes; all incoming nonconflicting changes,
+including main's modules, tests, decisions and vectors, retain main-parent bytes.
+No implementation or test adjustment was needed.
+
+| Command / check actually run | Measured local result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; **1,358 passed** in 390.446 s, including collector, residual-obligations and portfolio-migrations tests. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **seven passed** in 0.001 s. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/facts_vectors.py --check`; `python3 scripts/http_hostile.py --check` | All exit 0: 36 routes / 273 artifacts / nine stages; 133 facts files; 76 hostile HTTP files. Documentation check also passes after this entry. |
+| `npm ci --offline --ignore-scripts --no-audit --no-fund`; local Chromium launch/close probe | Both exit 0; three cached packages installed without lockfile changes; Chromium 145.0.7632.6 launches. |
+| `npm run test:browser` | Exit 1 before assertions: configured shared port already occupied. Existing listener left untouched. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** in 1.8 min with unchanged browser configuration and assertions. |
+| Parent preservation / SHA256 checks | Exit 0; all five vendor pins match and the reference files, manifest, legacy export and historical root decision file match both parents. No `.aiops/` or CI changes. |
+| Merge hygiene | No unmerged entries or tracked conflict markers; staged and unstaged whitespace checks pass. |
+
+Logs and preservation evidence are under ignored
+`build/facts-export-collector-merge-round1/`. All execution observations remain
+local **SIMULATED**; source authority and authentication stay **NOT_BOUND**.
+No product decision, paid service, credentials, provider call, deployment or funds
+movement was needed. No Protocol/Commerce edits or external posts were made.
+The resolved merge is staged and left uncommitted for the supervisor; no merge
+abort, commit, push, rebase or reset was performed.
 ## risk-scenario-desk — conflict-fix round 1 (2026-11-07)
 
 Resolved the supervisor-started merge of `origin/main` (`15c2900a`) into
@@ -6985,6 +7288,47 @@ No CI/test requirement was relaxed. Vendor, legacy export, `.aiops/` and the
 root decision-file state are unchanged against both parents. No commit, push,
 deployment or external publication was performed.
 
+### facts-verifier-input-bounds — PR fix round 2 (2026-11-16 KST)
+
+Accepted and fixed both blocking findings. The reader now checks the pathname
+with `lstat` after its bounded read and requires the opened regular file's
+device, inode, size and mtime. Atomic replacement after opening, disappearance
+and symlink substitution produce `INPUT_CHANGED:<file>`. The deterministic
+regression performs each action after a successful `os.read`; the replacement
+has identical bytes, size and mtime, isolating the inode check.
+
+The default page budget is 2500, matching the full producer range `limit=1..500`
+for the maximum 500 journal plus 2000 overlay rows. Other defaults remain 4096
+directory entries, 8 MiB per page, 64 MiB total and depth 32. A valid 66-row book
+verifies as 66 one-row pages. The SIMULATED maximum-size fixture has 2500 pages,
+11,950 maximum page bytes and 22,206,087 total bytes; it passes the read and
+integrity checks and then rejects its fabricated journal with the expected
+semantic reason `JOURNAL_REPLAY_FAILED`. A 2501st page refuses before page reads.
+README, integration guidance, operator handbook and
+`docs/FACTS_CURSOR_EXPORT_EVIDENCE.md` document these limits and evidence.
+
+| Local command/check | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1585 tests passed in 525.367 seconds. |
+| `python3 -m unittest discover -s tests -p 'test_facts*.py' -v` | Exit 0; 26 tests passed, including 12 boundary tests. |
+| Focused `test_handbook.py` and `test_docs_surface.py` discovery | Exit 0; 15 tests each passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 38 routes, 276 artifacts, nine stages. |
+| `python3 scripts/facts_vectors.py --check` | Exit 0; all 133 canonical/intentional-tamper files match without regeneration. |
+| `python3 -m capital.verify --facts tests/vectors/facts/clean` | Exit 0; seven pages, 27 rows, authentication `NOT_BOUND`. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser -- --output=/tmp/facts-bounds-r2-browser-results --reporter=list'` | Exit 0; all 85 Chromium cases passed in 2.2 minutes with the tracked configuration and assertions unchanged. Only loopback was enabled in the isolated namespace. |
+| Vendor and protected-byte checks | All five vendored references match the 7481b0e manifest. Manifest and legacy export match HEAD and incoming main. No diff against incoming main for `.aiops/`, vendor, legacy export, root decision-file state, facts vectors or tracked browser configuration. |
+| Merge and whitespace checks | No unmerged entries; `git diff --check` and `git diff --cached --check` pass. |
+
+Full unit and browser logs are `/tmp/facts-bounds-r2-unit.log` and
+`/tmp/facts-bounds-r2-browser.log`. Browser artifacts are in
+`/tmp/facts-bounds-r2-browser-results`; tracked report symlinks were restored
+to the merge index bytes. The incoming main merge was already resolved when
+this round started and remains uncommitted as requested. No CI definition,
+existing assertion or timeout was weakened. All facts inputs/results remain
+SIMULATED and authentication/source authority NOT_BOUND. No real funds,
+credentials, provider, deployment, commit, push or external post was involved.
 ## KIX Protocol delivery 8ba7f6c
 
 The November 13 KIX pin announcement superseded the preliminary `19cdc1c`
