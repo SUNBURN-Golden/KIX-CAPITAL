@@ -101,7 +101,7 @@ python3 scripts/acceptance.py
 
 합격·불합격 문장은 [수용 점검표](ACCEPTANCE_KO.md)에 있다. 그 점검표를 사람이 채우기 전에는 수용이 아니다.
 
-`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`를 추가 명령으로 실행한다. `storage-conformance` 단계도 벡터 discovery 다음에 `python3 -m unittest tests.test_crash_replay -v`를 둘째 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py` (`--protocol-dir` 없이는 행 SKIPPED), `python3 scripts/ce1_claims_check.py --execute`, `python3 scripts/adapter_identity_claims_check.py --execute`, `python3 scripts/lifecycle_claims_check.py --execute`, `python3 scripts/readiness_claims_check.py --execute` 일곱 명령을 순서대로 실행한다. FSM 계약 클레임 표(`tests/fsm_contract_claims.json`)는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하고, 단독 명령 `python3 scripts/fsm_contract_claims_check.py --execute`로도 돌린다. 그 표는 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`고 일곱 번째 명령은 `python3 scripts/readiness_claims_check.py --execute`다.
+`unit` 단계는 `python3 -m unittest discover -s tests -v` 다음에 `python3 scripts/decision_bindings.py --check`, `python3 scripts/finance_properties.py --seeds 200 --check`를 추가 명령으로 순서대로 실행한다. `storage-conformance` 단계도 벡터 discovery 다음에 `python3 -m unittest tests.test_crash_replay -v`를 둘째 명령으로 실행한다. `upstream-claims` 단계는 `python3 scripts/upstream_claims_check.py --execute`, `python3 scripts/agent_claims_check.py --execute`, `python3 scripts/read_model_claims_check.py` (`--protocol-dir` 없이는 행 SKIPPED), `python3 scripts/ce1_claims_check.py --execute`, `python3 scripts/adapter_identity_claims_check.py --execute`, `python3 scripts/lifecycle_claims_check.py --execute`, `python3 scripts/readiness_claims_check.py --execute` 일곱 명령을 순서대로 실행한다. FSM 계약 클레임 표(`tests/fsm_contract_claims.json`)는 unit discovery가 `tests/test_fsm_contract_claims.py`로도 실행하고, 단독 명령 `python3 scripts/fsm_contract_claims_check.py --execute`로도 돌린다. 그 표는 `upstream-claims` 단계의 명령이 아니다 — 네 번째 명령은 `python3 scripts/ce1_claims_check.py --execute`고 일곱 번째 명령은 `python3 scripts/readiness_claims_check.py --execute`다.
 
 결정 노트 색인:
 
@@ -819,6 +819,32 @@ fold와 두 링크 검사를 확인한다. 실패 시 종료 코드는 1이다.
 `duplicate: 1`로 남는다. `SIMULATED`, source_cut과 authentication은 `NOT_BOUND`이며
 `k-stage7-authenticated-export`가 아니다. 해시를 모두 다시 만든 일관된 대체 장부는
 탐지하지 못한다. 내장 fixture만 검증하며 import/resume은 제공하지 않는다.
+
+<!-- handbook-section:facts-verifier-input-bounds -->
+
+### facts-verifier-input-bounds
+
+`python3 -m capital.verify --facts DIR`는 디렉터리 항목 4096개, 일치하는
+`page-*.json` 2500개, 페이지당 8 MiB, 합계 64 MiB를 확인한 뒤 파일을 연다.
+JSON 디코딩 전 중첩이 32단계 이하인지 확인한다(`capital.facts.INPUT_LIMITS`,
+`verify_dir(..., limits=dict)`로 재정의 가능). 교차 검사
+`capital.evidence_crosscut --facts DIR`에도 같은 상한이 적용된다.
+심볼릭 링크·FIFO·디렉터리 등
+비정규 페이지는 `lstat`에서 `INPUT_NOT_REGULAR:<file>`로 거절한다. `lstat`과
+열기 사이의 교체에 대비해 링크를 따라가지 않는 논블로킹 플래그가 필요하다.
+열기 전과 읽기 후에 파일 경로와 디스크립터의 장치·inode·크기·mtime·ctime을
+대조해 관찰된 변경을 `INPUT_CHANGED:<file>`로 보고한다. 제자리 수정 탐지의
+정밀도는 파일시스템 타임스탬프 해상도에 따른다. 예산 위반 사유는 `INPUT_DIR_ENTRIES`,
+`INPUT_PAGES`, `INPUT_PAGE_TOO_LARGE:<file>`, `INPUT_TOTAL_TOO_LARGE:<file>`,
+`INPUT_JSON_DEPTH:<file>`이며 `PAGE_SHAPE`·`*_MISMATCH`·`UNREADABLE` 같은 의미
+불일치와 구분된다. 실패는 종료 코드 1이며 부분 성공 없고 사유에는 파일 이름만
+담는다. 이 상한은 도입된 생산자 상한(`MAX_OPERATIONS=500`, `OVERLAY_MAX_ENTRIES=2000`,
+`OVERLAY_ENTRY_MAX_BYTES=4096`, `ENVELOPE_MAX_BYTES=4 MiB`, 페이지 limit 1..500) 위에
+여유를 둔 데모 기술 경계이지 금융 한도가 아니다. 최대 생성 export는 limit=500에서
+페이지 5장(약 12 MiB), 최악 페이지네이션인 limit=1에서도 2500장(약 21 MiB)으로
+기본값 안에 든다. 검증은 `tests/test_facts_bounds.py`가 고정한다.
+
+<!-- /handbook-section -->
 
 <!-- handbook-section:http-hostile-corpus -->
 
