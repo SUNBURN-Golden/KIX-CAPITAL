@@ -641,6 +641,7 @@ and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-re
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
 
+Optional `operator_reason` records free-form organizer context on F04 and overlay commands; both desks show it as text and offline audit/evidence-pack digests cover it. No personal data; not authentication or approval evidence.
 Disposable UC3 hold replay: `tests/vectors/uc3_replay.json` pins synthetic
 arrival, boundary, conflict, capacity and operator-review evidence. Run
 `python3 scripts/uc3_replay.py --check` to compare it without rewriting it.

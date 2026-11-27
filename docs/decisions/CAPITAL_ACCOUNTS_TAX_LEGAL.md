@@ -474,7 +474,7 @@ V1 분개와 COA-V1 분개의 대응(`a` = 제안 금액, `p` = 원금 상환액
 - **충당·상각의 장부·세무 차이(회계·세무).** 1190/5100/5200/3200의 분류(자본 적립 vs 부채성 충당), K-IFRS 1109 적용 여부, 부도 뒤 이자 인식 유예와 순장부금액 기준 이자의 정합, 상각의 손금 요건은 회계사·세무사 검토 전까지 작업 가정이다.
 - **계정 코드 충돌.** upstream `fin-ledger-contract`가 다른 코드 체계·차원 이름을 채택하면 COA-V1은 매핑 표를 다시 쓴다. V1 다섯 계정은 바뀌지 않으므로 출시 제품은 영향이 없다.
 - **보존 숫자 공백.** 다섯 칸 모두 값이 없다. 저장 backend(`k-stage5-durable-tx`)가 생겨도 값이 없으면 회수·축출을 켤 수 없다. 이는 의도된 정지다(upstream R1).
-- **PII 유입 경로.** `adjustment_reason`(최대 100자 자유 문자열)과 reason 라벨, 미래 principal 참조는 개인정보가 들어올 수 있는 유일한 자리다. 규칙은 적었지만 코드 검사는 없다. identity adapter가 열릴 때 입력 검증을 함께 둬야 한다.
+- **PII 유입 경로.** `adjustment_reason`(최대 100자 자유 문자열)과 reason 라벨(`operator_reason` 포함), 미래 principal 참조는 개인정보가 들어올 수 있는 유일한 자리다. 규칙은 적었지만 코드 검사는 없다. identity adapter가 열릴 때 입력 검증을 함께 둬야 한다.
 - **manifest 외부 공유.** export manifest는 journal·receipts 본문을 담고 `content_digest`로 식별된다. 호스트 밖으로 나가면 회수할 수 없으므로 본문 PII-free 규칙이 깨지면 삭제 요청에 응할 수 없다.
 - **세무·회계 검토자 부재.** upstream 질문서에 세무·회계 담당 행이 없고(RETENTION R1 §4), Capital에도 이름이 없다. JunTae가 지명하기 전에는 이 문서의 모든 회계·세무 값이 검토되지 않은 채 남는다.
 - **sync 노드의 테스트 결합.** `tests/test_projection.py`는 CAP-13 note 문구와 durable-finance 그룹의 `blockers`·`available` 문구를 정확히 고정한다. readiness 문구를 이 노트 인용으로 바꾸는 sync 노드는 그 테스트를 함께 갱신해야 한다(상태값은 그대로).

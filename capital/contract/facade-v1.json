@@ -28,6 +28,7 @@
     ],
     "command": [
       "INVALID_COMMAND",
+      "INVALID_REASON",
       "SESSION_CHANGED",
       "ASSET_MISMATCH",
       "INVALID_OPERATION_ID",
@@ -183,6 +184,10 @@
     },
     {
       "code": "INVALID_COMMAND",
+      "status": 400
+    },
+    {
+      "code": "INVALID_REASON",
       "status": 400
     },
     {
@@ -1482,6 +1487,7 @@
         "BODY_TOO_LARGE",
         "INVALID_JSON",
         "INVALID_COMMAND",
+        "INVALID_REASON",
         "SESSION_CHANGED",
         "ASSET_MISMATCH",
         "INVALID_OPERATION_ID",
@@ -1554,6 +1560,10 @@
               },
               "asset": {
                 "$ref": "#/definitions/asset_spec"
+              },
+              "operator_reason": {
+                "type": "string",
+                "pattern": "[\\x20-\\x7E]{1,200}"
               }
             }
           },
@@ -1600,6 +1610,10 @@
               },
               "asset": {
                 "$ref": "#/definitions/asset_spec"
+              },
+              "operator_reason": {
+                "type": "string",
+                "pattern": "[\\x20-\\x7E]{1,200}"
               }
             }
           },
@@ -1647,6 +1661,10 @@
               },
               "asset": {
                 "$ref": "#/definitions/asset_spec"
+              },
+              "operator_reason": {
+                "type": "string",
+                "pattern": "[\\x20-\\x7E]{1,200}"
               }
             }
           }
@@ -1842,6 +1860,7 @@
         "BODY_TOO_LARGE",
         "INVALID_JSON",
         "INVALID_COMMAND",
+        "INVALID_REASON",
         "SESSION_CHANGED",
         "UNSUPPORTED_OPERATION",
         "INVALID_OPERATION_ID",
@@ -5649,6 +5668,10 @@
         },
         "effects_executed": {
           "const": false
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -5713,6 +5736,10 @@
         },
         "effects_executed": {
           "const": false
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -11033,6 +11060,10 @@
             },
             "asset": {
               "$ref": "#/definitions/asset_spec"
+            },
+            "operator_reason": {
+              "type": "string",
+              "pattern": "[\\x20-\\x7E]{1,200}"
             }
           }
         },
@@ -11079,6 +11110,10 @@
             },
             "asset": {
               "$ref": "#/definitions/asset_spec"
+            },
+            "operator_reason": {
+              "type": "string",
+              "pattern": "[\\x20-\\x7E]{1,200}"
             }
           }
         },
@@ -11126,6 +11161,10 @@
             },
             "asset": {
               "$ref": "#/definitions/asset_spec"
+            },
+            "operator_reason": {
+              "type": "string",
+              "pattern": "[\\x20-\\x7E]{1,200}"
             }
           }
         }
@@ -15083,6 +15122,10 @@
               "type": "string"
             }
           }
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15272,6 +15315,10 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15346,6 +15393,10 @@
         },
         "proposal_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15463,6 +15514,10 @@
         },
         "f04_journal_written": {
           "type": "boolean"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15510,6 +15565,10 @@
           "items": {
             "$ref": "#/definitions/overlay_posting"
           }
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15600,6 +15659,10 @@
         },
         "overlay_state_digest": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15683,6 +15746,10 @@
         },
         "quote_ref": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15720,6 +15787,10 @@
         },
         "setoff_declined_reason": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15761,6 +15832,10 @@
             "BENEFICIARY_INSOLVENCY_NOTICE",
             "EVIDENCE_FRAUD_FINDING"
           ]
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15806,6 +15881,10 @@
         "entry": {
           "type": "object",
           "additionalProperties": true
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -15886,6 +15965,10 @@
         },
         "overlay_state_digest": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16029,6 +16112,10 @@
         },
         "slice_face_krw": {
           "type": "integer"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16067,6 +16154,10 @@
         },
         "slice_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16105,6 +16196,10 @@
         },
         "slice_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16151,6 +16246,10 @@
         },
         "source_ref": {
           "$ref": "#/definitions/recovery_source_ref"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16189,6 +16288,10 @@
         },
         "slice_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16227,6 +16330,10 @@
         },
         "slice_id": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16331,6 +16438,10 @@
         },
         "workspace_mutated": {
           "const": false
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -16471,6 +16582,10 @@
         },
         "overlay_state_digest": {
           "type": "string"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -19083,6 +19198,10 @@
         },
         "recorded_by_role": {
           "const": "organizer"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -19225,6 +19344,10 @@
         },
         "payload": {
           "$ref": "#/definitions/observation_payload"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -19288,6 +19411,10 @@
         },
         "transport_duplicate": {
           "type": "boolean"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },
@@ -19361,6 +19488,10 @@
         },
         "transport_duplicate": {
           "type": "boolean"
+        },
+        "operator_reason": {
+          "type": "string",
+          "pattern": "[\\x20-\\x7E]{1,200}"
         }
       }
     },

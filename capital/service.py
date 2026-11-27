@@ -39,7 +39,7 @@ from capital.underwriting import DecisionNoteUnderwriting
 from capital import slices, observation_record
 from capital.readiness import GROUPS, UPSTREAM_BINDING_NOTE, resolve_note_blockers, source_integrity
 from capital.resources import vendor_manifest
-from capital.store import InMemoryStorage, WorkspaceError, overlay_section, verify_document
+from capital.store import InMemoryStorage, WorkspaceError, canonical_bytes, envelope, overlay_section, verify_document
 
 PROVENANCE = 'MOCK_CREDIT_F04_ONLY'
 OVERLAY_LABEL = 'SIMULATED memo ledger — not a payment, not a receivable, not an F04 journal entry'
@@ -60,6 +60,15 @@ OPS = {
 
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
+
+
+def _operator_reason(body):
+    if 'operator_reason' not in body:
+        return None
+    reason = body['operator_reason']
+    if type(reason) is not str or overlay.OPERATOR_REASON.fullmatch(reason) is None:
+        raise ApiError('INVALID_REASON')
+    return reason
 
 
 def _release_producer(producer):
@@ -307,14 +316,19 @@ class CapitalService:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
             if type(receipt) is not dict or receipt.get('operation_id') != key or receipt.get('outcome') not in {'ACCEPTED', 'REJECTED'}:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
+            if 'operator_reason' in receipt and (type(receipt['operator_reason']) is not str
+                    or overlay.OPERATOR_REASON.fullmatch(receipt['operator_reason']) is None):
+                raise WorkspaceError('WORKSPACE_UNREADABLE')
             if type(receipt.get('instance_id')) is not str:
                 raise WorkspaceError('WORKSPACE_UNREADABLE')
 
+    def _workspace_payload(self, producer, receipts, case_fixtures):
+        return {'receipts': receipts, 'journal': producer.export_journal(),
+                'case_fixtures': case_fixtures, 'state_digest': producer.state_digest()}
+
     def _persist(self, entries=None):
         entries = self.overlay_entries if entries is None else entries
-        payload = {
-            'receipts': self.receipts, 'journal': self.machine.export_journal(),
-            'case_fixtures': dict(self.case_fixtures), 'state_digest': self.machine.state_digest()}
+        payload = self._workspace_payload(self.producer, self.receipts, self.case_fixtures)
         if entries:
             self.storage.save(payload, overlay=overlay.build_section(entries))
         else:
@@ -1240,7 +1254,7 @@ class CapitalService:
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
             allowed = {'instance_id', 'operation_id', 'op', 'advance_id', 'args'}
-            if set(body) - {'proposal_id', 'asset', 'approvals'} != allowed or not allowed <= set(body):
+            if set(body) - {'proposal_id', 'asset', 'approvals', 'operator_reason'} != allowed or not allowed <= set(body):
                 raise ApiError('INVALID_COMMAND')
             # Before instance and idempotency lookups, so a denied role cannot read
             # another role's receipt by replaying its operation_id.
@@ -1263,6 +1277,7 @@ class CapitalService:
             # the fingerprint: only one value is ever accepted, so it cannot conflict.
             if 'asset' in body and not asset_matches(body['asset']):
                 raise ApiError('ASSET_MISMATCH')
+            operator_reason = _operator_reason(body)
             operation_id = body['operation_id']
             if type(operation_id) is not str or not re.fullmatch(r'[a-zA-Z0-9-]{1,80}', operation_id):
                 raise ApiError('INVALID_OPERATION_ID')
@@ -1283,7 +1298,7 @@ class CapitalService:
             fingerprint = digest(identity)
             prior = self.receipts.get(operation_id)
             if prior:
-                if prior['fingerprint'] != fingerprint:
+                if prior['fingerprint'] != fingerprint or prior['receipt'].get('operator_reason') != operator_reason:
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 result = copy.deepcopy(prior['receipt'])
                 result['transport_duplicate'] = True
@@ -1312,7 +1327,10 @@ class CapitalService:
             if cited is not None:
                 receipt['proposal_id'] = cited
                 receipt['effects_executed'] = False
+            if operator_reason is not None:
+                receipt['operator_reason'] = operator_reason
             default_entry = None
+            recovery_context = {}
             before_journal = self.machine.export_journal()
             if op == 'draw' and case in self.case_fixtures:
                 self._slice_draw_guard(case, principal.role)
@@ -1336,38 +1354,36 @@ class CapitalService:
                             'authority': authority, 'command': command, 'f04_operation_id': operation_id})
                         self._overlay_check_capacity(self.overlay_entries, [default_entry], state['sim_day'], {
                             'journal': before_journal, 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
-                        scratch = self.producer.restored(copy.deepcopy(before_journal))
-                        projected_result = scratch.apply(op, case, idempotency_key=operation_id, args=args, bound_settlement_id=None)
-                        projected_receipt = {**receipt, 'outcome': 'ACCEPTED', 'result': projected_result,
-                                             'approvals': labels, 'recovery_authority': {
-                                                 'principal_krw': view['outstanding_exposure'],
-                                                 'two_person_threshold_krw': self.recovery_policy['two_person_threshold_krw'],
-                                                 'policy_digest': self.recovery_policy['policy_digest']}}
-                        self._overlay_check_capacity(self.overlay_entries, [default_entry], state['sim_day'], {
-                            'journal': scratch.export_journal(),
-                            'receipts': {**self.receipts, operation_id: {'fingerprint': fingerprint, 'receipt': projected_receipt}},
-                            'case_fixtures': self.case_fixtures, 'state_digest': scratch.state_digest()})
-                        overlay.fold(self.overlay_entries + [default_entry], len(scratch.export_journal()))
+                    if labels or default_entry is not None:
+                        recovery_context = {'approvals': labels, 'recovery_authority': {
+                            'principal_krw': view['outstanding_exposure'],
+                            'two_person_threshold_krw': self.recovery_policy['two_person_threshold_krw'],
+                            'policy_digest': self.recovery_policy['policy_digest']}}
+            bound = self.case_fixtures.get(case) if op == 'bind_settlement' else None
+            apply_args = {'idempotency_key': operation_id, 'args': args, 'bound_settlement_id': bound}
+            check_envelope = operator_reason is not None and self.overlay_bounds is not None
             try:
-                bound = None
-                if op == 'bind_settlement':
-                    if case not in self.case_fixtures:
-                        raise CreditError('UNKNOWN_ADVANCE')
-                    bound = self.case_fixtures[case]
-                result = self.producer.apply(
-                    op, case, idempotency_key=operation_id, args=args, bound_settlement_id=bound)
-                if op == 'offer':
+                if check_envelope or default_entry is not None:
+                    scratch = self.producer.restored(before_journal)
+                    try:
+                        projected = {**receipt, **self._f04_outcome(scratch, op, case, apply_args, recovery_context)}
+                        receipts = {**self.receipts, operation_id: {'fingerprint': fingerprint, 'receipt': projected}}
+                        fixtures = self.case_fixtures
+                        if op == 'offer' and projected['outcome'] == 'ACCEPTED':
+                            fixtures = {**fixtures, case: args['fixture_id']}
+                        payload = self._workspace_payload(scratch, receipts, fixtures)
+                    finally:
+                        _release_producer(scratch)
+                    entries = self.overlay_entries
+                    if default_entry is not None and projected['outcome'] == 'ACCEPTED':
+                        self._overlay_check_capacity(entries, [default_entry], default_entry['sim_day'], payload)
+                        entries = entries + [default_entry]
+                        overlay.fold(entries, len(payload['journal']))
+                    if check_envelope:
+                        self._check_envelope_capacity(payload, entries)
+                receipt.update(self._f04_outcome(self.producer, op, case, apply_args, recovery_context))
+                if op == 'offer' and receipt['outcome'] == 'ACCEPTED':
                     self.case_fixtures[case] = args['fixture_id']
-                receipt.update(outcome='ACCEPTED', result=result)
-                if op == 'default' and (labels or default_entry is not None):
-                    receipt['approvals'] = labels
-                    receipt['recovery_authority'] = {
-                        'principal_krw': view['outstanding_exposure'],
-                        'two_person_threshold_krw': self.recovery_policy['two_person_threshold_krw'],
-                        'policy_digest': self.recovery_policy['policy_digest']}
-
-            except CreditError as exc:
-                receipt.update(outcome='REJECTED', error=exc.code)
             except TransportLost:
                 # The gate may or may not have applied the command. No false
                 # rejection is stored and the command is never resent; the
@@ -1394,6 +1410,22 @@ class CapitalService:
             self.overlay_entries = candidate
             self._note_receipt(op, receipt)
             return receipt
+
+    @staticmethod
+    def _f04_outcome(producer, op, case, apply_args, recovery_context):
+        try:
+            if op == 'bind_settlement' and apply_args['bound_settlement_id'] is None:
+                raise CreditError('UNKNOWN_ADVANCE')
+            result = producer.apply(op, case, **apply_args)
+        except CreditError as exc:
+            return {'outcome': 'REJECTED', 'error': exc.code}
+        return {'outcome': 'ACCEPTED', 'result': result, **recovery_context}
+
+    def _check_envelope_capacity(self, payload, entries):
+        # Use the same serialization as FileWorkspace.save, including the folded cache.
+        document = envelope(self.storage.writer_instance, payload, overlay.build_section(entries))
+        if len(canonical_bytes(document)) > self.overlay_bounds['ENVELOPE_MAX_BYTES']:
+            raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'ENVELOPE_MAX_BYTES'})
 
     def _note_receipt(self, op, receipt):
         """Count one returned receipt. A persist failure never reaches this."""
@@ -1560,12 +1592,11 @@ class CapitalService:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'DECISION_RECORDS_MAX'})
         if overlay.section_size(payload, merged) > bounds['ENVELOPE_MAX_BYTES']:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'ENVELOPE_MAX_BYTES'})
+        if any('operator_reason' in entry['payload'] for entry in new):
+            self._check_envelope_capacity(payload, merged)
 
     def overlay_command(self, body, role=DEFAULT_ROLE):
-        """advance_day, the only writer of sim_day, and post_repayment. One atomic save each.
-
-        advance_day never touches the F04 journal; post_repayment issues only the principal portion.
-        """
+        """Apply an organizer overlay command with one atomic workspace save."""
         with self.lock:
             principal = Principal(role if type(role) is str else '')
             if type(body) is dict and body.get('op') == observation_record.OP:
@@ -1581,15 +1612,18 @@ class CapitalService:
                 raise ApiError(self.workspace_status, 503)
             if type(body) is not dict:
                 raise ApiError('INVALID_COMMAND')
+            operator_reason = _operator_reason(body)
+            if operator_reason is not None:
+                body = {key: value for key, value in body.items() if key != 'operator_reason'}
             self._overlay_volatile(body)
             if body.get('op') == observation_record.OP:
-                return self._post_external_fact(body, principal)
+                return self._post_external_fact(body, principal, operator_reason)
             if type(body.get('op')) is str and body['op'] in slices.COMMANDS:
-                return self._post_slice_command(body, principal)
+                return self._post_slice_command(body, principal, operator_reason)
             if body.get('op') in recovery.COMMANDS:
-                return self._post_recovery_command(body, principal)
+                return self._post_recovery_command(body, principal, operator_reason)
             if body.get('op') == overlay.COMMAND_REPAY:
-                return self._post_repayment(body, principal)
+                return self._post_repayment(body, principal, operator_reason)
             if set(body) - {'writeoff'} != {'instance_id', 'operation_id', 'op', 'from_sim_day', 'to_sim_day', 'reason'}:
                 raise ApiError('INVALID_COMMAND')
             if body['instance_id'] != self.instance_id:
@@ -1618,7 +1652,7 @@ class CapitalService:
                 if directive != recorded_directive:
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 if prior['op'] != overlay.COMMAND_OP or (
-                        prior['from_sim_day'], prior['to_sim_day'], prior['reason']) != (from_day, to_day, reason):
+                        prior['from_sim_day'], prior['to_sim_day'], prior['reason'], prior.get('operator_reason')) != (from_day, to_day, reason, operator_reason):
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 prior.update(self._overlay_receipt_common(principal), transport_duplicate=True)
                 return prior
@@ -1674,7 +1708,7 @@ class CapitalService:
                 subject['principal'] -= r['principal_recovered_krw'] + r['written_off_krw']
             new = overlay.advance_entries(
                 operation_id, state, len(journal), to_day=to_day, reason=reason,
-                binding=binding, subjects=subjects, margin_before=cures)
+                binding=binding, subjects=subjects, margin_before=cures, operator_reason=operator_reason)
             if margin_subjects:
                 try:
                     stepped = overlay.fold(self.overlay_entries + new, len(journal))
@@ -1710,7 +1744,7 @@ class CapitalService:
                            overlay_state_digest=overlay.state_digest(overlay.fold(candidate)))
             return receipt
 
-    def _post_external_fact(self, body, principal):
+    def _post_external_fact(self, body, principal, operator_reason):
         try:
             observation_record.reject_volatile(body, transport=True)
             if set(body) != {'instance_id', 'operation_id', 'op', 'at_sim_day', 'payload'}:
@@ -1724,6 +1758,8 @@ class CapitalService:
             if body['payload']['sim_day'] != body['at_sim_day']:
                 raise ApiError('INVALID_ARGUMENTS')
             payload = {**copy.deepcopy(body['payload']), 'recorded_by_role': 'organizer'}
+            if operator_reason is not None:
+                payload['operator_reason'] = operator_reason
             prior = next((e for e in self.overlay_entries if e['overlay_id'] == body['operation_id']), None)
             if prior is not None:
                 if prior['kind'] != observation_record.KIND or prior['payload'] != payload:
@@ -1745,8 +1781,8 @@ class CapitalService:
                      'after_journal_index': len(journal), 'sim_day': state['sim_day'], 'payload': payload}
             candidate = self.overlay_entries + [entry]
             observation_record.validate_links(candidate, journal, self.fixtures, policy)
-            self._overlay_check_capacity(self.overlay_entries, [entry], state['sim_day'], {
-                'journal': journal, 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+            self._overlay_check_capacity(self.overlay_entries, [entry], state['sim_day'],
+                                         self._workspace_payload(self.producer, self.receipts, self.case_fixtures))
             if len(self.receipts) + sum(e['kind'] == observation_record.KIND for e in candidate) > MAX_OPERATIONS:
                 raise ApiError('SIMULATION_CAPACITY', 409, {'scope': 'external_facts'})
             self._persist(candidate)
@@ -1865,7 +1901,7 @@ class CapitalService:
                 result['quote'] = self._slice_quote(self._slice_context(state, quote_claim_id, quote_payee_label), expected_days)
             return result
 
-    def _post_slice_command(self, body, principal):
+    def _post_slice_command(self, body, principal, operator_reason):
         if set(body) & {'token', 'holder_ref', 'transfer_to'}:
             raise ApiError('SLICE_FIELD_NOT_ADOPTED')
         if not {'instance_id', 'operation_id'} <= set(body):
@@ -1883,7 +1919,7 @@ class CapitalService:
                 self._require_day(command['expected_days'])
             prior = overlay.operation_receipt(self.overlay_entries, body['operation_id'])
             if prior is not None:
-                if prior.get('entry', {}).get('command') != command:
+                if prior.get('entry', {}).get('command') != command or prior.get('operator_reason') != operator_reason:
                     raise ApiError('IDEMPOTENCY_CONFLICT', 409)
                 return {**self._overlay_receipt_common(principal), **prior, 'transport_duplicate': True}
             if any(e['overlay_id'] == body['operation_id'] for e in self.overlay_entries) or body['operation_id'] in self.receipts:
@@ -1934,11 +1970,13 @@ class CapitalService:
                 additions.append(binding)
                 state = overlay.fold(self.overlay_entries + additions)
             entry = slices.entry(body['operation_id'], kind, state, index, {**ident, 'command': command, 'policy': context['policy'], 'witness': context['witness']})
+            if operator_reason is not None:
+                entry['payload']['operator_reason'] = operator_reason
             candidate = self.overlay_entries + additions + [entry]
             overlay.fold(candidate, index)
             slices.validate_links(candidate, self.machine.export_journal(), self.fixtures)
-            self._overlay_check_capacity(self.overlay_entries, additions + [entry], state['sim_day'], {
-                'journal': self.machine.export_journal(), 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+            self._overlay_check_capacity(self.overlay_entries, additions + [entry], state['sim_day'],
+                                         self._workspace_payload(self.producer, self.receipts, self.case_fixtures))
             try:
                 self._persist(candidate)
             except WorkspaceError as exc:
@@ -2049,11 +2087,11 @@ class CapitalService:
         except recovery.RecoveryError as exc:
             raise ApiError(exc.code, exc.status) from exc
 
-    def _post_recovery_command(self, body, principal):
+    def _post_recovery_command(self, body, principal, operator_reason):
         command = self._validate_recovery_command(body, principal)
         prior = overlay.operation_receipt(self.overlay_entries, body['operation_id'])
         if prior is not None:
-            if prior.get('entry', {}).get('command') != command:
+            if prior.get('entry', {}).get('command') != command or prior.get('operator_reason') != operator_reason:
                 raise ApiError('IDEMPOTENCY_CONFLICT', 409)
             return {**prior, **self._overlay_receipt_common(principal), 'transport_duplicate': True}
         if any(e['overlay_id'] == body['operation_id'] for e in self.overlay_entries):
@@ -2062,10 +2100,12 @@ class CapitalService:
         if state['terms_binding'] is None:
             raise self._overlay_not_bound('overlay not active')
         entry = self._plan_recovery_command(body, principal, state, self.overlay_entries)
+        if operator_reason is not None:
+            entry['payload']['operator_reason'] = operator_reason
         candidate = self.overlay_entries + [entry]
         overlay.fold(candidate, len(self.machine.export_journal()))
-        self._overlay_check_capacity(self.overlay_entries, [entry], state['sim_day'], {
-            'journal': self.machine.export_journal(), 'receipts': self.receipts, 'case_fixtures': self.case_fixtures})
+        self._overlay_check_capacity(self.overlay_entries, [entry], state['sim_day'],
+                                     self._workspace_payload(self.producer, self.receipts, self.case_fixtures))
         try:
             self._persist(candidate)
         except WorkspaceError as exc:
@@ -2087,7 +2127,7 @@ class CapitalService:
         """Put the pinned machine back to `journal`. Only reachable for the pinned in-process producer."""
         self.producer.machine = self.producer.restored(journal).machine
 
-    def _post_repayment(self, body, principal):
+    def _post_repayment(self, body, principal, operator_reason):
         """post_repayment: split an asserted payment over the posted dues and issue only the principal
         portion to F04, in the same single save as the overlay entry (CAPITAL_REPAYMENT_POSTING.md)."""
         if set(body) - {'evidence_ref', 'proposal_id'} != {
@@ -2110,9 +2150,9 @@ class CapitalService:
             raise ApiError('INVALID_ARGUMENTS')
         prior = overlay.operation_receipt(self.overlay_entries, operation_id)
         if prior is not None:
-            wanted = (overlay.COMMAND_REPAY, ref, day, amount, evidence, proposal)
+            wanted = (overlay.COMMAND_REPAY, ref, day, amount, evidence, proposal, operator_reason)
             recorded = (prior['op'], prior.get('advance_ref'), prior.get('at_sim_day'), prior.get('amount_krw'),
-                        prior.get('evidence_ref'), prior.get('proposal_id'))
+                        prior.get('evidence_ref'), prior.get('proposal_id'), prior.get('operator_reason'))
             if recorded != wanted:
                 raise ApiError('IDEMPOTENCY_CONFLICT', 409)
             prior.update(self._overlay_receipt_common(principal), f04_journal_written=prior['f04'] is not None,
@@ -2196,7 +2236,8 @@ class CapitalService:
         entry = overlay.repayment_entry(
             operation_id, state, journal_index=len(scratch_journal), advance_ref=ref, amount=amount,
             denominator=denominator, principal_before=subject['principal'],
-            terms_version=status['terms_version'], split=split, f04=f04, evidence_ref=evidence, proposal_id=proposal)
+            terms_version=status['terms_version'], split=split, f04=f04, evidence_ref=evidence, proposal_id=proposal,
+            operator_reason=operator_reason)
         if overlay.entry_size(entry) > bounds['entry_canonical_bytes_max']:
             raise ApiError('SIMULATION_CAPACITY', 409, {'bound': 'REPAYMENT_ENTRY_MAX_BYTES'})
         candidate = self.overlay_entries + [entry]

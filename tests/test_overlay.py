@@ -917,5 +917,94 @@ class GoldenTests(unittest.TestCase):
                 self.assertNotIn(key, text, name)
 
 
+
+class OperatorReasonOverlayTests(unittest.TestCase):
+    def request(self, service, **extra):
+        return dict(instance_id=service.instance_id, operation_id='reason-clock', op='advance_day',
+                    from_sim_day=0, to_sim_day=1, reason='SIMULATED tick', **extra)
+
+    def test_clock_reason_roundtrip_and_capacity(self):
+        from tests import facade_schema
+        from tests.test_capital import OperatorReasonTests
+        from tests.test_repayment_posting import whole
+        contract = facade_schema.load_contract()
+        service = CapitalService()
+        for invalid in OperatorReasonTests.invalid:
+            before = whole(service)
+            with self.assertRaises(ApiError) as caught:
+                service.overlay_command(self.request(service, operator_reason=invalid))
+            self.assertEqual((caught.exception.status, caught.exception.code), (400, 'INVALID_REASON'))
+            self.assertEqual(whole(service), before)
+        for reason in ['x', 'x' * 200, '<b>x</b>']:
+            service = CapitalService()
+            request = self.request(service, operator_reason=reason)
+            facade_schema.validate(request, contract['definitions']['overlay_advance_request'], contract)
+            receipt = service.overlay_command(request)
+            self.assertEqual(receipt['operator_reason'], reason)
+            facade_schema.validate(receipt, contract['definitions']['overlay_advance_receipt'], contract)
+            self.assertEqual(overlay.operation_receipt(service.overlay_entries, 'reason-clock')['operator_reason'], reason)
+            self.assertTrue(service.overlay_command(request)['transport_duplicate'])
+            with self.assertRaisesRegex(ApiError, 'IDEMPOTENCY_CONFLICT'):
+                service.overlay_command(self.request(service))
+            # Existing entry byte admission still applies before any persistence.
+            service = CapitalService()
+            service.overlay_bounds = {**service.overlay_bounds, 'OVERLAY_ENTRY_MAX_BYTES': 100}
+            before = whole(service)
+            with self.assertRaises(ApiError) as caught:
+                service.overlay_command(self.request(service, operator_reason=reason))
+            self.assertEqual(caught.exception.code, 'SIMULATION_CAPACITY')
+            self.assertEqual(whole(service), before)
+
+    def test_entry_validation_refuses_invalid_context_and_other_entry_kinds(self):
+        from tests.test_capital import OperatorReasonTests
+        service = CapitalService()
+        service.overlay_command(self.request(service, operator_reason='context'))
+        clock = next(e for e in service.overlay_entries if e['kind'] == 'clock')
+        for invalid in OperatorReasonTests.invalid:
+            entry = copy.deepcopy(clock)
+            entry['payload']['operator_reason'] = invalid
+            with self.assertRaises(overlay.OverlayError): overlay.validate_entry(entry)
+        entry = copy.deepcopy(service.overlay_entries[0])
+        entry['payload']['operator_reason'] = 'context'
+        with self.assertRaises(overlay.OverlayError): overlay.validate_entry(entry)
+
+    def test_slice_and_recovery_reasons_use_the_same_command_boundary(self):
+        from scripts import seed_overlay_slices
+        from tests import facade_schema
+
+        service = CapitalService()
+        draw_book(service)
+        tick(service, 'reason-setup', 0, 1)
+        quote = service.overlay_slices('demo-delta-small', 'organizer', 60)['quote']
+        register = dict(op='register_slice', operation_id='reason-slice', at_sim_day=1,
+                        claim_id='demo-delta-small', payee_label='organizer', slice_face_krw=100,
+                        holder_role='KIX_CAPITAL_LENDER', expected_days=60, quote_ref=quote['result_digest'],
+                        approvals=seed_overlay_slices.APPROVALS)
+        recovery_event = service.recovery_policy['values']['acceleration_interest_rebase']['applies_to_events'][1]
+        accelerate = dict(op='record_acceleration', operation_id='reason-accelerate', at_sim_day=1,
+                          advance_ref='sim-a', event=recovery_event, approvals=seed_overlay_slices.APPROVALS)
+        contract = facade_schema.load_contract()
+        for body in (register, accelerate):
+            with self.subTest(op=body['op']):
+                request = {**body, 'instance_id': service.instance_id}
+                before = service._frozen()
+                with self.assertRaisesRegex(ApiError, 'INVALID_REASON'):
+                    service.overlay_command({**request, 'operator_reason': 'x' * 201})
+                self.assertEqual(service._frozen(), before)
+                reason = 'x' * 200
+                noted = {**request, 'operator_reason': reason}
+                facade_schema.validate(noted, contract['definitions']['overlay_command_request'], contract)
+                receipt = service.overlay_command(noted)
+                facade_schema.validate(receipt, contract['definitions']['overlay_command_receipt'], contract)
+                self.assertEqual(receipt['operator_reason'], reason)
+                self.assertEqual(service.overlay_entries[-1]['payload']['operator_reason'], reason)
+                self.assertTrue(service.overlay_command(noted)['transport_duplicate'])
+                with self.assertRaisesRegex(ApiError, 'IDEMPOTENCY_CONFLICT'):
+                    service.overlay_command(request)
+                corrupt = copy.deepcopy(service.overlay_entries[-1])
+                corrupt['payload']['operator_reason'] = '\n'
+                with self.assertRaises(overlay.OverlayError):
+                    overlay.validate_entry(corrupt)
+
 if __name__ == '__main__':
     unittest.main()

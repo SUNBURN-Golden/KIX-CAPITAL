@@ -72,6 +72,7 @@ def _marks(stop=None):
 
 def _report(workspace, marks, *, reason, failed_check, detail, recon=None):
     return {
+        **({'operator_reasons': detail['operator_reasons']} if 'operator_reasons' in detail else {}),
         'ok': reason is None,
         'reason': reason,
         'failed_check': failed_check,
@@ -251,6 +252,18 @@ def audit_workspace_bytes(raw, *, workspace, mode=None):
         active = False
     if not active:
         return unreadable('service_restore')
+
+    # Context is outside F04 identity and the overlay fold, but still auditable.
+    # A valid unkeyed reseal needs comparison with a previously trusted digest.
+    reasons = {
+        'f04': {key: row['receipt']['operator_reason'] for key, row in receipts.items()
+                if 'operator_reason' in row['receipt']},
+        'overlay': {entry['overlay_id']: entry['payload']['operator_reason']
+                    for entry in service.overlay_entries if 'operator_reason' in entry['payload']},
+    }
+    count = sum(len(rows) for rows in reasons.values())
+    if count:
+        detail['operator_reasons'] = {'count': count, 'sha256': digest(reasons)}
 
     if not _fingerprints_match(receipts, journal, mapping):
         return unreadable('receipt_journal_fingerprints')

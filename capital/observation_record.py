@@ -91,8 +91,11 @@ def validate_payload(payload, *, stored=False):
         raise FactError('FACT_CLASS_NOT_ADOPTED')
     constants = CONSTANTS if stored else {k: v for k, v in CONSTANTS.items() if k != 'recorded_by_role'}
     required = FIELDS | set(constants)
-    if not required <= set(payload) <= required | OPTIONAL:
+    optional = OPTIONAL | {'operator_reason'} if stored else OPTIONAL
+    if not required <= set(payload) <= required | optional:
         raise FactError()
+    if stored:
+        overlay._validate_operator_reason(payload)
     if any(type(payload[k]) is not type(v) or payload[k] != v for k, v in constants.items()):
         raise FactError()
     for key in ('claim_id', 'order_ref', 'claimed_provider_ref', *OPTIONAL & payload.keys()):
@@ -143,7 +146,8 @@ def fold_entry(state, entry):
                 or (prior['claim_id'], prior['fact_class']) != (payload['claim_id'], payload['fact_class'])):
             raise FactError('FACT_SUPERSEDE_INVALID', 409)
         prior['status'] = 'SUPERSEDED'
-    facts[entry['overlay_id']] = {**copy.deepcopy(payload), 'status': 'ACTIVE'}
+    facts[entry['overlay_id']] = {**copy.deepcopy({k: v for k, v in payload.items() if k != 'operator_reason'}),
+                                  'status': 'ACTIVE'}
 
 
 def _strings(value):
@@ -179,7 +183,8 @@ def validate_links(entries, journal, fixtures, policy=None):
             raise FactError('FACT_CLAIM_UNKNOWN', 409)
         if type(e['after_journal_index']) is not int or not 0 <= e['after_journal_index'] <= len(journal):
             raise FactError()
-        if any(len(s.encode('utf-8')) > bounds['string_field_bytes'] for s in _strings(e)):
+        fact_fields = {k: v for k, v in p.items() if k != 'operator_reason'}
+        if any(len(s.encode('utf-8')) > bounds['string_field_bytes'] for s in _strings([key, fact_fields])):
             raise FactError('SIMULATION_CAPACITY', 409, {'scope': 'external_facts'})
         target = p.get('supersedes_fact_id')
         if target is not None and (target not in unique or target == key):
@@ -202,9 +207,11 @@ def validate_links(entries, journal, fixtures, policy=None):
 
 
 def receipt(entry):
+    payload = entry['payload']
     return {'operation_id': entry['overlay_id'], 'op': OP, 'outcome': 'APPLIED',
             'at_sim_day': entry['sim_day'], 'sim_day': entry['sim_day'],
-            'entry': copy.deepcopy(entry['payload'])}
+            'entry': copy.deepcopy(payload),
+            **({'operator_reason': payload['operator_reason']} if 'operator_reason' in payload else {})}
 
 
 def project_fake(output, *, claim_id, sim_day, captured_sim_day, instance_id):
