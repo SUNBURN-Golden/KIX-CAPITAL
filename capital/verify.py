@@ -209,7 +209,9 @@ def main(argv=None):
     keys.add_argument('--keyset-file', default=None, help='Pinned DEV_ONLY local keyset. Integrity only.')
     parser.add_argument('--workspace', default=None,
                         help='Audit DIR/workspace.json read-only. No lock, no write, no repair. Not stage5 durability evidence.')
-    parser.add_argument('--facts', default=None, help='Verify canonical page-*.json files in DIR offline; integrity only.')
+    parser.add_argument('--facts', default=None,
+                        help='Verify canonical page-*.json files in DIR offline under the '
+                             'documented input bounds (capital.facts.INPUT_LIMITS); integrity only.')
     parser.add_argument('--mode', choices=('simulation', 'coa-candidate'), default=None,
                         help='Opt-in candidate checks; applies only to --workspace.')
     args = parser.parse_args(argv)
