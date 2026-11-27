@@ -203,6 +203,36 @@ class FoldFuzzTests(unittest.TestCase):
                 self.assertEqual(sum(e['idempotency_key'] == command['operation_id'] for e in journal),
                                  0 if command['op'] == 'reconcile' else 1)
 
+    def test_scratch_location_fallback_and_cleanup(self):
+        original = tempfile.TemporaryDirectory
+        for available in (True, False):
+            with self.subTest(memory_scratch_available=available), original() as base:
+                attempts = []
+
+                def create(*args, **kwargs):
+                    attempts.append(dict(kwargs))
+                    if not available and kwargs.get('dir') == '/dev/shm':
+                        raise OSError('shared memory unavailable')
+                    # Exercise real files and cleanup without requiring /dev/shm.
+                    return original(*args, **dict(kwargs, dir=base))
+
+                with patch.object(fuzz.tempfile, 'TemporaryDirectory', side_effect=create):
+                    with fuzz.temporary_workspaces() as tmp:
+                        path = Path(tmp)
+                        commands = self.corpus['cases'][0]['commands'][:2]
+                        checkpoints, envelopes = fuzz.replay(commands, path / 'replay')
+                        self.assertEqual(checkpoints, self.corpus['cases'][0]['checkpoints'][:2])
+                        self.assertEqual((path / 'replay' / store.FILE_NAME).read_bytes(), envelopes[-1])
+                    self.assertFalse(path.exists())
+                    with self.assertRaisesRegex(RuntimeError, 'verification failed'):
+                        with fuzz.temporary_workspaces() as failed:
+                            raise RuntimeError('verification failed')
+                    self.assertFalse(Path(failed).exists())
+                expected = [{'prefix': 'capital-fold-fuzz-', 'dir': '/dev/shm'}]
+                if not available:
+                    expected.append({'prefix': 'capital-fold-fuzz-'})
+                self.assertEqual(attempts, expected * 2)
+
     def test_capture_rejects_checksum_valid_persisted_journal_divergence(self):
         with tempfile.TemporaryDirectory() as tmp:
             fuzz.replay(self.corpus['cases'][0]['commands'][:2], tmp)
