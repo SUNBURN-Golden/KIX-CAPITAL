@@ -166,19 +166,29 @@ def _manifest_input(path, checks, *, key, key_error, keyset, keyset_error):
 
 def _facts_input(directory, checks):
     """Capture page bytes once, verify those exact bytes, extract the cut and rows."""
-    try:
-        paths = sorted(Path(directory).glob('page-*.json'))
-    except (OSError, TypeError, ValueError):
-        paths = []
-    raw_pages = [(path.name, _capture_file(path)) for path in paths]
-    report = facts_module.verify_raw_pages(raw_pages)
+    raw_pages = []
     pages_sha = None
-    if raw_pages and all(raw is not None for _, raw in raw_pages):
+
+    def capture_pages():
+        nonlocal pages_sha
         digest = hashlib.sha256()
-        for name, raw in raw_pages:
+        for name, raw in facts_module.read_page_files(directory):
             digest.update(os.fsencode(name) + b'\x00')
             digest.update(raw)
-        pages_sha = digest.hexdigest()
+            raw_pages.append((name, raw))
+            yield name, raw
+        if raw_pages:
+            pages_sha = digest.hexdigest()
+
+    captured = capture_pages()
+    report = facts_module.verify_raw_pages(captured)
+    # Finish the bounded capture for the digest if verification stopped early.
+    # Keep the first verification failure and omit the digest on incomplete reads.
+    try:
+        for _ in captured:
+            pass
+    except facts_module.FactsError:
+        pass
     info = {'path': str(directory), 'ok': report['ok'], 'reason': report['reason'],
             'report': report, 'sha256': pages_sha}
     extracted = None
@@ -354,7 +364,8 @@ def main(argv=None):
     parser.add_argument('--manifest', required=True,
                         help='Export manifest JSON file.')
     parser.add_argument('--facts', required=True,
-                        help='Directory of canonical page-*.json facts files.')
+                        help='Directory of canonical page-*.json facts files. Applies the '
+                             'bounds in capital.facts.INPUT_LIMITS.')
     keys = parser.add_mutually_exclusive_group()
     keys.add_argument('--key-file', default=None,
                       help='DEV_ONLY HMAC key for the manifest signature. Integrity only.')
