@@ -1215,6 +1215,68 @@ slice write-off, legal collectability or accounting recognition. It changes no
 workspace, persistence format, statement classification, HTTP/UI or upstream
 readiness claim.
 
+## exposure-basis-bridge
+
+`python3 -m capital.exposure_bridge --workspace DIR` and
+`capital.exposure_bridge.report_workspace(directory)` use Python stdlib to read
+one `workspace.json` capture. They audit those bytes with
+`audit.audit_workspace_bytes`, parse and restore the same bytes in memory,
+require `ACTIVE`, and fold the detached overlay at the captured F04 journal
+length. The CLI writes `store.canonical_bytes(report)` followed by a newline.
+The `KIX_CAPITAL_EXPOSURE_BRIDGE_V1` envelope is labeled `SIMULATED` and
+`READ_ONLY_EXPOSURE_BRIDGE`. `source` contains `workspace_sha256`, the audited
+`payload_sha256` and F04 `state_digest`, the folded `overlay_state_digest`,
+`sim_day`, and the original `audit` result. The audit retains its supplied path
+and saved metadata. Repeated runs on the same capture, path and local audit
+inputs produce identical output. The reader performs no saves or locks.
+
+Rows sort by `advance_id` and carry the F04 `phase`. `fold_values` retains
+`f04_exposure_krw`, the recovery `anchor`, `recovered` and `position`, and the
+`closed_interest_gate` when applicable. `amounts` contains verified integer KRW
+or null. Each check gives its `id`, `expected_krw`, `observed_krw`, `status`
+(`MATCHED`, `MISMATCH`, `NOT_CHECKED`), `reason` and supporting `references`.
+The row's references collect the case's F04 entries, pertinent overlay entries
+and terms binding. Each reference gives `journal`, zero-based original `index`,
+`entry_id`, `kind`, and the overlay's `sim_day` and `after_journal_index` (null
+for F04). Identical overlay IDs are counted at their first occurrence.
+
+| Basis | Independent entry arithmetic |
+| --- | --- |
+| `f04_exposure_krw` | The offer amount enters on the accepted draw. Subtract each accepted F04 repay once, including any principal part linked from an overlay repayment. An undrawn offer has zero F04 exposure. |
+| `default_anchor_principal_krw` | Reconstruct F04 exposure through the linked default at `after_journal_index - 1`, checking its operation ID and advance. |
+| `principal_recovered_krw`, `written_off_principal_krw`, `recovery_principal_krw` | Sum the principal allocations on `POST_DEFAULT` receipts, read principal from the writeoff entry (zero before writeoff), and subtract both from the anchor. Separately compare the sum of the three folded principal components to F04 exposure. |
+| `recovery_interest_krw`, `recovery_default_interest_krw`, `recovery_claim_krw` before writeoff | For each interest bucket, subtract repayment and `POST_DEFAULT` recovery allocations from posted deltas. The claim equals remaining principal plus both buckets. |
+| `writeoff_opening_claim_krw`, `post_writeoff_residual_claim_krw`, `recovery_claim_krw` after writeoff | Use the strict prefix before the original writeoff index to check the principal written off and the opening claim (that principal plus unpaid posted interest). Subtract every unique later `POST_WRITEOFF` receipt from the undivided claim. Check every stamped running residual and both final folded claim values. The folded interest components describe the recorded cutoff amounts and do not allocate any part of the later residual. |
+| `closed_unpaid_interest_krw`, `closed_unpaid_default_interest_krw` | Compare the two `advance_gate` buckets independently with posted deltas less repayment allocations. F04 exposure may be zero with positive unpaid interest. |
+
+For example, 90,000 KRW of default-day F04 principal and 172 KRW of posted
+interest give an opening recovery claim of 90,172 KRW. A 1,000 KRW simulated
+receipt reduces principal by 828 KRW and the claim to 89,172 KRW. In the
+writeoff fixture, 2,198 KRW of default interest posts and a further 100 KRW
+receipt pays default interest before writeoff on the same day. The principal
+bridge is `90,000 = 89,172 written off + 828 recovered + 0 remaining`. The
+opening residual is `89,172 + 2,098 = 91,270`; later receipts of 300 and 700
+reduce it to 90,270 KRW. F04 retains the default-day 90,000 KRW throughout.
+
+Recovery is `NOT_APPLICABLE` for advances that never defaulted. A legacy
+default with no anchor is `NOT_BOUND` with `DEFAULT_ANCHOR_NOT_BOUND`. Missing
+terms or an accrual posting yields `TERMS_BINDING_NOT_BOUND` or
+`ACCRUAL_NOT_BOUND`. Only checks with supporting evidence publish amounts, so
+an unsupported interest bucket or writeoff opening cannot publish a claim
+based on raw fold defaults. Independently verified principal and other rows
+remain available. Portfolio `coverage` reports only `advances`, `complete`
+and `incomplete` counts. Use the [residual register](#residual-obligations-report)
+for the separate obligation inventory. Authentication, actual payments and
+financial recognition are `NOT_BOUND`. Risk measures, COA posting, reserve
+funding, statement classification and historical attribution are outside this
+report's scope.
+
+| Exit | Result |
+| --- | --- |
+| 0 | `COMPLETE`. All applicable checks matched on the captured evidence. |
+| 1 | `INCOMPLETE` for a mismatch or missing applicable evidence, with per-check results. `AUDIT_FAILED` for failed audit or in-memory restore, with null `rows` and `coverage`. |
+| 2 | Argument misuse. |
+
 ## Disposable UC3 hold replay CLI
 
 `capital.uc3_replay` provides `load_policy(*, hold_path=None,

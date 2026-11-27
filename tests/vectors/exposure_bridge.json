@@ -1,0 +1,51 @@
+{
+  "format": "KIX_CAPITAL_EXPOSURE_BRIDGE_VECTOR_V1",
+  "label": "SIMULATED",
+  "partial_recovery": {
+    "f04_exposure_krw": 90000,
+    "default_anchor_principal_krw": 90000,
+    "principal_recovered_krw": 828,
+    "written_off_principal_krw": 0,
+    "recovery_principal_krw": 89172,
+    "recovery_interest_krw": 0,
+    "recovery_default_interest_krw": 0,
+    "recovery_claim_krw": 89172
+  },
+  "full_recovery": {
+    "f04_exposure_krw": 90000,
+    "default_anchor_principal_krw": 90000,
+    "principal_recovered_krw": 90000,
+    "written_off_principal_krw": 0,
+    "recovery_principal_krw": 0,
+    "recovery_interest_krw": 0,
+    "recovery_default_interest_krw": 0,
+    "recovery_claim_krw": 0
+  },
+  "writeoff": {
+    "f04_exposure_krw": 90000,
+    "default_anchor_principal_krw": 90000,
+    "principal_recovered_krw": 828,
+    "written_off_principal_krw": 89172,
+    "recovery_principal_krw": 0,
+    "recovery_interest_krw": 0,
+    "recovery_default_interest_krw": 2098,
+    "writeoff_opening_claim_krw": 91270,
+    "post_writeoff_residual_claim_krw": 91270,
+    "recovery_claim_krw": 91270
+  },
+  "late_recoveries": {
+    "running_residual_claims_krw": [90970, 90270],
+    "post_writeoff_residual_claim_krw": 90270,
+    "recovery_claim_krw": 90270
+  },
+  "missing_accrual": {
+    "f04_exposure_krw": 90000,
+    "default_anchor_principal_krw": 90000,
+    "principal_recovered_krw": 1000,
+    "written_off_principal_krw": 0,
+    "recovery_principal_krw": 89000,
+    "recovery_interest_krw": null,
+    "recovery_default_interest_krw": null,
+    "recovery_claim_krw": null
+  }
+}
