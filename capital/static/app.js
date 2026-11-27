@@ -1030,7 +1030,12 @@ function paintDeskDiag(){
  }else if(cap==='NOT_BOUND')capacity.append(diagRow('overlay.capacity','NOT_BOUND','NOT_BOUND'));
  else capacity.append(deniedRow('overlay.capacity',deskData?.overlayError||'unavailable'));
  const m=diag.metrics;
- if(!m){commands.append(deniedRow('metrics',diag.metricsError||'unavailable'));return;}
+ if(!m){
+  const reason=diag.metricsError||'unavailable';
+  commands.append(deniedRow('metrics',reason));
+  eventlog.append(textElement('dt','event_log'),textElement('dd','unavailable','unavailable'));
+  return;
+ }
  for(const [op,counts] of Object.entries(m.counters.commands)){const tr=document.createElement('tr');for(const value of [op,number(counts.ACCEPTED),number(counts.REJECTED)])tr.append(textElement('td',value));commands.append(tr);}
  const el=m.counters.event_log;
  const lookups=m.counters.operation_lookups||{};
