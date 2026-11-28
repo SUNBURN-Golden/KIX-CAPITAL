@@ -432,6 +432,23 @@ class CaptureAndFailureTests(unittest.TestCase):
         self.assertTrue(service.overlay_entries)
         evaluate(self, trace_workspace_bytes(dump(service.storage.load())))
 
+    def test_legacy_f04_state_digest_matches_audited_restore(self):
+        document = scene('shared-claim')
+        # Digest of this journal under the original F04 workspace format.
+        legacy_digest = 'f7ad7bb5f007106b893f69e01853c0152fbfc111156ada24aa660accdd59a457'
+        document['payload']['state_digest'] = legacy_digest
+        for entry in document['payload']['receipts'].values():
+            entry['receipt']['result']['credit'].pop('open_terms', None)
+        raw = rehash(document)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / store.FILE_NAME
+            path.write_bytes(raw)
+            result = trace_workspace(tmp)
+            self.assertEqual(path.read_bytes(), raw)
+        self.assertEqual(evaluate(self, result)['/categories/2/total'], 90000)
+        self.assertEqual(result['provenance']['hashes']['state_digest'], legacy_digest)
+        self.assertEqual(result['statement'], evidence.offline_service(document).statement())
+
     def test_malformed_checksum_linkage_and_state_fail_diagnostically(self):
         inputs = [None, b'{', b'{"a":1,"a":2}', b'[]']
         original = scene('shared-claim')

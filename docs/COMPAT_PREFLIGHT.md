@@ -26,12 +26,18 @@ Cited file digests at that revision:
 - Git blob `442756c8e2d6f106fad6a47a7177c05ed799efaf`
 - file SHA-256 `126a8b95e2216dc9d4cc4e8e8d7a3f221657c40c5e0e07e5819a58a7c1987533`
 
-The citation is a research reference only. It does not re-pin the vendored
-`7481b0e16ce9b903abbffa62249bb91cd9e63cfe` executable reference, does not
-consume the upstream `bootstrap-1`/`bootstrap-2` manifests, and edits nothing
-in either upstream repository. The upstream decision
-(`docs/decisions/CAPITAL_UPSTREAM_BINDING.md`, `producer_sdk_tuple`) is
-`DEFERRED`; this node rehearses its shape without reopening it.
+## Pinned BOOTSTRAP delivery
+
+Capital's active local rehearsal uses `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`.
+`sdk/compat/delivery.json` binds the delivery SHA and tree to the vendor and SDK
+manifest digests. `sdk/compat/delivery.expected.json` binds the original
+`bootstrap-2` tuple and its sidecar. That manifest preserves its catalogue-input
+commit and tree. The synthetic compatibility corpus continues to exercise mismatches.
+
+`capital.protocol_delivery.read_delivery` verifies the tuple and SDK inputs before
+the local gate starts. The client checks the gate's tuple before each POST.
+Byte agreement is `BOOTSTRAP`, semantic consumption is `HOLD`, and adoption is
+`NOT_BOUND`. The older binding note records the original deferral.
 
 ## Canonical encoding `kix-canonical-json/1`
 

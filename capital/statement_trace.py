@@ -68,7 +68,7 @@ def _labels(fixtures, fixture_id):
     }
 
 
-def _receipt_checks(payload, fixtures):
+def _receipt_checks(payload, fixtures, restored_state_digest):
     """Compare present pinned fields with their immediate historical result.
 
     Missing details are optional evidence, never supplied from replay. Unknown
@@ -132,8 +132,10 @@ def _receipt_checks(payload, fixtures):
         for name in sorted(set(receipt) - {'result', 'operation_id', 'outcome'}):
             check['unvalidated'].append({'root': 'receipts', 'pointer': base + '/' + _escape(name)})
         checks.append(check)
+    # The workspace audit already verified the persisted digest. Compare both
+    # replays in the runtime's state format, which can differ for older workspaces.
     if (machine.export_journal() != payload['journal']
-            or machine.state_digest() != payload['state_digest']):
+            or machine.state_digest() != restored_state_digest):
         raise TraceError('HISTORICAL_REPLAY_MISMATCH')
     for key in sorted(set(payload['receipts']) - linked):
         checks.append({'operation_id': key, 'journal_index': None, 'prefix_length': None,
@@ -147,7 +149,7 @@ def _receipt_checks(payload, fixtures):
 def _provenance(raw, document, service, statement):
     payload = document['payload']
     fixtures = service.fixtures
-    checks, historical = _receipt_checks(payload, fixtures)
+    checks, historical = _receipt_checks(payload, fixtures, service.machine.state_digest())
     cases = {key: {'view': copy.deepcopy(service.machine.view(key)),
                    'fixture_id': fixture, 'classification': 'F04_CASE_EVIDENCE',
                    **_labels(fixtures, fixture)}

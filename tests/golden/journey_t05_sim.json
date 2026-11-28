@@ -1,5 +1,5 @@
 {
-  "digest": "bd1435d3870f241636a9115bb007d874b6b51c4cb921e6797b654304c21fcf58",
+  "digest": "2e7504496fb10d96d6c314c4d552835a6903a32769879a8b6466d8c57801cb90",
   "funds_executed": false,
   "integrated": false,
   "journey": "T05-sim",
@@ -250,11 +250,12 @@
         ],
         [
           "apply_distribution",
-          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          null,
           true
         ]
       ],
       "facts": {
+        "allocation_scope": "SEPARATE_DISPOSABLE_BOOK",
         "label": "SIMULATED_OUT_OF_BAND_SETTLEMENT_EVENT",
         "scope": "DISPOSABLE_BOOK_ONLY"
       },
@@ -274,7 +275,7 @@
         ],
         [
           "apply_distribution",
-          "DISTRIBUTION_BLOCKED_REFUND_BEARER_UNDEFINED",
+          null,
           true
         ]
       ]
@@ -729,7 +730,7 @@
       "facts": {
         "funds_executed": false,
         "operation_count": 14,
-        "state_digest": "7b48e64e2c82a0e79ed5c247c5e21469734307dbcee4f6c190e7b4ef6b73a85f"
+        "state_digest": "ba7c597a5a96bba682e58b9a62fc7dfef2ea7114510fc5b1dad4210443c13310"
       },
       "kind": "HTTP",
       "n": 34,
