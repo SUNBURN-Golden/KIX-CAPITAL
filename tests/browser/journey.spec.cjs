@@ -96,9 +96,17 @@ test('two tabs serialize a delayed recovery and preserve the next unknown reques
  await page.route('**/api/operations/**',async route=>{const response=await route.fetch();seen();await gate;await route.fulfill({response});});
  await page.getByRole('button',{name:'원 요청 결과 조회'}).click();await requested;
  await other.getByRole('button',{name:'원 요청 결과 조회'}).click();await expect(other.locator('#notice')).toContainText('다른 탭');await expect(other.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();
- release();await expect(page.locator('#recovery')).toBeHidden();await expect(other.locator('#recovery')).toBeHidden();
- await other.route('**/api/commands',route=>route.abort('failed'));
- await other.getByRole('button',{name:'모의 제안 생성'}).click();await expect(other.locator('#recovery')).toBeVisible();await expect(page.locator('#recovery')).toBeVisible();
+ // Keep the first tab's post-recovery refresh in flight while the second tab writes.
+ let finishRefresh;const refreshGate=new Promise(resolve=>finishRefresh=resolve);
+ await page.route('**/api/risk/scenarios',async route=>{await refreshGate;await route.continue();});
+ const refreshing=page.waitForRequest('**/api/risk/scenarios');
+ release();await refreshing;
+ try{
+  await expect(page.locator('#recovery')).toBeHidden();await expect(other.locator('#recovery')).toBeHidden();
+  await other.route('**/api/commands',route=>route.abort('failed'));
+  await other.getByRole('button',{name:'모의 제안 생성'}).click();await expect(other.locator('#recovery')).toBeVisible();await expect(page.locator('#recovery')).toBeVisible();
+ }finally{finishRefresh();}
+ await expect(page.locator('#refresh')).toBeEnabled();
  const record=await page.evaluate(()=>JSON.parse(localStorage.getItem('kix-capital-pending-v1')));expect(record.op).toBe('offer');await expect(page.getByRole('button',{name:'모의 제안 생성'})).toBeDisabled();
 });
 test('old process acknowledgment never resends previous command',async({page})=>{
