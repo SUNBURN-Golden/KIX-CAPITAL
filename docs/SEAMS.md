@@ -15,6 +15,29 @@ Registry of Capital facade ports. A later node adds its port as a new row here a
 
 `tests/test_producer_port.py` runs positive and negative command vectors through any `ProducerPort` factory (`run_producer_vectors(factory)`). The pinned factory is `PinnedFsmProducer`. A future adapter must pass the same vectors. Passing them is a local gateway check. It is not a SEMANTIC_CONFORMANCE profile, and it does not qualify Commerce or Protocol.
 
+The same module exports `run_value_isolation_vectors(factory)` for additional
+local ownership checks. A no-argument factory must return a fresh producer.
+Both `PinnedFsmProducer` and owned `GateHttpProducer()` instances on ephemeral
+`127.0.0.1` ports run the harness. It mutates actual nested first and duplicate
+command results, views with a partial repayment, exported journal entries and
+offer faces, and disposable draw previews. It also changes caller-owned offer
+and repayment argument dictionaries and restoration journals after acceptance.
+Subsequent full views, journal values, canonical state, SHA256 state digest and
+original command-time idempotent results must remain equal to detached baselines.
+Restored books retain the same baselines and can advance independently. The
+harness registers optional `close()` cleanup for every source and restored port
+as soon as it is created, including when an assertion fails.
+
+Run with `python3 -m unittest discover -s tests -p 'test_*producer*.py' -v`.
+Deliberately aliasing test doubles must fail with a named scenario, mutated path
+and invariant. These checks support existing first-result claim `inv.3`
+(`tests/contract_invariants.json`), non-mutation check `read.readonly.state`
+(`tests/read_model_claims.json`), and FSM checks `f04.restore_digest` /
+`f04.restore_duplicate` (`tests/fsm_contract_claims.json`). The scope is
+caller-owned values observed through public port methods after each call. The
+checks use SIMULATED / READ_ONLY_FIXTURE data and LOCAL_FAKE_GATE. CAP-16 remains
+NOT_BOUND.
+
 `tests/test_protocol_delivery.py` replays the pinned Protocol fixtures for the
 refund obligation, frozen claim snapshot and bound draw through `PinnedFsmProducer`.
 It exercises the variance and shared-exposure vectors through `capital.protocol`.

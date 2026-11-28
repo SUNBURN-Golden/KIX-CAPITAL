@@ -5748,6 +5748,85 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## producer-value-isolation — local ownership checks (2026-11-04)
+
+Starting revision: `8ab3d954bd732aa80351d580d703500ebf50dcc5` on
+`agent/capital-producer-value-isolation`. The design was checked against the
+existing adapters before implementation. Neither adapter exposed a shared
+mutable value under these probes, so no production copying was added.
+`ProducerPort` signatures and serialized results remain unchanged.
+
+`tests/test_producer_port.py` now exports the stdlib-only
+`run_value_isolation_vectors(factory)`. Both `PinnedFsmProducer` and actual
+owned `GateHttpProducer()` loopback servers run five fresh-book scenarios:
+
+| Scenario | Caller mutation and guarded values |
+|---|---|
+| `command-results` | Mutate first and duplicate offer/approve/bind/draw/partial-repay results, nested credit and repayment dictionaries, repayment list structure, and non-null effects. Replay every pristine saved command, including earlier commands after later transitions, and compare its full original command-time payload with only `duplicate=True`, `applied=None`. |
+| `views` | Change credit fields, change and clear a repayment row, append/remove repayment entries, remove a view field. Compare full subsequent views, journal, canonical state, digest and original results on source and restored producers. |
+| `journal-exports` | Change an entry, its body, the offer face and nested obligation, clear obligations, append/remove entries. Preserve the same full source/restored baselines. |
+| `preview` | Start APPROVED and BOUND; mutate preview credit, repayment list and non-null effect. Repeat preview with equal values and verify the live book remains APPROVED with no draw journaled. |
+| `inputs-and-restore` | Replace/clear caller-owned offer and repay argument dictionaries after acceptance; mutate a journal after restoration; mutate restored views, exports and command results; advance only the restored book with an independent second repayment and retain its original result. |
+
+Expected values are detached before mutation; actual returned objects are
+mutated. Every state check also compares the digest to SHA256 of canonical
+state UTF-8 bytes. Each created/restored port's optional `close()` is registered
+immediately through `ExitStack`, including failure paths. Four deliberately
+aliasing doubles (result, view, journal, preview) must fail at a named mutation
+and invariant; all source/restored doubles must be closed. A separate gate test
+mutates command results, duplicate results and receipt lookups, then verifies
+the stored first receipt still has the original payload and `duplicate=False`.
+
+These are additional **local ownership checks** supporting existing mappings,
+not new upstream claim rows or stronger upstream guarantees:
+
+| Existing claim/check | Local supporting probe |
+|---|---|
+| `inv.3` in `tests/contract_invariants.json` | First-result preservation despite caller mutation and later lifecycle commands. |
+| `read.readonly.state` in `tests/read_model_claims.json` | Views, exports and preview results cannot mutate the live book. |
+| `f04.restore_digest`, `f04.restore_duplicate` in `tests/fsm_contract_claims.json` | Detached restoration input, equal initial canonical state/digest, retained command-time results and independent book progression. |
+
+Scope remains SIMULATED / READ_ONLY_FIXTURE and LOCAL_FAKE_GATE; CAP-16 remains
+NOT_BOUND, and this is not SEMANTIC_CONFORMANCE. Direct mutation of `.machine`
+or `.fixtures` internals and concurrent argument mutation during a call are
+outside these public-port checks. No new vector artifact, README needle,
+docs-surface registry entry, source repin, golden regeneration, dependency or
+consequential product decision was needed.
+
+Verification commands actually run (exit 0 unless stated):
+
+| Command | Result |
+|---|---|
+| `python3 -m unittest discover -s tests -p 'test_*producer*.py' -v` | Final focused run: 21 tests passed in 20.977s. First run had two failures/two errors in new test setup (gate operation-key syntax and stale negative-double caches); second run had one error from assuming receipt lookups carry command bodies. Those test setup errors were corrected without changing production behavior. |
+| `python3 -m unittest discover -s tests -p test_seams.py -v` | 6 tests passed. |
+| `python3 -m unittest discover -s tests -p test_fsm_contract_claims.py -v` | 11 tests passed. |
+| `python3 scripts/fsm_contract_claims_check.py --execute` | CLAIM_CONFORMANCE passed=35 total=35 failed=0; includes the five manifest SHA256 locks. No external Protocol citation verification is claimed by this invocation. |
+| `python3 scripts/docs_surface.py --check` | 36 routes, 273 artifacts, 9 stages; passed before and after the documentation additions. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 7 tests passed. |
+| `python3 -m compileall -q capital` | Passed. |
+| `node --check capital/static/app.js` | Passed. |
+| `npm ci` | Installed the existing three development packages; audit found zero vulnerabilities; no dependency files changed. |
+| `npm run test:browser` | Exit 1 before tests: default ports 8765/8766 are occupied by unrelated processes. Those processes were left alone. |
+| `git diff --exit-code 8ab3d954 -- capital/vendor capital/export.py .aiops capital/producer.py capital/gate_producer.py` | No differences, including `capital/vendor/manifest.json`. |
+| `python3 -` (stdlib AST/source comparison against `git show 8ab3d954:tests/test_producer_port.py`) | Existing `VECTORS`, `run_producer_vectors`, `_run_vector`, `_offer`, `_step` definitions are byte-identical to the starting revision. |
+| `sha256sum capital/vendor/manifest.json` | `b5ff2fca301bf456826dcbc9a6617521d528746efb03b8107f23b818fb4d6def`; manifest unchanged. |
+| `git diff --check` | Passed. |
+| `npm run test:browser -- --config build/producer-value-isolation/playwright.config.cjs` | All 76 tests passed (1.9m) using installed Chromium headless shell; the unchanged suite ran with ports 18765–18768. All four owned web servers stopped; no listener remained on those ports. |
+| `python3 -m unittest discover -s tests -v` | All 1,306 tests passed in 316.674s. |
+| `git diff --exit-code 8ab3d954 -- capital/vendor capital/export.py .aiops capital/producer.py capital/gate_producer.py capital/ports.py` | Final protected-path check passed; both adapters and mandatory port signatures are unchanged. |
+| `ss -ltnp '( sport = :18765 or sport = :18766 or sport = :18767 or sport = :18768 )'` | No listeners after browser completion or after the full Python suite. |
+
+The sole execution deviation was browser port isolation. The ignored temporary
+config imports the repository config, changes server/base URL ports, resolves
+`testDir` and server working directories to this worktree, and places browser
+results under `build/producer-value-isolation/`; it preserves test selection,
+workers, browser, assertions and server commands apart from their ports. The
+repository Playwright config and CI are unchanged. The initial full-Chromium
+path probe found no full browser at Playwright's expected path, but the installed
+matching headless shell ran the entire suite successfully after existing dev
+dependencies were installed. Verification logs are under the ignored
+`build/producer-value-isolation/` directory. No external messages were posted.
+
 ## facts-export-collector builder verification — 2026-11-01
 
 Implemented `scripts/collect_facts.py` and 19 stdlib HTTP/filesystem/CLI tests in
@@ -6773,6 +6852,42 @@ was weakened. The only initial verification issue was the focused-test invocatio
 recorded above; the documented discovery command and both complete discovery runs
 pass without changing the test.
 
+## producer-value-isolation — conflict-fix round 1 (2026-11-09)
+
+Resolved the supervisor-started merge of incoming main
+`5405d9ed870e563e7e2aca8f4b65f7b037db0474` into reviewed node
+`29e0fccbd59fb7a35dbfb513a805eb77809d6eb1`. The sole conflicting file was
+`docs/VALIDATION.md`: both appended histories are retained in full, and every
+nonblank line from both parents remains in order. Main's implementation, tests,
+decision bindings and fixtures survive; the reviewed ownership harness, gate
+tests and SEAMS mapping remain byte-identical to the reviewed node.
+
+No runtime or test fix was needed. The original producer command vectors and
+their helper definitions remain byte-identical to starting revision `8ab3d954`.
+Both adapter implementations, ProducerPort signatures, serialized results,
+legacy export, five vendor references and manifest are unchanged. These results
+remain local SIMULATED / READ_ONLY_FIXTURE observations through LOCAL_FAKE_GATE;
+CAP-16 stays NOT_BOUND. No new upstream conformance is asserted.
+
+| Verification actually run | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,420 passed in 497.286s. |
+| `python3 -m unittest discover -s tests -p 'test_*producer*.py' -v` | Exit 0; 21 passed in 20.156s, including both ownership implementations and aliasing negative controls. |
+| `python3 -m unittest discover -s tests -p test_seams.py -v`; `python3 -m unittest discover -s tests -p test_fsm_contract_claims.py -v` | Both exit 0; six and 11 tests passed respectively. |
+| `python3 scripts/fsm_contract_claims_check.py --execute` | Exit 0; CLAIM_CONFORMANCE passed=35 total=35 failed=0. This invocation does not claim external Protocol citation verification. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; 76 passed in 1.9m using installed Chromium 145.0.7632.6 with unchanged tracked configuration and assertions. Isolated loopback networking avoids unrelated listeners on default ports. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 276 artifacts, nine stages. |
+| `scripts/{event_stress_vectors,observation_triage_vectors,pack_vectors,manifest_vectors,finance_vectors,closeout_digest,decision_bindings}.py --check` (each separately) | All exit 0; incoming synthetic artifacts and combined decision inventory match without regeneration. |
+| Stdlib SHA256, AST/source and Git-parent preservation assertions | Five vendor locks pass; manifest, vendor directory, legacy export, adapters, ports, `.aiops/`, CI and historical root `DECISION_REQUIRED.md` equal both parents. Original command vectors/helpers and reviewed ownership tests/mapping are preserved. |
+| `git ls-files -u`; tracked-file conflict-marker scan; `git diff --check`; `git diff --cached --check` | No unmerged entries or conflict markers; whitespace checks pass. |
+
+Logs are under ignored `build/producer-value-isolation-merge-round1/`.
+The resolution is staged and the merge remains uncommitted for the supervisor.
+No commit, push, abort, rebase, reset, external post, Protocol/Commerce edit,
+provider call, funds movement, credential use or deployment occurred. No CI,
+test or assertion was weakened, and no consequential product decision was needed.
 ## provider-capture-recon — supervised conflict-fix round 1 (2026-11-10)
 
 Resolved the supervisor-started merge of incoming main
@@ -6988,6 +7103,52 @@ abort, rebase, reset, external post, real provider call, financial execution,
 real credential use, deployment, upstream modification or protected-path edit occurred.
 
 ## slice-shared-source-journey — conflict-fix round 2 (2026-11-10)
+
+Combined reviewed branch HEAD `22e4fae` with supervisor-provided `origin/main`
+`a791651` in the existing merge. The two conflicts were generated artifacts:
+`tests/vectors/closeout_digest.json` and its containing finance vector pack.
+The finance generator retains main's expanded read-model contract and route
+coverage. The closeout generator records fresh measured acceptance results for
+the merged tree, including all seven journeys; historical test counts are not
+added together. Main's default read-model command remains explicitly SKIPPED
+without a Protocol checkout; a separate read-only checkout verification records
+113/113 claims and 113/113 citations, without attributing those rows to the
+default acceptance run.
+
+The N5 implementation, focused tests and 105-step golden remain byte-identical
+to reviewed HEAD, including both disposable command orderings, holder-first
+cash accounting, stale quotes, double-use and source-overrun refusals. All nine
+incoming files under `capital/` remain byte-identical to `origin/main`. Both
+documentation histories and the seven-journey acceptance wiring survive.
+All evidence remains SIMULATED, `funds_executed:false`, `integrated:false`,
+with no qualification or changing-source persistence claim. Browser acceptance
+uses an isolated user/network namespace with only loopback enabled; unrelated
+services on the shared browser ports are left untouched. No checks, guards,
+timeouts or CI configuration were weakened.
+
+| Command / evidence | Measured result |
+| --- | --- |
+| Focused journey, slice, acceptance, docs-surface, finance and closeout unittest modules | 205 passed in 37.681s; `build/merge-round2-focused.log`. |
+| `python3 scripts/sim_journeys.py --journey N5-sim --check` | Exit 0; 105 steps; unchanged digest `15990d10d208e4c7929074a8793f14ffbac922a84051545e8a3e8533e3c5d90a`. |
+| `unshare --user --map-root-user --net sh -c 'ip link set lo up && python3 scripts/acceptance.py --evidence build/merge-round2-acceptance.json'` | Exit 0; all nine stages passed; raw evidence `ok:true`, `SIMULATED`, `funds_executed:false`, `integrated:false`; log `build/merge-round2-acceptance.log`. |
+| `python3 -m unittest discover -s tests -v` inside acceptance | 1,462 passed in 502.966s; zero failures or skips. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Seven passed standalone and in acceptance. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `npm run test:browser` inside isolated acceptance | 76 Chromium tests passed; existing configuration and assertions unchanged. |
+| Remaining acceptance stages | Storage 19; upstream 283 passed / 285 total with two documented divergences and read-model checker separately SKIPPED; packaged smoke 11; seeded demo one; all seven journey pins match. |
+| `python3 scripts/read_model_claims_check.py --protocol-dir /workspace/capital-run/kixproto-ro` | Exit 0; 113/113 claims and 113/113 citations; read-only reference checkout. |
+| Pack, manifest, event-stress, observation-triage and upstream-repin checks | Exit 0; nine pack files, 19 manifest files and three event-stress cases match; triage PASS; re-pin HOLD with no findings. |
+| `python3 scripts/closeout_digest.py --write --evidence build/merge-round2-acceptance.json`; `python3 scripts/finance_vectors.py --write` | Regenerated 4,572-byte closeout and 102,318-byte finance container from the passing merged-tree run; retained main's 39 read-model GET routes. |
+| Closeout `--check-evidence` against that run and `--check`; finance `--check`; docs-surface `--check` | All exit 0; standalone and embedded bytes agree; 37 dispatch routes, 276 artifacts, nine stages. |
+| `python3 -m unittest tests.test_closeout_digest tests.test_finance_vectors -v` after regeneration | 115 passed in 3.682s; `build/merge-round2-regenerated.log`. |
+| Preservation audit | All seven non-closeout finance groups equal main; five vendor SHA256 locks and manifest unchanged; legacy export and `.aiops/` unchanged; historical root decision state inherited from main without edits. |
+
+The measured package SHA256 remains main's
+`4b108a62d9caf1336fa79cc562f53147e7bd33d5598316c32a5beb41e9890644`.
+Only fresh measured unit and journey counts change main's closeout evidence;
+no runtime code changed during this conflict resolution. The merge is left
+resolved and uncommitted for the supervisor. No abort, commit, push, rebase,
+reset, external post, real provider call, credential use or deployment occurred.
 
 Combined reviewed branch HEAD `22e4fae` with supervisor-provided `origin/main`
 `a791651` in the existing merge. The two conflicts were generated artifacts:
@@ -7692,6 +7853,42 @@ digest is `1ca7f8ce394f88ab077b206da117163867983294efa8e4d119cb657684d46174`.
 The standalone closeout matched the acceptance evidence and its embedded copy
 in the regenerated finance vectors.
 
+## producer-value-isolation — PR fix round 2 (2026-11-26)
+
+The staged `origin/main` baseline at `3b92675` already includes the CI fix
+from `4b0c8b4`. Both the browser and acceptance jobs use `ubuntu-24.04` and
+install Chromium with system dependencies. Playwright 1.58.2 produced an
+Ubuntu 24.04 install plan in a local dry run. The supplied Ubuntu 26.04 job
+failed before any browser tests ran. Hosted verification is pending.
+
+The incoming baseline also contains main's `8ba7f6c` Protocol pin. Its manifest
+and all 69 SHA256-locked references match `origin/main` byte for byte. The
+historical `7481b0e` manifest and its five references passed the same hash
+checks in branch commit `687c2d9`. The focused producer suite ran on
+both pins, using a separate Git archive for `7481b0e`.
+
+The passing vectors support `inv.3`, `read.readonly.state`,
+`f04.restore_digest` and `f04.restore_duplicate` through the public
+`ProducerPort`. Both adapters passed with their existing ownership behavior.
+The observations use `SIMULATED` data and the loopback `LOCAL_FAKE_GATE`.
+CAP-16 remains `NOT_BOUND`.
+
+| Local verification | Result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -v` | 1,647 passed, including `V1UnchangedTests`. |
+| `python3 -m unittest discover -s tests -p 'test_*producer*.py' -v` | 21 passed on each vendor baseline, including the aliasing negative controls. The same 21 passed on Python 3.12 on the staged baseline. |
+| Seam and FSM claim unit tests, `scripts/fsm_contract_claims_check.py --execute` and `scripts/gate_faults.py --check` | 6 seam tests, 11 FSM claim tests, 35 local claim checks and 7 loopback fault cases passed. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 8 passed on the staged baseline and 7 on the historical pin. |
+| `python3 -m compileall -q capital`, `node --check capital/static/app.js`, `python3 scripts/docs_surface.py --check` | Passed. The docs surface covers 38 routes, 276 artifacts and 9 stages. |
+| `npm run test:browser` | 113 passed using installed Playwright 1.58.2 and Chromium in an isolated loopback namespace. |
+| `python3.12 scripts/acceptance.py` | All 9 stages passed with `ok: true`, including 1,647 unit tests, 113 Chromium tests and 7 simulated journeys. The run used a disposable worktree at `origin/main` with the node diff applied and isolated loopback networking. |
+| Two package builds, `cmp` and `scripts/smoke_release.py` | Identical zipapps and 11 packaged smoke checks passed. |
+| Original command vector and protected-byte comparison | The original vector definitions and runner match `8ab3d954`. Producer adapters, port signatures, vendor tree and manifest, legacy export and `.aiops/` match incoming main. |
+
+Local browser runs reused installed lockfile versions after the offline npm
+cache lacked the Playwright package tarballs. Logs and acceptance evidence are
+under the ignored `build/producer-value-isolation-round2/` directory.
+
 ## Finance property fuzz — supervised conflict-fix round 2 (2026-11-24)
 
 The merge combines `4287558` with incoming main `aeca0ad`. The unit stage runs
@@ -7716,3 +7913,43 @@ Their `SIMULATED` evidence records `funds_executed: false`.
 Local evidence and logs are under `build/finance-property-fuzz-merge-round2/`.
 The packaged simulation SHA256 is
 `f686212a36563b9f4a43d736c3084076e150d1f3ca86a1ad0037d3d5e1d57d92`.
+
+## Producer value isolation — supervisor conflict-fix round 1 (2026-11-28)
+
+The pending merge combines `6f1348d` with incoming main `449e73b`. The
+ownership harness still runs against `PinnedFsmProducer` and the loopback
+`GateHttpProducer`, including the deliberately aliasing controls. It supports
+the existing `inv.3`, `read.readonly.state`, `f04.restore_digest` and
+`f04.restore_duplicate` checks with `SIMULATED` fixtures. CAP-16 remains
+`NOT_BOUND`. [Port registry and claim mappings](SEAMS.md)
+
+The pack generator reproduced all nine incoming pack fixtures, including the
+updated decision inventory. The combined acceptance run supplied the new unit
+count and package SHA256 for `tests/vectors/closeout_digest.json`. The finance
+generator embedded that digest. The candidate metadata and the other seven
+finance groups match incoming main. The merged requirements table contains
+one CAP-04 row with the UC3 replay, and the integration guide contains one
+copy of the fake-gate instructions.
+
+Both parents already carry Protocol pin `8ba7f6c`. All 69 locked files and
+the manifest match both parents byte for byte. The five historical `7481b0e`
+locks also verify at `687c2d9`. The original producer command vectors and
+legacy export passed their byte comparisons.
+
+| Local verification | Result |
+| --- | --- |
+| `python3 scripts/acceptance.py` with isolated loopback networking and installed Chromium | All nine stages passed. Unit discovery passed 1,685 tests, the vendor suite passed eight tests, Chromium passed 113 tests, and all seven simulated journeys passed. The evidence records `ok: true` and `funds_executed: false`. |
+| Producer discovery on the merge and on an archive of `687c2d9` | 21 tests passed on each pin. |
+| `scripts/fsm_contract_claims_check.py --execute` and `scripts/gate_faults.py --check` | 35 local claim checks passed and all seven loopback fault cases matched. |
+| `python3 -m compileall -q capital`, `node --check capital/static/app.js` and `python3 scripts/docs_surface.py --check` | Passed. The docs inventory covers 38 routes, 277 artifacts and nine stages. |
+| Closeout `--check` and `--check-evidence`, finance vectors `--check` and pack vectors `--check` | Passed. The closeout matches the recorded evidence and its embedded copy. |
+| Acceptance, closeout, finance vector, evidence pack and seam unit modules after regeneration | 149 tests passed. |
+
+Acceptance logged two documented upstream claim divergences and skipped the
+optional read-model claim execution without a Protocol checkout argument.
+Local evidence, logs and browser output are under
+`build/producer-value-isolation-conflict-fix-1/`. The browser reporter replaced
+two tracked output symlinks with directories during the run. The output was
+saved with the logs and both original symlinks were restored.
+The packaged simulation SHA256 is
+`f2d0c882898b4b66a7dd35f6c4fbe0787e6e4b2fbb6f326e154cb7797d3f3b9c`.
