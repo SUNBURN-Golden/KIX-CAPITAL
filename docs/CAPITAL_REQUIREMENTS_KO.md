@@ -8,7 +8,7 @@ as cited in CAPITAL_UPSTREAM_BINDING section 2. This is not the FSM pin or an
 adoption of production identity, aliasing, authenticated queries, or wire layout.
 
 2026-10-18. Capital 구현 기준 main `f1c5651b40bf9a15077a37a9769276dc28b8e1a1`.
-실행·참조 소비자가 고정하는 Protocol 기준은 셋이며 범위가 다르다. (1) **`7481b0e16ce9b903abbffa62249bb91cd9e63cfe`**: vendor된 F04·F01–F03 FSM reference 다섯 파일의 바이트 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. (3) **`e2313ab473ea1b5a7b5b9246a564749188c1c2c8`**: STATE_LIFECYCLE.md LC-TERM/LC-FACT/LC-CUT 인용 핀(`tests/lifecycle_claims.json`); FSM vendor 핀과 별개다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
+실행·참조 소비자가 고정하는 Protocol 기준은 셋이며 범위가 다르다. (1) **`8ba7f6c36373ac0ec49246f51f7471c164ac3a28`**: F04·F01–F03 reference 전체 69개 파일과 OpenAPI·SDK·로컬 게이트의 전달 핀(`capital/vendor/manifest.json`에 SHA256 잠금). (2) **`e2a029d8ac3af7575888dac22fc4bf173ebec232`**: AI 위임 권한 계약 초안 0.1(`docs/contracts/AI_DELEGATION_AUTHORITY.md`)과 `reference/ai_delegation/` mock의 읽기 전용 인용 핀([CAPITAL_UPSTREAM_BINDING.md](decisions/CAPITAL_UPSTREAM_BINDING.md) §3.9; agent lane, `tests/agent_claims.json`이 인용). (2)의 mock은 `capital/vendor/`에 vendor하지 않았고 manifest에 해시도 없다. (3) **`e2313ab473ea1b5a7b5b9246a564749188c1c2c8`**: STATE_LIFECYCLE.md LC-TERM/LC-FACT/LC-CUT 인용 핀(`tests/lifecycle_claims.json`); FSM vendor 핀과 별개다. Commerce main 확인 `7c2452645c50b8ede17bdd762794adeabe42319e`.
 위 고정은 나열한 실행·참조 소비자에만 묶는다. (1)은 FSM 원본·vendor 바이트와 그 FSM·읽기 모델 클레임 표(`tests/upstream_claims.json`, `tests/fsm_contract_claims.json`, `tests/read_model_claims.json`, `tests/ce1_claims.json`, `tests/contract_invariants.json`)의 인용에, (2)는 AI 위임 초안 인용과 `tests/agent_claims.json`에, (3)은 수명 계약 인용과 `tests/lifecycle_claims.json`에 적용된다. `docs/decisions/`의 각 결정 노트는 `기준`·`bases` 칸에 그 노트 작성 시점의 역사적 연구 체크아웃을 따로 기록한다(예: [CAPITAL_CLAIM_SLICE_REGISTRY.md](decisions/CAPITAL_CLAIM_SLICE_REGISTRY.md)의 kix-protocol `9eb6b9f`). 그 값은 노트의 출처 증명이며 실행·참조 구속이 아니므로 위 고정의 범위 밖이다. 이전 CI·설계 후보·미래 계획의 존재를 현재 구현 완료로 옮기지 않는다.
 
 `tests/contract_invariants.json` is a declared, unregistered EXECUTABLE_CITATION consumer of (1), §3 INV-1..INV-5 prose only. `CLAIM_CONFORMANCE` / `SIMULATED`; kernel execution and vendor additions are false. Follow-up `upstream-repin-inventory-contract-invariants` registers binding-note §3.2 bound_tables, §3.6 default impact list and the decision_bindings test_module record; current status `PENDING_NOTE_REGISTRATION`.
@@ -77,11 +77,27 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 자동 수집·import·예측·what-if·영속 이력 DB·새 회계정책은 범위 밖이다.
 계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
 
+## evidence-crosscut-check
+
+`capital/evidence_crosscut.py` / `tests/test_evidence_crosscut.py`:
+`python3 -m capital.evidence_crosscut --workspace FILE --manifest FILE --facts DIR`은
+명시한 워크스페이스 파일, export manifest, facts 디렉터리를 각각 한 번 캡처해
+기존 오프라인 검증기(`audit_workspace_bytes`, `verify_manifest`, 캡처한 페이지
+바이트에 대한 `facts.verify_dir` 재생 코어)로 검증한 뒤 셋이 공유하는 F04 저널
+내용, 재생 `state_digest`·`journal_length`, 오버레이 존재·내용·digest, fixture
+digest를 비교한다. 서로 다른 컷에서 온 개별적으로 유효한 아티팩트는 각자의 내부
+해시가 맞아도 `CROSS_*` 이름의 사유로 실패한다. 빈 오버레이 V2 조합과 비어 있지
+않은 V3 조합은 통과하며, 누락·검증 실패 입력은 의존 검사를 `NOT_CHECKED`로 두고
+exit 1이다. 서명은 선택적 DEV_ONLY 키/키셋으로 manifest 무결성만 검사한다.
+페이지 수집·SQL 투영·새 manifest 형식·서명·출처 인증·완전히 일관된 대체 장부로의
+통째 교체 탐지는 범위 밖이고 `wholesale_replacement`는 `NOT_DETECTABLE`이다.
+계약은 `docs/INTEGRATION.md`, 실제 실행 증거는 `docs/VALIDATION.md`를 참조한다.
+
 ## 권위와 전체 범위
 
 사용자의 2026-10-07 지시는 Capital을 `SUNBURN-Golden/KIX-CAPITAL`에 구현하며 KIX Protocol의 큰 청사진을 따르라는 것이다. 따라서 과거 Finance 후보의 “새 저장소 없음/화면은 Commerce” 토폴로지는 이번 **Capital 로컬 개발 위치**에 적용하지 않는다. 그것이 후보 금융 정책 채택·AIOPS 신규 프로그램 생성·upstream 노드 완료·운영 권한 확대를 뜻하지는 않는다. Protocol·Commerce는 수정하지 않는다.
 
-현행 범위의 정본은 [DEVELOPMENT_PLAN](https://github.com/SUNBURN-Golden/kix-protocol/blob/7481b0e16ce9b903abbffa62249bb91cd9e63cfe/docs/DEVELOPMENT_PLAN.md)과 채택된 결정이다. `BLUEPRINT_20260914` 및 `PROTOCOL_MASTERPLAN_V2/V23/V24`의 폐기 표시는 **현행 작업 승인으로 사용하지 말라는 의미**다. 금융 목표와 과거 안전 요구를 버리라는 의미로 읽지 않는다. `FINANCE_COMPLETION_DESIGN_KO`는 PENDING_NOT_ADOPTED이며 stage5/6 선행을 유지한다.
+현행 범위의 정본은 [DEVELOPMENT_PLAN](https://github.com/SUNBURN-Golden/kix-protocol/blob/8ba7f6c36373ac0ec49246f51f7471c164ac3a28/docs/DEVELOPMENT_PLAN.md)과 채택된 결정이다. `BLUEPRINT_20260914` 및 `PROTOCOL_MASTERPLAN_V2/V23/V24`의 폐기 표시는 **현행 작업 승인으로 사용하지 말라는 의미**다. 금융 목표와 과거 안전 요구를 버리라는 의미로 읽지 않는다. `FINANCE_COMPLETION_DESIGN_KO`는 PENDING_NOT_ADOPTED이며 stage5/6 선행을 유지한다.
 
 읽은 계획군과 적용 사항:
 
@@ -101,17 +117,17 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 | ID | 청사진 요구 | 현재 제품·검증 | 상태 / 다음 선행 |
 |---|---|---|---|
-| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 조건 오버레이(조회 `GET /api/overlay`; sim_day 시계의 유일한 작성자 `POST /api/overlay/commands` — organizer 전용 advance_day from→to CAS가 sim_day를 전진시키고 ACT/365 단리 이자 메모를 계상, F04 저널·state_digest 불변), 읽기 전용 상환 배분 견적(`GET /api/terms/{id}/allocation`), 읽기 전용 포트폴리오 조건 롤업(`GET /api/terms/portfolio`), 읽기 전용 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, `SIMULATED_CASH_FORECAST`)과 U1–U6 인수 기록(`GET /api/underwrite/{id}`, `SIMULATED_UNDERWRITING_RECORD`), 운영 데스크(`#desk`, 브라우저 전용 화면: `POST /api/overlay/commands`의 advance_day로 sim_day를 전진시키는 제어, F04 저널과 오버레이 기록을 합친 사례 타임라인, 서버가 사유를 붙인 다음 작업; 새 서버 경로·권한 없음). 고정된 upstream 읽기 모델 초안 `docs/contracts/READ_MODEL_QUERIES.md`(`7481b0e`)의 §2.12 `get_credit_advance`·§2.13 `get_credit_claim`·§8 비변경을 인용한 클레임 표 `tests/read_model_claims.json`과 `scripts/read_model_claims_check.py`가 기존 읽기 표면(`GET /api/state`의 case 뷰, in-process `CreditMachine.view_claim`)에 대조한다(`CLAIM_CONFORMANCE`; 모든 검사는 §8 비변경 가드 아래 읽기를 실행하고, upstream 쿼리 이름 구현·경로 추가·카탈로그 승격은 아님) | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 합성만: 쓰기는 오버레이 시계 명령뿐, 이자는 미지급 메모, 실자금 이동 없음 |
+| CAP-01 | 대여·선지급 전 기간 | F04 offer/approve/reject/cancel/bind/draw/repay/close/default/reconcile API·화면, 조건 오버레이(조회 `GET /api/overlay`; sim_day 시계의 유일한 작성자 `POST /api/overlay/commands` — organizer 전용 advance_day from→to CAS가 sim_day를 전진시키고 ACT/365 단리 이자 메모를 계상, F04 저널·state_digest 불변), 읽기 전용 상환 배분 견적(`GET /api/terms/{id}/allocation`), 읽기 전용 포트폴리오 조건 롤업(`GET /api/terms/portfolio`), 읽기 전용 현금 사다리 예측(`GET /api/terms/portfolio/forecast`, `SIMULATED_CASH_FORECAST`)과 U1–U6 인수 기록(`GET /api/underwrite/{id}`, `SIMULATED_UNDERWRITING_RECORD`), 운영 데스크(`#desk`, 브라우저 전용 화면: `POST /api/overlay/commands`의 advance_day로 sim_day를 전진시키는 제어, F04 저널과 오버레이 기록을 합친 사례 타임라인, 서버가 사유를 붙인 다음 작업; 새 서버 경로·권한 없음). 고정된 upstream 읽기 모델 초안 `docs/contracts/READ_MODEL_QUERIES.md`(`8ba7f6c`)의 §2.12 `get_credit_advance`·§2.13 `get_credit_claim`·§8 비변경을 인용한 클레임 표 `tests/read_model_claims.json`과 `scripts/read_model_claims_check.py`가 기존 읽기 표면(`GET /api/state`의 case 뷰, in-process `CreditMachine.view_claim`)에 대조한다(`CLAIM_CONFORMANCE`; 모든 검사는 §8 비변경 가드 아래 읽기를 실행하고, upstream 쿼리 이름 구현·경로 추가·카탈로그 승격은 아님) | SIMULATED; 이자·기간·손실은 [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md)의 **PROVISIONAL (CAPITAL-TERMS-V1)** 를 오버레이가 표시한다. 청약·실자금·upstream 채택 아님. 로컬 합성만: 쓰기는 오버레이 시계 명령뿐, 이자는 미지급 메모, 실자금 이동 없음 |
 | CAP-02 | 수익참여·배분 | 제품 연동 준비 카드와 일회용 장부의 잠정 배정 순서 비교 | DECISION_REQUIRED: 수익/원가·회수 순서·비율/상한·조정은 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 고정 FSM이 표현하지 못해 FSM 경로는 계산하지 않음; 단일 청구 게시만 `GET /api/policy/shadow`가 SHADOW_NOT_APPLIED 그림자로 계산(CAPITAL_SHADOW_POLICY §3.7); V2 §7 |
-| CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 UNSUPPORTED_BY_PINNED_FSM; 슬라이스 크기·가격만 SHADOW_NOT_APPLIED 그림자로 계산하고 등록부는 SHADOW_DEFERRED (CAPITAL_SHADOW_POLICY §3.7) |
-| CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사, 읽기 전용 완전성·차입기초·준비금 표시, 읽기 전용 상계·회수 제안 견적(`GET /api/terms/{advance_id}/setoff` — CAPITAL-TERMS-V1의 ADOPTED `collateral_execution` 1차 단계 `SETOFF_AGAINST_BENEFICIARY_SETTLEMENT_DISTRIBUTION`만 적용, `proposal_only` true·`applied` false), 마진콜·치유기간(cure window)·가속·DEFAULT_ELIGIBLE 제안(사람 운영자용 제안뿐, F04 default 미호출·F04 저널 불변)을 `POST /api/overlay/commands`의 advance_day 틱이 오버레이에 기록하고 `GET /api/overlay`의 margin 블록이 조회한다. 일회용 장부(SIMULATED_DISPOSABLE_BOOK, ScenarioReplaySource)에서만 발동하고 워크스페이스 fixture는 FIXTURE_VIEWS_IMMUTABLE로 triggered false, 읽기 전용 포트폴리오 위험 분석 `GET /api/risk`(라벨 SIMULATED, `projection:read`): 손실 준비금 요구액은 CAPITAL-TERMS-V1 표(150/500/2500/10000 bps)의 건별 내림 합이며 회계 정책이 아니고 기장하지 않음(applied false), 고정 환불 충격 `[500, 1000, 2500, 5000]` bps 스트레스는 SIMULATED 가정이며 마진콜을 기록하지 않음(applied false) | SIMULATED; [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) **PROVISIONAL (CAPITAL-TERMS-V1)**. 집행·심사 규칙은 applied false. 청약·upstream 채택 아님. 로컬 합성만; 마진 규칙은 SIMULATED 메모이며 담보 집행·법적 채무불이행 아님; 가속 후 이자 재기준과 부도 명령일 기준 상각 적격일, 부도 후 회수·상각 메모는 PROVISIONAL per docs/decisions/CAPITAL_DEFAULT_RECOVERY.md 를 적용한 overlay-recovery-writeoff로 구현됨(가속 건 interest_rebased true, recovery 블록 SIMULATED·proposal_only true·f04_default_called false); 준비금 원장은 NOT_BOUND |
+| CAP-03 | 정산채권 양도·매입 | 금융권리/관람권 분리 표시, 원 claim 조회 | DECISION_REQUIRED: 원 채권·배정량·보유자·대가·우선순위·회수는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 UNSUPPORTED_BY_PINNED_FSM; 슬라이스 크기·가격과 로컬 provisional 등록부는 SHADOW_NOT_APPLIED / SIMULATION_ONLY_NOT_OFFERED_V1이며 CAPITAL_CLAIM_SLICE_REGISTRY 결정 노트를 따른다. /#desk는 organizer·auditor의 읽기 전용 상태·담보 예약·holder service·recourse·견적 검사만 제공하고 실제 양도·인증·집행·운영 채택은 NOT_BOUND다 (기존 parked shadow-policy workbench는 변경 없음) |
+| CAP-04 | 담보·준비금 | 공유 액면 예약·해제·미이행 유지 검사, 읽기 전용 완전성·차입기초·준비금 표시, 읽기 전용 상계·회수 제안 견적(`GET /api/terms/{advance_id}/setoff` — CAPITAL-TERMS-V1의 ADOPTED `collateral_execution` 1차 단계 `SETOFF_AGAINST_BENEFICIARY_SETTLEMENT_DISTRIBUTION`만 적용, `proposal_only` true·`applied` false), 마진콜·치유기간(cure window)·가속·DEFAULT_ELIGIBLE 제안(사람 운영자용 제안뿐, F04 default 미호출·F04 저널 불변)을 `POST /api/overlay/commands`의 advance_day 틱이 오버레이에 기록하고 `GET /api/overlay`의 margin 블록이 조회한다. 일회용 장부(SIMULATED_DISPOSABLE_BOOK, ScenarioReplaySource)에서만 발동하고 워크스페이스 fixture는 FIXTURE_VIEWS_IMMUTABLE로 triggered false, 읽기 전용 포트폴리오 위험 분석 `GET /api/risk`(라벨 SIMULATED, `projection:read`): 손실 준비금 요구액은 CAPITAL-TERMS-V1 표(150/500/2500/10000 bps)의 건별 내림 합이며 회계 정책이 아니고 기장하지 않음(applied false), 고정 환불 충격 `[500, 1000, 2500, 5000]` bps 스트레스는 SIMULATED 가정이며 마진콜을 기록하지 않음(applied false); UC3 일회용 합성 replay는 각 도착별 보류·경계일 적격성·운영자 검토 제안을 산출한다(`capital/uc3_replay.py`, SHADOW_NOT_APPLIED·funds_executed false). 제안 후에도 현금은 보류되며 실제 집행 없음 | SIMULATED; [docs/decisions/CAPITAL_FINANCIAL_TERMS.md](decisions/CAPITAL_FINANCIAL_TERMS.md) **PROVISIONAL (CAPITAL-TERMS-V1)**. 집행·심사 규칙은 applied false. 청약·upstream 채택 아님. 로컬 합성만; 마진 규칙은 SIMULATED 메모이며 담보 집행·법적 채무불이행 아님; 가속 후 이자 재기준과 부도 명령일 기준 상각 적격일, 부도 후 회수·상각 메모는 PROVISIONAL per docs/decisions/CAPITAL_DEFAULT_RECOVERY.md 를 적용한 overlay-recovery-writeoff로 구현됨(가속 건 interest_rebased true, recovery 블록 SIMULATED·proposal_only true·f04_default_called false); 준비금 원장은 NOT_BOUND |
 | CAP-05 | 청구·수취인·분할 정산 | F01–F03 고정 시나리오에서 두 배정 순서·부분 명세서·중복/상충·늦은 현금의 단계별 의무 비교. 잠정 순서는 일회용 장부에서만 비교 | READ_ONLY_FIXTURE; 운영 배분 순서는 미채택. 잠정 순서는 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md |
 | CAP-06 | 환불·공연취소·회수 | 배정 전/후 부분 환불, 단일 전액 vs 분할 환불, 취소 수락·회수·은행 미종결 비교; 환불 부담 RC1–RC4(RC5는 리셀로 라우팅)·리셀 해제 RU1–RU3의 읽기 전용 그림자 산술 `GET /api/policy/shadow`(SHADOW_NOT_APPLIED, 적용·자금 집행 아님) | 일부 SIMULATED; 부분 환불·리셀 과거계약 취소 부담은 PROVISIONAL per docs/decisions/CAPITAL_SETTLEMENT_POLICY.md 이고 requires upstream FSM change; 그림자 결과는 FSM에 적용하지 않음(applied_to_fsm false), 단일 청구 수익 참여 게시·슬라이스 크기/가격·UC1–UC4 분할은 SHADOW_NOT_APPLIED 그림자로만 계산하고 다중 청구·창·등록부·타이머·배치는 SHADOW_DEFERRED |
 | CAP-07 | 최초 판매·반복 리셀·입장 연계 | trade/claim identity 조회, 권리/금융 분리 | NOT_BOUND: Commerce 실여정·Protocol producer tuple; 이 PR은 티켓 생성/이전 없음 |
 | CAP-08 | 초과 배정·현금/한도 구별 | 동일 claim 두 draw 경합, 부분 repay 후 예약 유지, close만 해제; 활성 상태를 바꾸지 않는 인출 사전점검 | SIMULATED; 외부 담보/분산 자원 한도 아님 |
 | CAP-09 | 승인액/매출/권리확정/지급/환불 보고 | 로컬 다섯 구분 명세서: 승인·노출/상환/잔액·예약은 FSM 조회(SIMULATED), 정산 확인/배정·환불은 고정 fixture. `primary_sales`·`resale_sales`·`actual_paid`는 NOT_BOUND이고 최초판매와 리셀은 합산하지 않음. cut·fixtures digest·capacity bound 표기 | SIMULATED(로컬 후보); 로컬 진단만; 실지급·세무 보고·은행 대사 아님 |
 | CAP-10 | 원 operation/최초 결과/UNKNOWN | 단일 POST, 원 receipt 조회, absent→UNKNOWN, reload·old-instance fence, 옵트인 로컬 파일 재시작 복원. `tests/lifecycle_claims.json`·`scripts/lifecycle_claims_check.py --execute`의 12개 loopback HTTP 대응 검사(CLAIM_CONFORMANCE / SIMULATED / funds_executed false); 체크아웃 없으면 인용 SKIPPED. 후기 현금은 READ_ONLY_FIXTURE이며 운영 종결·provider custody·분산 lease fencing 구현은 아님 | SIMULATED(로컬 후보); 개발용 LOCAL_FILE_WORKSPACE. stage5 내구 거래·inbox/outbox·호스트 간 fencing은 CAP-11 |
-| CAP-11 | 내구 거래·inbox/outbox·장애복구 | 연동 계약과 미지원 상태 | NOT_BOUND: `k-stage5-durable-tx`·backend 채택·v5, 자체 저장엔진 만들지 않음 |
+| CAP-11 | 내구 거래·inbox/outbox·장애복구 | 연동 계약과 미지원 상태; UC3 replay의 수량·논리일 검증은 일회용 메모리 검사만 제공하며 내구성·저장·inbox/outbox 연동을 구현하지 않음 | NOT_BOUND: `k-stage5-durable-tx`·backend 채택·v5, 자체 저장엔진 만들지 않음 |
 | CAP-12 | 자산별 정확한 금액·FX | KRW 고정 프로파일, int 검증, 포트폴리오 BigInt 표시. KRW를 코드에 한 번 선언한 AssetSpec(`{namespace: fiat, reference: KRW, decimals: 0, max_atoms: 10^12}`)을 `GET /api/state`와 export manifest `source_pin`의 `assets`로 노출하고, 명령 본문의 선택 `asset`이 그 선언과 다르면 `ASSET_MISMATCH`로 적용 전에 거절한다(저널·receipt 없음). `docs/decisions/CAPITAL_UPSTREAM_BINDING.md` §3.6의 PROVISIONAL 결정 | 일부 SIMULATED; u128·registry/정밀도·FX quote/execution은 별도 계약. registry DEFERRED, FX NOT_ADOPTED, 다중 자산 원장·교차 자산 합산 없음 |
 | CAP-13 | 복식 금융 투영 | 로컬 후보 복식 투영 · `SYNTHETIC_UNADOPTED` 표기 · 운영 원장 `NOT_BOUND` | SIMULATED(로컬 후보); fin-ledger-contract·stage5/6 선행 유지, 계정/수익인식/세무 미정; 추가형 `CAPITAL-COA-V1` 후보(`mode=coa-candidate`, `SIMULATION_FIXED_V2`)도 `SYNTHETIC_UNADOPTED`  별도 ALLOWANCE_CANDIDATE_V2: TERMS 건별 차액 1190/5100·단일 상각 환입·reserve_pool 무분개 메모, 전체 KRW cut 증거. SIMULATED / policy_adopted=false / NOT_IN_EXPORT_V1. |
 | CAP-14 | 원관측·대사 예외 | 기본 CHECK_IDS 여섯 검사와 조건부 overlay 검사 유지. 후보 모드만 기존 다섯 COA 검사 및 allowance_vs_risk_reserve 추가: 같은 cut·모집단·정책의 max(충당금, TERMS 바닥)와 risk 필요액을 오차 0으로 대사. MATCH만 통과, MISMATCH/CUT_MISMATCH/NOT_BOUND는 실패. offline verify --workspace DIR --mode coa-candidate 동일 재계산. | SIMULATED 로컬 진단; 은행·PG·제공자 관측·인증 완전성 NOT_BOUND; policy_adopted=false / NOT_IN_EXPORT_V1 |
@@ -120,7 +136,7 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 | CAP-17 | 공개/비공개·권리 규모 | 외부 의존성과 관람권 비권위 표시 | NOT_BOUND: RS-0~5, privacy/currentness, 1024/16384/65536 규모 검증 없음 |
 | CAP-18 | 선택적 토큰 담보·보상 | 향후 연동 설명, 외부 호출·발행 코드 없음 | NOT_AUTHORIZED: TL 계약·coin lock/user 결정; KRW 목을 토큰 한도로 확장 안 함 |
 | CAP-19 | AI 운영·권한·최소공개 | 로컬 합성 역할(organizer/auditor/observer/agent)을 서버가 강제하고 receipt에 표시. agent는 SIMULATED QUERY/PROPOSE 픽스처만 호출하고 제안은 HUMAN_PENDING이며 effects_executed는 false. 계정·비밀번호·개인정보 없음. `tests/agent_claims.json`과 `scripts/agent_claims_check.py`가 초안 `e2a029d`의 클레임을 이 SIMULATED agent lane에 대조한다(`CLAIM_CONFORMANCE`; 결과는 SIMULATED이고, upstream 인용 드리프트 검사는 프로토콜 체크아웃 없이는 `SKIPPED`이며 통과가 아니다) | NOT_BOUND: AgentGrant/ActionPermit, 실제 IdP·KYC·자격증명, 현재 근거·권한·비밀 분리. SIMULATED 레인은 실권한 아님 |
-| CAP-20 | 접근성·통합 수용 | 실제 browser 정상/거절/UNKNOWN/reload, mobile, keyboard, screenshot, 운영 데스크 `#desk`(sim_day 제어·사례 타임라인·서버 사유 다음 작업)의 organizer/auditor/observer 데스크톱·375px 검증(`tests/browser/operator-desk.spec.cjs`) | SIMULATED(자동검증만); 사용자 수용 PENDING, full T01→T06/서비스 qualification 미실행 |
+| CAP-20 | 접근성·통합 수용 | 실제 browser 정상/거절/UNKNOWN/reload, mobile, keyboard, screenshot, 운영 데스크 `#desk`(sim_day 제어·사례 타임라인·서버 사유 다음 작업)의 organizer/auditor/observer 데스크톱·375px 검증(`tests/browser/operator-desk.spec.cjs`); `tests/vectors/uc3_replay.json` 및 `scripts/uc3_replay.py --check`는 UC3 경계일·중복·충돌·역행·용량 거절과 제안/보류 보존의 결정적 SIMULATED CLI 증거만 제공 | SIMULATED(자동검증만); 사용자 수용 PENDING, full T01→T06/서비스 qualification 미실행 |
 
 ## Finance 후보 8개를 유지하는 후속 위치
 
@@ -140,6 +156,26 @@ profile/수익자 매핑 일치, sim_day 비감소, F04/overlay journal prefix �
 
 어댑터 정체성의 로컬 CLAIM_CONFORMANCE: `tests/adapter_identity_claims.json`과 `python3 scripts/adapter_identity_claims_check.py --execute` (SIMULATED, facade analogue, method divergence 명시). 운영 절차는 [adapter-identity-claims](OPERATOR_HANDBOOK_KO.md#adapter-identity-claims)를 참조한다. 체크아웃 없는 drift는 SKIPPED다.
 
+
+## N5-sim shared-source 로컬 증거
+
+`scripts/sim_journeys.py::run_n5`, `tests/test_sim_journeys.py::SharedSourceJourneyTests`,
+`tests/golden/journey_n5_sim.json`은 다음 행의 좁은 합성 증거를 추가한다.
+
+전체 행 완료·준비도 승격 없이 다음 증거만 추가된다.
+
+- `CAP-03`: 기존 HTTP offer/approve/bind/draw/default와 overlay 원 receipt 연결.
+- `CAP-04`: 환불 impairment, holder 우선 서비스·해소 후 공제 유지, recourse/recovery 양 순서 공유 source 보존.
+- `CAP-08`: 활성 slice 이중 등록과 두 lane source 초과 거절; 독립 관측 산술로 현금 초과 사용 없음.
+- `CAP-10`: GET 원 receipt와 entry 대조; 거절 ID는 UNKNOWN, 재게시 없음; 저널·receipt·예약·digest 불변.
+- `CAP-19`: agent의 여섯 slice 명령 및 post_recovery는 403, 상태 변화 없음.
+- `CAP-20`: 기존 integrated-journeys 단계에 결정론적 N5 pin 추가, Capital-local 일곱 여정.
+
+변경 가능한 ScenarioReplaySource는 disposable 장부 전용이며 워크스페이스
+READ_ONLY_FIXTURE는 불변이다. SIMULATED / SHADOW_NOT_APPLIED,
+funds_executed false, integrated false, qualification_claimed false를 유지한다.
+준비금 NOT_BOUND, 변경 소스 영속성·인증된 두 번째 승인·다중 수취인·실제 실행·upstream
+적합성·사람 수용은 주장하지 않는다.
 ### risk-scenario-desk · SIMULATED_WHATIF
 
 The read-only `#risk-comparison` UI lists the four existing named risk scenarios and

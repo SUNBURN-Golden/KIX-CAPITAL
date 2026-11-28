@@ -30,6 +30,23 @@
 <h3>사례 문서 (dossier) · SIMULATED · read-only</h3>
 <button id="desk-dossier" type="button" class="quiet" disabled>dossier 다운로드</button>
 <p id="desk-dossier-note" role="status"></p><pre id="desk-dossier-result" hidden></pre>
+<section id="desk-slices" aria-labelledby="desk-slices-title">
+<h3 id="desk-slices-title">Claim-slice registry · 읽기 전용 검사</h3>
+<p class="muted">SIMULATED · SHADOW_NOT_APPLIED · SIMULATION_ONLY_NOT_OFFERED_V1. 금융채권의 소유권·인증 근거가 아닙니다. 자금 이동·명의 이전·명령 실행 없음.</p>
+<button id="slices-refresh" type="button">등록부 새로고침 (GET)</button>
+<p id="slices-status" role="status" aria-live="polite">등록부 조회 대기</p>
+<button id="slices-reload-session" type="button" hidden>세션 다시 조회 · 페이지 다시 열기</button>
+<p id="slices-freshness" class="muted"></p>
+<details><summary>서버 capacity · counts / bounds (한도 계산 없음)</summary><pre id="slices-capacity"></pre></details>
+<div class="table-wrap" role="region" aria-label="Claim-slice registry" tabindex="0"><table><caption>등록부 · 서버 보고 KRW 합성 단위</caption><thead><tr><th scope="col">slice_id</th><th scope="col">claim_id / payee_label</th><th scope="col">status</th><th scope="col">outstanding_krw</th><th scope="col">served_krw</th><th scope="col">shortfall_krw</th><th scope="col">검사</th></tr></thead><tbody id="slices-rows"></tbody></table></div>
+<section id="slice-detail" hidden aria-labelledby="slice-detail-title"><h4 id="slice-detail-title" tabindex="-1">선택 슬라이스</h4><p id="slice-links"></p><dl id="slice-facts"></dl><h4>Recourse quotes · 제안 근거 · 실행 아님</h4><p id="slice-recourse-status" role="status"></p><pre id="slice-recourse"></pre><details><summary>선택 행 원본 · lifecycle / provenance / non-execution flags</summary><pre id="slice-source"></pre></details></section>
+<h4>Claim-purchase quote inspection · GET only</h4>
+<p id="slices-query-help" class="muted">정산 fixture에서 청구·수취인을 고르고 expected_days 가정을 직접 입력하세요. 금융 조건을 채택하거나 저장하지 않습니다.</p>
+<div class="slices-query"><div><label for="slices-claim">quote_claim_id</label><select id="slices-claim" aria-describedby="slices-query-help"></select></div><div><label for="slices-payee">quote_payee_label</label><select id="slices-payee"></select></div><div><label for="slices-days">expected_days (명시적 가정)</label><input id="slices-days" type="text" inputmode="numeric" autocomplete="off" placeholder="0 이상의 정수" aria-describedby="slices-query-help"></div></div>
+<button id="slices-inspect" type="button">견적 검사 (GET)</button>
+<p id="slices-quote-status" role="status" aria-live="polite">견적 없음 · 가정 입력 후 검사</p>
+<div id="slices-quote" hidden><p id="slices-quote-assumptions" class="muted"></p><dl id="slices-quote-facts"></dl><h4>registry_check · 서버 순서의 codes / available amounts</h4><pre id="slices-guard"></pre><details><summary>견적 원본 · input_source / digest / non-execution flags</summary><pre id="slices-quote-source"></pre></details></div>
+</section>
 <section id="desk-audit" hidden aria-labelledby="desk-audit-title">
 <h3 id="desk-audit-title">Auditor evidence workbench · SIMULATED · read-only</h3>
 <p id="desk-audit-error" role="status"></p>

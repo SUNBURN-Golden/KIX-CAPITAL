@@ -47,7 +47,8 @@ acceptance_ladder = _load('acceptance_for_closeout', ROOT / 'scripts' / 'accepta
 # Written by hand: the acceptance ladder and the exact command texts per stage.
 STAGES = (
     ('unit', ['python3 -m unittest discover -s tests -v',
-              'python3 scripts/decision_bindings.py --check']),
+              'python3 scripts/decision_bindings.py --check',
+              'python3 scripts/finance_properties.py --seeds 200 --check']),
     ('storage-conformance', ['python3 -m unittest discover -s tests -p test_storage_conformance.py -v',
                              'python3 -m unittest tests.test_crash_replay -v']),
     ('pinned-vendor', ['python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v']),
@@ -223,11 +224,11 @@ class StageTableTests(unittest.TestCase):
             'content_digest': recorded['content_digest'], 'debit': 385000, 'credit': 385000,
         })
         pinned = vendor_manifest()
-        self.assertEqual(pinned['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
-        self.assertEqual(self.digest['vendor']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(pinned['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
+        self.assertEqual(self.digest['vendor']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertIs(self.digest['vendor']['verified'], True)
         self.assertEqual(self.digest['vendor']['files'], {name: True for name in sorted(pinned['files'])})
-        self.assertEqual(len(self.digest['vendor']['files']), 5)
+        self.assertEqual(len(self.digest['vendor']['files']), 69)
         self.assertEqual(self.digest['packaged'], {'sha256': FAKE_SMOKE_SHA, 'artifact_kind': 'LOCAL_SIMULATION_ARTIFACT'})
 
     def test_a_vendor_file_that_does_not_match_its_pin_is_refused(self):
@@ -644,7 +645,7 @@ class CommittedArtifactTests(unittest.TestCase):
         self.assertEqual(self.digest['golden'], {
             'status': 'recorded', 'state_digest': recorded['state_digest'],
             'content_digest': recorded['content_digest'], 'debit': 385000, 'credit': 385000})
-        self.assertEqual(self.digest['vendor']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(self.digest['vendor']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertEqual(sorted(self.digest['vendor']['files']), sorted(vendor_manifest()['files']))
         self.assertTrue(all(value is True for value in self.digest['vendor']['files'].values()))
         self.assertRegex(self.digest['packaged']['sha256'], r'^[0-9a-f]{64}$')
@@ -786,6 +787,15 @@ class DocsTests(unittest.TestCase):
         text = BINDING.read_text(encoding='utf-8')
         self.assertIn('tests/vectors/closeout_digest.json (derived from that evidence)', text)
         self.assertNotIn('"fin-finance-closeout": "build/acceptance-evidence.json as consumer-side evidence candidate"', text)
+
+    def test_live_ladder_commands_match_the_combined_contract(self):
+        actual = []
+        for stage in acceptance_ladder.build_plan():
+            commands = [script._command_text(command) for command in stage['commands']]
+            if stage['id'] == 'packaged-smoke':
+                commands.append('python3 scripts/smoke_release.py <built-zipapp>')
+            actual.append((stage['id'], commands))
+        self.assertEqual(actual, list(STAGES))
 
     def test_the_ladder_gained_no_closeout_stage(self):
         self.assertEqual(len(acceptance_ladder.REQUIRED_STAGES), 9)
