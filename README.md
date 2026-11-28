@@ -643,6 +643,33 @@ and [the operator handbook](docs/OPERATOR_HANDBOOK_KO.md#residual-obligations-re
 Focused checks: `python3 -m unittest discover -s tests -p test_residuals.py -v`
 and `python3 scripts/docs_surface.py --check`.
 
+### F04 exposure and recovery balance bridge
+
+Run `python3 -m capital.exposure_bridge --workspace DIR` to explain the recorded
+integer KRW balances for each advance. The read-only `SIMULATED` report audits
+one capture of `DIR/workspace.json`, records its hashes, and cites the original
+F04 and overlay journal indexes behind each check. Use the residual obligations
+register for the obligation inventory.
+
+F04 principal freezes at default. For example, with 90,000 KRW of default-day
+principal and 172 KRW of posted interest, a 1,000 KRW simulated receipt pays
+172 KRW of interest and 828 KRW of principal. F04 stays at 90,000 KRW while
+recovery principal falls to 89,172 KRW. A writeoff can reduce recovery principal
+to zero while retaining a separate residual claim. Subsequent receipts reduce
+that claim as a single amount. The report also checks unpaid interest on CLOSED
+advances separately. The measures overlap, so portfolio coverage reports counts.
+
+Interest checks require a posting for each applicable recorded clock tick while
+principal is outstanding, up to the recovery cutoff where applicable. Exit 0
+means `COMPLETE`. Exit 1 means `INCOMPLETE` (such as a missing default anchor
+or a gap in accrual, with unverified amounts shown as null) or
+`AUDIT_FAILED` (rows null). Exit 2 means argument misuse. Authentication, actual
+payments and financial recognition are `NOT_BOUND`. See the [integration
+contract](docs/INTEGRATION.md#exposure-basis-bridge) and [operator handbook](docs/OPERATOR_HANDBOOK_KO.md#exposure-basis-bridge).
+
+The hand-calculated expectations in `tests/vectors/exposure_bridge.json` are
+exercised by `python3 -m unittest discover -s tests -p test_exposure_bridge.py -v`.
+
 Disposable UC3 hold replay: `tests/vectors/uc3_replay.json` pins synthetic
 arrival, boundary, conflict, capacity and operator-review evidence. Run
 `python3 scripts/uc3_replay.py --check` to compare it without rewriting it.

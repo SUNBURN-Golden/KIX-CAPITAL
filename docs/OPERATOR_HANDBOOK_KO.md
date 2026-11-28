@@ -1116,6 +1116,39 @@ saved_at/saved_by_instance는 그대로 남긴다.
 <!-- /handbook-section -->
 
 
+<!-- handbook-section:exposure-basis-bridge -->
+
+### exposure-basis-bridge
+
+`python3 -m capital.exposure_bridge --workspace DIR`는 `workspace.json`을 한 번
+캡처하고 동일 바이트를 감사한 뒤 메모리에서 복원한다. 출력은 읽기 전용
+`SIMULATED` JSON이다. `source`에서 파일 SHA-256, payload SHA-256, F04와 overlay
+상태 digest, `sim_day`, 감사 결과를 확인할 수 있다. 각 대사 항목에는 원본 저널의
+0부터 시작하는 인덱스와 항목 ID가 있다. 동일한 overlay ID는 최초 항목만 센다.
+
+F04의 실행 원금은 부도 시점에 고정된다. 부도 시 원금 90,000원과 기록된 이자
+172원에 1,000원이 회수되면 이자 172원과 원금 828원이 줄어든다. F04 노출은
+90,000원이고 회수 원장의 원금은 89,172원이다. 이후 이자 2,198원이 기록되고
+상각 직전 100원을 회수하면 상각 시 잔존 청구액은 91,270원이다. 이후 회수
+300원과 700원은 총 잔존 청구액을 90,270원으로 줄인다. 상각 뒤 회수액은 원금과
+이자로 배분하지 않는다. 같은 날의 기록도 원본 overlay 순서로 대사한다.
+
+`CLOSED`의 미지급 계약이자와 연체이자는 F04 노출과 별도로 확인한다. `amounts`는
+검증된 정수 원화 금액이며, 근거 부족이나 대사 불일치 시 해당 금액은 null로 표시한다.
+원금이 남아 있던 기간의 각 시뮬레이션 시계 진행 기록을 이자 게시 기간과 대조한다.
+원금 전액 상환·회수 시점까지 확인하며, 부도 건의 이자 누적은 기록된 상각 적격일을
+상한으로 한다. 부도 앵커 누락은 `DEFAULT_ANCHOR_NOT_BOUND`, 필수 이자 게시 누락은
+`ACCRUAL_NOT_BOUND`로 표시한다. 확인된 0원과 검증되지 않은 금액의 구분을 위해 `checks`와 `fold_values`를
+함께 본다. 여러 잔액이 겹치므로 포트폴리오에는 행 수만 제공한다. 의무 목록은
+`residual-obligations-report`에서 조회한다. 인증·실제 지급·회계 인식은 `NOT_BOUND`다.
+
+종료 코드 0은 `COMPLETE`, 1은 `INCOMPLETE` 또는 `AUDIT_FAILED`, 2는 인자 오류다.
+감사 또는 메모리 복원에 실패하면 `rows`는 null이다. 세부 계산식과 필드는
+[INTEGRATION.md](INTEGRATION.md#exposure-basis-bridge)를 참고한다.
+
+<!-- /handbook-section -->
+
+
 <!-- handbook-section:loss-allowance-postings -->
 
 ### loss-allowance-postings

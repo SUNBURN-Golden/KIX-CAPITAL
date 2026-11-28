@@ -1,5 +1,49 @@
 # Validation scope
 
+## Exposure basis bridge builder verification
+
+Branch `agent/capital-exposure-basis-bridge` started at the same commit as
+`origin/main` (`bfd5e69`). All verification uses local SIMULATED data. The
+focused tests check independent F04 and overlay arithmetic, same-day writeoff
+ordering, receipt deduplication, missing evidence, semantic corruption, and
+single-capture read-only behavior.
+
+| Command | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_exposure_bridge.py -v` | First run exited 1 with two incorrect closed-interest fixture expectations. Corrected the fixture to use the existing 60-day term, tick to day 70, and pin both interest buckets. The rerun exited 0 with 18 tests passed. |
+| `python3 scripts/docs_surface.py --check` | Exit 0. 38 routes, 278 artifacts, 9 stages. |
+| `python3 -m unittest discover -s tests -v` | Exit 0 via the acceptance ladder. 1,679 tests passed in 584.359s. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0. 8 tests passed. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| `npm ci --offline --no-audit --no-fund` | Exit 0. Installed the three locked development packages from cache. |
+| `npm run test:browser` | Exit 0 via the acceptance ladder. 113 Chromium tests passed. |
+| `python3 scripts/acceptance.py` | Exit 0 in the isolated loopback namespace. All nine stages passed and `build/acceptance-evidence.json` recorded `ok=true`. |
+| `python3 scripts/build_release.py --out "$release_root/one"` and `python3 scripts/build_release.py --out "$release_root/two"` | Exit 0 for both builds in a temporary directory. Both archives had SHA-256 `a7212fb7c63bf768c46068a65f192a1c687c6c904d64a93664fb4605c4284aff`. |
+| `cmp "$release_root"/one/capital-*.pyz "$release_root"/two/capital-*.pyz` | Exit 0. Archives matched byte for byte. |
+| `python3 scripts/smoke_release.py "$release_root"/one/capital-*.pyz` | Exit 0. 11 packaged smoke checks passed. |
+| `python3 scripts/seed_demo.py --workspace "$bridge_demo/workspace"` and `python3 -m capital.exposure_bridge --workspace "$bridge_demo/workspace"` | Seed exited 0. The bridge exited 1 with the expected `INCOMPLETE` result. Its audit passed and four of six rows were complete. The CLOSED row lacked terms and accrual, and the DEFAULTED row lacked a default anchor. |
+| SHA-256 manifest verification against `origin/main` | Exit 0. All 69 pinned file hashes passed and the manifest bytes matched `origin/main`. |
+| `git diff --exit-code origin/main -- capital/vendor capital/export.py .aiops DECISION_REQUIRED.md .github/workflows playwright.config.cjs package.json package-lock.json playwright-report test-results` | Exit 0. Protected tracked paths and browser artifact symlinks matched the baseline. |
+| `git diff --check` | Exit 0. |
+
+Port 8765 was already in use, so the acceptance ladder ran with its configured
+ports inside a temporary loopback network namespace. The exact invocation was
+
+```sh
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0="$PWD" \
+  unshare --user --map-root-user --net sh -ec 'ip link set lo up; exec python3 scripts/acceptance.py'
+```
+
+The ladder recorded the optional read-model citation command as `SKIPPED`
+because the canonical invocation supplied no Protocol checkout. Playwright
+replaced the two tracked artifact symlinks with directories. The generated
+reports were moved to `build/exposure-browser.sycvfeca` and both symlinks were
+restored from their baseline targets. A final process check found zero Capital
+verification servers or acceptance runners from this worktree. The loopback
+namespace and offline npm install were the verification deviations from the
+design plan.
+
 ## UC3 hold-clock replay — conflict-fix round 1
 
 2026-11-09, node `uc3-hold-clock-replay`, branch

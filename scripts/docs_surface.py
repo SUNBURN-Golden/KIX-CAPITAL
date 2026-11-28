@@ -118,8 +118,7 @@ ROUTE_NEEDLES = {
 
 # Every file under tests/vectors/ must sit under exactly one key here (an
 # exact relative path or a directory prefix ending in '/'), and each key's
-# needles must stay in README.md — the artifact path itself plus the --check
-# command that pins its bytes.
+# needles must stay in README.md — the artifact path itself plus its verification command.
 VECTOR_NEEDLES = {
     'uc3_replay.json': ('tests/vectors/uc3_replay.json', 'scripts/uc3_replay.py --check'),
     'observation_triage/': ('tests/vectors/observation_triage/', 'scripts/observation_triage_vectors.py --check'),
@@ -143,6 +142,9 @@ VECTOR_NEEDLES = {
         'tests/vectors/forecast_vectors.json', 'scripts/forecast_vectors.py --check'),
     'risk_scenarios.json': (
         'tests/vectors/risk_scenarios.json', 'scripts/risk_scenario_vectors.py --check'),
+    'exposure_bridge.json': (
+        'tests/vectors/exposure_bridge.json',
+        'python3 -m unittest discover -s tests -p test_exposure_bridge.py -v'),
     'workspace_crash.json': (
         'tests/vectors/workspace_crash.json', 'tests/crash_matrix.py --check'),
     'fold_fuzz.json': (
