@@ -1,0 +1,34 @@
+{
+  "fixture_version": 1,
+  "provenance": "MOCK_CREDIT_F04_ONLY",
+  "settlement_setup": [
+    {
+      "body": {
+        "debtor_role": "fixture-merchant",
+        "gross": 100000,
+        "policy": {
+          "fee_bps": 500,
+          "fee_payee": "platform",
+          "kind": "PRIMARY_FEE_BPS",
+          "residual_payee": "organizer"
+        },
+        "trade_id": "trade-claim-1"
+      },
+      "idempotency_key": "setup-init-claim-1",
+      "operation": "initiate",
+      "settlement_id": "claim-1"
+    },
+    {
+      "body": {},
+      "idempotency_key": "setup-auth-claim-1",
+      "operation": "authorize",
+      "settlement_id": "claim-1"
+    },
+    {
+      "body": {},
+      "idempotency_key": "setup-cap-claim-1",
+      "operation": "capture",
+      "settlement_id": "claim-1"
+    }
+  ]
+}
