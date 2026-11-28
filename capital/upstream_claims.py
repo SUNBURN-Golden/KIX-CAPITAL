@@ -25,7 +25,7 @@ from capital.protocol import (
 )
 from capital.resources import ROOT, VENDOR, vendor_manifest
 
-PINNED_SHA = '7481b0e16ce9b903abbffa62249bb91cd9e63cfe'
+PINNED_SHA = '8ba7f6c36373ac0ec49246f51f7471c164ac3a28'
 LABEL = 'CLAIM_CONFORMANCE'
 FORMAT = 'KIX_CAPITAL_UPSTREAM_CLAIMS_V1'
 REQUIRED_FIELDS = ('id', 'source_doc', 'section', 'pinned_sha', 'claim', 'check_id')
@@ -581,9 +581,8 @@ def check_distribution_blocked():
         'set-1', idempotency_key='refund', refund_id='refund-1', amount=1000,
         beneficiary_role='buyer', reason='SYNTHETIC',
     )
-    return _code(lambda: book.distribute(
-        'set-1', idempotency_key='dist-1', order=['organizer', 'platform'],
-    ))
+    book.distribute('set-1', idempotency_key='dist-1', order=['organizer', 'platform'])
+    return _claim_view(book)['distribution_blocked']
 
 
 def check_full_reclass():
@@ -595,7 +594,7 @@ def check_full_reclass():
     return _claim_view(book)['refund_bearer_policy']
 
 
-def check_remainder_stays_undefined():
+def check_remainder_stays_requester():
     book = _committed()
     book.bind_refund(
         'set-1', idempotency_key='refund-1', refund_id='refund-1', amount=1000,
@@ -829,7 +828,7 @@ CHECKS.update({
     'settlement.partial_bearer': check_partial_bearer,
     'settlement.distribution_blocked': check_distribution_blocked,
     'settlement.full_reclass': check_full_reclass,
-    'settlement.remainder_undefined': check_remainder_stays_undefined,
+    'settlement.remainder_undefined': check_remainder_stays_requester,
     'settlement.distributed_sum': check_distributed_sum,
     'settlement.component_mismatch': check_component_mismatch,
     'settlement.external_return_after_acceptance': check_external_return_after_acceptance,

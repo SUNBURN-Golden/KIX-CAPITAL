@@ -187,7 +187,7 @@ class AgentClaimsTests(unittest.TestCase):
         for field, value in (
             ('format', 'KIX_CAPITAL_UPSTREAM_CLAIMS_V1'),
             ('label', 'CLAIM_DRIFT'),
-            ('pinned_sha', '7481b0e16ce9b903abbffa62249bb91cd9e63cfe'),
+            ('pinned_sha', '8ba7f6c36373ac0ec49246f51f7471c164ac3a28'),
         ):
             table = copy.deepcopy(original)
             table[field] = value
@@ -375,8 +375,8 @@ class AgentClaimsTests(unittest.TestCase):
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'] - 2)
-        self.assertEqual(stage['documented_divergences'], 2)
+        self.assertEqual(stage['passed'], stage['total'] - 4)
+        self.assertEqual(stage['documented_divergences'], 4)
         self.assertEqual(stage['test_count']['failed'], 0)
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
         for command in stage['commands']:

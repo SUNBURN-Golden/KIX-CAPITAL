@@ -1,5 +1,5 @@
 {
-  "digest": "eef5ff525592d703fbd054b982d8d64178987117f13f7bfc62f642ed8430a92f",
+  "digest": "3d27668645467eaf0515d370a64d7bc85f53cd2d569f70eaf26882b433b70924",
   "funds_executed": false,
   "integrated": false,
   "journey": "T03-sim",
@@ -413,7 +413,7 @@
         "overlay_state_digest": "a54dc45838b21c848c3201d8752d85904617e10765fd709a696a9feb4afba23e",
         "risk_digest": "b66a67f5903378210d2a790eb040066b7044c21468fea609204c2b4d31702477",
         "sim_day": 45,
-        "state_digest": "680d8180075083a7c216127bdf6c9aabb74696b0ca885b323fd954ffa221cadd"
+        "state_digest": "9640c21810765573c1f3ff03cd2c3fbe5603a0f7347434f2f8807ccc9445f842"
       },
       "kind": "HTTP",
       "n": 21,
