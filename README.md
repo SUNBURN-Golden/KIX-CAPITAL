@@ -695,3 +695,5 @@ python3 scripts/funding_gap_vectors.py --check
 ```
 
 60일의 합성 상환 의무는 10,115원입니다. 당일 유입이면 부족액은 0원, 이틀 지연이면 최대 10,115원과 말일 0원, 1원 적은 당일 유입이면 최대·말일 모두 1원입니다. 평가된 시나리오는 부족액이 있어도 종료 코드 0을 반환합니다. 모든 결과는 `SIMULATED`·`READ_ONLY_FIXTURE`이며 실행 권한은 `NOT_AUTHORIZED`입니다. [한국어 운영 절차](docs/OPERATOR_HANDBOOK_KO.md#오프라인-상환-재원-부족-보고서) · [입출력 계약](docs/INTEGRATION.md#offline-funding-gap-report)
+
+같은 정산 재원에서 양수 금액을 여러 번 유입시키는 일정은 각 유입의 `release_offset_krw`로 예산 안에서 서로 겹치지 않는 구간을 지정합니다. 구간이 누락되거나 겹치면 보고서는 `UNEVALUATED`를 반환합니다.

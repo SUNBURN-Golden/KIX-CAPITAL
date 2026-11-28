@@ -217,9 +217,11 @@ def _validate_schedule(schedule, gap):
         delay = _integer(source['delay_days'], gap['due_day_ordering']['delay_days_min'],
                          bounds['sim_day_max'], 'DELAY_OUT_OF_BOUNDS')
         for row in source['releases']:
-            _shape(row, ('release_id', 'base_available_sim_day', 'amount_krw'))
+            _shape(row, ('release_id', 'base_available_sim_day', 'amount_krw'), ('release_offset_krw',))
             _label(row['release_id'])
             _amount(row['amount_krw'], bounds)
+            if 'release_offset_krw' in row:
+                _amount(row['release_offset_krw'], bounds)
             _day(_day(row['base_available_sim_day'], bounds) + delay, bounds)
     if 'opening_cash' in schedule:
         _validate_opening(schedule['opening_cash'], bounds)
@@ -253,8 +255,11 @@ class Capture:
         self.cut = self.state['sim_day']
         self.draws = {row['advance_id']: (index, row['idempotency_key'])
                       for index, row in enumerate(self.journal) if row['op'] == 'draw'}
-        self.last_repayment = {row['advance_id']: index for index, row in enumerate(self.journal)
-                               if row['op'] == 'repay'}
+        self.repayments = defaultdict(list)
+        for index, row in enumerate(self.journal):
+            if row['op'] == 'repay':
+                day = overlay.draw_day_for(self.entries, index)
+                self.repayments[row['advance_id']].append((day, row['body']['amount']))
         self.accruals = defaultdict(list)
         for entry in {row['overlay_id']: row for row in self.entries}.values():
             if entry['kind'] == overlay.KIND_INTEREST:
@@ -427,6 +432,25 @@ def _not_bound(report, row, reason):
         'reference', 'source_key', 'advance_id', 'obligation_id', 'lot_id', 'reason') if key in row})
 
 
+def _verify_release_portions(rows, budget):
+    portions = []
+    for row in rows:
+        start = row.get('release_offset_krw')
+        if start is None:
+            continue
+        stop = start + row['amount_krw']
+        if stop > budget:
+            raise InvalidInput('RELEASE_PORTION_EXCEEDS_SOURCE_BUDGET')
+        if stop > start:
+            portions.append((start, stop))
+    portions.sort()
+    if any(left[1] > right[0] for left, right in zip(portions, portions[1:])):
+        raise NotBound('OVERLAPPING_RELEASE_PORTIONS')
+    positive_releases = sum(row['amount_krw'] > 0 for row in rows)
+    if positive_releases > 1 and len(portions) != positive_releases:
+        raise NotBound('RELEASE_PORTION_UNVERIFIED')
+
+
 class SettlementSources:
     def __init__(self, capture, schedule, selected, end, settlement, residual, bounds, source_policy):
         self.capture = capture
@@ -485,17 +509,17 @@ class SettlementSources:
             row = {'source_key': self.describe_key(key), **terms,
                    'references': [{'kind': kind, 'id': ref} for kind, ref in sorted(refs)],
                    'releases': rows, 'status': 'BOUND'}
-            if terms['basis'] != 'PROSPECTIVE_PRE_SETOFF_ALLOCATION':
-                _not_bound(report, row, 'PRE_SETOFF_ALLOCATION_UNVERIFIED')
+            try:
+                _verify_release_portions(rows, budget)
+                if terms['basis'] != 'PROSPECTIVE_PRE_SETOFF_ALLOCATION':
+                    raise NotBound('PRE_SETOFF_ALLOCATION_UNVERIFIED')
+                evidence = self.verified(entitlement)
+            except NotBound as exc:
+                _not_bound(report, row, str(exc))
             else:
-                try:
-                    evidence = self.verified(entitlement)
-                except NotBound as exc:
-                    _not_bound(report, row, str(exc))
-                else:
-                    if budget > evidence['remaining_entitlement_krw']:
-                        raise InvalidInput('SOURCE_BUDGET_EXCEEDS_ENTITLEMENT')
-                    row.update(evidence=evidence, unscheduled_budget_krw=budget - scheduled)
+                if budget > evidence['remaining_entitlement_krw']:
+                    raise InvalidInput('SOURCE_BUDGET_EXCEEDS_ENTITLEMENT')
+                row.update(evidence=evidence, unscheduled_budget_krw=budget - scheduled)
             report['sources'].append(row)
 
     def opening_cash(self, spec, default, report):
@@ -539,6 +563,44 @@ class SettlementSources:
         return {**spec, 'lots': lots}
 
 
+def _verify_recorded_accrual(capture, ref, terms, draw_day):
+    accrued_through = draw_day
+    principal = capture.cases[ref]['drawn_exposure']
+    repayments = iter(capture.repayments[ref])
+    repayment = next(repayments, None)
+    verified = {'advances': {}}
+    posted_contract = posted_default = 0
+    # An ordinary clock posting has no recovery write-off stop.
+    subject = {'advance_id': ref, 'draw_day': draw_day, 'terms': {**terms, 'writeoff_day': None}}
+    for posting in capture.accruals[ref]:
+        if any(posting[k] != terms[k] for k in ('maturity_day', 'tier', 'contract_bps', 'default_bps')):
+            raise NotBound('RECORDED_INTEREST_TERMS_OR_MATURITY_MISMATCH')
+        if posting['draw_day'] != draw_day or posting['from_day'] != accrued_through:
+            raise NotBound('RECORDED_ACCRUAL_INCOMPLETE')
+        # A repayment at the start changes this span's principal. A repayment
+        # at its end changes the next span, after this day's clock posting.
+        while repayment is not None and repayment[0] <= accrued_through:
+            principal -= repayment[1]
+            repayment = next(repayments, None)
+        end = posting['to_day']
+        if repayment is not None and repayment[0] < end:
+            raise NotBound('RECORDED_ACCRUAL_SPANS_PRINCIPAL_CHANGE')
+        expected = overlay.accrual_postings(verified, end, [{**subject, 'principal': principal}])
+        if not expected or posting != expected[0]:
+            raise NotBound('RECORDED_ACCRUAL_CALCULATION_MISMATCH')
+        posted_contract += posting['posted_contract_krw']
+        posted_default += posting['posted_default_krw']
+        verified['advances'][ref] = {
+            'last_accrued_day': end,
+            'cumulative_contract_exact': posting['cumulative_contract_exact'],
+            'cumulative_default_exact': posting['cumulative_default_exact'],
+            'posted_contract_krw': posted_contract,
+            'posted_default_krw': posted_default,
+        }
+        accrued_through = end
+    return accrued_through
+
+
 def _obligation_amounts(capture, ref, beneficiary, end):
     case = capture.cases.get(ref, {})
     if ref not in capture.draws or not case:
@@ -580,20 +642,13 @@ def _obligation_amounts(capture, ref, beneficiary, end):
             raise NotBound('FORECAST_PRINCIPAL_OR_MATURITY_UNVERIFIED')
         principal, maturity = row['principal_krw'], row['maturity_day']
     state = capture.state
-    accrued_through = draw_day
-    postings = capture.accruals[ref]
-    for posting in postings:
-        if any(posting[k] != terms[k] for k in ('maturity_day', 'tier', 'contract_bps', 'default_bps')):
-            raise NotBound('RECORDED_INTEREST_TERMS_OR_MATURITY_MISMATCH')
-        if posting['draw_day'] != draw_day or posting['from_day'] != accrued_through:
-            raise NotBound('RECORDED_ACCRUAL_INCOMPLETE')
-        accrued_through = posting['to_day']
-    through = min(capture.cut, maturity)
+    accrued_through = _verify_recorded_accrual(capture, ref, terms, draw_day)
+    through = capture.cut
     if not principal:
-        retired = capture.last_repayment.get(ref)
-        if retired is None:
+        repayments = capture.repayments[ref]
+        if not repayments:
             raise NotBound('PRINCIPAL_RETIREMENT_UNVERIFIED')
-        through = min(overlay.draw_day_for(capture.entries, retired), maturity)
+        through = repayments[-1][0]
     if accrued_through < through:
         raise NotBound('RECORDED_ACCRUAL_INCOMPLETE')
     _, default_due, interest_due, held = _repayment_position(state, ref, terms['denominator'])
@@ -608,7 +663,7 @@ def _obligation_amounts(capture, ref, beneficiary, end):
             # Read the contractual floor increment from the pure accrual preview.
             # The folded position already subtracts recorded paid interest.
             interest_due += rows[0]['posted_contract_krw']
-    elif interest_due and not postings:
+    elif interest_due and not capture.accruals[ref]:
         raise NotBound('RESIDUAL_INTEREST_MATURITY_UNVERIFIED')
     return maturity, principal, interest_due
 

@@ -218,6 +218,38 @@ class FundingGapTests(unittest.TestCase):
         self.assertEqual(evidence['application'], 'SHADOW_NOT_APPLIED')
         self.assert_reconciles(report)
 
+    def test_release_portions_across_source_aliases_must_be_disjoint(self):
+        fixture = {**vectors.source(amount=40), 'budget_krw': 100}
+        claim = {**vectors.source('CLAIM', HALL, amount=40), 'budget_krw': 100}
+        first, = fixture['releases']
+        second, = claim['releases']
+        second['release_id'] = 'claim-installment'
+
+        report = self.report(sources=[fixture, claim])
+        self.assert_unavailable(report, 'UNEVALUATED', 'RELEASE_PORTION_UNVERIFIED')
+        self.assertEqual(report['sources'][0]['status'], 'NOT_BOUND')
+
+        first['release_offset_krw'] = 0
+        for offset in (0, 39):
+            with self.subTest(overlapping_offset=offset):
+                second['release_offset_krw'] = offset
+                self.assert_unavailable(self.report(sources=[fixture, claim], horizon_days=1),
+                                        'UNEVALUATED', 'OVERLAPPING_RELEASE_PORTIONS')
+
+        second['release_offset_krw'] = 40
+        report = self.report(sources=[fixture, claim, fixture])
+        self.assertEqual(report['status'], EVALUATED, report['issues'])
+        self.assertEqual(len(report['sources'][0]['releases']), 2)
+        self.assertEqual(report['sources'][0]['unscheduled_budget_krw'], 20)
+        self.assertEqual(day(report, 60)['source_inflows_krw'], 80)
+        self.assert_reconciles(report)
+
+        second['release_offset_krw'] = 61
+        self.assert_unavailable(self.report(sources=[fixture, claim]),
+                                'INVALID_INPUT', 'RELEASE_PORTION_EXCEEDS_SOURCE_BUDGET')
+        second.update(release_id=first['release_id'], release_offset_krw=40)
+        self.assert_unavailable(self.report(sources=[fixture, claim]), 'INVALID_INPUT', 'CONFLICTING_RELEASE')
+
     def test_unselected_commitment_and_beneficiary_boundaries(self):
         service = vectors.book()
         vectors.draw(service)
@@ -363,6 +395,71 @@ class FundingGapTests(unittest.TestCase):
         self.assertEqual(dues(report), {'PRINCIPAL': 9_699, 'CONTRACT_INTEREST': 80})
         self.assertEqual(report['status'], EVALUATED)
         self.assert_reconciles(report)
+
+    def test_audited_accrual_must_match_shared_calculation(self):
+        service = vectors.book()
+        vectors.draw(service)
+        tick(service, 0, 17)
+        envelope = vectors.document(service)
+        self.assertEqual(dues(self.report(envelope))['CONTRACT_INTEREST'], 115)
+        for changes in ({'cumulative_contract_exact': '0/1', 'posted_contract_krw': 0},
+                        {'contractual_days': 16, 'default_days': 1}):
+            with self.subTest(changes=changes):
+                entries = copy.deepcopy(envelope['overlay']['journal'])
+                posting = next(row for row in entries if row['kind'] == overlay.KIND_INTEREST)
+                posting['payload'].update(changes)
+                altered = {**envelope, 'overlay': overlay.build_section(entries)}
+                report = self.report(altered)
+                self.assertTrue(report['audit']['ok'], report['audit'])
+                self.assert_unavailable(report, 'UNEVALUATED', 'RECORDED_ACCRUAL_CALCULATION_MISMATCH')
+                self.assertTrue(all(row['status'] == 'NOT_BOUND' for row in report['obligations']))
+
+    def test_audited_accrual_must_use_principal_in_force_for_each_span(self):
+        service = vectors.book()
+        vectors.draw(service)
+        tick(service, 0, 17)
+        command(service, 'repay', 'principal-only', amount=301, sequence=1)
+        tick(service, 17, 31)
+        envelope = vectors.document(service)
+        report = self.report(envelope)
+        self.assertEqual(report['status'], EVALUATED, report['issues'])
+        self.assertEqual(dues(report), {'PRINCIPAL': 9_699, 'CONTRACT_INTEREST': 112})
+
+        terms = service.terms.ledger_terms(service.machine.view(ADVANCE), service.fixtures.view(ARENA)['claim'],
+                                           gate='MOCK_COMMIT_OBSERVED', draw_day=0)
+        wrong_principal = {'advance_id': ADVANCE, 'principal': 10_000, 'draw_day': 0, 'terms': terms}
+        entries = copy.deepcopy(envelope['overlay']['journal'])
+        prior = overlay.fold(entries[:-1])
+        entries[-1]['payload'], = overlay.accrual_postings(prior, 31, [wrong_principal])
+        altered = {**envelope, 'overlay': overlay.build_section(entries)}
+        report = self.report(altered)
+        self.assertTrue(report['audit']['ok'], report['audit'])
+        self.assert_unavailable(report, 'UNEVALUATED', 'RECORDED_ACCRUAL_CALCULATION_MISMATCH')
+
+        entries = [row for row in entries[:-1] if row['kind'] != overlay.KIND_INTEREST] + entries[-1:]
+        entries[-1]['payload'], = overlay.accrual_postings(overlay.fold(entries[:-1]), 31, [wrong_principal])
+        altered = {**envelope, 'overlay': overlay.build_section(entries)}
+        report = self.report(altered)
+        self.assertTrue(report['audit']['ok'], report['audit'])
+        self.assert_unavailable(report, 'UNEVALUATED', 'RECORDED_ACCRUAL_SPANS_PRINCIPAL_CHANGE')
+
+    def test_missing_accrual_after_maturity_cannot_hide_unpaid_default_interest(self):
+        service = vectors.book()
+        vectors.draw(service)
+        tick(service, 0, 60)
+        paid = overlay_action(service, 'post_repayment', 'pay-contract-interest', amount_krw=115)
+        self.assertEqual(paid['allocation']['principal_krw'], 0)
+        tick(service, 60, 65)
+        command(service, 'repay', 'principal-only', amount=10_000, sequence=1)
+        envelope = vectors.document(service)
+        self.assert_unavailable(self.report(envelope, sources=[]), 'UNEVALUATED',
+                                'DEFAULT_INTEREST_OR_REPAYMENT_EVIDENCE_UNSUPPORTED')
+        entries = [row for row in envelope['overlay']['journal']
+                   if not (row['kind'] == overlay.KIND_INTEREST and row['sim_day'] > 60)]
+        envelope['overlay'] = overlay.build_section(entries)
+        report = self.report(envelope, sources=[])
+        self.assertTrue(report['audit']['ok'], report['audit'])
+        self.assert_unavailable(report, 'UNEVALUATED', 'RECORDED_ACCRUAL_INCOMPLETE')
 
     def test_closed_residual_interest_is_dated_and_cut_day_due_is_unevaluated(self):
         service = vectors.book()

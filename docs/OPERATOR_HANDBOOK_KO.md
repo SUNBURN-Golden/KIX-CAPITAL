@@ -1171,4 +1171,6 @@ python3 scripts/funding_gap.py --workspace tests/vectors/funding_gap --schedule 
 
 다른 캡처를 검토하려면 기준일 종료 후의 `workspace.json`과 같은 컷의 `GET /api/portfolio/snapshot?instance_id=…` 결과를 확보한다. 일정의 `workspace_id`에는 파일 바이트의 SHA-256 앞에 `sha256:`을 붙이고, `snapshot_digest`에는 스냅샷이 반환한 값을 그대로 넣는다. `advance_ids`는 `demo-org-alpha`의 기존 인출을 선택한다. `sources: []`는 명시적으로 재원이 없는 상황이다. 정산 재원을 입력할 때는 `PROSPECTIVE_PRE_SETOFF_ALLOCATION` 가정과 예산, 기준 유입일, 지연 일수, 금액을 명시한다. 기초현금은 생략 시 0원이며 따로 가정할 때는 기준일과 출처별 내역을 함께 지정한다. 일정 파일은 1 MiB 이하의 로컬 JSON 파일이다. [필드와 검증 규칙](INTEGRATION.md#offline-funding-gap-report)
 
+동일한 정산 권리에서 양수 금액을 여러 번 유입시키려면 각각의 `release_offset_krw`를 입력한다. 시작값 0, 금액 40원인 유입과 시작값 40, 금액 40원인 유입은 예산에서 서로 다른 구간을 사용한다. 정산 권리를 다른 방식으로 참조해도 같은 예산을 기준으로 검증한다. 구간이 누락되거나 겹치면 `UNEVALUATED`를 반환한다. 기록된 이자도 F04 상환 이력에서 확인한 구간별 미상환 원금과 공용 이자 계산으로 검증한다.
+
 `EVALUATED_HYPOTHETICAL`은 종료 코드 0이다. 입력 오류 `INVALID_INPUT`과 미평가 `UNEVALUATED`는 1이며, 행별 `NOT_BOUND` 사유와 작업공간 감사의 `failed_check`를 확인할 수 있다. 잘못된 CLI 인자에는 2를 반환한다. `SIMULATED`, `READ_ONLY_FIXTURE`, `HYPOTHETICAL_FUNDING_GAP`는 합성 재원과 상환 의무의 비교를 뜻한다. 가정은 잠정이며, 실행 권한은 `NOT_AUTHORIZED`이다.
