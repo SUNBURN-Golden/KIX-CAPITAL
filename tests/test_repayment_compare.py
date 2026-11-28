@@ -489,7 +489,7 @@ class RepaymentCompareTests(unittest.TestCase):
         self.assertEqual(snapshot, [(p.name, p.stat().st_mode, p.read_bytes()) for p in self.directory.iterdir()])
         for field in ('workspace_sha256', 'payload_sha256', 'f04_journal_sha256', 'overlay_journal_sha256', 'fixtures_sha256'):
             self.assertRegex(first['source'][field], r'^[0-9a-f]{64}$')
-        self.assertEqual(first['source']['vendor_pin']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(first['source']['vendor_pin']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertRegex(first['policy']['policy_sha256'], r'^[0-9a-f]{64}$')
         self.assertEqual(first['specification_sha256'], hashlib.sha256(store.canonical_bytes(spec)).hexdigest())
         self.assertEqual(first['historical_policy_provenance'], 'NOT_BOUND')

@@ -1,8 +1,7 @@
-"""Pinned FSM adapter for ProducerPort.
+"""SIMULATED ProducerPort over the pinned CreditMachine and settlement fixtures.
 
-This wraps the byte-pinned CreditMachine and the immutable settlement
-fixtures. It is not a live producer, not a Commerce binding, and not
-SEMANTIC_CONFORMANCE. CAP-16 exact tuple stays NOT_BOUND.
+Live producer adoption and the CAP-16 exact tuple are NOT_BOUND. Commerce
+inputs, when adopted, come through Protocol.
 """
 from __future__ import annotations
 
@@ -39,7 +38,11 @@ DEMO_BOOK = (
 
 
 class FixtureViews:
-    """No commands exposed to the credit adapter; snapshots cannot be advanced."""
+    """Read-only views built by SettlementMachine.
+
+    SETTLEMENT_DISTRIBUTION_F01_F03 §§3–5, 7.6 and 9.2 define the mock
+    statements, caller-ordered distribution and B5 REQUESTER refunds.
+    """
 
     # The V1 projection keeps folding the original three views only, so its
     # pinned debit/credit totals are the evidence scope it always had.
@@ -63,7 +66,7 @@ class FixtureViews:
                 book.commit(fixture_id, idempotency_key='commit', movement_id='sim-movement',
                             gross=100_000, amount=97_000, fee=3_000, tax=0, held=0, adjustment=0)
             # Adverse fixture: one synthetic partial refund through the pinned FSM, so
-            # bearer UNDEFINED and the distribution block are derived, never hand-set.
+            # B5 REQUESTER bearer and the open obligation come from the FSM.
             if refund:
                 book.bind_refund(fixture_id, idempotency_key='refund', refund_id='sim-fixture-refund',
                                  amount=10_000, beneficiary_role='fixture-buyer', reason='SYNTHETIC_FIXTURE')
@@ -156,7 +159,13 @@ class PinnedFsmProducer:
         return scratch.draw(advance_id, idempotency_key='diagnostic:draw', draw_id='diagnostic:draw')
 
     def apply(self, op, advance_id, *, idempotency_key, args, bound_settlement_id):
-        """Same kwargs the facade used to pass straight into CreditMachine."""
+        """Pass the inner settlement claim unchanged and delegate credit checks.
+
+        CREDIT_ADVANCE_F04 §§2–3 and 7.2 leave cash and recovery as companion
+        fields, reject positive non-reclassified refund faces and freeze the
+        whole face at the first accepted draw note for the claim. Under §7.5,
+        a bound draw reads the mock COMMITTED view before creating that note.
+        """
         method = getattr(self.machine, op)
         kwargs = {'idempotency_key': idempotency_key}
         if op == 'offer':
