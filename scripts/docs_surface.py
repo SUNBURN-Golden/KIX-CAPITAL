@@ -121,6 +121,7 @@ ROUTE_NEEDLES = {
 # needles must stay in README.md — the artifact path itself plus the --check
 # command that pins its bytes.
 VECTOR_NEEDLES = {
+    'statement_trace/': ('tests/vectors/statement_trace/', 'scripts/statement_trace_vectors.py --check'),
     'uc3_replay.json': ('tests/vectors/uc3_replay.json', 'scripts/uc3_replay.py --check'),
     'observation_triage/': ('tests/vectors/observation_triage/', 'scripts/observation_triage_vectors.py --check'),
     'event_stress.json': ('tests/vectors/event_stress.json', 'scripts/event_stress_vectors.py --check'),
