@@ -158,6 +158,28 @@ See [integration](docs/INTEGRATION.md#dev-only-keyset) for explicit local rotati
 Synthetic fixtures `tests/vectors/dev-keyset-active.json` and
 `tests/vectors/dev-keyset-retired.json` are pinned by `scripts/manifest_vectors.py --check`.
 
+Audit an explicit saved collection under one snapshot with the stdlib-only CLI:
+
+```sh
+python3 -m capital.signature_inventory --keyset-file SNAPSHOT.json A.json B.json
+```
+
+The keyset is loaded once, requires exact mode 0600 and is never created or repaired.
+Copy committed synthetic fixtures to temporary files and `chmod 0600` the copies
+before loading. Retirement reflects only the supplied snapshot, not historical
+validity or a production revocation policy. This is DEV_ONLY local integrity;
+`authentication: NOT_BOUND`, `stage7_authenticated_export: false`, and
+`funds_executed: false` apply to every report.
+Limits are 1–100 explicit paths, 8 MiB per manifest, 64 MiB aggregate manifest bytes,
+128 JSON container levels and the existing 65,536-byte keyset limit. Manifest
+symlinks (including directory components) and nonregular files are refused.
+One deterministic JSON line preserves input order and contains declared digest,
+kid, input errors and existing verifier outcomes. No inputs are rewritten or
+re-signed. Exit 0 means every content check passed with a loaded snapshot;
+unsigned results still have signature `NOT_BOUND`. Exit 1 means a failed or
+incomplete audit; exit 2 means argument misuse. See the
+[report contract](docs/INTEGRATION.md#signature-inventory) for summary semantics.
+
 ## 실행
 
 Python 3.10 이상, runtime 패키지 설치나 DB 없이 실행합니다.
