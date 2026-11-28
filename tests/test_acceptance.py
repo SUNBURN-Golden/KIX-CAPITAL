@@ -36,6 +36,8 @@ class AcceptanceTests(unittest.TestCase):
         commands = {stage['id']: stage['commands'] for stage in plan}
         self.assertEqual(commands['unit'][0][1:5], ['-m', 'unittest', 'discover', '-s'])
         self.assertEqual(commands['unit'][0][5], 'tests')
+        self.assertEqual(commands['unit'][2][1:],
+                         ['scripts/finance_properties.py', '--seeds', '200', '--check'])
         self.assertEqual(commands['storage-conformance'][0][1:], [
             '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_storage_conformance.py', '-v',
         ])
@@ -112,7 +114,7 @@ class AcceptanceTests(unittest.TestCase):
         self.assertFalse(data['funds_executed'])
         self.assertEqual(data['head_sha'], acceptance.head_sha(ROOT)[0])
         self.assertTrue(data['vendor_hashes']['verified'])
-        self.assertEqual(data['vendor_hashes']['commit'], '7481b0e16ce9b903abbffa62249bb91cd9e63cfe')
+        self.assertEqual(data['vendor_hashes']['commit'], '8ba7f6c36373ac0ec49246f51f7471c164ac3a28')
         self.assertEqual(data['golden_digests']['status'], 'recorded')
         self.assertEqual(len(data['golden_digests']['state_digest']), 64)
         self.assertEqual(len(data['golden_digests']['content_digest']), 64)
@@ -172,9 +174,9 @@ class AcceptanceTests(unittest.TestCase):
         claims = acceptance.parse_test_count('CLAIM_CONFORMANCE passed=87 total=87 failed=0\n')
         self.assertEqual(claims, {'ran': 87, 'passed': 87, 'failed': 0})
 
-    def test_journey_line_counts_as_two_checks_and_the_summary_is_parsed(self):
-        line = 'sim journeys ok SIMULATED T03-sim steps=25 T04-sim steps=30 T05-sim steps=35 T06-sim steps=33 N1-sim steps=16 N2-sim steps=19\n'
-        self.assertEqual(acceptance.parse_test_count(line), {'ran': 6, 'passed': 6, 'failed': 0})
+    def test_journey_line_counts_as_seven_checks_and_the_summary_is_parsed(self):
+        line = 'sim journeys ok SIMULATED T03-sim steps=25 T04-sim steps=30 T05-sim steps=35 T06-sim steps=33 N1-sim steps=16 N2-sim steps=19 N5-sim steps=105\n'
+        self.assertEqual(acceptance.parse_test_count(line), {'ran': 7, 'passed': 7, 'failed': 0})
         summary = {'label': 'SIMULATED', 'journeys': [{'id': 'T05-sim', 'steps': 35}]}
         text = 'noise\nSIM_JOURNEYS ' + json.dumps(summary) + '\n' + line
         self.assertEqual(acceptance.parse_journeys(text), summary)
