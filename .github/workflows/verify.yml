@@ -5,9 +5,11 @@ on:
     branches: [main, 'astra/**']
 permissions:
   contents: read
+# Pin the runner LTS: ubuntu-latest rolled to 26.04, which the pinned
+# Playwright 1.58.2 refuses to install Chromium on (ubuntu26.04-x64).
 jobs:
   contracts-and-api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -65,7 +67,7 @@ jobs:
           path: test-results/
           if-no-files-found: warn
   package:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:

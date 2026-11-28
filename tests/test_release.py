@@ -222,7 +222,8 @@ service = CapitalService(**ports)
 print(json.dumps({'terms': service.terms_status(), 'policy': service.policy_status(),
     'decisions': service.decisions(), 'state_terms': service.snapshot()['terms'],
     'runtime_policies': {'recovery': service.recovery_policy is not None,
-        'slices': service.slice_policy is not None, 'repayment': service.repayment_bounds is not None},
+        'slices': service.slice_policy is not None, 'repayment': service.repayment_bounds is not None,
+        'agent_brief': service.agent_brief_policy.ready},
     'shadow': service.policy_shadow(),
     'underwriting': service.underwrite('sim-committed', service.instance_id, 'organizer', amount=60000)}))
 '''
@@ -249,7 +250,7 @@ print(json.dumps({'terms': service.terms_status(), 'policy': service.policy_stat
 
     def test_merged_policy_consumers_load_bundled_notes_and_fail_closed(self):
         body = self.probe()
-        self.assertEqual(body['runtime_policies'], dict.fromkeys(('recovery', 'slices', 'repayment'), True))
+        self.assertEqual(body['runtime_policies'], dict.fromkeys(('recovery', 'slices', 'repayment', 'agent_brief'), True))
         for item in body['shadow']['items']:
             shadow = item['shadow']
             if item['item'] in ('revenue_participation', 'claim_purchase', 'residual_and_late_cash'):
@@ -259,6 +260,7 @@ print(json.dumps({'terms': service.terms_status(), 'policy': service.policy_stat
             'recovery': 'CAPITAL_DEFAULT_RECOVERY.md',
             'slices': 'CAPITAL_CLAIM_SLICE_REGISTRY.md',
             'repayment': 'CAPITAL_REPAYMENT_POSTING.md',
+            'agent_brief': 'CAPITAL_AGENT_CASE_DISCLOSURE.md',
         }
         for name, note in notes.items():
             for raw in (None, b'SIMULATED malformed decision note'):
@@ -327,6 +329,7 @@ print(json.dumps({'terms': service.terms_status(), 'policy': service.policy_stat
                 if 'scripts/decision_ledger.py' in changes:
                     self.assertEqual(body['terms']['status'], 'NOT_BOUND')
                     self.assertEqual(body['policy']['outcome'], 'NOT_BOUND')
+                    self.assertIs(body['runtime_policies']['agent_brief'], False)
 
 
 class SmokeTests(unittest.TestCase):

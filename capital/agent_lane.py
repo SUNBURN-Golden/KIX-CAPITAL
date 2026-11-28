@@ -131,6 +131,14 @@ class AgentLane:
             'count_max_meaning': COUNT_MEANING,
         }
 
+    def case_query_eligible(self):
+        """Host-owned fixture eligibility only; never implies dedicated case scope."""
+        grants = self._grants()
+        grant = grants.get(ACTIVE_GRANT_ID) if grants is not None else None
+        return (type(grant) is dict and grant.get('agent_id') == AGENT_ID
+                and grant.get('phase') == 'ACTIVE'
+                and bool(set(grant.get('authority', ())) & {'QUERY', 'PROPOSE'}))
+
     def query_grant(self, body):
         parsed = self._parse_call(body, _QUERY_KEYS)
         grant = self._current(parsed, 'QUERY')

@@ -65,7 +65,7 @@ class MatrixTests(unittest.TestCase):
         self.assertEqual(
             [path for path, _permission in POST_DISPATCH],
             ['/api/commands', '/api/session', '/api/overlay/commands', '/api/agent/query_grant',
-             '/api/agent/query_subject', '/api/agent/propose_action',
+             '/api/agent/query_subject', '/api/agent/query_case', '/api/agent/propose_action',
              '/api/agent/withdraw_proposal', '/api/agent/propose_grant_change',
              '/api/agent/execute'],
         )
