@@ -682,3 +682,18 @@ and [handbook](docs/OPERATOR_HANDBOOK_KO.md#loss-allowance-postings).
 ## Protocol delivery
 
 The local bundle pins kix-protocol `8ba7f6c36373ac0ec49246f51f7471c164ac3a28`. It contains all 69 tracked F04 and F01–F03 reference files, the two OpenAPI documents, the FSM command contract and the BOOTSTRAP SDK byte pins. For a read-only checkout at that SHA, run `python3 scripts/protocol_bundle.py --check --protocol-dir PATH` and `python3 scripts/protocol_bundle.py --test-vendor --protocol-dir PATH`. The latter runs both vendored suites and the database-free Stage-5 tests. The local gate checks the delivery tuple before each POST. CAP-16 and upstream query and source-map adoption stay `NOT_BOUND`.
+
+## 정산 지연과 상환 재원 보고서
+
+오프라인 CLI는 감사한 합성 작업공간에서 `demo-org-alpha`의 선택 선지급 상환 의무와 고유 정산 재원의 일별 충족액을 비교합니다. 아래 예제는 `tests/vectors/funding_gap/`의 같은 캡처를 사용합니다.
+
+```sh
+python3 scripts/funding_gap.py --workspace tests/vectors/funding_gap --schedule tests/vectors/funding_gap/timely.schedule.json
+python3 scripts/funding_gap.py --workspace tests/vectors/funding_gap --schedule tests/vectors/funding_gap/late.schedule.json
+python3 scripts/funding_gap.py --workspace tests/vectors/funding_gap --schedule tests/vectors/funding_gap/insufficient.schedule.json
+python3 scripts/funding_gap_vectors.py --check
+```
+
+60일의 합성 상환 의무는 10,115원입니다. 당일 유입이면 부족액은 0원, 이틀 지연이면 최대 10,115원과 말일 0원, 1원 적은 당일 유입이면 최대·말일 모두 1원입니다. 평가된 시나리오는 부족액이 있어도 종료 코드 0을 반환합니다. 모든 결과는 `SIMULATED`·`READ_ONLY_FIXTURE`이며 실행 권한은 `NOT_AUTHORIZED`입니다. [한국어 운영 절차](docs/OPERATOR_HANDBOOK_KO.md#오프라인-상환-재원-부족-보고서) · [입출력 계약](docs/INTEGRATION.md#offline-funding-gap-report)
+
+같은 정산 재원에서 양수 금액을 여러 번 유입시키는 일정은 각 유입의 `release_offset_krw`로 예산 안에서 서로 겹치지 않는 구간을 지정합니다. 구간이 누락되거나 겹치면 보고서는 `UNEVALUATED`를 반환합니다.
