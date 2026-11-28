@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from capital.protocol_delivery import COMMIT, PIN_HEADER
 from capital.gate_producer import GateHttpProducer, load_fake_gate
 from capital.producer import CreditError
 from capital.server import make_server
@@ -120,6 +121,8 @@ def load_corpus(path=DEFAULT_CORPUS):
 def _http(method, url, payload=None, token=None, timeout=5.0):
     data = None
     headers = {'Accept': 'application/json'}
+    if url.endswith('/v1/commands'):
+        headers[PIN_HEADER] = COMMIT
     if payload is not None:
         data = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode('ascii')
         headers['Content-Type'] = 'application/json'

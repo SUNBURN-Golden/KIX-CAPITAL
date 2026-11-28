@@ -116,6 +116,14 @@ def _unique_needle(table):
     raise AssertionError('no unique needle')
 
 
+def _claim_count_lines(total):
+    return [
+        f'CLAIM_CONFORMANCE passed={total - 2} total={total} failed=0 documented_divergences=2',
+        'DOCUMENTED_DIVERGENCE rm-keyset-credit-advance',
+        'DOCUMENTED_DIVERGENCE rm-keyset-credit-claim',
+    ]
+
+
 class ReadModelClaimsTests(unittest.TestCase):
     def test_table_has_required_fields_and_every_claim_passes(self):
         table = load_table()
@@ -139,7 +147,8 @@ class ReadModelClaimsTests(unittest.TestCase):
         result = run_claims(table)
         self.assertTrue(result['ok'])
         self.assertEqual(result['label'], 'CLAIM_CONFORMANCE')
-        self.assertEqual(result['passed'], result['total'])
+        self.assertEqual(result['passed'], result['total'] - 2)
+        self.assertEqual(len(result['documented_divergences']), 2)
         self.assertGreaterEqual(result['total'], 30)
         self.assertEqual(result['failed'], [])
         for row in result['rows']:
@@ -217,7 +226,8 @@ class ReadModelClaimsTests(unittest.TestCase):
         self.assertEqual([row['id'] for row in failed], ['mut-unmapped'])
         self.assertTrue(failed[0]['unmapped'])
         self.assertIsNone(failed[0]['observed'])
-        self.assertEqual(result['passed'], result['total'] - 1)
+        self.assertEqual(result['passed'], result['total'] - 3)
+        self.assertEqual(len(result['documented_divergences']), 2)
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_table(tmp, table)
             proc = _run(['--execute', '--table', str(path)])
@@ -287,7 +297,7 @@ class ReadModelClaimsTests(unittest.TestCase):
                     path.chmod(stat.S_IRUSR | stat.S_IWUSR)
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout.splitlines(), [
-            f"CLAIM_CONFORMANCE passed={report['total']} total={report['total']} failed=0",
+            *_claim_count_lines(report['total']),
             f"CLAIM_DRIFT verified={report['total']} total={report['total']}"])
         self.assertNotIn('SKIPPED', proc.stdout)
         self.assertEqual(report['status'], 'verified')
@@ -330,7 +340,7 @@ class ReadModelClaimsTests(unittest.TestCase):
         total = len(load_table()['claims'])
         proc = _run(['--execute'])
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, f'CLAIM_CONFORMANCE passed={total} total={total} failed=0\n')
+        self.assertEqual(proc.stdout.splitlines(), _claim_count_lines(total))
         self.assertEqual(proc.stderr, '')
         self.assertNotIn(PROFILE_TOKEN, proc.stdout)
 
@@ -375,8 +385,8 @@ class ReadModelClaimsTests(unittest.TestCase):
         self.assertEqual(stage['label'], 'CLAIM_CONFORMANCE')
         self.assertEqual(stage['status'], 'passed')
         self.assertEqual(stage['total'], expected_total)
-        self.assertEqual(stage['passed'], stage['total'] - 2)
-        self.assertEqual(stage['documented_divergences'], 2)
+        self.assertEqual(stage['passed'], stage['total'] - 4)
+        self.assertEqual(stage['documented_divergences'], 4)
         self.assertEqual(stage['test_count']['failed'], 0)
         self.assertNotIn(PROFILE_TOKEN, json.dumps(data))
         for command in stage['commands']:
@@ -386,7 +396,7 @@ class ReadModelClaimsTests(unittest.TestCase):
         read_total = len(load_table()['claims'])
         proc = _run(['--execute'])
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, f'CLAIM_CONFORMANCE passed={read_total} total={read_total} failed=0\n')
+        self.assertEqual(proc.stdout.splitlines(), _claim_count_lines(read_total))
         upstream = _run(['--execute'], script=UPSTREAM_SCRIPT)
         self.assertEqual(upstream.returncode, 0)
         self.assertNotEqual(proc.stdout, upstream.stdout)

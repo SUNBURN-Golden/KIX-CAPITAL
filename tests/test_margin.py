@@ -38,7 +38,7 @@ def disposable(path=None):
 def drawn_then_refunded(amount=BASE + 1):
     source, service = disposable()
     draw_book(service, amount=amount)
-    outcomes = source.replay('sim-committed', 'partial-before')
+    outcomes = source.replay_refund_before_distribution('sim-committed')
     assert all(item['matched'] for item in outcomes), outcomes
     return source, service
 
@@ -154,7 +154,7 @@ class CureTests(unittest.TestCase):
             try:
                 service = CapitalService(port, producer=PinnedFsmProducer(fixtures=source))
                 draw_book(service, amount=BASE + 1)
-                source.replay('sim-committed', 'partial-before')
+                source.replay_refund_before_distribution('sim-committed')
                 tick(service, 'c-1', 0, 3)
                 run(service, 'repay', 'sim-a', 'r-1', amount=2, sequence=1)
                 tick(service, 'c-2', 3, 4)
@@ -303,7 +303,7 @@ class ImmutableFixtureTests(unittest.TestCase):
     def test_pinned_fixture_views_are_untouched_by_a_replay_source(self):
         before = json.dumps(FixtureViews().rows, sort_keys=True)
         source = margin.ScenarioReplaySource()
-        source.replay('sim-committed', 'partial-before')
+        source.replay_refund_before_distribution('sim-committed')
         self.assertEqual(json.dumps(FixtureViews().rows, sort_keys=True), before)
         self.assertTrue(margin.views_mutable(source))
         self.assertFalse(margin.views_mutable(FixtureViews()))
@@ -335,7 +335,7 @@ class TamperTests(unittest.TestCase):
             try:
                 service = CapitalService(port, producer=PinnedFsmProducer(fixtures=source))
                 draw_book(service, amount=BASE + 1)
-                source.replay('sim-committed', 'partial-before')
+                source.replay_refund_before_distribution('sim-committed')
                 tick(service, 'c-1', 0, 3)
             finally:
                 port.close()
