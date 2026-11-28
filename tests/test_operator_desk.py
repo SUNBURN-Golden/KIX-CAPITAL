@@ -75,6 +75,22 @@ class OperatorDeskStaticTests(unittest.TestCase):
         self.assertIn('report.scope.overlay_state_digest===overlay?.overlay_state_digest', audit)
         self.assertIn("currentRole()!=='auditor'", audit)
 
+    def test_repayment_panel_reuses_server_allocation_and_shared_fence(self):
+        block = desk_block()
+        for needle in ("op:'post_repayment'", 'paymentQuoteValid', 'validatePaymentReceipt',
+                       'validatePaymentLookup', 'paymentIdentity()', 'overlay_state_digest',
+                       'REPAYMENT_TERMS_NOT_BOUND', 'UNVERIFIED_ASSERTED', 'SIM_UNAPPLIED_MEMO',
+                       'paymentCoreValid', 'paymentDrafts', 'payload.advance_ref',
+                       'body.allocation.remaining', 'body.fsm_repay'):
+            self.assertIn(needle, block)
+        self.assertIn("original.op==='post_repayment'", APP_JS)
+        self.assertIn("writeFenced('/api/overlay/commands'", block)
+        self.assertLess(INDEX.index('id="desk-timeline-region"'), INDEX.index('id="desk-payment-amount"'))
+        self.assertIn('id="desk-payment-controls" hidden', INDEX)
+        self.assertIn('id="desk-payment-status" role="status" aria-live="polite"', INDEX)
+        self.assertIn('실제 기록 배정을 보장하지 않습니다', INDEX)
+        self.assertIn('close_gate는 자문', INDEX)
+
     def test_markup_pins_focus_order_and_roles(self):
         order = ['desk-refresh', 'desk-case', 'desk-days', 'desk-advance', 'desk-overlay-region', 'desk-timeline-region']
         positions = [INDEX.index(f'id="{name}"') for name in order]

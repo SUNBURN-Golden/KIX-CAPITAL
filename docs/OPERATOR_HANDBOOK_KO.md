@@ -856,6 +856,32 @@ JSON 디코딩 전 중첩이 32단계 이하인지 확인한다(`capital.facts.I
 
 <!-- /handbook-section -->
 
+### 상환 데스크 · SIMULATED / UNVERIFIED_ASSERTED
+
+`#desk`에서 organizer는 사례를 선택하고 양의 정수 모의 주장 금액과 선택적
+합성 evidence_ref를 입력한다. 계좌·실명·실제 입금 근거를 넣지 않는다.
+먼저 명시적 sim_day 진행으로 조건을 연결해야 한다. 연결 전에는
+`REPAYMENT_TERMS_NOT_BOUND`를 표시하며 자동으로 시간을 진행하지 않는다.
+**서버 배정 미리보기**로 연체이자·이자·원금·미배정 가정 금액을 확인한 뒤
+**모의 상환 명시적 기록**을 한 번 누른다. 가정 조회는 기록된 draw_day와
+sim_day를 쓰며 다른 화면의 가정 일자 입력을 사용하지 않는다.
+
+미리보기는 현재 원금을 일정하다고 보는 가정이며 실제 배정을 보장하지
+않는다. 실제 기록은 누적 이자, 이전 상환, 보유 현금을 사용하므로 결과가
+다를 수 있다. 화면의 기록된 dues, 배정, receipt의 entry_no·F04 참조·합성
+근거를 함께 확인한다. 모든 금액은 서버 결과이며 입금 검증이 아니다.
+`UNVERIFIED_ASSERTED`는 주장 금액이다. `SIM_UNAPPLIED_MEMO`는 보유 메모이며
+환불·해제 기능이 아니다. advisory close_gate와 가정 close_ready는 자동
+종결이나 종결 정책 변경을 뜻하지 않는다. 기존 직접 F04 상환 경로와 dossier
+다운로드는 별도로 유지한다.
+
+응답을 잃으면 operation_id와 전체 명령이 브라우저에 남고 다른 명령을
+차단한다. 새로고침·재접속만으로 UNKNOWN이 해소되지 않는다. **원 요청 결과
+조회**를 명시적으로 사용한다. 확인 불가·불일치·잘못된 응답은 UNKNOWN과
+차단을 유지하며 자동 재전송하지 않는다. SESSION_CHANGED·SIM_CLOCK_STALE은
+성공한 상태 새로고침 뒤 다시 명시적으로 미리보기해야 한다. auditor는
+읽기 전용 기록만 보고 observer·agent는 상환을 제출할 수 없다.
+
 ### 제한된 loopback facts 수집기 · SIMULATED
 
 서버가 이미 로컬에서 실행 중일 때 다음을 실행한다. 출력은 체크아웃 및 원본
