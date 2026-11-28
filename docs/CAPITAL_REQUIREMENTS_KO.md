@@ -17,6 +17,30 @@ DEV_ONLY `--dev-keyset`은 로컬 shared-HMAC 다중 kid·명시적 retirement �
 `KEY_RETIRED`는 제공된 keyset snapshot 기준이며 운영 폐기 정책이 아닙니다.
 CAP-15 stage7 인증 export, external key, authentication은 계속 NOT_BOUND입니다.
 
+## workspace-relocation-rehearsal
+
+`scripts/relocation_rehearsal.py` / `tests/test_relocation_rehearsal.py`는 임시 zipapp과
+합성 workspace를 만들고 writer 종료 후 감사한 바이트를 별도 보존한다. 실제 디렉터리를
+다른 runtime root로 이동하며 이전 경로 부재를 검증한다. 체크아웃과 무관한 cwd에서
+`PYTHONPATH` 없이 zipapp을 실행하고 번들 정책 출처를 검증한다. 라이브 workspace
+인수는 없으며 rehearsal 쓰기는 모두 자동 삭제되는 임시 디렉터리 안에 한정한다.
+
+상환 원금 1000을 포함한 메모, default anchor/write-off, 별도 claim의 slice 등록/open
+이력을 실제 명령으로 만든다. 기존 정책 reader가 정한 자격일·quote·journal index와
+합성 승인 label을 사용한다. 이동 전후 F04/overlay digest·journal·최초 receipt·statement
+합계·reconciliation·검증된 manifest content_digest를 비교하고 session 변경은 분리한다.
+이전 token/instance를 거절하며 동일 operation_id 재제출의 최초 결과 및 경제 효과
+중복 부재를 검증한다. 잘린/체크섬 손상/재봉인된 F04 link 손상 사본은 fail-closed다.
+
+기본 명령 `python3 scripts/relocation_rehearsal.py`는 unsigned 및 `--case dev-keyset`
+경우를 별도로 실행한다 (`--case unsigned`도 지원). 합성 DEV_ONLY keyset은 로딩 전에
+정확히 0600으로 staging하며 보고서·zipapp에 넣지 않는다. mode 0644 거절도 검사한다.
+JSON 형식은 `KIX_CAPITAL_RELOCATION_REHEARSAL_V1`, `SIMULATED`,
+`LOCAL_FILE_WORKSPACE`, `funds_executed: false`다. 실제 검증 결과는
+`docs/VALIDATION.md`를 참조한다. backup service·live snapshot copy·자동 복구·DR 인증·
+cross-host fencing은 구현 범위 밖이다. CAP-11/stage5와 stage7/authentication은
+계속 `NOT_BOUND`이며 실제 자금·PG·은행·KYC·provider 호출은 없다.
+
 ## portfolio-aging-migrations
 
 `capital/portfolio_migrations.py` / `tests/test_portfolio_migrations.py`:
