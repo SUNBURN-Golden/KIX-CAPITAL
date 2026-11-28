@@ -7642,3 +7642,37 @@ Their `SIMULATED` evidence records `funds_executed: false`.
 Local evidence and logs are under `build/finance-property-fuzz-merge-round2/`.
 The packaged simulation SHA256 is
 `f686212a36563b9f4a43d736c3084076e150d1f3ca86a1ad0037d3d5e1d57d92`.
+
+## Offline settlement-delay funding gaps
+
+`scripts/funding_gap.py` audited the pinned workspace bytes and reproduced the canonical reports on repeated runs. The day-60 arena obligation was 10,115 KRW, comprising 10,000 KRW outstanding principal and 115 KRW whole contractual interest. Hall's prospective allocation from 1,164,000,000 KRW of undistributed cash was 1,140,000,000 KRW to the organizer and 24,000,000 KRW to the platform. The report labeled the allocation `SHADOW_NOT_APPLIED` and used only the scheduled organizer releases as daily inflows.
+
+| Pinned scenario | Exit | Peak shortage (KRW) | Terminal shortage (KRW) |
+| --- | --- | --- | --- |
+| Timely | 0 | 0 | 0 |
+| Two-day delay | 0 | 10,115 | 0 |
+| One won short | 0 | 1 | 1 |
+| Proceeds supplied after set-off | 1 | null | null |
+| Unselected advance committed against Hall | 1 | null | null |
+
+The day-zero vector uses a binding-only overlay section at the cut. The standard clock command was used for later-cut lifecycle tests. Current immutable workspace fixtures have zero recorded distributions. A detached fixture test supplied synthetic recorded distribution to exercise disjoint opening receipt portions, alias overlap rejection, and exclusion of the entire distributed amount from future entitlement. An independent opening endowment uses one itemized synthetic lot. Multiple unrelated endowment IDs cannot establish disjointness in this format.
+
+| Command | Observed result |
+| --- | --- |
+| `python3 scripts/funding_gap_vectors.py --write` | Initial fixture generation failed F04 operation-ID validation. Normalized the synthetic IDs and regenerated all 12 pins. |
+| `python3 -m unittest tests.test_funding_gap -v` | Initial runs caught an incorrect fractional-interest test expectation and incomplete slice and margin-call fixtures. After correction, 18 passed, covering alias deduplication, source and cash conservation, carried fractional interest after partial repayment, advisory close, both capture pins, audit failures and bounded inputs. |
+| `python3 scripts/funding_gap_vectors.py --check` | 12 files match. The drift test also exercises missing, edited and unexpected files. |
+| `python3 scripts/forecast_vectors.py --check` | Existing 6,456-byte vector matches. |
+| `python3 scripts/decision_bindings.py --check` | Passed. |
+| `python3 scripts/docs_surface.py --check` | 38 routes, 289 artifacts and 9 stages. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | 8 passed. |
+| Initial `python3 -m unittest discover -s tests -v` | 1,699 run, with failures in the existing route-metrics timing check and the fold-fuzz file comparison. The latter identified a cache file written by a concurrent run. The individual route-metrics test passed immediately when rerun. |
+| Initial `unshare -Urn sh -c 'ip link set lo up && exec python3 scripts/acceptance.py'` | Eight stages passed. The unit stage encountered the same cache-file write. The optional upstream read-model check was skipped under the ladder's default invocation. |
+| Isolated `python3 scripts/acceptance.py` rerun with `PYTHONDONTWRITEBYTECODE=1` | The unit and browser subprocesses hit the ladder's 900-second and 600-second timeouts. The other seven stages passed. The standalone browser run had already passed all 113 tests. Four test servers left by the timed-out browser run were stopped. |
+| `unshare -Urn sh -c 'ip link set lo up && exec env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v'` | 1,699 passed in 1,035.825 seconds. The direct run had no acceptance-ladder deadline, and both previously failing checks passed. |
+| `python3 -m compileall -q capital` and `node --check capital/static/app.js` | Passed. |
+| `unshare -Urn sh -c 'ip link set lo up && exec npm run test:browser'` | 113 passed on Chromium. The private loopback kept the checked-in ports available without interfering with another service on port 8765. |
+| Two `python3 scripts/build_release.py --out …` invocations, `cmp`, and `python3 scripts/smoke_release.py …` | Byte-identical zipapps and 11 smoke checks passed. |
+| `npm ci --offline --no-audit --no-fund` | Offline cache lacked Playwright Core 1.58.2. The browser checks used the identical installed Playwright 1.58.2 dependency from a neighboring local worktree and the preinstalled Chromium. |
+
+The test suite checked unchanged portfolio forecast responses and workspace bytes. All 69 SHA-256 entries in the existing vendor manifest matched their files. The reports are `SIMULATED` and `READ_ONLY_FIXTURE`, with `funds_executed: false` and `production: NOT_AUTHORIZED`.
