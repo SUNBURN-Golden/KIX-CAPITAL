@@ -337,7 +337,8 @@ def validation_registry():
         registry['claims:' + stem] = [py, f'scripts/{stem}_claims_check.py', '--execute']
         registry['test:' + stem] = unit + ['-p', f'test_{stem}_claims.py', '-v']
     stages = {
-        'unit': [unit + ['-v'], registry['decision-bindings']],
+        'unit': [unit + ['-v'], registry['decision-bindings'],
+                 [py, 'scripts/finance_properties.py', '--seeds', '200', '--check']],
         'storage-conformance': [unit + ['-p', 'test_storage_conformance.py', '-v'],
                                 [py, '-m', 'unittest', 'tests.test_crash_replay', '-v']],
         'pinned-vendor': [[py, '-m', 'unittest', 'discover', '-s', 'capital/vendor/credit_advance_f04', '-p', 'test_mock_credit.py', '-v']],
