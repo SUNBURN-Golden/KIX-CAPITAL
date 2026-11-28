@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from capital.protocol_delivery import COMMIT, PIN_HEADER
 from capital.gate_producer import (
     LABEL, GateHttpProducer, GateProtocolError, ProducerUnknown, load_fake_gate,
 )
@@ -39,9 +40,9 @@ def _load_seed():
 seed = _load_seed()
 
 
-def _raw(method, url, payload=None, timeout=2):
+def _raw(method, url, payload=None, timeout=2, pin=COMMIT):
     data = None
-    headers = {'Accept': 'application/json'}
+    headers = {'Accept': 'application/json', PIN_HEADER: pin}
     if payload is not None:
         data = json.dumps(payload).encode()
         headers['Content-Type'] = 'application/json'

@@ -273,6 +273,12 @@ class ScenarioReplaySource(FixtureViews):
         self.books[fixture_id] = book
         super()._store(fixture_id, profile, beneficiary, book)
 
+    def replay_refund_before_distribution(self, fixture_id):
+        """Stop the disposable book after the refund observation, before allocation."""
+        from capital.scenarios import definitions
+        steps = next(steps for name, _, _, steps in definitions() if name == 'partial-before')
+        return self.replay(fixture_id, 'partial-before', steps=steps[:2])
+
     def replay(self, fixture_id, scenario_id, steps=None):
         """Apply a scenario's steps to one fixture's book. Outcomes are returned, never raised.
 
