@@ -74,10 +74,9 @@ def _f04_checks(row, entries, exposure):
 
 def _interest(entries):
     contract, default = 0, 0
-    posted, refs = False, []
+    refs = []
     for ref, payload in entries:
         if ref['kind'] == overlay.KIND_INTEREST:
-            posted = True
             contract += payload['posted_contract_krw']
             default += payload['posted_default_krw']
         elif ref['kind'] == overlay.KIND_REPAYMENT or (
@@ -87,21 +86,52 @@ def _interest(entries):
         else:
             continue
         refs.append(ref)
-    return contract, default, posted, refs
+    return contract, default, refs
 
 
-def _interest_evidence(row, terms, posted):
+def _interest_evidence(row, entries, f04_refs, clocks, terms, *, stop, anchor=None):
+    draw = next(ref for ref in f04_refs if ref['kind'] == 'draw')
+    anchor_ref, anchor_payload = anchor if anchor is not None else (None, None)
+    start, draw_clock = 0, None
+    expected, clock_refs = [], []
+    for clock in clocks:
+        # A tick at journal length N sees F04 entries with indexes below N.
+        length = clock['after_journal_index']
+        if length <= draw['index']:
+            start, draw_clock = clock['sim_day'], clock
+            continue
+        if stop is not None:
+            if stop['journal'] == 'F04' and length > stop['index']:
+                break
+            if stop['journal'] == 'OVERLAY' and clock['index'] > stop['index']:
+                break
+        day = end = clock['sim_day']
+        if anchor_ref is not None and clock['index'] > anchor_ref['index']:
+            end = min(day, anchor_payload['writeoff_eligible_sim_day'])
+        if end <= start:
+            break  # Already at the recorded accrual cutoff.
+        expected.append((length, day, start, end))
+        clock_refs.append(clock)
+        start = end
+    posted = [(ref['after_journal_index'], ref['sim_day'], p['from_day'], p['to_day'])
+              for ref, p in entries if ref['kind'] == overlay.KIND_INTEREST]
+
+    if draw_clock is not None:
+        clock_refs.insert(0, draw_clock)
+    row['references'].extend(clock_refs)
+    refs = [ref for ref in (draw, stop, anchor_ref, terms) if ref is not None] + clock_refs
     if terms is None:
         row['reasons'].append('TERMS_BINDING_NOT_BOUND')
-    if not posted:
-        return 'ACCRUAL_NOT_BOUND'
-    return 'TERMS_BINDING_NOT_BOUND' if terms is None else None
+    if not posted or posted != expected:
+        return 'ACCRUAL_NOT_BOUND', refs
+    return ('TERMS_BINDING_NOT_BOUND' if terms is None else None), refs
 
 
-def _closed_checks(row, gate, entries, terms):
-    contract, default, posted, refs = _interest(entries)
-    missing = _interest_evidence(row, terms, posted)
-    refs = [*([terms] if terms else []), *refs]
+def _closed_checks(row, gate, entries, terms, f04_refs, clocks):
+    contract, default, refs = _interest(entries)
+    # An accepted close requires zero F04 principal. The final repay stopped accrual.
+    missing, coverage_refs = _interest_evidence(row, entries, f04_refs, clocks, terms, stop=f04_refs[-1])
+    refs = coverage_refs + refs
     _check(row, 'closed_unpaid_interest_krw', None if missing else contract,
            gate['interest_due_krw'], refs, missing=missing)
     _check(row, 'closed_unpaid_default_interest_krw', None if missing else default,
@@ -130,7 +160,7 @@ def _writeoff_checks(row, writeoff, late_entries, opening, missing, opening_refs
     _check(row, 'recovery_claim_krw', running, pos['claim_krw'], refs, missing=missing)
 
 
-def _recovery_checks(row, entries, f04_refs, defaults, terms):
+def _recovery_checks(row, entries, f04_refs, defaults, terms, clocks):
     values = row['fold_values']
     anchor = values['anchor']
     stamped_anchor = next((item for item in entries if item[0]['kind'] == 'default_anchor'), None)
@@ -181,20 +211,23 @@ def _recovery_checks(row, entries, f04_refs, defaults, terms):
     _check(row, 'f04_principal_bridge', sum(displayed), values['f04_exposure_krw'],
            anchor_refs + early_refs + writeoff_refs)
 
-    contract, default, posted, interest_refs = _interest(before)
-    missing = _interest_evidence(row, terms, posted)
-    interest_refs = [*([terms] if terms else []), *interest_refs, *writeoff_refs]
+    stop = writeoff[0] if writeoff is not None else None
+    if stop is None and remaining_principal == 0:
+        stop = early[-1][0]  # The final allocated recovery cleared principal.
+    missing, coverage_refs = _interest_evidence(row, before, f04_refs, clocks, terms,
+                                                stop=stop, anchor=stamped_anchor)
+    contract, default, interest_refs = _interest(before)
+    interest_refs = coverage_refs + [ref for ref in interest_refs if ref != stop]
     _check(row, 'recovery_interest_krw', None if missing else contract, pos['interest_krw'],
            interest_refs, missing=missing)
     _check(row, 'recovery_default_interest_krw', None if missing else default, pos['default_interest_krw'],
            interest_refs, missing=missing)
     claim = None if missing else principal_before_writeoff + contract + default
-    claim_refs = [anchor_ref, *interest_refs]
     if writeoff is None:
-        _check(row, 'recovery_claim_krw', claim, pos['claim_krw'], claim_refs, missing=missing)
+        _check(row, 'recovery_claim_krw', claim, pos['claim_krw'], interest_refs, missing=missing)
     else:
         _check(row, 'writeoff_cutoff_principal_krw', principal_before_writeoff, written_off, principal_refs)
-        _writeoff_checks(row, writeoff, after, claim, missing, claim_refs, rec, pos)
+        _writeoff_checks(row, writeoff, after, claim, missing, interest_refs, rec, pos)
 
 
 def _compose(service, state, journal, entries):
@@ -203,6 +236,7 @@ def _compose(service, state, journal, entries):
         f04[entry['advance_id']].append((_reference('F04', index, entry), entry['body']))
     seen = set()
     terms = None
+    clocks = []
     for index, entry in enumerate(entries):
         if entry['overlay_id'] in seen:
             continue
@@ -210,6 +244,8 @@ def _compose(service, state, journal, entries):
         ref, payload = _reference('OVERLAY', index, entry), entry['payload']
         if entry['kind'] == overlay.KIND_TERMS:
             terms = ref
+        elif entry['kind'] == overlay.KIND_CLOCK:
+            clocks.append(ref)
         elif entry['kind'] == overlay.KIND_REPAYMENT:
             by_advance[payload['advance_ref']].append((ref, payload))
         elif entry['kind'] in (overlay.KIND_INTEREST, 'default_anchor', 'RECOVERY', 'WRITEOFF'):
@@ -230,13 +266,13 @@ def _compose(service, state, journal, entries):
             overlay_refs.append(terms)
         row = {'advance_id': advance, 'phase': phase, 'recovery_basis': 'NOT_APPLICABLE',
                'fold_values': values, 'amounts': dict.fromkeys(AMOUNTS), 'checks': [], 'reasons': [],
-               'references': [ref for ref, _ in f04[advance]] + sorted(
-                   overlay_refs, key=lambda ref: ref['index'])}
+               'references': [ref for ref, _ in f04[advance]] + overlay_refs}
         f04_refs, defaults = _f04_checks(row, f04[advance], exposure)
         if phase == 'DEFAULTED':
-            _recovery_checks(row, advance_entries, f04_refs, defaults, terms)
+            _recovery_checks(row, advance_entries, f04_refs, defaults, terms, clocks)
         elif phase == 'CLOSED':
-            _closed_checks(row, gate, advance_entries, terms)
+            _closed_checks(row, gate, advance_entries, terms, f04_refs, clocks)
+        row['references'].sort(key=lambda ref: (ref['journal'], ref['index']))
         row['status'] = 'INCOMPLETE' if row['reasons'] else 'COMPLETE'
         rows.append(row)
     return rows

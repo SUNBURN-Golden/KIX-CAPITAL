@@ -1235,8 +1235,8 @@ Rows sort by `advance_id` and carry the F04 `phase`. `fold_values` retains
 `closed_interest_gate` when applicable. `amounts` contains verified integer KRW
 or null. Each check gives its `id`, `expected_krw`, `observed_krw`, `status`
 (`MATCHED`, `MISMATCH`, `NOT_CHECKED`), `reason` and supporting `references`.
-The row's references collect the case's F04 entries, pertinent overlay entries
-and terms binding. Each reference gives `journal`, zero-based original `index`,
+The row's references collect the case's F04 entries, pertinent overlay entries,
+accrual clock ticks and terms binding. Each reference gives `journal`, zero-based original `index`,
 `entry_id`, `kind`, and the overlay's `sim_day` and `after_journal_index` (null
 for F04). Identical overlay IDs are counted at their first occurrence.
 
@@ -1259,9 +1259,15 @@ opening residual is `89,172 + 2,098 = 91,270`; later receipts of 300 and 700
 reduce it to 90,270 KRW. F04 retains the default-day 90,000 KRW throughout.
 
 Recovery is `NOT_APPLICABLE` for advances that never defaulted. A legacy
-default with no anchor is `NOT_BOUND` with `DEFAULT_ANCHOR_NOT_BOUND`. Missing
-terms or an accrual posting yields `TERMS_BINDING_NOT_BOUND` or
-`ACCRUAL_NOT_BOUND`. Only checks with supporting evidence publish amounts, so
+default with no anchor is `NOT_BOUND` with `DEFAULT_ANCHOR_NOT_BOUND`. Interest
+checks reconcile posting spans to each recorded clock tick after draw while
+principal is outstanding. For CLOSED advances the final F04 repayment ends
+the check. For defaulted advances the recorded writeoff eligibility day caps
+accrual, and the final principal recovery or actual writeoff can end the
+required clock sequence. A tick that crosses the eligibility day must have a
+posting ending on that day. Missing terms yield `TERMS_BINDING_NOT_BOUND`.
+Absent postings or gaps in the required spans yield `ACCRUAL_NOT_BOUND`.
+Only checks with supporting evidence publish amounts, so
 an unsupported interest bucket or writeoff opening cannot publish a claim
 based on raw fold defaults. Independently verified principal and other rows
 remain available. Portfolio `coverage` reports only `advances`, `complete`

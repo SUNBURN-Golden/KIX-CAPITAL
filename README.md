@@ -657,8 +657,10 @@ to zero while retaining a separate residual claim. Subsequent receipts reduce
 that claim as a single amount. The report also checks unpaid interest on CLOSED
 advances separately. The measures overlap, so portfolio coverage reports counts.
 
-Exit 0 means `COMPLETE`. Exit 1 means `INCOMPLETE` (such as a missing default
-anchor or missing accrual, with unverified amounts shown as null) or
+Interest checks require a posting for each applicable recorded clock tick while
+principal is outstanding, up to the recovery cutoff where applicable. Exit 0
+means `COMPLETE`. Exit 1 means `INCOMPLETE` (such as a missing default anchor
+or a gap in accrual, with unverified amounts shown as null) or
 `AUDIT_FAILED` (rows null). Exit 2 means argument misuse. Authentication, actual
 payments and financial recognition are `NOT_BOUND`. See the [integration
 contract](docs/INTEGRATION.md#exposure-basis-bridge) and [operator handbook](docs/OPERATOR_HANDBOOK_KO.md#exposure-basis-bridge).

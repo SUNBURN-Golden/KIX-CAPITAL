@@ -159,8 +159,38 @@ class ExposureBridgeTests(unittest.TestCase):
         self.assertEqual(partial['recovery_basis'], 'POST_DEFAULT')
         self.assertEqual(self.checks(partial)['f04_principal_bridge']['status'], 'MATCHED')
         service.overlay_command(recover(service, 89172, 'full'))
+        tick(service, 'after-full-recovery', 10, 11)
         self.assert_amounts(self.row(service), VECTOR['full_recovery'])
         self.assertEqual(self.report()['source']['state_digest'], terminal)
+
+    def test_recovery_requires_the_posting_capped_at_writeoff_eligibility(self):
+        service = self.defaulted()
+        tick(service, 'past-eligibility', 10, 110)
+        tick(service, 'after-cutoff', 110, 111)
+        self.assert_amounts(self.row(service), {'recovery_interest_krw': 172,
+                                               'recovery_default_interest_krw': 2219,
+                                               'recovery_claim_krw': 92391})
+        complete = service.overlay_entries
+        service.overlay_command(cmd(service, 'post_writeoff', 'writeoff',
+                                    setoff_declined_reason='SIMULATED_FIXTURE_DECLINE'))
+        self.assert_amounts(self.row(service), {'writeoff_opening_claim_krw': 92391})
+
+        service.overlay_entries = [e for e in complete
+                                   if e['overlay_id'] != 'past-eligibility:interest:sim-a']
+        row = self.row(service, 'INCOMPLETE')
+        self.assert_amounts(row, {'recovery_principal_krw': 90000, 'recovery_claim_krw': None})
+        check = self.checks(row)['recovery_claim_krw']
+        self.assertEqual(check['reason'], 'ACCRUAL_NOT_BOUND')
+        ids = {ref['entry_id'] for ref in check['references']}
+        self.assertTrue({'day10:interest:sim-a', 'past-eligibility'} <= ids)
+        self.assertNotIn('after-cutoff', ids)
+
+        service.overlay_command(cmd(service, 'post_writeoff', 'writeoff',
+                                    setoff_declined_reason='SIMULATED_FIXTURE_DECLINE'))
+        row = self.row(service, 'INCOMPLETE')
+        self.assert_amounts(row, {'written_off_principal_krw': 90000, 'writeoff_opening_claim_krw': None,
+                                  'post_writeoff_residual_claim_krw': None, 'recovery_claim_krw': None})
+        self.assertEqual(self.checks(row)['writeoff_opening_claim_krw']['reason'], 'ACCRUAL_NOT_BOUND')
 
     def test_writeoff_separates_same_day_entries_by_original_index_and_deduplicates(self):
         service = self.written_off()
@@ -239,6 +269,39 @@ class ExposureBridgeTests(unittest.TestCase):
         row = self.row(self.closed(paid=True))
         self.assert_amounts(row, {'f04_exposure_krw': 0, 'closed_unpaid_interest_krw': 0,
                                   'closed_unpaid_default_interest_krw': 0})
+
+    def test_resealed_closed_book_missing_later_posting_has_incomplete_accrual(self):
+        service = self.service()
+        draw_book(service)
+        tick(service, 'day10', 0, 10)
+        tick(service, 'day70', 10, 70)
+        self.assertEqual(run(service, 'repay', 'sim-a', 'principal',
+                             amount=90000, sequence=1)['outcome'], 'ACCEPTED')
+        tick(service, 'after-payoff', 70, 71)
+        self.assertEqual(run(service, 'close', 'sim-a', 'close')['outcome'], 'ACCEPTED')
+        tick(service, 'after-close', 71, 72)
+        self.assert_amounts(self.row(service), {'closed_unpaid_interest_krw': 1035,
+                                              'closed_unpaid_default_interest_krw': 246})
+
+        service.overlay_entries = [e for e in service.overlay_entries
+                                   if e['overlay_id'] != 'day70:interest:sim-a']
+        raw = self.capture(service)
+        result = self.cli('--workspace', str(self.directory))
+        self.assertEqual(result.returncode, 1, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertTrue(report['source']['audit']['ok'])
+        self.assertEqual(report['status'], 'INCOMPLETE')
+        row, = report['rows']
+        self.assert_amounts(row, {'f04_exposure_krw': 0, 'closed_unpaid_interest_krw': None,
+                                  'closed_unpaid_default_interest_krw': None})
+        self.assertEqual(row['fold_values']['closed_interest_gate']['interest_due_krw'], 172)
+        for field in ('closed_unpaid_interest_krw', 'closed_unpaid_default_interest_krw'):
+            check = self.checks(row)[field]
+            self.assertEqual((check['status'], check['reason']), ('NOT_CHECKED', 'ACCRUAL_NOT_BOUND'))
+            ids = {ref['entry_id'] for ref in check['references']}
+            self.assertTrue({'day10:interest:sim-a', 'day70'} <= ids)
+            self.assertFalse({'after-payoff', 'after-close'} & ids)
+        self.assertEqual(self.path.read_bytes(), raw)
 
     def test_closed_without_terms_or_accrual_stays_null_in_mixed_book(self):
         service = self.closed(ref='sim-early', accrued=False)
