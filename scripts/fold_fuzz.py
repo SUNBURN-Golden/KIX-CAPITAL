@@ -18,6 +18,7 @@ import hashlib
 import json
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -127,7 +128,7 @@ def sha(value):
     return hashlib.sha256(store.canonical_bytes(value)).hexdigest()
 
 
-def capture(service, raw):
+def capture(service, raw, *, journal_length=None):
     """Independently refold copied journals and bound every persisted prefix."""
     # Parsing the envelope already detaches both journals. Replay those copies
     # after comparing them to the live book, rather than copying the live
@@ -137,6 +138,8 @@ def capture(service, raw):
     journal = document['payload']['journal']
     entries = document['overlay']['journal']
     require(journal == service.producer.export_journal(), 'persisted F04 journal')
+    if journal_length is not None:
+        require(len(journal) == journal_length, 'journal append count')
     require(entries == service.overlay_entries, 'persisted overlay journal')
     restored = service.producer.restored(journal)
     require(restored.canonical_state() == service.producer.canonical_state(), 'F04 fold state')
@@ -181,14 +184,13 @@ def replay(commands, directory):
         require(service.workspace_status == 'ACTIVE', 'fresh workspace not ACTIVE')
         service.instance_id = port.writer_instance = WRITER
         require(service.overlay_bounds is not None, 'capacity NOT_BOUND')
+        journal_length = len(service.machine.export_journal())
+        clock = SimpleNamespace(datetime=FixedDateTime, timezone=datetime.timezone)
         for step, command in enumerate(commands, 1):
             try:
-                before = len(service.machine.export_journal())
                 body = dict(copy.deepcopy(command), instance_id=service.instance_id)
                 # Replace only capital.store's datetime reference, never the global module.
-                with patch.object(store, 'datetime') as clock:
-                    clock.datetime = FixedDateTime
-                    clock.timezone = datetime.timezone
+                with patch.object(store, 'datetime', clock):
                     if command['op'] == 'advance_day':
                         require(0 < command['to_sim_day'] - command['from_sim_day']
                                 <= service.overlay_bounds['max_step_days'], 'tick step bound')
@@ -202,16 +204,19 @@ def replay(commands, directory):
                         require(receipt['outcome'] == 'ACCEPTED', f'unexpected rejection {receipt}')
                         require(receipt['funds_executed'] is False, 'funds executed')
                 delta = 0 if command['op'] in ('advance_day', 'reconcile') else 1
-                require(len(service.machine.export_journal()) == before + delta, 'journal append count')
+                journal_length += delta
                 raw = port.path.read_bytes()
-                checkpoint = dict(step=step, **capture(service, raw))
+                # capture already compares the persisted journal with a detached
+                # live export. Check its length there too, avoiding two extra
+                # full journal exports around every command.
+                checkpoint = dict(step=step, **capture(service, raw, journal_length=journal_length))
                 checkpoints.append(checkpoint)
                 envelopes.append(raw)
             except (FuzzError, ApiError, ValueError, KeyError) as exc:
                 raise FuzzError(f'step {step} {command["op"]}: {exc}') from exc
         receipts = copy.deepcopy(service.receipts)
         entries = copy.deepcopy(service.overlay_entries)
-        journal = copy.deepcopy(service.machine.export_journal())
+        journal = service.machine.export_journal()
         mapping = copy.deepcopy(service.case_fixtures)
     finally:
         port.close()

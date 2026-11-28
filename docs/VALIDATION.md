@@ -5674,6 +5674,65 @@ No merge abort, commit, push, rebase, reset, external post, Protocol/Commerce
 edit, provider call or funds movement was performed. The resolved merge is
 staged and left uncommitted for the supervisor.
 
+## repayment-schedule-comparison — builder (2026-11-04)
+
+Implemented `capital.repayment_compare` and its stdlib CLI over one audited byte
+capture, with detached writable memory ports, frozen local policy/bounds and
+fixture values, deterministic branch identities and collision reservation.
+Only the existing organizer `advance_day` and `post_repayment` handlers execute.
+The report retains rejected and unattempted steps, exact fractional accrual,
+source and policy hashes, close advisory and selected-advance residual
+reconciliation. A payment-only cash record does not establish missing interest
+coverage. Results remain SIMULATED; no real payments, authentication, historical
+policy attestation, optimizer or funding forecast is claimed.
+
+Plan deviations: the existing `tests/decision_bindings.json` inventory also
+needed declarations for this module's interest/term/default-loss consumers. The
+checker and its assertions were unchanged. Browser execution uses an isolated
+loopback namespace because unrelated services already own ports 8765/8766;
+committed Playwright configuration, ports and assertions are unchanged. The
+historical root `DECISION_REQUIRED.md` is preserved byte-for-byte; fresh results
+below describe this worktree, not its historical baseline claim. No new
+consequential product decision or financial term was required.
+
+Commands below were actually executed by this builder. Routine repository
+inspection commands are omitted. Evidence logs are under ignored
+`build/repayment-compare-evidence/` where indicated.
+
+| Command | Measured result |
+|---|---|
+| `python3 -m unittest discover -s tests -p test_repayment_compare.py -v` | Final focused run: exit 0, **30 passed** in 4.143 s. Earlier 27-test runs exposed two then one incorrect fixture expectations: the FSM keeps DRAWN after full repayment, and held cash yields UNAPPLIED_HELD. Corrected those expectations to the unchanged handlers; the intervening 29-test run passed. |
+| `python3 -m unittest discover -s tests -p test_residuals.py -v` | Exit 0; **26 passed** in 2.496 s, retaining default residual schema/behavior. |
+| `python3 -m unittest discover -s tests -p test_decision_bindings.py -v` | Exit 0; **25 passed** in 20.448 s after declaring the new consumers; log `bindings.log`. |
+| `python3 scripts/decision_bindings.py --check` | Initial invocation reported the unlisted interest-rate consumer (exit 1); after the inventory update, exit 0, declared references match. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 273 artifacts, nine stages. No new vector files were added. |
+| `npm ci --offline --ignore-scripts` | Exit 0; three packages installed from local cache, zero vulnerabilities reported; no browser download. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; **7 passed** in 0.001 s. |
+| `python3 -m compileall -q capital` | Exit 0. |
+| `node --check capital/static/app.js` | Exit 0. |
+| Inline Python SHA256/preservation check, `git diff --exit-code HEAD -- capital/vendor capital/export.py capital/overlay.py capital/ports.py .aiops docs/decisions tests/golden DECISION_REQUIRED.md .github` | All five manifest SHA256 locks match. Protected paths, vendor manifest and historical blocker note are unchanged against HEAD. |
+| `git diff --check` | Exit 0. |
+
+No commit, push, PR, issue, external comment, `.aiops/` change, Protocol/Commerce
+modification, provider call, credential use or funds movement was performed.
+
+Full-suite result: `python3 -m unittest discover -s tests -v` first exited 1
+with **1,357 tests / three failures**, all reporting the new module's unlisted
+interest-rate consumption (`unit-initial.log`, 306.795 s). After the inventory
+update and the additional payment-only evidence regression, the same command
+exited 0: **1,358 passed** in 340.399 s (`unit.log`). The unchanged
+`test_coa_candidate.V1UnchangedTests.test_v1_and_golden_files_are_untouched`
+passed in both runs. The historical blocker note is retained as instructed and
+is not evidence of a current failure. Final Python/JavaScript syntax checks and
+the docs surface check were rerun after the implementation fix; all exit 0.
+
+| Final command | Measured result |
+|---|---|
+| `unshare -Urn -- bash -c 'ip link set lo up && exec npm run test:browser'` | Exit 0; **76 passed** in 1.8 min, using locally cached Chromium headless shell 1208 / Playwright 1.58.2. Log `browser.log`. No config, retry, assertion or timeout changes. |
+| Final inline Python vendor/protected-path and `/proc` cleanup check | Exit 0; all five vendor SHA256 locks and commit 7481b0e match, manifest and protected paths remain unchanged, and no Capital/Playwright server from this worktree remains. Unrelated existing listeners were left alone. |
+
+The requested narrow and local CI verification commands pass. This records
+local checks only; no GitHub CI, publication or supervisor action is claimed.
 ## facts-export-collector builder verification — 2026-11-01
 
 Implemented `scripts/collect_facts.py` and 19 stdlib HTTP/filesystem/CLI tests in
@@ -6699,6 +6758,70 @@ was weakened. The only initial verification issue was the focused-test invocatio
 recorded above; the documented discovery command and both complete discovery runs
 pass without changing the test.
 
+## repayment-schedule-comparison — conflict-fix round 1 (2026-11-09)
+
+Resolved the supervisor's merge of `origin/main` into reviewed comparison head
+`3652c4e313e49bc555cb1d28aea1ae25be16c53a`; incoming MERGE_HEAD is
+`5405d9ed870e563e7e2aca8f4b65f7b037db0474`. The sole conflict was this validation
+history. Both appended histories survive, with every nonblank line from each
+parent retained and all conflict markers removed. The merge remains uncommitted
+for the supervisor.
+
+The reviewed comparison implementation and its 30 focused tests remain
+byte-identical to HEAD. Main's event-stress, observation-triage, portfolio-migration
+and upstream re-pin implementations and tests remain byte-identical to
+MERGE_HEAD. The combined decision inventory retains every entry and CONSUMED
+binding from both parents, including main's implemented replacements for older
+PENDING_CONSUMER anchors. No runtime, test, CI or financial-term change was needed.
+
+All execution below uses local SIMULATED fixtures, with funds_executed=false.
+Chromium 145.0.7632.6 launches from the existing local cache. Acceptance uses an
+isolated loopback network and the unchanged tracked Playwright configuration.
+The initial optional launch probe had a shell-quoting syntax error; its corrected
+invocation passed without changing any repository file. Logs and full evidence
+are retained under ignored `build/repayment-compare-merge-verification/`.
+
+| Verification actually run | Measured result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_repayment_compare.py -v` | Exit 0; 30 passed in 4.317s. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 36 routes, 276 artifacts, nine stages. No new vector paths. |
+| `python3 scripts/decision_bindings.py --check` | Exit 0; declared consumers match the combined implementation. |
+| `python3 scripts/pack_vectors.py --check`; `python3 scripts/manifest_vectors.py --check` | Both exit 0; nine pack files and 19 manifest files match. |
+| `python3 scripts/event_stress_vectors.py --check`; `python3 scripts/observation_triage_vectors.py --check` | Both exit 0; three synthetic stress cases and the triage corpus match. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| SHA256, Git-parent and marker assertions | All five locked vendor references, manifest, legacy export and historical root `DECISION_REQUIRED.md` equal both parents; `.aiops/` and CI unchanged. No unmerged entries or tracked conflict markers. |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py --evidence build/repayment-compare-merge-verification/acceptance-first.json'` | Exit 0; all nine stages passed: unit 1,446 in 459.255s, storage 19, pinned vendor seven, upstream claims 322 passed plus two documented divergences / 324, node syntax, browser 76 in 2.2m, packaged smoke 11, seed one and journeys six. Evidence is ok:true, SIMULATED, funds_executed=false. |
+| `python3 scripts/closeout_digest.py --write --evidence build/repayment-compare-merge-verification/acceptance-first.json`; `python3 scripts/finance_vectors.py --write` | Both exit 0; regenerated the 4,582-byte digest and 101,112-byte finance pack exclusively from clean first-pass evidence, following CAPITAL-CLOSEOUT-REGEN-V1. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check` | Both exit 0; standalone and embedded closeout agree, finance bytes reproduce. |
+
+Compared with incoming main, only the packaged SHA256 and unit count change in
+the closeout digest (1,416 to the measured 1,446); only the embedded closeout group
+changes in the finance pack. All seven other finance groups equal both parents.
+The combined package SHA256 is
+`0501f4e9d70e75a8a1d35ef70e4f9dc58b6589baf2fd735dd1ee4cc146f6b7e1`.
+These are local verification results, not real financial execution, independent
+conformance, deployment, upstream completion or human product acceptance.
+
+| Final verification actually run | Measured result |
+| --- | --- |
+| `unshare -Urn -- bash -c 'ip link set lo up && exec python3 scripts/acceptance.py --evidence build/repayment-compare-merge-verification/acceptance-second.json'` | Exit 0; all nine stages passed again: unit 1,446 in 577.242s, storage 19, vendor seven, upstream claims 322 passed plus two documented divergences / 324, node syntax, browser 76 in 2.1m, packaged smoke 11, seed one and journeys six. Evidence is ok:true, SIMULATED, funds_executed=false. |
+| `python3 scripts/closeout_digest.py --check-evidence --evidence build/repayment-compare-merge-verification/acceptance-second.json` | Exit 0; fresh second-pass covered evidence byte-matches the regenerated 4,582-byte artifact. |
+| `python3 scripts/closeout_digest.py --check`; `python3 scripts/finance_vectors.py --check`; `python3 scripts/docs_surface.py --check` | All exit 0 after the second pass; embedded copy agrees, finance pack reproduces, 36 routes / 276 artifacts / nine stages. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0 after the second pass. |
+| Final parent-preservation, vendor SHA256, marker, index and process checks; `git diff --check`; `git diff --cached --check` | All pass; both histories and features survive, no unmerged entries or tracked conflict markers, protected paths unchanged, and no test server from this worktree remains. |
+
+Final generated SHA256 values are
+`9246dc9e8c5c991ef7a66b194866f520f64ca8707dcddb23398a882661241d28`
+for `tests/vectors/closeout_digest.json` and
+`a38226697268581c2e1af4ae0a2c062105d0707ba0da1cb459d1155e3bec58ea`
+for `tests/vectors/finance_vectors.json`. Both acceptance passes agree on every
+covered field; the second evidence is also retained at the ignored default
+`build/acceptance-evidence.json` path.
+
+The sole conflicted file and both generated artifacts are staged. No commit,
+push, abort, rebase, reset, external post, upstream modification, real provider
+call, credential use, money movement or deployment occurred. No CI, test or
+assertion was weakened. The merge is left uncommitted for the supervisor.
 ## provider-capture-recon — supervised conflict-fix round 1 (2026-11-10)
 
 Resolved the supervisor-started merge of incoming main
@@ -7399,6 +7522,99 @@ No CI/test requirement was relaxed. Vendor, legacy export, `.aiops/` and the
 root decision-file state are unchanged against both parents. No commit, push,
 deployment or external publication was performed.
 
+### repayment-schedule-comparison — conflict-fix round 2 (2026-11-17 KST)
+
+Resolved the supervisor-started merge of main
+`d6ccd93130b86f3dbc37c514ed78cc3c01d8c99d` into reviewed branch
+`9b0c7e368ca617a3a019f0772d7356dba9bed505`. Both conflicts were generated JSON:
+`tests/vectors/closeout_digest.json` and `tests/vectors/finance_vectors.json`.
+Main's prior measured snapshot supplied the initial readable fixtures; final
+bytes were regenerated through CAPITAL-CLOSEOUT-REGEN-V1 from a successful
+combined-tree acceptance run. Historical counts were never added together.
+The repayment comparison implementation, all 30 focused tests and its README,
+requirements, integration and validation documentation survive alongside main's
+provider-capture, allowance, shared-cap, read-model and browser additions.
+The six finance groups outside closeout and facade metadata remain unchanged.
+
+All evidence below is local SIMULATED / READ_ONLY_FIXTURE evidence, not real
+financial execution or independent acceptance. The acceptance run used an
+isolated network namespace with only loopback enabled and temporary storage in
+`/dev/shm`. Browser report symlinks were temporarily relocated and restored
+byte-for-byte; their new reports are kept under the ignored evidence directory.
+Cached locked npm dependencies were installed offline, without changing the
+lockfile. No test, CI setting, timeout or assertion was weakened.
+
+| Verification actually run | Observed result |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p test_repayment_compare.py -v` | Exit 0; all 30 focused tests passed in 4.325s. |
+| Isolated `python3 scripts/acceptance.py --evidence build/repayment-compare-round2/acceptance.json` | Exit 0; all nine required stages passed, `ok:true`, SIMULATED, `funds_executed:false`. |
+| `python3 -m unittest discover -s tests -v` in that run | Exit 0; all 1,603 tests passed in 497.732s. |
+| Storage conformance; pinned vendor discovery | Exit 0; 19 and seven tests passed, respectively. |
+| Upstream claims | 283 passes plus two documented divergences / 285 rows, zero failures. The optional read-model check was explicitly SKIPPED without a supplied Protocol checkout. |
+| `npm run test:browser` in that run | Exit 0; all 85 Chromium tests passed using the unchanged tracked configuration. |
+| Packaged smoke; seeded demo; integrated journeys | Exit 0; 11, one and six checks passed, respectively. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| Closeout `--write` with the measured evidence; finance vectors `--write` | Exit 0; regenerated 4,572-byte closeout and 103,382-byte finance vectors. |
+| Closeout `--check`, `--check-evidence`; finance vectors `--check` | Exit 0; standalone, embedded and measured closeout evidence agree; combined facade vectors reproduce. |
+| `PYTHONPATH=tests python3 -m unittest test_closeout_digest test_finance_vectors -v` after regeneration | Exit 0; all 115 tests passed in 3.584s. |
+| `python3 scripts/docs_surface.py --check` | Exit 0; 38 routes, 276 artifacts, nine stages. |
+| Decision bindings; pack vectors; manifest vectors | Exit 0; declared references, nine pack fixtures and 19 manifest fixtures checked. |
+
+Evidence and logs remain in ignored `build/repayment-compare-round2/`.
+The measured package SHA256 is
+`9277bce5a8f5bd75e5c978faab7e46b22b4651e29e59bec363a549ab8bc56315`.
+Closeout SHA256 is
+`1792b2a86f554fa01d24d17b403d2c04a27056fe0ae12ef62962172d995ecf67`;
+finance vectors SHA256 is
+`2b45beb65d1df0d355851e1f4f4a803d682a633591a6f88b890f9543d7fb2b5e`.
+
+The five vendor SHA256 locks and manifest, legacy export and `.aiops/` remain
+unchanged. Main's deletion of the historical root `DECISION_REQUIRED.md` is
+preserved without rewriting that file. Parent-exclusive path comparisons
+confirm all three branch-only paths and all 66 main-only paths survive.
+The merge is left uncommitted for the supervisor. No commit, push, abort,
+rebase, reset, external post, upstream modification, provider call, credentials,
+money movement or deployment was involved.
+
+### repayment-schedule-comparison — PR fix round 2 CI timeout follow-up (2026-11-18 KST)
+
+The supplied CI log reported a 120-second timeout in the fold-fuzz checker.
+The pre-edit standalone checker passed locally in 20.304 seconds, so the
+timeout did not reproduce as a deterministic input or digest failure. Reduced
+avoidable replay work in `scripts/fold_fuzz.py`: each command's expected journal
+length is now checked against the persisted journal already compared with the
+live export, eliminating two additional full-journal exports per command.
+The fixed store clock uses a reused explicit namespace instead of constructing
+a MagicMock for every command, and the final detached journal export no longer
+gets copied twice. The clock replacement remains scoped to each command and
+restores the original `capital.store.datetime` reference on failures too.
+
+All 16 seeds, 736 commands, both independent file replays, every prefix refold,
+digest and raw-byte comparison, reload and receipt lookup remain checked. The
+120-second subprocess timeout and corpus bytes are unchanged. Added a regression
+that rejects both too-small and too-large expected append counts against a
+verified live journal and confirms that the saved bytes remain unchanged.
+The repayment comparison implementation and all 30 of its tests are unchanged.
+
+These are local SIMULATED / READ_ONLY_FIXTURE results on top of merge HEAD
+`640952056d421f06cea0f777d42ae5c19f1993bb`, not a new CI run, real financial
+execution, durability claim or performance guarantee.
+
+| Verification actually run | Observed result |
+| --- | --- |
+| `python3 -m unittest tests.test_fold_fuzz tests.test_repayment_compare -v` | Exit 0; 44 passed in 59.003 seconds, including both complete hash-seed checker subprocesses under the unchanged timeout. |
+| `python3 -m unittest discover -s tests -v` | Exit 0; 1,604 passed in 608.350 seconds, including the reported timeout case and the legacy export guard. |
+| `python3 -m unittest discover -s capital/vendor/credit_advance_f04 -p test_mock_credit.py -v` | Exit 0; seven passed. |
+| `python3 -m compileall -q capital`; `node --check capital/static/app.js` | Both exit 0. |
+| `PYTHONDONTWRITEBYTECODE=1 npm run test:browser -- --output=/tmp/repayment-round2-browser-results --reporter=list` | Exit 0; all 85 Chromium tests passed in 3.2 minutes using the tracked assertions and loopback server configuration. Output options preserved the existing report symlinks. |
+| `python3 scripts/docs_surface.py --check`; `python3 scripts/decision_bindings.py --check` | Both exit 0; 38 routes, 276 artifacts, nine stages; declared bindings checked. |
+| Main ancestry and vendor integrity | `origin/main` is an ancestor of HEAD. All five vendor files satisfy the 7481b0e SHA256 locks; all five plus manifest match HEAD and origin/main byte-for-byte. |
+
+Logs are local `/tmp/repayment-round2-{focused,unittest,browser}.log` files.
+No corpus, golden, acceptance evidence, finance formula, timeout or existing
+assertion was changed. Legacy export, `.aiops/` and the historical root
+decision-file state remain unchanged. No commit, push, external post, deployment,
+provider call, credentials or money movement was involved.
 ### facts-verifier-input-bounds — PR fix round 2 (2026-11-16 KST)
 
 Accepted and fixed both blocking findings. The reader now checks the pathname
