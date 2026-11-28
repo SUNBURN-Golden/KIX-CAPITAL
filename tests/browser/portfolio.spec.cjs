@@ -180,7 +180,10 @@ test('keyboard order and 375px layout',async({page})=>{
  const buttons=page.locator('#cases button');
  const count=await buttons.count();
  expect(count).toBeGreaterThan(1);
+ // Approval can render before its refresh releases the controls.
+ await expect(buttons.nth(0)).toBeEnabled();
  await buttons.nth(0).focus();
+ await expect(buttons.nth(0)).toBeFocused();
  for(let i=1;i<count;i++){await page.keyboard.press('Tab');await expect(buttons.nth(i)).toBeFocused();}
  await page.locator('#advanced').evaluate(el=>{el.open=true;});
  await page.locator('#advanced summary').focus();
