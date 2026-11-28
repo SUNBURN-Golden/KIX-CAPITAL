@@ -18,6 +18,12 @@ if(generated.status!==0)throw Error(generated.stderr);
 const fixtures=JSON.parse(generated.stdout);
 const ids=Object.keys(fixtures.scenarios);
 const clone=value=>JSON.parse(JSON.stringify(value));
+async function fulfillJson(route,response,body){
+ const headers=response.headers();
+ // Playwright computes the length of the replacement JSON when the header is absent.
+ delete headers['content-length'];
+ await route.fulfill({response,headers,json:body});
+}
 async function setup(page){
  const seen=[];const errors=[];const control={scenario:null,snapshot:null,delay:null,catalogue:null};
  page.on('pageerror',e=>errors.push(String(e)));
@@ -30,13 +36,13 @@ async function setup(page){
   if(id&&control.scenario)body=control.scenario(body,id);
   if(!id&&control.catalogue)body=control.catalogue(body);
   if(control.delay)await control.delay(id);
-  await route.fulfill({response,json:body});
+  await fulfillJson(route,response,body);
  });
  await page.route('**/api/portfolio/snapshot?*',async route=>{
   const response=await route.fetch();const actual=await response.json();
   let body=clone(fixtures.snapshot);body.instance_id=actual.instance_id;
   if(control.snapshot)body=control.snapshot(body);
-  await route.fulfill({response,json:body});
+  await fulfillJson(route,response,body);
  });
  await page.goto('/');
  await expect(page.locator('#risk-comparison-select option')).toHaveCount(4);
@@ -124,7 +130,7 @@ test('network and malformed-result recovery retains capture focus and never subs
  await refresh(page).focus();await page.keyboard.press('Space');await expect(status(page)).toContainText('검증 실패');await expect(refresh(page)).toBeFocused();await expect(results(page)).toBeEmpty();
  await page.unroute('**/api/portfolio/snapshot?*');
  // Restore snapshot interception after the controlled network error.
- await page.route('**/api/portfolio/snapshot?*',async route=>{const response=await route.fetch();const actual=await response.json();await route.fulfill({response,json:{...clone(fixtures.snapshot),instance_id:actual.instance_id}});});
+ await page.route('**/api/portfolio/snapshot?*',async route=>{const response=await route.fetch();const actual=await response.json();await fulfillJson(route,response,{...clone(fixtures.snapshot),instance_id:actual.instance_id});});
  control.scenario=body=>{delete body.risk.totals;return body;};await refresh(page).click();await expect(status(page)).toContainText('검증 실패');await expect(results(page)).toBeEmpty();
  control.scenario=body=>{body.risk.reserve.requirement_krw=null;return body;};await capture(page);
  await results(page).locator('summary').filter({hasText:'Reserve / stress'}).click();
